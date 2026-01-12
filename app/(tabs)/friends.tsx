@@ -4,117 +4,132 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { calculateBalances, groupService, initDatabase, userService } from '@/services/database';
-import type { GroupWithMembers } from '@/types/database';
-import { router } from 'expo-router';
+import type { User } from '@/types/database';
 import { useEffect, useState } from 'react';
 import { Alert, FlatList, Modal, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 
-export default function GroupsScreen() {
+interface UserWithBalance extends User {
+  balance: number;
+}
+
+export default function FriendsScreen() {
   const colorScheme = useColorScheme();
-  const [groups, setGroups] = useState<GroupWithMembers[]>([]);
+  const [friends, setFriends] = useState<UserWithBalance[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
-  const [newGroupName, setNewGroupName] = useState('');
-  const [newGroupDescription, setNewGroupDescription] = useState('');
+  const [newFriendName, setNewFriendName] = useState('');
+  const [newFriendEmail, setNewFriendEmail] = useState('');
 
   useEffect(() => {
-    loadGroups();
+    loadFriends();
   }, []);
 
-  async function loadGroups() {
+  async function loadFriends() {
     try {
       await initDatabase();
-      const allGroups = await groupService.getAll();
+      const allUsers = await userService.getAll();
+      const currentUserId = 'current-user';
       
-      const groupsWithData = await Promise.all(
-        allGroups.map(async (group) => {
-          const balances = await calculateBalances(group.id);
-          const currentUserId = 'current-user';
-          const yourBalance = balances.get(currentUserId) || 0;
-          
-          return {
-            ...group,
-            yourBalance,
-          };
-        })
+      const friendsWithBalances = await Promise.all(
+        allUsers
+          .filter(user => user.id !== currentUserId)
+          .map(async (user) => {
+            let totalBalance = 0;
+            const groups = await groupService.getAll();
+            
+            for (const group of groups) {
+              const members = await groupService.getMembers(group.id);
+              const isMember = members.some(m => m.userId === user.id);
+              
+              if (isMember) {
+                const balances = await calculateBalances(group.id);
+                const userBalance = balances.get(user.id) || 0;
+                const currentUserBalance = balances.get(currentUserId) || 0;
+                
+                if (userBalance < 0 && currentUserBalance > 0) {
+                  totalBalance += Math.min(Math.abs(userBalance), currentUserBalance);
+                } else if (userBalance > 0 && currentUserBalance < 0) {
+                  totalBalance -= Math.min(userBalance, Math.abs(currentUserBalance));
+                }
+              }
+            }
+            
+            return { ...user, balance: totalBalance };
+          })
       );
-      
-      setGroups(groupsWithData);
+
+      setFriends(friendsWithBalances);
     } catch (error) {
-      console.error('Error loading groups:', error);
+      console.error('Error loading friends:', error);
     } finally {
       setLoading(false);
     }
   }
 
-  async function createGroup() {
-    if (!newGroupName.trim()) {
-      Alert.alert('Error', 'Please enter a group name');
+  async function addFriend() {
+    if (!newFriendName.trim()) {
+      Alert.alert('Error', 'Please enter a name');
       return;
     }
 
     try {
-      const group = await groupService.create({
-        name: newGroupName.trim(),
-        description: newGroupDescription.trim() || undefined,
+      await userService.create({
+        name: newFriendName.trim(),
+        email: newFriendEmail.trim() || undefined,
       });
 
-      const currentUser = await userService.getById('current-user');
-      if (!currentUser) {
-        await userService.create({
-          name: 'You',
-        });
-      }
-
-      await groupService.addMember(group.id, 'current-user', 'admin');
-
-      setNewGroupName('');
-      setNewGroupDescription('');
+      setNewFriendName('');
+      setNewFriendEmail('');
       setModalVisible(false);
-      loadGroups();
+      loadFriends();
     } catch (error) {
-      console.error('Error creating group:', error);
-      Alert.alert('Error', 'Failed to create group');
+      console.error('Error adding friend:', error);
+      Alert.alert('Error', 'Failed to add friend');
     }
   }
 
-  function renderGroup({ item }: { item: GroupWithMembers }) {
-    const balance = item.yourBalance || 0;
+  function renderFriend({ item }: { item: UserWithBalance }) {
+    const balance = item.balance;
     const balanceColor = balance > 0 ? '#10b981' : balance < 0 ? '#ef4444' : Colors[colorScheme ?? 'light'].text;
 
     return (
-      <TouchableOpacity
-        style={[styles.groupCard, { backgroundColor: Colors[colorScheme ?? 'light'].background }]}
-        onPress={() => router.push(`/group/${item.id}` as any)}>
-        <View style={styles.groupIcon}>
-          <IconSymbol size={32} name="person.3.fill" color={Colors[colorScheme ?? 'light'].tint} />
+      <View style={[styles.friendCard, { backgroundColor: Colors[colorScheme ?? 'light'].background }]}>
+        <View style={styles.avatar}>
+          <ThemedText style={styles.avatarText}>
+            {item.name.charAt(0).toUpperCase()}
+          </ThemedText>
         </View>
-        <View style={styles.groupInfo}>
-          <ThemedText type="defaultSemiBold" style={styles.groupName}>
+        <View style={styles.friendInfo}>
+          <ThemedText type="defaultSemiBold" style={styles.friendName}>
             {item.name}
           </ThemedText>
-          {item.description && (
-            <ThemedText style={styles.groupDescription}>{item.description}</ThemedText>
+          {item.email && (
+            <ThemedText style={styles.friendEmail}>{item.email}</ThemedText>
           )}
         </View>
         <View style={styles.balanceContainer}>
-          <ThemedText style={[styles.balanceAmount, { color: balanceColor }]}>
-            {balance === 0 ? 'settled' : `$${Math.abs(balance).toFixed(2)}`}
-          </ThemedText>
           {balance !== 0 && (
-            <ThemedText style={styles.balanceLabel}>
-              {balance > 0 ? 'you are owed' : 'you owe'}
-            </ThemedText>
+            <>
+              <ThemedText style={[styles.balanceAmount, { color: balanceColor }]}>
+                ${Math.abs(balance).toFixed(2)}
+              </ThemedText>
+              <ThemedText style={styles.balanceLabel}>
+                {balance > 0 ? 'owes you' : 'you owe'}
+              </ThemedText>
+            </>
+          )}
+          {balance === 0 && (
+            <ThemedText style={styles.settledText}>settled up</ThemedText>
           )}
         </View>
-      </TouchableOpacity>
+      </View>
     );
   }
 
   return (
     <ThemedView style={styles.container}>
       <View style={[styles.header, { backgroundColor: Colors[colorScheme ?? 'light'].background }]}>
-        <ThemedText type="title">Groups</ThemedText>
+        <ThemedText type="title">Friends</ThemedText>
         <TouchableOpacity
           style={[styles.addButton, { backgroundColor: Colors[colorScheme ?? 'light'].tint }]}
           onPress={() => setModalVisible(true)}>
@@ -126,25 +141,25 @@ export default function GroupsScreen() {
         <View style={styles.emptyContainer}>
           <ThemedText>Loading...</ThemedText>
         </View>
-      ) : groups.length === 0 ? (
+      ) : friends.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <IconSymbol size={64} name="person.3" color={Colors[colorScheme ?? 'light'].icon} />
+          <IconSymbol size={64} name="person.2" color={Colors[colorScheme ?? 'light'].icon} />
           <ThemedText type="subtitle" style={styles.emptyTitle}>
-            No groups yet
+            No friends yet
           </ThemedText>
           <ThemedText style={styles.emptyText}>
-            Create a group to start splitting expenses with friends
+            Add friends to split expenses with them
           </ThemedText>
           <TouchableOpacity
             style={[styles.createButton, { backgroundColor: Colors[colorScheme ?? 'light'].tint }]}
             onPress={() => setModalVisible(true)}>
-            <ThemedText style={styles.createButtonText}>Create Group</ThemedText>
+            <ThemedText style={styles.createButtonText}>Add Friend</ThemedText>
           </TouchableOpacity>
         </View>
       ) : (
         <FlatList
-          data={groups}
-          renderItem={renderGroup}
+          data={friends}
+          renderItem={renderFriend}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
         />
@@ -158,42 +173,42 @@ export default function GroupsScreen() {
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: Colors[colorScheme ?? 'light'].background }]}>
             <View style={styles.modalHeader}>
-              <ThemedText type="subtitle">Create New Group</ThemedText>
+              <ThemedText type="subtitle">Add Friend</ThemedText>
               <TouchableOpacity onPress={() => setModalVisible(false)}>
                 <IconSymbol size={24} name="xmark" color={Colors[colorScheme ?? 'light'].text} />
               </TouchableOpacity>
             </View>
 
             <TextInput
-              style={[styles.input, { 
+              style={[styles.input, {
                 backgroundColor: Colors[colorScheme ?? 'light'].background,
                 color: Colors[colorScheme ?? 'light'].text,
                 borderColor: Colors[colorScheme ?? 'light'].icon,
               }]}
-              placeholder="Group name"
+              placeholder="Name"
               placeholderTextColor={Colors[colorScheme ?? 'light'].icon}
-              value={newGroupName}
-              onChangeText={setNewGroupName}
+              value={newFriendName}
+              onChangeText={setNewFriendName}
             />
 
             <TextInput
-              style={[styles.input, styles.textArea, { 
+              style={[styles.input, {
                 backgroundColor: Colors[colorScheme ?? 'light'].background,
                 color: Colors[colorScheme ?? 'light'].text,
                 borderColor: Colors[colorScheme ?? 'light'].icon,
               }]}
-              placeholder="Description (optional)"
+              placeholder="Email (optional)"
               placeholderTextColor={Colors[colorScheme ?? 'light'].icon}
-              value={newGroupDescription}
-              onChangeText={setNewGroupDescription}
-              multiline
-              numberOfLines={3}
+              value={newFriendEmail}
+              onChangeText={setNewFriendEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
             />
 
             <TouchableOpacity
               style={[styles.submitButton, { backgroundColor: Colors[colorScheme ?? 'light'].tint }]}
-              onPress={createGroup}>
-              <ThemedText style={styles.submitButtonText}>Create Group</ThemedText>
+              onPress={addFriend}>
+              <ThemedText style={styles.submitButtonText}>Add Friend</ThemedText>
             </TouchableOpacity>
           </View>
         </View>
@@ -223,7 +238,7 @@ const styles = StyleSheet.create({
   listContent: {
     padding: 16,
   },
-  groupCard: {
+  friendCard: {
     flexDirection: 'row',
     padding: 16,
     borderRadius: 12,
@@ -234,24 +249,29 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
-  groupIcon: {
+  avatar: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#f3f4f6',
+    backgroundColor: '#e0e7ff',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
   },
-  groupInfo: {
+  avatarText: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#4f46e5',
+  },
+  friendInfo: {
     flex: 1,
     justifyContent: 'center',
   },
-  groupName: {
+  friendName: {
     fontSize: 16,
     marginBottom: 4,
   },
-  groupDescription: {
+  friendEmail: {
     fontSize: 12,
     opacity: 0.6,
   },
@@ -266,6 +286,10 @@ const styles = StyleSheet.create({
   },
   balanceLabel: {
     fontSize: 11,
+    opacity: 0.6,
+  },
+  settledText: {
+    fontSize: 12,
     opacity: 0.6,
   },
   emptyContainer: {
@@ -315,10 +339,6 @@ const styles = StyleSheet.create({
     padding: 12,
     marginBottom: 16,
     fontSize: 16,
-  },
-  textArea: {
-    height: 80,
-    textAlignVertical: 'top',
   },
   submitButton: {
     padding: 16,
