@@ -5,9 +5,11 @@ import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { calculateBalances, groupService, initDatabase, userService } from '@/services/database';
 import type { GroupWithMembers } from '@/types/database';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert, FlatList, Modal, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, FlatList, Modal, Platform, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 
 export default function GroupsScreen() {
   const colorScheme = useColorScheme();
@@ -78,57 +80,130 @@ export default function GroupsScreen() {
     }
   }
 
-  function renderGroup({ item }: { item: GroupWithMembers }) {
+  function renderGroup({ item, index }: { item: GroupWithMembers; index: number }) {
     const balance = item.yourBalance || 0;
-    const balanceColor = balance > 0 ? '#10b981' : balance < 0 ? '#ef4444' : Colors[colorScheme ?? 'light'].text;
+    const isPositive = balance > 0;
+    const isNegative = balance < 0;
+    const isSettled = balance === 0;
+
+    const gradientColors = isPositive 
+      ? ['#10b981', '#059669'] 
+      : isNegative 
+      ? ['#ef4444', '#dc2626']
+      : colorScheme === 'dark'
+      ? ['#374151', '#1f2937']
+      : ['#f3f4f6', '#e5e7eb'];
 
     return (
-      <TouchableOpacity
-        style={[styles.groupCard, { backgroundColor: Colors[colorScheme ?? 'light'].background }]}
-        onPress={() => router.push(`/group/${item.id}` as any)}>
-        <View style={styles.groupIcon}>
-          <IconSymbol size={32} name="person.3.fill" color={Colors[colorScheme ?? 'light'].tint} />
-        </View>
-        <View style={styles.groupInfo}>
-          <ThemedText type="defaultSemiBold" style={styles.groupName}>
-            {item.name}
-          </ThemedText>
-          {item.description && (
-            <ThemedText style={styles.groupDescription}>{item.description}</ThemedText>
-          )}
-        </View>
-        <View style={styles.balanceContainer}>
-          <ThemedText style={[styles.balanceAmount, { color: balanceColor }]}>
-            {balance === 0 ? 'settled' : `$${Math.abs(balance).toFixed(2)}`}
-          </ThemedText>
-          {balance !== 0 && (
-            <ThemedText style={styles.balanceLabel}>
-              {balance > 0 ? 'you are owed' : 'you owe'}
-            </ThemedText>
-          )}
-        </View>
-      </TouchableOpacity>
+      <Animated.View
+        entering={FadeInDown.delay(index * 100).springify()}
+        style={styles.groupCardWrapper}>
+        <TouchableOpacity
+          activeOpacity={0.7}
+          onPress={() => router.push(`/group/${item.id}` as any)}>
+          <LinearGradient
+            colors={gradientColors}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.groupCard}>
+            <View style={styles.groupCardContent}>
+              <View style={styles.groupHeader}>
+                <View style={[styles.groupIconContainer, { 
+                  backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                }]}>
+                  <IconSymbol size={28} name="person.3.fill" color="#fff" />
+                </View>
+                <View style={styles.groupInfo}>
+                  <ThemedText style={styles.groupName}>
+                    {item.name}
+                  </ThemedText>
+                  {item.description && (
+                    <ThemedText style={styles.groupDescription}>
+                      {item.description}
+                    </ThemedText>
+                  )}
+                </View>
+              </View>
+              
+              <View style={styles.balanceSection}>
+                <View style={styles.balanceDivider} />
+                <View style={styles.balanceContent}>
+                  <ThemedText style={styles.balanceLabel}>
+                    {isSettled ? 'All settled up' : isPositive ? 'You are owed' : 'You owe'}
+                  </ThemedText>
+                  {!isSettled && (
+                    <ThemedText style={styles.balanceAmount}>
+                      ${Math.abs(balance).toFixed(2)}
+                    </ThemedText>
+                  )}
+                </View>
+              </View>
+            </View>
+            
+            <View style={styles.cardShine} />
+          </LinearGradient>
+        </TouchableOpacity>
+      </Animated.View>
     );
   }
 
+  const totalBalance = groups.reduce((sum, g) => sum + (g.yourBalance || 0), 0);
+
   return (
     <ThemedView style={styles.container}>
-      <View style={[styles.header, { backgroundColor: Colors[colorScheme ?? 'light'].background }]}>
-        <ThemedText type="title">Groups</ThemedText>
-        <TouchableOpacity
-          style={[styles.addButton, { backgroundColor: Colors[colorScheme ?? 'light'].tint }]}
-          onPress={() => setModalVisible(true)}>
-          <IconSymbol size={24} name="plus" color="#fff" />
-        </TouchableOpacity>
-      </View>
+      <LinearGradient
+        colors={colorScheme === 'dark' ? ['#1f2937', '#111827'] : ['#ffffff', '#f9fafb']}
+        style={styles.headerGradient}>
+        <Animated.View entering={FadeInUp.springify()} style={styles.header}>
+          <View>
+            <ThemedText type="title" style={styles.headerTitle}>Your Groups</ThemedText>
+            <ThemedText style={styles.headerSubtitle}>
+              {groups.length} {groups.length === 1 ? 'group' : 'groups'}
+            </ThemedText>
+          </View>
+          <TouchableOpacity
+            style={styles.addButton}
+            onPress={() => setModalVisible(true)}>
+            <LinearGradient
+              colors={['#6366f1', '#4f46e5']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.addButtonGradient}>
+              <IconSymbol size={24} name="plus" color="#fff" />
+            </LinearGradient>
+          </TouchableOpacity>
+        </Animated.View>
+
+        {groups.length > 0 && (
+          <Animated.View entering={FadeInDown.delay(100).springify()} style={styles.summaryCard}>
+            <LinearGradient
+              colors={totalBalance >= 0 ? ['#10b981', '#059669'] : ['#ef4444', '#dc2626']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.summaryGradient}>
+              <ThemedText style={styles.summaryLabel}>Total Balance</ThemedText>
+              <ThemedText style={styles.summaryAmount}>
+                {totalBalance === 0 ? 'All settled' : `$${Math.abs(totalBalance).toFixed(2)}`}
+              </ThemedText>
+              {totalBalance !== 0 && (
+                <ThemedText style={styles.summarySubtext}>
+                  {totalBalance > 0 ? 'You are owed' : 'You owe'}
+                </ThemedText>
+              )}
+            </LinearGradient>
+          </Animated.View>
+        )}
+      </LinearGradient>
 
       {loading ? (
         <View style={styles.emptyContainer}>
           <ThemedText>Loading...</ThemedText>
         </View>
       ) : groups.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <IconSymbol size={64} name="person.3" color={Colors[colorScheme ?? 'light'].icon} />
+        <Animated.View entering={FadeInDown.springify()} style={styles.emptyContainer}>
+          <View style={styles.emptyIconContainer}>
+            <IconSymbol size={80} name="person.3" color={Colors[colorScheme ?? 'light'].icon} />
+          </View>
           <ThemedText type="subtitle" style={styles.emptyTitle}>
             No groups yet
           </ThemedText>
@@ -136,17 +211,25 @@ export default function GroupsScreen() {
             Create a group to start splitting expenses with friends
           </ThemedText>
           <TouchableOpacity
-            style={[styles.createButton, { backgroundColor: Colors[colorScheme ?? 'light'].tint }]}
+            activeOpacity={0.8}
             onPress={() => setModalVisible(true)}>
-            <ThemedText style={styles.createButtonText}>Create Group</ThemedText>
+            <LinearGradient
+              colors={['#6366f1', '#4f46e5']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.createButton}>
+              <IconSymbol size={20} name="plus.circle.fill" color="#fff" />
+              <ThemedText style={styles.createButtonText}>Create Your First Group</ThemedText>
+            </LinearGradient>
           </TouchableOpacity>
-        </View>
+        </Animated.View>
       ) : (
         <FlatList
           data={groups}
           renderItem={renderGroup}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
         />
       )}
 
@@ -206,91 +289,196 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  headerGradient: {
+    paddingTop: Platform.OS === 'ios' ? 60 : 40,
+    paddingBottom: 20,
+  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
-    paddingTop: 60,
+    paddingHorizontal: 20,
+    marginBottom: 16,
+  },
+  headerTitle: {
+    fontSize: 32,
+    fontWeight: 'bold',
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    opacity: 0.6,
+    marginTop: 4,
   },
   addButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    borderRadius: 28,
+    overflow: 'hidden',
+    shadowColor: '#6366f1',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  addButtonGradient: {
+    width: 56,
+    height: 56,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  summaryCard: {
+    marginHorizontal: 20,
+    borderRadius: 20,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 10,
+  },
+  summaryGradient: {
+    padding: 24,
+    alignItems: 'center',
+  },
+  summaryLabel: {
+    fontSize: 14,
+    color: '#fff',
+    opacity: 0.9,
+    fontWeight: '500',
+  },
+  summaryAmount: {
+    fontSize: 36,
+    fontWeight: 'bold',
+    color: '#fff',
+    marginTop: 8,
+  },
+  summarySubtext: {
+    fontSize: 12,
+    color: '#fff',
+    opacity: 0.8,
+    marginTop: 4,
   },
   listContent: {
-    padding: 16,
+    padding: 20,
+    paddingTop: 24,
+  },
+  groupCardWrapper: {
+    marginBottom: 16,
   },
   groupCard: {
-    flexDirection: 'row',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
+    borderRadius: 20,
+    overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 8,
   },
-  groupIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#f3f4f6',
+  groupCardContent: {
+    padding: 20,
+  },
+  groupHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  groupIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: 16,
   },
   groupInfo: {
     flex: 1,
-    justifyContent: 'center',
   },
   groupName: {
-    fontSize: 16,
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#fff',
     marginBottom: 4,
   },
   groupDescription: {
-    fontSize: 12,
-    opacity: 0.6,
+    fontSize: 14,
+    color: '#fff',
+    opacity: 0.8,
   },
-  balanceContainer: {
-    alignItems: 'flex-end',
-    justifyContent: 'center',
+  balanceSection: {
+    marginTop: 8,
   },
-  balanceAmount: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 2,
+  balanceDivider: {
+    height: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    marginBottom: 12,
+  },
+  balanceContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   balanceLabel: {
-    fontSize: 11,
-    opacity: 0.6,
+    fontSize: 14,
+    color: '#fff',
+    opacity: 0.9,
+    fontWeight: '500',
+  },
+  balanceAmount: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  cardShine: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    width: 100,
+    height: 100,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 50,
+    transform: [{ translateX: 30 }, { translateY: -30 }],
   },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 32,
+    padding: 40,
+  },
+  emptyIconContainer: {
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 24,
   },
   emptyTitle: {
-    marginTop: 16,
-    marginBottom: 8,
+    marginBottom: 12,
+    fontSize: 24,
   },
   emptyText: {
     textAlign: 'center',
     opacity: 0.6,
-    marginBottom: 24,
+    marginBottom: 32,
+    fontSize: 16,
+    lineHeight: 24,
   },
   createButton: {
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
+    flexDirection: 'row',
+    paddingHorizontal: 32,
+    paddingVertical: 16,
+    borderRadius: 30,
+    alignItems: 'center',
+    gap: 8,
+    shadowColor: '#6366f1',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
   createButtonText: {
     color: '#fff',
     fontWeight: '600',
+    fontSize: 16,
   },
   modalOverlay: {
     flex: 1,
