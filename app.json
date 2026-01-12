@@ -23,10 +23,7 @@
       "predictiveBackGestureEnabled": false,
       "package": "com.avipansara.vasuli"
     },
-    "web": {
-      "output": "static",
-      "favicon": "./assets/images/favicon.png"
-    },
+    "platforms": ["ios", "android"],
     "plugins": [
       "expo-router",
       "expo-sqlite",
@@ -41,8 +38,7 @@
             "backgroundColor": "#000000"
           }
         }
-      ],
-      "expo-sqlite"
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
