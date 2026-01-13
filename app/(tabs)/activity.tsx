@@ -1,12 +1,11 @@
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { Gradients } from '@/constants/theme';
 import { expenseService, groupService, initDatabase, settlementService, userService } from '@/services/api';
 import type { Group, User } from '@/types/database';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useState } from 'react';
-import { FlatList, StyleSheet, View } from 'react-native';
+import { FlatList, Platform, StyleSheet, View } from 'react-native';
 
 type ActivityItem = {
   id: string;
@@ -19,7 +18,6 @@ type ActivityItem = {
 };
 
 export default function ActivityScreen() {
-  const colorScheme = useColorScheme();
   const [activities, setActivities] = useState<ActivityItem[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -78,12 +76,12 @@ export default function ActivityScreen() {
     const timeStr = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
 
     const iconName = item.type === 'expense' ? 'dollarsign.circle.fill' : 'arrow.right.circle.fill';
-    const iconColor = item.type === 'expense' ? Colors[colorScheme ?? 'light'].text : '#10b981';
+    const iconColor = item.type === 'expense' ? '#fff' : '#10b981';
 
     return (
-      <View style={[styles.activityCard, { backgroundColor: Colors[colorScheme ?? 'light'].background }]}>
-        <View style={[styles.activityIcon, { backgroundColor: item.type === 'expense' ? (colorScheme === 'dark' ? '#27272a' : '#f4f4f5') : (colorScheme === 'dark' ? '#064e3b' : '#d1fae5') }]}>
-          <IconSymbol size={24} name={iconName} color={iconColor} />
+      <View style={styles.activityCard}>
+        <View style={[styles.activityIcon, { backgroundColor: item.type === 'expense' ? 'rgba(45, 212, 191, 0.15)' : 'rgba(16, 185, 129, 0.15)' }]}>
+          <IconSymbol size={20} name={iconName} color={iconColor} />
         </View>
         <View style={styles.activityInfo}>
           <ThemedText type="defaultSemiBold" style={styles.activityDescription}>
@@ -100,7 +98,7 @@ export default function ActivityScreen() {
           )}
         </View>
         <View style={styles.amountContainer}>
-          <ThemedText style={[styles.amount, { color: item.type === 'expense' ? Colors[colorScheme ?? 'light'].text : '#10b981' }]}>
+          <ThemedText style={[styles.amount, { color: item.type === 'expense' ? '#fff' : '#10b981' }]}>
             ${item.amount.toFixed(2)}
           </ThemedText>
         </View>
@@ -109,9 +107,12 @@ export default function ActivityScreen() {
   }
 
   return (
-    <ThemedView style={styles.container}>
-      <View style={[styles.header, { backgroundColor: Colors[colorScheme ?? 'light'].background }]}>
-        <ThemedText type="title">Activity</ThemedText>
+    <LinearGradient
+      colors={Gradients.screenBackground}
+      style={styles.container}>
+      <View style={styles.header}>
+        <ThemedText style={styles.headerLabel}>Recent</ThemedText>
+        <ThemedText type="header" style={styles.headerTitle}>Activity</ThemedText>
       </View>
 
       {loading ? (
@@ -120,7 +121,9 @@ export default function ActivityScreen() {
         </View>
       ) : activities.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <IconSymbol size={64} name="clock" color={Colors[colorScheme ?? 'light'].icon} />
+          <View style={styles.emptyIconContainer}>
+            <IconSymbol size={48} name="clock" color="#2DD4BF" />
+          </View>
           <ThemedText type="subtitle" style={styles.emptyTitle}>
             No activity yet
           </ThemedText>
@@ -136,7 +139,7 @@ export default function ActivityScreen() {
           contentContainerStyle={styles.listContent}
         />
       )}
-    </ThemedView>
+    </LinearGradient>
   );
 }
 
@@ -145,30 +148,34 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: 'column',
     padding: 20,
-    paddingTop: 60,
+    paddingTop: Platform.OS === 'ios' ? 60 : 40,
+    gap: 4,
+  },
+  headerLabel: {
+    fontSize: 14,
+    opacity: 0.6,
+    color: '#fff',
+  },
+  headerTitle: {
+    color: '#fff',
   },
   listContent: {
     padding: 16,
+    paddingBottom: 120,
   },
   activityCard: {
     flexDirection: 'row',
-    padding: 16,
+    padding: 14,
     borderRadius: 12,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    marginBottom: 10,
+    backgroundColor: 'rgba(20, 35, 38, 0.6)',
   },
   activityIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 36,
+    height: 36,
+    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -211,6 +218,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 32,
+  },
+  emptyIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(45, 212, 191, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
   },
   emptyTitle: {
     marginTop: 16,

@@ -1,5 +1,4 @@
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors, Gradients } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -94,10 +93,7 @@ export default function FriendsScreen() {
     const balanceColor = balance > 0 ? '#10b981' : balance < 0 ? '#ef4444' : '#2DD4BF';
 
     return (
-      <LinearGradient
-        colors={Gradients.cardPrimary}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
+      <View
         style={styles.friendCard}>
         <View style={styles.avatar}>
           <ThemedText style={styles.avatarText}>
@@ -127,28 +123,30 @@ export default function FriendsScreen() {
             <ThemedText style={styles.settledText}>settled up</ThemedText>
           )}
         </View>
-      </LinearGradient>
+      </View>
     );
   }
 
+  // Calculate total owed
+  const totalOwed = friends.reduce((sum, f) => f.balance < 0 ? sum + Math.abs(f.balance) : sum, 0);
+
   return (
-    <ThemedView style={styles.container}>
-      <LinearGradient
-        colors={Gradients.hero}
-        style={styles.header}>
-        <ThemedText type="title">Friends</ThemedText>
+    <LinearGradient
+      colors={Gradients.screenBackground}
+      style={styles.container}>
+      <View style={styles.header}>
+        <View style={{ flexDirection: 'column', gap: 4 }}>
+          <ThemedText style={styles.headerLabel}>You owe</ThemedText>
+          <ThemedText type="header" style={styles.headerAmount}>${totalOwed.toFixed(2)}</ThemedText>
+        </View>
         <TouchableOpacity
           style={styles.addButton}
           onPress={() => setModalVisible(true)}>
-          <LinearGradient
-            colors={Gradients.buttonPrimary}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.addButtonGradient}>
-            <IconSymbol size={24} name="plus" color="#0A0A0F" />
-          </LinearGradient>
+          <View style={styles.addButtonCircle}>
+            <IconSymbol size={20} name="plus" color="#2DD4BF" />
+          </View>
         </TouchableOpacity>
-      </LinearGradient>
+      </View>
 
       {loading ? (
         <View style={styles.emptyContainer}>
@@ -252,7 +250,7 @@ export default function FriendsScreen() {
           </View>
         </KeyboardAvoidingView>
       </Modal>
-    </ThemedView>
+    </LinearGradient>
   );
 }
 
@@ -267,35 +265,50 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingTop: 60,
   },
+  headerLabel: {
+    fontSize: 14,
+    opacity: 0.6,
+    color: '#fff',
+  },
+  headerAmount: {
+    color: '#fff',
+  },
   addButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  addButtonCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(45, 212, 191, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(45, 212, 191, 0.3)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   listContent: {
     padding: 16,
+    paddingBottom: 120,
   },
   friendCard: {
     flexDirection: 'row',
-    padding: 12,
+    padding: 14,
     borderRadius: 12,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    marginBottom: 10,
+    backgroundColor: 'rgba(20, 35, 38, 0.6)',
   },
   avatar: {
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: 10,
     backgroundColor: 'rgba(45, 212, 191, 0.15)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 10,
+    marginRight: 12,
   },
   avatarText: {
     fontSize: 16,

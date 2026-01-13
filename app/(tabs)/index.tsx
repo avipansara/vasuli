@@ -1,7 +1,6 @@
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors, Glows, Gradients } from '@/constants/theme';
+import { Colors, Gradients } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { calculateBalances, groupService, initDatabase, userService } from '@/services/api';
 import type { GroupWithMembers } from '@/types/database';
@@ -9,7 +8,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Alert, FlatList, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
-import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 
 export default function GroupsScreen() {
   const colorScheme = useColorScheme();
@@ -143,53 +142,24 @@ export default function GroupsScreen() {
   const totalBalance = groups.reduce((sum, g) => sum + (g.yourBalance || 0), 0);
 
   return (
-    <ThemedView style={styles.container}>
-      <LinearGradient
-        colors={Gradients.hero}
-        style={styles.headerGradient}>
-        <Animated.View entering={FadeInUp.springify()} style={styles.header}>
-          <View>
-            <ThemedText type="title" style={styles.headerTitle}>Your Groups</ThemedText>
-            <ThemedText style={styles.headerSubtitle}>
-              {groups.length} {groups.length === 1 ? 'group' : 'groups'}
-            </ThemedText>
+    <LinearGradient
+      colors={Gradients.screenBackground}
+      style={styles.container}>
+      <View style={styles.header}>
+        <View>
+          <ThemedText style={styles.headerLabel}>Total balance</ThemedText>
+          <ThemedText type="header" style={styles.headerAmount}>
+            ${Math.abs(totalBalance).toFixed(2)}
+          </ThemedText>
+        </View>
+        <TouchableOpacity
+          style={styles.addButton}
+          onPress={() => setModalVisible(true)}>
+          <View style={styles.addButtonCircle}>
+            <IconSymbol size={20} name="plus" color="#2DD4BF" />
           </View>
-          <TouchableOpacity
-            style={styles.addButton}
-            onPress={() => setModalVisible(true)}>
-            <LinearGradient
-              colors={Gradients.buttonPrimary}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.addButtonGradient}>
-              <IconSymbol size={24} name="plus" color="#0A0A0F" />
-            </LinearGradient>
-          </TouchableOpacity>
-        </Animated.View>
-
-        {groups.length > 0 && (
-          <Animated.View entering={FadeInDown.delay(100).springify()} style={[styles.summaryCard, Glows.teal]}>
-            <LinearGradient
-              colors={Gradients.cardAccent}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={[styles.summaryGradient, styles.glassCard]}>
-              <ThemedText style={styles.summaryLabel}>Total Balance</ThemedText>
-              <ThemedText style={[
-                styles.summaryAmount,
-                { color: totalBalance === 0 ? '#2DD4BF' : (totalBalance > 0 ? '#10b981' : '#ef4444') }
-              ]}>
-                {totalBalance === 0 ? 'All settled' : `$${Math.abs(totalBalance).toFixed(2)}`}
-              </ThemedText>
-              {totalBalance !== 0 && (
-                <ThemedText style={styles.summarySubtext}>
-                  {totalBalance > 0 ? 'You are owed' : 'You owe'}
-                </ThemedText>
-              )}
-            </LinearGradient>
-          </Animated.View>
-        )}
-      </LinearGradient>
+        </TouchableOpacity>
+      </View>
 
       {loading ? (
         <View style={styles.emptyContainer}>
@@ -296,7 +266,7 @@ export default function GroupsScreen() {
           </View>
         </KeyboardAvoidingView>
       </Modal>
-    </ThemedView>
+    </LinearGradient>
   );
 }
 
@@ -304,16 +274,31 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  headerGradient: {
-    paddingTop: Platform.OS === 'ios' ? 60 : 40,
-    paddingBottom: 20,
-  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
+    paddingTop: Platform.OS === 'ios' ? 60 : 40,
     marginBottom: 16,
+  },
+  headerLabel: {
+    fontSize: 14,
+    opacity: 0.6,
+    color: '#fff',
+  },
+  headerAmount: {
+    color: '#fff',
+  },
+  addButtonCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(45, 212, 191, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(45, 212, 191, 0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   headerTitle: {
     fontSize: 24,
@@ -373,33 +358,29 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   listContent: {
-    padding: 20,
-    paddingTop: 24,
+    padding: 16,
+    paddingBottom: 120,
   },
   groupCardWrapper: {
-    marginBottom: 16,
+    marginBottom: 10,
   },
   groupCard: {
-    borderRadius: 20,
+    borderRadius: 12,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.15,
-    shadowRadius: 10,
-    elevation: 8,
+    backgroundColor: 'rgba(20, 35, 38, 0.6)',
   },
   groupCardContent: {
-    padding: 20,
+    padding: 16,
   },
   groupHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 12,
   },
   groupIconContainer: {
     width: 44,
     height: 44,
-    borderRadius: 22,
+    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,

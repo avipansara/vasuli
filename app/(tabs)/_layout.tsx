@@ -1,7 +1,7 @@
 import { BlurView } from 'expo-blur';
 import { Tabs } from 'expo-router';
 import React from 'react';
-import { Platform, StyleSheet } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 
 import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -16,29 +16,46 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: colors.tint,
-        tabBarInactiveTintColor: colors.tabIconDefault,
+        tabBarInactiveTintColor: 'rgba(255, 255, 255, 0.5)',
         headerShown: false,
         tabBarButton: HapticTab,
+        tabBarShowLabel: true,
         tabBarStyle: {
           position: 'absolute',
-          backgroundColor: 'rgba(10, 10, 15, 0.85)',
-          borderTopWidth: 1,
-          borderTopColor: 'rgba(45, 212, 191, 0.15)',
-          height: Platform.OS === 'ios' ? 88 : 70,
-          paddingBottom: Platform.OS === 'ios' ? 28 : 10,
-          paddingTop: 10,
+          bottom: 24,
+          left: 16,
+          right: 16,
+          height: 70,
+          backgroundColor: 'rgba(20, 30, 35, 0.95)',
+          borderRadius: 16,
+          paddingHorizontal: 8,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 8 },
+          shadowOpacity: 0.3,
+          shadowRadius: 16,
+          elevation: 10,
+          marginHorizontal: 16,
         },
-        tabBarBackground: () =>
-          Platform.OS === 'ios' ? (
-            <BlurView
-              intensity={40}
-              tint="dark"
-              style={StyleSheet.absoluteFill}
-            />
-          ) : null,
+        tabBarBackground: () => (
+          <View style={[StyleSheet.absoluteFill, { borderRadius: 16, overflow: 'hidden' }]}>
+            {Platform.OS === 'ios' && (
+              <BlurView
+                intensity={60}
+                tint="dark"
+                style={StyleSheet.absoluteFill}
+              />
+            )}
+          </View>
+        ),
+        tabBarItemStyle: {
+          borderRadius: 12,
+          marginHorizontal: 4,
+          paddingVertical: 6,
+        },
         tabBarLabelStyle: {
-          fontSize: 11,
+          fontSize: 10,
           fontWeight: '500',
+          marginTop: 2,
         },
       }}>
       <Tabs.Screen

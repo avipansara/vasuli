@@ -56,18 +56,22 @@ export const Colors = {
 
 // Gradient presets for liquid glass effects
 export const Gradients = {
+  // Screen background - dark teal gradient like the reference
+  screenBackground: ['#0D1B1E', '#0A1214', '#080E10'] as [string, string, string],
   // Card gradient - teal to purple
-  cardPrimary: ['#1A1A24', '#12121A'] as [string, string],
+  cardPrimary: ['#1A2428', '#141C1E'] as [string, string],
   // Accent card with teal glow
   cardAccent: ['rgba(45, 212, 191, 0.15)', 'rgba(139, 92, 246, 0.1)'] as [string, string],
   // Header/hero gradient
-  hero: ['#0A0A0F', '#12121A'] as [string, string],
+  hero: ['#0D1B1E', '#0A1214'] as [string, string],
   // Button gradient
   buttonPrimary: ['#2DD4BF', '#14B8A6'] as [string, string],
   // Purple accent gradient
   purpleAccent: ['#A78BFA', '#8B5CF6'] as [string, string],
   // Glass overlay
   glassOverlay: ['rgba(26, 26, 36, 0.9)', 'rgba(18, 18, 26, 0.95)'] as [string, string],
+  // Card with subtle teal border glow
+  cardGlass: ['rgba(20, 35, 38, 0.9)', 'rgba(15, 25, 28, 0.95)'] as [string, string],
 };
 
 // Glow/shadow effects for ambient UI
