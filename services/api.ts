@@ -1,18 +1,23 @@
 /**
- * Mock API Service
- * Simulates API calls with in-memory JSON data
- * Replace with real API calls when backend is ready
+ * API Service
+ * Supports both mock data and Supabase backend
+ * Set EXPO_PUBLIC_USE_SUPABASE=true to use Supabase
  */
 
 import type { Expense, ExpenseSplit, Group, GroupMember, Settlement, User } from '@/types/database';
 import {
-    mockExpenses,
-    mockExpenseSplits,
-    mockGroupMembers,
-    mockGroups,
-    mockSettlements,
-    mockUsers,
+  mockExpenses,
+  mockExpenseSplits,
+  mockGroupMembers,
+  mockGroups,
+  mockSettlements,
+  mockUsers,
 } from './mock-data';
+
+// Check if Supabase is configured
+const USE_SUPABASE = process.env.EXPO_PUBLIC_USE_SUPABASE === 'true' && 
+  process.env.EXPO_PUBLIC_SUPABASE_URL && 
+  process.env.EXPO_PUBLIC_SUPABASE_KEY;
 
 // Simulate network delay
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -30,14 +35,20 @@ function generateId(): string {
   return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 }
 
-// Initialize (no-op for mock, but keeps API consistent)
+// Initialize
 export async function initDatabase(): Promise<void> {
-  await delay(100);
-  console.log('[Mock API] Database initialized');
+  if (USE_SUPABASE) {
+    const { initDatabase: initSupabase } = await import('./supabase-database');
+    await initSupabase();
+    console.log('[API] Supabase initialized');
+  } else {
+    await delay(100);
+    console.log('[API] Mock database initialized');
+  }
 }
 
-// User Service
-export const userService = {
+// User Service (Mock)
+const mockUserService = {
   async create(user: Omit<User, 'id' | 'createdAt'> & { id?: string }): Promise<User> {
     await delay(API_DELAY);
     const newUser: User = {
@@ -79,8 +90,8 @@ export const userService = {
   },
 };
 
-// Group Service
-export const groupService = {
+// Group Service (Mock)
+const mockGroupService = {
   async create(group: Omit<Group, 'id' | 'createdAt' | 'updatedAt'>): Promise<Group> {
     await delay(API_DELAY);
     const now = Date.now();
@@ -167,8 +178,8 @@ export const groupService = {
   },
 };
 
-// Expense Service
-export const expenseService = {
+// Expense Service (Mock)
+const mockExpenseService = {
   async create(
     expense: Omit<Expense, 'id' | 'createdAt' | 'updatedAt'>,
     splits: Omit<ExpenseSplit, 'id' | 'expenseId'>[]
@@ -233,8 +244,8 @@ export const expenseService = {
   },
 };
 
-// Settlement Service
-export const settlementService = {
+// Settlement Service (Mock)
+const mockSettlementService = {
   async create(settlement: Omit<Settlement, 'id' | 'createdAt'>): Promise<Settlement> {
     await delay(API_DELAY);
     const newSettlement: Settlement = {
@@ -261,8 +272,8 @@ export const settlementService = {
   },
 };
 
-// Calculate balances for a group
-export async function calculateBalances(groupId: string): Promise<Map<string, number>> {
+// Calculate balances for a group (Mock)
+async function mockCalculateBalances(groupId: string): Promise<Map<string, number>> {
   await delay(API_DELAY / 2);
   const balances = new Map<string, number>();
   
@@ -299,3 +310,39 @@ export async function calculateBalances(groupId: string): Promise<Map<string, nu
 export async function getDatabase(): Promise<null> {
   return null;
 }
+
+// Export services - use Supabase when configured, otherwise use mock
+export const userService = USE_SUPABASE
+  ? (() => {
+      const supa = require('./supabase-database');
+      return supa.userService;
+    })()
+  : mockUserService;
+
+export const groupService = USE_SUPABASE
+  ? (() => {
+      const supa = require('./supabase-database');
+      return supa.groupService;
+    })()
+  : mockGroupService;
+
+export const expenseService = USE_SUPABASE
+  ? (() => {
+      const supa = require('./supabase-database');
+      return supa.expenseService;
+    })()
+  : mockExpenseService;
+
+export const settlementService = USE_SUPABASE
+  ? (() => {
+      const supa = require('./supabase-database');
+      return supa.settlementService;
+    })()
+  : mockSettlementService;
+
+export const calculateBalances = USE_SUPABASE
+  ? (() => {
+      const supa = require('./supabase-database');
+      return supa.calculateBalances;
+    })()
+  : mockCalculateBalances;
