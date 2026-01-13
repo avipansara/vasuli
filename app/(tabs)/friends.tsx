@@ -1,10 +1,11 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors } from '@/constants/theme';
+import { Colors, Gradients } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { calculateBalances, groupService, initDatabase, userService } from '@/services/database';
 import type { User } from '@/types/database';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useState } from 'react';
 import { Alert, FlatList, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 
@@ -90,12 +91,16 @@ export default function FriendsScreen() {
 
   function renderFriend({ item }: { item: UserWithBalance }) {
     const balance = item.balance;
-    const balanceColor = balance > 0 ? '#10b981' : balance < 0 ? '#ef4444' : Colors[colorScheme ?? 'light'].text;
+    const balanceColor = balance > 0 ? '#10b981' : balance < 0 ? '#ef4444' : '#2DD4BF';
 
     return (
-      <View style={[styles.friendCard, { backgroundColor: Colors[colorScheme ?? 'light'].background }]}>
-        <View style={[styles.avatar, { backgroundColor: colorScheme === 'dark' ? '#27272a' : '#f4f4f5' }]}>
-          <ThemedText style={[styles.avatarText, { color: Colors[colorScheme ?? 'light'].text }]}>
+      <LinearGradient
+        colors={Gradients.cardPrimary}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.friendCard}>
+        <View style={styles.avatar}>
+          <ThemedText style={styles.avatarText}>
             {item.name.charAt(0).toUpperCase()}
           </ThemedText>
         </View>
@@ -122,20 +127,28 @@ export default function FriendsScreen() {
             <ThemedText style={styles.settledText}>settled up</ThemedText>
           )}
         </View>
-      </View>
+      </LinearGradient>
     );
   }
 
   return (
     <ThemedView style={styles.container}>
-      <View style={[styles.header, { backgroundColor: Colors[colorScheme ?? 'light'].background }]}>
+      <LinearGradient
+        colors={Gradients.hero}
+        style={styles.header}>
         <ThemedText type="title">Friends</ThemedText>
         <TouchableOpacity
-          style={[styles.addButton, { backgroundColor: Colors[colorScheme ?? 'light'].tint }]}
+          style={styles.addButton}
           onPress={() => setModalVisible(true)}>
-          <IconSymbol size={24} name="plus" color="#fff" />
+          <LinearGradient
+            colors={Gradients.buttonPrimary}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.addButtonGradient}>
+            <IconSymbol size={24} name="plus" color="#0A0A0F" />
+          </LinearGradient>
         </TouchableOpacity>
-      </View>
+      </LinearGradient>
 
       {loading ? (
         <View style={styles.emptyContainer}>
@@ -143,7 +156,9 @@ export default function FriendsScreen() {
         </View>
       ) : friends.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <IconSymbol size={64} name="person.2" color={Colors[colorScheme ?? 'light'].icon} />
+          <View style={styles.emptyIconContainer}>
+            <IconSymbol size={64} name="person.2" color="#2DD4BF" />
+          </View>
           <ThemedText type="subtitle" style={styles.emptyTitle}>
             No friends yet
           </ThemedText>
@@ -151,9 +166,15 @@ export default function FriendsScreen() {
             Add friends to split expenses with them
           </ThemedText>
           <TouchableOpacity
-            style={[styles.createButton, { backgroundColor: Colors[colorScheme ?? 'light'].tint }]}
+            style={styles.createButton}
             onPress={() => setModalVisible(true)}>
-            <ThemedText style={styles.createButtonText}>Add Friend</ThemedText>
+            <LinearGradient
+              colors={Gradients.buttonPrimary}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.createButtonGradient}>
+              <ThemedText style={styles.createButtonText}>Add Friend</ThemedText>
+            </LinearGradient>
           </TouchableOpacity>
         </View>
       ) : (
@@ -173,7 +194,7 @@ export default function FriendsScreen() {
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.modalContainer}>
-          <View style={[styles.modalContent, { backgroundColor: Colors[colorScheme ?? 'light'].background }]}>
+          <View style={[styles.modalContent, { backgroundColor: '#0A0A0F' }]}>
             <View style={styles.modalHeader}>
               <ThemedText type="subtitle" style={styles.modalTitle}>Add Friend</ThemedText>
               <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.closeButton}>
@@ -188,13 +209,9 @@ export default function FriendsScreen() {
               <View style={styles.formGroup}>
                 <ThemedText style={styles.label}>Name</ThemedText>
                 <TextInput
-                  style={[styles.input, { 
-                    backgroundColor: colorScheme === 'dark' ? '#1f2937' : '#f9fafb',
-                    color: Colors[colorScheme ?? 'light'].text,
-                    borderColor: colorScheme === 'dark' ? '#374151' : '#e5e7eb',
-                  }]}
+                  style={[styles.input, styles.glassInput]}
                   placeholder="e.g. John Doe"
-                  placeholderTextColor={Colors[colorScheme ?? 'light'].icon}
+                  placeholderTextColor="#6B7280"
                   value={newFriendName}
                   onChangeText={setNewFriendName}
                   autoFocus
@@ -204,13 +221,9 @@ export default function FriendsScreen() {
               <View style={styles.formGroup}>
                 <ThemedText style={styles.label}>Email (Optional)</ThemedText>
                 <TextInput
-                  style={[styles.input, { 
-                    backgroundColor: colorScheme === 'dark' ? '#1f2937' : '#f9fafb',
-                    color: Colors[colorScheme ?? 'light'].text,
-                    borderColor: colorScheme === 'dark' ? '#374151' : '#e5e7eb',
-                  }]}
+                  style={[styles.input, styles.glassInput]}
                   placeholder="john@example.com"
-                  placeholderTextColor={Colors[colorScheme ?? 'light'].icon}
+                  placeholderTextColor="#6B7280"
                   value={newFriendEmail}
                   onChangeText={setNewFriendEmail}
                   keyboardType="email-address"
@@ -219,19 +232,21 @@ export default function FriendsScreen() {
               </View>
             </ScrollView>
 
-            <View style={[styles.modalFooter, { borderTopColor: colorScheme === 'dark' ? '#374151' : '#e5e7eb' }]}>
+            <View style={[styles.modalFooter, { borderTopColor: 'rgba(45, 212, 191, 0.15)' }]}>
               <TouchableOpacity
                 activeOpacity={0.8}
                 onPress={addFriend}
                 disabled={!newFriendName.trim()}>
-                <View
+                <LinearGradient
+                  colors={!newFriendName.trim() ? ['#1A1A24', '#12121A'] : Gradients.buttonPrimary}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
                   style={[
                     styles.submitButton,
-                    { backgroundColor: !newFriendName.trim() ? (colorScheme === 'dark' ? '#3f3f46' : '#d4d4d8') : Colors[colorScheme ?? 'light'].text },
                     !newFriendName.trim() && styles.disabledButton
                   ]}>
-                  <ThemedText style={[styles.submitButtonText, { color: Colors[colorScheme ?? 'light'].background }]}>Add Friend</ThemedText>
-                </View>
+                  <ThemedText style={[styles.submitButtonText, { color: !newFriendName.trim() ? '#6B7280' : '#0A0A0F' }]}>Add Friend</ThemedText>
+                </LinearGradient>
               </TouchableOpacity>
             </View>
           </View>
@@ -264,7 +279,7 @@ const styles = StyleSheet.create({
   },
   friendCard: {
     flexDirection: 'row',
-    padding: 16,
+    padding: 12,
     borderRadius: 12,
     marginBottom: 12,
     shadowColor: '#000',
@@ -274,29 +289,29 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#f4f4f5',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(45, 212, 191, 0.15)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: 10,
   },
   avatarText: {
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: '600',
-    color: '#18181b',
+    color: '#2DD4BF',
   },
   friendInfo: {
     flex: 1,
     justifyContent: 'center',
   },
   friendName: {
-    fontSize: 16,
-    marginBottom: 4,
+    fontSize: 14,
+    marginBottom: 2,
   },
   friendEmail: {
-    fontSize: 12,
+    fontSize: 11,
     opacity: 0.6,
   },
   balanceContainer: {
@@ -304,16 +319,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   balanceAmount: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
     marginBottom: 2,
   },
   balanceLabel: {
-    fontSize: 11,
+    fontSize: 10,
     opacity: 0.6,
   },
   settledText: {
-    fontSize: 12,
+    fontSize: 11,
     opacity: 0.6,
   },
   emptyContainer: {
@@ -332,13 +347,15 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   createButton: {
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+    overflow: 'hidden',
   },
   createButtonText: {
-    color: '#fff',
+    color: '#0A0A0F',
     fontWeight: '600',
+    fontSize: 14,
   },
   modalContainer: {
     flex: 1,
@@ -356,7 +373,7 @@ const styles = StyleSheet.create({
     paddingTop: 40,
   },
   modalTitle: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: 'bold',
   },
   closeButton: {
@@ -370,9 +387,9 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   label: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '600',
-    marginBottom: 8,
+    marginBottom: 6,
     opacity: 0.7,
   },
   modalFooter: {
@@ -383,12 +400,12 @@ const styles = StyleSheet.create({
   input: {
     borderWidth: 1,
     borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
+    padding: 14,
+    fontSize: 14,
   },
   submitButton: {
-    padding: 16,
-    borderRadius: 16,
+    padding: 14,
+    borderRadius: 14,
     alignItems: 'center',
   },
   disabledButton: {
@@ -396,7 +413,33 @@ const styles = StyleSheet.create({
   },
   submitButtonText: {
     color: '#fff',
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
+  },
+  addButtonGradient: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(45, 212, 191, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  createButtonGradient: {
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 20,
+  },
+  glassInput: {
+    backgroundColor: 'rgba(26, 26, 36, 0.8)',
+    color: '#f4f4f5',
+    borderColor: 'rgba(45, 212, 191, 0.2)',
   },
 });
