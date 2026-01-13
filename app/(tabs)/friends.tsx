@@ -1,7 +1,6 @@
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors, Gradients } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { Gradients } from '@/constants/theme';
 import { calculateBalances, groupService, initDatabase, userService } from '@/services/api';
 import type { User } from '@/types/database';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -13,12 +12,13 @@ interface UserWithBalance extends User {
 }
 
 export default function FriendsScreen() {
-  const colorScheme = useColorScheme();
   const [friends, setFriends] = useState<UserWithBalance[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
   const [newFriendName, setNewFriendName] = useState('');
   const [newFriendEmail, setNewFriendEmail] = useState('');
+  const [newFriendPhone, setNewFriendPhone] = useState('');
+  const [inviteMethod, setInviteMethod] = useState<'email' | 'phone'>('email');
 
   useEffect(() => {
     loadFriends();
@@ -66,25 +66,30 @@ export default function FriendsScreen() {
     }
   }
 
-  async function addFriend() {
-    if (!newFriendName.trim()) {
-      Alert.alert('Error', 'Please enter a name');
+  async function sendInvite() {
+    const contact = inviteMethod === 'email' ? newFriendEmail.trim() : newFriendPhone.trim();
+    
+    if (!contact) {
+      Alert.alert('Required', `Please enter ${inviteMethod === 'email' ? 'an email address' : 'a phone number'}`);
       return;
     }
 
     try {
       await userService.create({
-        name: newFriendName.trim(),
-        email: newFriendEmail.trim() || undefined,
+        name: newFriendName.trim() || contact,
+        email: inviteMethod === 'email' ? contact : undefined,
+        phone: inviteMethod === 'phone' ? contact : undefined,
       });
 
       setNewFriendName('');
       setNewFriendEmail('');
+      setNewFriendPhone('');
       setModalVisible(false);
       loadFriends();
+      Alert.alert('Invite Sent!', `An invite has been sent to ${contact}`);
     } catch (error) {
-      console.error('Error adding friend:', error);
-      Alert.alert('Error', 'Failed to add friend');
+      console.error('Error sending invite:', error);
+      Alert.alert('Error', 'Failed to send invite');
     }
   }
 
@@ -187,16 +192,15 @@ export default function FriendsScreen() {
       <Modal
         visible={modalVisible}
         animationType="slide"
-        presentationStyle="pageSheet"
+        presentationStyle="fullScreen"
         onRequestClose={() => setModalVisible(false)}>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.modalContainer}>
-          <View style={[styles.modalContent, { backgroundColor: '#0A0A0F' }]}>
+        <LinearGradient colors={Gradients.screenBackground} style={styles.modalContainer}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={styles.modalKeyboard}>
             <View style={styles.modalHeader}>
-              <ThemedText type="subtitle" style={styles.modalTitle}>Add Friend</ThemedText>
               <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.closeButton}>
-                <IconSymbol size={28} name="xmark.circle.fill" color={Colors[colorScheme ?? 'light'].icon} />
+                <IconSymbol size={24} name="xmark" color="#fff" />
               </TouchableOpacity>
             </View>
 
@@ -204,51 +208,103 @@ export default function FriendsScreen() {
               showsVerticalScrollIndicator={false}
               contentContainerStyle={styles.modalScrollContent}
               keyboardShouldPersistTaps="handled">
+              
+              <View style={styles.inviteHeader}>
+                <View style={styles.inviteIconContainer}>
+                  <IconSymbol size={40} name="person.badge.plus" color="#2DD4BF" />
+                </View>
+                <ThemedText type="title" style={styles.inviteTitle}>Invite a Friend</ThemedText>
+                <ThemedText style={styles.inviteSubtitle}>
+                  Send an invite via email or phone number
+                </ThemedText>
+              </View>
+
+              <View style={styles.methodToggle}>
+                <TouchableOpacity
+                  style={[styles.methodButton, inviteMethod === 'email' && styles.methodButtonActive]}
+                  onPress={() => setInviteMethod('email')}>
+                  <IconSymbol size={20} name="envelope.fill" color={inviteMethod === 'email' ? '#0A0A0F' : '#2DD4BF'} />
+                  <ThemedText style={[styles.methodButtonText, inviteMethod === 'email' && styles.methodButtonTextActive]}>
+                    Email
+                  </ThemedText>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.methodButton, inviteMethod === 'phone' && styles.methodButtonActive]}
+                  onPress={() => setInviteMethod('phone')}>
+                  <IconSymbol size={20} name="phone.fill" color={inviteMethod === 'phone' ? '#0A0A0F' : '#2DD4BF'} />
+                  <ThemedText style={[styles.methodButtonText, inviteMethod === 'phone' && styles.methodButtonTextActive]}>
+                    Phone
+                  </ThemedText>
+                </TouchableOpacity>
+              </View>
+
               <View style={styles.formGroup}>
-                <ThemedText style={styles.label}>Name</ThemedText>
+                <ThemedText style={styles.label}>Name (Optional)</ThemedText>
                 <TextInput
                   style={[styles.input, styles.glassInput]}
                   placeholder="e.g. John Doe"
                   placeholderTextColor="#6B7280"
                   value={newFriendName}
                   onChangeText={setNewFriendName}
-                  autoFocus
                 />
               </View>
 
-              <View style={styles.formGroup}>
-                <ThemedText style={styles.label}>Email (Optional)</ThemedText>
-                <TextInput
-                  style={[styles.input, styles.glassInput]}
-                  placeholder="john@example.com"
-                  placeholderTextColor="#6B7280"
-                  value={newFriendEmail}
-                  onChangeText={setNewFriendEmail}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                />
-              </View>
+              {inviteMethod === 'email' ? (
+                <View style={styles.formGroup}>
+                  <ThemedText style={styles.label}>Email Address *</ThemedText>
+                  <TextInput
+                    style={[styles.input, styles.glassInput]}
+                    placeholder="friend@example.com"
+                    placeholderTextColor="#6B7280"
+                    value={newFriendEmail}
+                    onChangeText={setNewFriendEmail}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoFocus
+                  />
+                </View>
+              ) : (
+                <View style={styles.formGroup}>
+                  <ThemedText style={styles.label}>Phone Number *</ThemedText>
+                  <TextInput
+                    style={[styles.input, styles.glassInput]}
+                    placeholder="+1 (555) 123-4567"
+                    placeholderTextColor="#6B7280"
+                    value={newFriendPhone}
+                    onChangeText={setNewFriendPhone}
+                    keyboardType="phone-pad"
+                    autoFocus
+                  />
+                </View>
+              )}
+
+              <ThemedText style={styles.privacyNote}>
+                We will send them an invite to join Vasuli. They will be able to accept and connect with you.
+              </ThemedText>
             </ScrollView>
 
-            <View style={[styles.modalFooter, { borderTopColor: 'rgba(45, 212, 191, 0.15)' }]}>
+            <View style={styles.modalFooter}>
               <TouchableOpacity
                 activeOpacity={0.8}
-                onPress={addFriend}
-                disabled={!newFriendName.trim()}>
+                onPress={sendInvite}
+                disabled={inviteMethod === 'email' ? !newFriendEmail.trim() : !newFriendPhone.trim()}>
                 <LinearGradient
-                  colors={!newFriendName.trim() ? ['#1A1A24', '#12121A'] : Gradients.buttonPrimary}
+                  colors={(inviteMethod === 'email' ? !newFriendEmail.trim() : !newFriendPhone.trim()) ? ['#1A1A24', '#12121A'] : Gradients.buttonPrimary}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={[
                     styles.submitButton,
-                    !newFriendName.trim() && styles.disabledButton
+                    (inviteMethod === 'email' ? !newFriendEmail.trim() : !newFriendPhone.trim()) && styles.disabledButton
                   ]}>
-                  <ThemedText style={[styles.submitButtonText, { color: !newFriendName.trim() ? '#6B7280' : '#0A0A0F' }]}>Add Friend</ThemedText>
+                  <IconSymbol size={20} name="paperplane.fill" color={(inviteMethod === 'email' ? !newFriendEmail.trim() : !newFriendPhone.trim()) ? '#6B7280' : '#0A0A0F'} />
+                  <ThemedText style={[styles.submitButtonText, { color: (inviteMethod === 'email' ? !newFriendEmail.trim() : !newFriendPhone.trim()) ? '#6B7280' : '#0A0A0F' }]}>
+                    Send Invite
+                  </ThemedText>
                 </LinearGradient>
               </TouchableOpacity>
             </View>
-          </View>
-        </KeyboardAvoidingView>
+          </KeyboardAvoidingView>
+        </LinearGradient>
       </Modal>
     </LinearGradient>
   );
@@ -420,6 +476,9 @@ const styles = StyleSheet.create({
     padding: 14,
     borderRadius: 14,
     alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
   },
   disabledButton: {
     opacity: 0.5,
@@ -454,5 +513,63 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(26, 26, 36, 0.8)',
     color: '#f4f4f5',
     borderColor: 'rgba(45, 212, 191, 0.2)',
+  },
+  modalKeyboard: {
+    flex: 1,
+  },
+  inviteHeader: {
+    alignItems: 'center',
+    marginBottom: 32,
+  },
+  inviteIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 16,
+    backgroundColor: 'rgba(45, 212, 191, 0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  inviteTitle: {
+    color: '#fff',
+    marginBottom: 8,
+    lineHeight: 32,
+  },
+  inviteSubtitle: {
+    color: 'rgba(255,255,255,0.6)',
+    textAlign: 'center',
+  },
+  methodToggle: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(20, 35, 38, 0.6)',
+    borderRadius: 12,
+    padding: 4,
+    marginBottom: 24,
+  },
+  methodButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: 10,
+    gap: 8,
+  },
+  methodButtonActive: {
+    backgroundColor: '#2DD4BF',
+  },
+  methodButtonText: {
+    color: '#2DD4BF',
+    fontWeight: '600',
+  },
+  methodButtonTextActive: {
+    color: '#0A0A0F',
+  },
+  privacyNote: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.5)',
+    textAlign: 'center',
+    marginTop: 8,
+    lineHeight: 18,
   },
 });

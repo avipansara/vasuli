@@ -202,16 +202,15 @@ export default function GroupsScreen() {
       <Modal
         visible={modalVisible}
         animationType="slide"
-        presentationStyle="pageSheet"
+        presentationStyle="fullScreen"
         onRequestClose={() => setModalVisible(false)}>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.modalContainer}>
-          <View style={[styles.modalContent, { backgroundColor: '#0A0A0F' }]}>
+        <LinearGradient colors={Gradients.screenBackground} style={styles.modalContainer}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={styles.modalKeyboard}>
             <View style={styles.modalHeader}>
-              <ThemedText type="subtitle" style={styles.modalTitle}>Create New Group</ThemedText>
               <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.closeButton}>
-                <IconSymbol size={28} name="xmark.circle.fill" color={Colors[colorScheme ?? 'light'].icon} />
+                <IconSymbol size={24} name="xmark" color="#fff" />
               </TouchableOpacity>
             </View>
 
@@ -219,8 +218,19 @@ export default function GroupsScreen() {
               showsVerticalScrollIndicator={false}
               contentContainerStyle={styles.modalScrollContent}
               keyboardShouldPersistTaps="handled">
+              
+              <View style={styles.createHeader}>
+                <View style={styles.createIconContainer}>
+                  <IconSymbol size={40} name="person.3.fill" color="#2DD4BF" />
+                </View>
+                <ThemedText type="title" style={styles.createTitle}>Create a Group</ThemedText>
+                <ThemedText style={styles.createSubtitle}>
+                  Split expenses easily with friends and family
+                </ThemedText>
+              </View>
+
               <View style={styles.formGroup}>
-                <ThemedText style={styles.label}>Group Name</ThemedText>
+                <ThemedText style={styles.label}>Group Name *</ThemedText>
                 <TextInput
                   style={[styles.input, styles.glassInput]}
                   placeholder="e.g. Summer Trip 2024"
@@ -232,10 +242,10 @@ export default function GroupsScreen() {
               </View>
 
               <View style={styles.formGroup}>
-                <ThemedText style={styles.label}>Description</ThemedText>
+                <ThemedText style={styles.label}>Description (Optional)</ThemedText>
                 <TextInput
                   style={[styles.input, styles.textArea, styles.glassInput]}
-                  placeholder="What's this group for? (optional)"
+                  placeholder="What is this group for?"
                   placeholderTextColor="#6B7280"
                   value={newGroupDescription}
                   onChangeText={setNewGroupDescription}
@@ -244,9 +254,13 @@ export default function GroupsScreen() {
                   textAlignVertical="top"
                 />
               </View>
+
+              <ThemedText style={styles.privacyNote}>
+                You can add members to your group after creating it.
+              </ThemedText>
             </ScrollView>
 
-            <View style={[styles.modalFooter, { borderTopColor: 'rgba(45, 212, 191, 0.15)' }]}>
+            <View style={styles.modalFooter}>
               <TouchableOpacity
                 activeOpacity={0.8}
                 onPress={createGroup}
@@ -259,12 +273,15 @@ export default function GroupsScreen() {
                     styles.submitButton, 
                     !newGroupName.trim() && styles.disabledButton
                   ]}>
-                  <ThemedText style={[styles.submitButtonText, { color: !newGroupName.trim() ? '#6B7280' : '#0A0A0F' }]}>Create Group</ThemedText>
+                  <IconSymbol size={20} name="plus.circle.fill" color={!newGroupName.trim() ? '#6B7280' : '#0A0A0F'} />
+                  <ThemedText style={[styles.submitButtonText, { color: !newGroupName.trim() ? '#6B7280' : '#0A0A0F' }]}>
+                    Create Group
+                  </ThemedText>
                 </LinearGradient>
               </TouchableOpacity>
             </View>
-          </View>
-        </KeyboardAvoidingView>
+          </KeyboardAvoidingView>
+        </LinearGradient>
       </Modal>
     </LinearGradient>
   );
@@ -531,6 +548,9 @@ const styles = StyleSheet.create({
     padding: 14,
     borderRadius: 14,
     alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
   },
   disabledButton: {
     opacity: 0.5,
@@ -546,5 +566,37 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(26, 26, 36, 0.8)',
     color: '#f4f4f5',
     borderColor: 'rgba(45, 212, 191, 0.2)',
+  },
+  modalKeyboard: {
+    flex: 1,
+  },
+  createHeader: {
+    alignItems: 'center',
+    marginBottom: 32,
+  },
+  createIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 16,
+    backgroundColor: 'rgba(45, 212, 191, 0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  createTitle: {
+    color: '#fff',
+    marginBottom: 8,
+    lineHeight: 32,
+  },
+  createSubtitle: {
+    color: 'rgba(255,255,255,0.6)',
+    textAlign: 'center',
+  },
+  privacyNote: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.5)',
+    textAlign: 'center',
+    marginTop: 8,
+    lineHeight: 18,
   },
 });
