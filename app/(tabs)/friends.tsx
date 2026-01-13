@@ -1,3 +1,5 @@
+import { FriendCard } from '@/components/friends/friend-card';
+import { InviteFriendModal } from '@/components/friends/invite-friend-modal';
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useThemeColors } from '@/hooks/use-theme-colors';
@@ -6,7 +8,7 @@ import type { User } from '@/types/database';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert, FlatList, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, FlatList, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 interface UserWithBalance extends User {
   balance: number;
@@ -95,45 +97,6 @@ export default function FriendsScreen() {
     }
   }
 
-  function renderFriend({ item }: { item: UserWithBalance }) {
-    const balance = item.balance;
-    const balanceColor = balance > 0 ? (isDark ? '#10b981' : colors.success) : balance < 0 ? (isDark ? '#ef4444' : colors.error) : (isDark ? '#2DD4BF' : colors.tint);
-
-    return (
-      <View
-        style={[styles.friendCard, !isDark && { backgroundColor: colors.card, borderColor: colors.border }]}>
-        <View style={[styles.avatar, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)' }]}>
-          <ThemedText style={[styles.avatarText, { color: isDark ? '#2DD4BF' : colors.tint }]}>
-            {item.name.charAt(0).toUpperCase()}
-          </ThemedText>
-        </View>
-        <View style={styles.friendInfo}>
-          <ThemedText type="defaultSemiBold" style={[styles.friendName, !isDark && { color: colors.text }]}>
-            {item.name}
-          </ThemedText>
-          {item.email && (
-            <ThemedText style={[styles.friendEmail, !isDark && { color: colors.textSecondary }]}>{item.email}</ThemedText>
-          )}
-        </View>
-        <View style={styles.balanceContainer}>
-          {balance !== 0 && (
-            <>
-              <ThemedText style={[styles.balanceAmount, { color: balanceColor }]}>
-                ${Math.abs(balance).toFixed(2)}
-              </ThemedText>
-              <ThemedText style={[styles.balanceLabel, !isDark && { color: colors.textSecondary }]}>
-                {balance > 0 ? 'owes you' : 'you owe'}
-              </ThemedText>
-            </>
-          )}
-          {balance === 0 && (
-            <ThemedText style={[styles.settledText, !isDark && { color: colors.textSecondary }]}>settled up</ThemedText>
-          )}
-        </View>
-      </View>
-    );
-  }
-
   // Calculate total owed
   const totalOwed = friends.reduce((sum, f) => f.balance < 0 ? sum + Math.abs(f.balance) : sum, 0);
 
@@ -191,132 +154,25 @@ export default function FriendsScreen() {
       ) : (
         <FlatList
           data={friends}
-          renderItem={renderFriend}
+          renderItem={({ item }) => <FriendCard friend={item} />}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
         />
       )}
 
-      <Modal
+      <InviteFriendModal
         visible={modalVisible}
-        animationType="slide"
-        presentationStyle="fullScreen"
-        onRequestClose={() => setModalVisible(false)}>
-        <LinearGradient colors={gradients.screenBackground} style={styles.modalContainer}>
-          <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            style={styles.modalKeyboard}>
-            <View style={styles.modalHeader}>
-              <TouchableOpacity onPress={() => setModalVisible(false)} style={[styles.closeButtonRect, !isDark && { backgroundColor: 'rgba(0, 0, 0, 0.05)' }]}>
-                <IconSymbol size={20} name="xmark" color={isDark ? '#fff' : colors.text} />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={styles.modalScrollContent}
-              keyboardShouldPersistTaps="handled">
-              
-              <View style={styles.inviteHeader}>
-                <View style={[styles.inviteIconContainer, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)' }]}>
-                  <IconSymbol size={40} name="person.badge.plus" color={isDark ? '#2DD4BF' : colors.tint} />
-                </View>
-                <ThemedText type="title" style={[styles.inviteTitle, !isDark && { color: colors.text }]}>Invite a Friend</ThemedText>
-                <ThemedText style={[styles.inviteSubtitle, !isDark && { color: colors.textSecondary }]}>
-                  Send an invite via email or phone number
-                </ThemedText>
-              </View>
-
-              <View style={styles.methodToggle}>
-                <TouchableOpacity
-                  style={[styles.methodButton, inviteMethod === 'email' && styles.methodButtonActive, !isDark && inviteMethod !== 'email' && { backgroundColor: colors.card, borderColor: colors.border }]}
-                  onPress={() => setInviteMethod('email')}>
-                  <IconSymbol size={20} name="envelope.fill" color={inviteMethod === 'email' ? '#0A0A0F' : (isDark ? '#2DD4BF' : colors.tint)} />
-                  <ThemedText style={[styles.methodButtonText, inviteMethod === 'email' && styles.methodButtonTextActive, !isDark && inviteMethod !== 'email' && { color: colors.text }]}>
-                    Email
-                  </ThemedText>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.methodButton, inviteMethod === 'phone' && styles.methodButtonActive, !isDark && inviteMethod !== 'phone' && { backgroundColor: colors.card, borderColor: colors.border }]}
-                  onPress={() => setInviteMethod('phone')}>
-                  <IconSymbol size={20} name="phone.fill" color={inviteMethod === 'phone' ? '#0A0A0F' : (isDark ? '#2DD4BF' : colors.tint)} />
-                  <ThemedText style={[styles.methodButtonText, inviteMethod === 'phone' && styles.methodButtonTextActive, !isDark && inviteMethod !== 'phone' && { color: colors.text }]}>
-                    Phone
-                  </ThemedText>
-                </TouchableOpacity>
-              </View>
-
-              <View style={styles.formGroup}>
-                <ThemedText style={[styles.label, !isDark && { color: colors.textSecondary }]}>Name (Optional)</ThemedText>
-                <TextInput
-                  style={[styles.input, styles.glassInput, !isDark && { backgroundColor: colors.inputBackground, borderColor: colors.inputBorder, color: colors.text }]}
-                  placeholder="e.g. John Doe"
-                  placeholderTextColor="#6B7280"
-                  value={newFriendName}
-                  onChangeText={setNewFriendName}
-                  returnKeyType="done"
-                />
-              </View>
-
-              {inviteMethod === 'email' ? (
-                <View style={styles.formGroup}>
-                  <ThemedText style={[styles.label, !isDark && { color: colors.textSecondary }]}>Email Address *</ThemedText>
-                  <TextInput
-                    style={[styles.input, styles.glassInput, !isDark && { backgroundColor: colors.inputBackground, borderColor: colors.inputBorder, color: colors.text }]}
-                    placeholder="friend@example.com"
-                    placeholderTextColor="#6B7280"
-                    value={newFriendEmail}
-                    onChangeText={setNewFriendEmail}
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                    autoFocus
-                    returnKeyType="done"
-                  />
-                </View>
-              ) : (
-                <View style={styles.formGroup}>
-                  <ThemedText style={[styles.label, !isDark && { color: colors.textSecondary }]}>Phone Number *</ThemedText>
-                  <TextInput
-                    style={[styles.input, styles.glassInput, !isDark && { backgroundColor: colors.inputBackground, borderColor: colors.inputBorder, color: colors.text }]}
-                    placeholder="+1 (555) 123-4567"
-                    placeholderTextColor="#6B7280"
-                    value={newFriendPhone}
-                    onChangeText={setNewFriendPhone}
-                    keyboardType="phone-pad"
-                    autoFocus
-                    returnKeyType="done"
-                  />
-                </View>
-              )}
-
-              <ThemedText style={[styles.privacyNote, !isDark && { color: colors.textSecondary }]}>
-                We will send them an invite to join Vasuli. They will be able to accept and connect with you.
-              </ThemedText>
-            </ScrollView>
-
-            <View style={[styles.modalFooter, !isDark && { borderTopColor: colors.border }]}>
-              <TouchableOpacity
-                activeOpacity={0.8}
-                onPress={sendInvite}
-                disabled={inviteMethod === 'email' ? !newFriendEmail.trim() : !newFriendPhone.trim()}>
-                <LinearGradient
-                  colors={(inviteMethod === 'email' ? !newFriendEmail.trim() : !newFriendPhone.trim()) ? (isDark ? ['#1A1A24', '#12121A'] : ['#E5E5E5', '#D4D4D4']) : gradients.buttonPrimary}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={[
-                    styles.submitButton,
-                    (inviteMethod === 'email' ? !newFriendEmail.trim() : !newFriendPhone.trim()) && styles.disabledButton
-                  ]}>
-                  <IconSymbol size={20} name="paperplane.fill" color={(inviteMethod === 'email' ? !newFriendEmail.trim() : !newFriendPhone.trim()) ? '#6B7280' : '#0A0A0F'} />
-                  <ThemedText style={[styles.submitButtonText, { color: (inviteMethod === 'email' ? !newFriendEmail.trim() : !newFriendPhone.trim()) ? '#6B7280' : '#0A0A0F' }]}>
-                    Send Invite
-                  </ThemedText>
-                </LinearGradient>
-              </TouchableOpacity>
-            </View>
-          </KeyboardAvoidingView>
-        </LinearGradient>
-      </Modal>
+        onClose={() => setModalVisible(false)}
+        name={newFriendName}
+        setName={setNewFriendName}
+        email={newFriendEmail}
+        setEmail={setNewFriendEmail}
+        phone={newFriendPhone}
+        setPhone={setNewFriendPhone}
+        inviteMethod={inviteMethod}
+        setInviteMethod={setInviteMethod}
+        onSubmit={sendInvite}
+      />
     </LinearGradient>
   );
 }

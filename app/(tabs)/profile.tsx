@@ -55,10 +55,7 @@ export default function ProfileScreen() {
   return (
     <LinearGradient colors={gradients.screenBackground} style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          <ThemedText style={[styles.headerTitle, !isDark && { color: colors.text }]}>Profile</ThemedText>
-        </View>
-
+        <View style={styles.header} />
         <View style={styles.profileSection}>
           <View style={[styles.avatarLarge, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)' }]}>
             <ThemedText style={[styles.avatarLargeText, { color: isDark ? '#2DD4BF' : colors.tint }]}>

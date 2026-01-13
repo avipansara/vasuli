@@ -1,3 +1,4 @@
+import { ActivityCard } from '@/components/activity/activity-card';
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useThemeColors } from '@/hooks/use-theme-colors';
@@ -71,42 +72,6 @@ export default function ActivityScreen() {
     }
   }
 
-  function renderActivity({ item }: { item: ActivityItem }) {
-    const date = new Date(item.date);
-    const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    const timeStr = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-
-    const iconName = item.type === 'expense' ? 'dollarsign.circle.fill' : 'arrow.right.circle.fill';
-    const iconColor = item.type === 'expense' ? (isDark ? '#2DD4BF' : colors.tint) : (isDark ? '#10b981' : colors.success);
-
-    return (
-      <View style={[styles.activityCard, !isDark && { backgroundColor: colors.card, borderColor: colors.border }]}>
-        <View style={[styles.activityIcon, { backgroundColor: item.type === 'expense' ? (isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)') : 'rgba(16, 185, 129, 0.15)' }]}>
-          <IconSymbol size={20} name={iconName} color={iconColor} />
-        </View>
-        <View style={styles.activityInfo}>
-          <ThemedText type="defaultSemiBold" style={[styles.activityDescription, !isDark && { color: colors.text }]}>
-            {item.description}
-          </ThemedText>
-          <View style={styles.activityDetails}>
-            {item.group && (
-              <ThemedText style={[styles.groupName, { color: isDark ? '#2DD4BF' : colors.tint }]}>{item.group.name}</ThemedText>
-            )}
-            <ThemedText style={[styles.activityDate, !isDark && { color: colors.textSecondary }]}> • {dateStr} at {timeStr}</ThemedText>
-          </View>
-          {item.type === 'expense' && item.user && (
-            <ThemedText style={[styles.paidBy, !isDark && { color: colors.textSecondary }]}>Paid by {item.user.name}</ThemedText>
-          )}
-        </View>
-        <View style={styles.amountContainer}>
-          <ThemedText style={[styles.amount, { color: item.type === 'expense' ? (isDark ? '#fff' : colors.text) : (isDark ? '#10b981' : colors.success) }]}>
-            ${item.amount.toFixed(2)}
-          </ThemedText>
-        </View>
-      </View>
-    );
-  }
-
   return (
     <LinearGradient
       colors={gradients.screenBackground}
@@ -135,7 +100,18 @@ export default function ActivityScreen() {
       ) : (
         <FlatList
           data={activities}
-          renderItem={renderActivity}
+          renderItem={({ item }) => (
+            <ActivityCard
+              activity={{
+                id: item.id,
+                type: item.type,
+                description: item.description,
+                amount: item.amount,
+                date: item.date,
+                groupName: item.group?.name,
+              }}
+            />
+          )}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
         />
