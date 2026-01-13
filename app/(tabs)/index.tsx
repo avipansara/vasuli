@@ -153,11 +153,9 @@ export default function GroupsScreen() {
           </ThemedText>
         </View>
         <TouchableOpacity
-          style={styles.addButton}
+          style={styles.addButtonRect}
           onPress={() => setModalVisible(true)}>
-          <View style={styles.addButtonCircle}>
-            <IconSymbol size={20} name="plus" color="#2DD4BF" />
-          </View>
+         <IconSymbol size={20} name="plus" color="#2DD4BF" />
         </TouchableOpacity>
       </View>
 
@@ -209,8 +207,8 @@ export default function GroupsScreen() {
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             style={styles.modalKeyboard}>
             <View style={styles.modalHeader}>
-              <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.closeButton}>
-                <IconSymbol size={24} name="xmark" color="#fff" />
+              <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.closeButtonRect}>
+                <IconSymbol size={20} name="xmark" color="#fff" />
               </TouchableOpacity>
             </View>
 
@@ -238,6 +236,7 @@ export default function GroupsScreen() {
                   value={newGroupName}
                   onChangeText={setNewGroupName}
                   autoFocus
+                  returnKeyType="done"
                 />
               </View>
 
@@ -252,6 +251,8 @@ export default function GroupsScreen() {
                   multiline
                   numberOfLines={4}
                   textAlignVertical="top"
+                  returnKeyType="done"
+                  blurOnSubmit={true}
                 />
               </View>
 
@@ -310,7 +311,17 @@ const styles = StyleSheet.create({
   addButtonCircle: {
     width: 44,
     height: 44,
-    borderRadius: 22,
+    borderRadius: 12,
+    backgroundColor: 'rgba(45, 212, 191, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(45, 212, 191, 0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  addButtonRect: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
     backgroundColor: 'rgba(45, 212, 191, 0.15)',
     borderWidth: 1,
     borderColor: 'rgba(45, 212, 191, 0.3)',
@@ -504,10 +515,10 @@ const styles = StyleSheet.create({
   },
   modalHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end',
     alignItems: 'center',
-    padding: 24,
-    paddingTop: 40,
+    padding: 20,
+    paddingTop: Platform.OS === 'ios' ? 60 : 40,
   },
   modalTitle: {
     fontSize: 20,
@@ -516,9 +527,18 @@ const styles = StyleSheet.create({
   closeButton: {
     padding: 4,
   },
+  closeButtonRect: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   modalScrollContent: {
     padding: 24,
     paddingTop: 0,
+    flexGrow: 1,
   },
   formGroup: {
     marginBottom: 24,

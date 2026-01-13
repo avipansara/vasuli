@@ -4,6 +4,7 @@ import { Gradients } from '@/constants/theme';
 import { calculateBalances, groupService, initDatabase, userService } from '@/services/api';
 import type { User } from '@/types/database';
 import { LinearGradient } from 'expo-linear-gradient';
+import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Alert, FlatList, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 
@@ -144,13 +145,19 @@ export default function FriendsScreen() {
           <ThemedText style={styles.headerLabel}>You owe</ThemedText>
           <ThemedText type="header" style={styles.headerAmount}>${totalOwed.toFixed(2)}</ThemedText>
         </View>
-        <TouchableOpacity
-          style={styles.addButton}
-          onPress={() => setModalVisible(true)}>
-          <View style={styles.addButtonCircle}>
-            <IconSymbol size={20} name="plus" color="#2DD4BF" />
-          </View>
-        </TouchableOpacity>
+        <View style={styles.headerButtons}>
+          <TouchableOpacity
+            style={styles.addExpenseButton}
+            onPress={() => router.push({ pathname: '/(tabs)/expenses', params: { openModal: 'true' } })}>
+            <IconSymbol size={16} name="plus" color="#2DD4BF" />
+            <ThemedText style={styles.addExpenseText}>Add Expense</ThemedText>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.addButtonRect}
+            onPress={() => setModalVisible(true)}>
+            <IconSymbol size={20} name="person.badge.plus" color="#2DD4BF" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {loading ? (
@@ -199,8 +206,8 @@ export default function FriendsScreen() {
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             style={styles.modalKeyboard}>
             <View style={styles.modalHeader}>
-              <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.closeButton}>
-                <IconSymbol size={24} name="xmark" color="#fff" />
+              <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.closeButtonRect}>
+                <IconSymbol size={20} name="xmark" color="#fff" />
               </TouchableOpacity>
             </View>
 
@@ -246,6 +253,7 @@ export default function FriendsScreen() {
                   placeholderTextColor="#6B7280"
                   value={newFriendName}
                   onChangeText={setNewFriendName}
+                  returnKeyType="done"
                 />
               </View>
 
@@ -261,6 +269,7 @@ export default function FriendsScreen() {
                     keyboardType="email-address"
                     autoCapitalize="none"
                     autoFocus
+                    returnKeyType="done"
                   />
                 </View>
               ) : (
@@ -274,6 +283,7 @@ export default function FriendsScreen() {
                     onChangeText={setNewFriendPhone}
                     keyboardType="phone-pad"
                     autoFocus
+                    returnKeyType="done"
                   />
                 </View>
               )}
@@ -332,14 +342,14 @@ const styles = StyleSheet.create({
   addButton: {
     width: 44,
     height: 44,
-    borderRadius: 22,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
   },
   addButtonCircle: {
     width: 44,
     height: 44,
-    borderRadius: 22,
+    borderRadius: 12,
     backgroundColor: 'rgba(45, 212, 191, 0.15)',
     borderWidth: 1,
     borderColor: 'rgba(45, 212, 191, 0.3)',
@@ -436,10 +446,10 @@ const styles = StyleSheet.create({
   },
   modalHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end',
     alignItems: 'center',
-    padding: 24,
-    paddingTop: 40,
+    padding: 20,
+    paddingTop: Platform.OS === 'ios' ? 60 : 40,
   },
   modalTitle: {
     fontSize: 20,
@@ -448,9 +458,18 @@ const styles = StyleSheet.create({
   closeButton: {
     padding: 4,
   },
+  closeButtonRect: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   modalScrollContent: {
     padding: 24,
     paddingTop: 0,
+    flexGrow: 1,
   },
   formGroup: {
     marginBottom: 24,
@@ -571,5 +590,36 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 8,
     lineHeight: 18,
+  },
+  headerButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  addExpenseButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: 'rgba(45, 212, 191, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(45, 212, 191, 0.3)',
+    gap: 6,
+  },
+  addExpenseText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#2DD4BF',
+  },
+  addButtonRect: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: 'rgba(45, 212, 191, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(45, 212, 191, 0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

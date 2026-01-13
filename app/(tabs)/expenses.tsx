@@ -1,15 +1,15 @@
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors, Gradients } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { Gradients } from '@/constants/theme';
 import { expenseService, groupService, initDatabase, userService } from '@/services/api';
 import type { Expense, Group } from '@/types/database';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Alert, FlatList, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 
 export default function ExpensesScreen() {
-  const colorScheme = useColorScheme();
+  const { openModal } = useLocalSearchParams<{ openModal?: string }>();
   const [expenses, setExpenses] = useState<(Expense & { group?: Group })[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
@@ -21,6 +21,12 @@ export default function ExpensesScreen() {
   useEffect(() => {
     loadData();
   }, []);
+
+  useEffect(() => {
+    if (openModal === 'true') {
+      setModalVisible(true);
+    }
+  }, [openModal]);
 
   async function loadData() {
     try {
@@ -135,7 +141,7 @@ export default function ExpensesScreen() {
         <TouchableOpacity
           style={styles.addButton}
           onPress={() => setModalVisible(true)}>
-          <View style={styles.addButtonCircle}>
+          <View style={styles.addButtonRect}>
             <IconSymbol size={20} name="plus" color="#2DD4BF" />
           </View>
         </TouchableOpacity>
@@ -180,16 +186,15 @@ export default function ExpensesScreen() {
       <Modal
         visible={modalVisible}
         animationType="slide"
-        presentationStyle="pageSheet"
+        presentationStyle="fullScreen"
         onRequestClose={() => setModalVisible(false)}>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.modalContainer}>
-          <View style={[styles.modalContent, { backgroundColor: '#0A0A0F' }]}>
+        <LinearGradient colors={Gradients.screenBackground} style={styles.modalContainer}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={styles.modalKeyboard}>
             <View style={styles.modalHeader}>
-              <ThemedText type="subtitle" style={styles.modalTitle}>Add Expense</ThemedText>
-              <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.closeButton}>
-                <IconSymbol size={28} name="xmark.circle.fill" color={Colors[colorScheme ?? 'light'].icon} />
+              <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.closeButtonRect}>
+                <IconSymbol size={20} name="xmark" color="#fff" />
               </TouchableOpacity>
             </View>
 
@@ -197,8 +202,19 @@ export default function ExpensesScreen() {
               showsVerticalScrollIndicator={false}
               contentContainerStyle={styles.modalScrollContent}
               keyboardShouldPersistTaps="handled">
+              
+              <View style={styles.expenseHeader}>
+                <View style={styles.expenseIconContainer}>
+                  <IconSymbol size={40} name="dollarsign.circle.fill" color="#2DD4BF" />
+                </View>
+                <ThemedText type="title" style={styles.expenseTitle}>Add Expense</ThemedText>
+                <ThemedText style={styles.expenseSubtitle}>
+                  Track what you spent and split with your group
+                </ThemedText>
+              </View>
+
               <View style={styles.formGroup}>
-                <ThemedText style={styles.label}>Description</ThemedText>
+                <ThemedText style={styles.label}>Description *</ThemedText>
                 <TextInput
                   style={[styles.input, styles.glassInput]}
                   placeholder="e.g. Dinner at Mario's"
@@ -206,11 +222,12 @@ export default function ExpensesScreen() {
                   value={description}
                   onChangeText={setDescription}
                   autoFocus
+                  returnKeyType="done"
                 />
               </View>
 
               <View style={styles.formGroup}>
-                <ThemedText style={styles.label}>Amount</ThemedText>
+                <ThemedText style={styles.label}>Amount *</ThemedText>
                 <TextInput
                   style={[styles.input, styles.glassInput]}
                   placeholder="0.00"
@@ -218,11 +235,12 @@ export default function ExpensesScreen() {
                   value={amount}
                   onChangeText={setAmount}
                   keyboardType="decimal-pad"
+                  returnKeyType="done"
                 />
               </View>
 
               <View style={styles.formGroup}>
-                <ThemedText style={styles.label}>Group</ThemedText>
+                <ThemedText style={styles.label}>Select Group *</ThemedText>
                 <View style={styles.groupButtons}>
                   {groups.map(group => (
                     <TouchableOpacity
@@ -245,6 +263,10 @@ export default function ExpensesScreen() {
                   ))}
                 </View>
               </View>
+
+              <ThemedText style={styles.privacyNote}>
+                The expense will be split equally among all group members.
+              </ThemedText>
             </ScrollView>
 
             <View style={[styles.modalFooter, { borderTopColor: 'rgba(45, 212, 191, 0.15)' }]}>
@@ -260,12 +282,15 @@ export default function ExpensesScreen() {
                     styles.submitButton,
                     (!description.trim() || !amount.trim() || !selectedGroupId) && styles.disabledButton
                   ]}>
-                  <ThemedText style={[styles.submitButtonText, { color: (!description.trim() || !amount.trim() || !selectedGroupId) ? '#6B7280' : '#0A0A0F' }]}>Add Expense</ThemedText>
+                  <IconSymbol size={20} name="plus.circle.fill" color={(!description.trim() || !amount.trim() || !selectedGroupId) ? '#6B7280' : '#0A0A0F'} />
+                  <ThemedText style={[styles.submitButtonText, { color: (!description.trim() || !amount.trim() || !selectedGroupId) ? '#6B7280' : '#0A0A0F' }]}>
+                    Add Expense
+                  </ThemedText>
                 </LinearGradient>
               </TouchableOpacity>
             </View>
-          </View>
-        </KeyboardAvoidingView>
+          </KeyboardAvoidingView>
+        </LinearGradient>
       </Modal>
     </LinearGradient>
   );
@@ -297,10 +322,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  addButtonCircle: {
+  addButtonRect: {
     width: 44,
     height: 44,
-    borderRadius: 22,
+    borderRadius: 12,
     backgroundColor: 'rgba(45, 212, 191, 0.15)',
     borderWidth: 1,
     borderColor: 'rgba(45, 212, 191, 0.3)',
@@ -384,10 +409,10 @@ const styles = StyleSheet.create({
   },
   modalHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end',
     alignItems: 'center',
-    padding: 24,
-    paddingTop: 40,
+    padding: 20,
+    paddingTop: Platform.OS === 'ios' ? 60 : 40,
   },
   modalTitle: {
     fontSize: 20,
@@ -396,9 +421,18 @@ const styles = StyleSheet.create({
   closeButton: {
     padding: 4,
   },
+  closeButtonRect: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   modalScrollContent: {
     padding: 24,
     paddingTop: 0,
+    flexGrow: 1,
   },
   formGroup: {
     marginBottom: 24,
@@ -448,6 +482,9 @@ const styles = StyleSheet.create({
     padding: 14,
     borderRadius: 14,
     alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
   },
   disabledButton: {
     opacity: 0.5,
@@ -500,5 +537,37 @@ const styles = StyleSheet.create({
   groupButtonUnselected: {
     backgroundColor: 'rgba(26, 26, 36, 0.8)',
     borderColor: 'rgba(45, 212, 191, 0.2)',
+  },
+  modalKeyboard: {
+    flex: 1,
+  },
+  expenseHeader: {
+    alignItems: 'center',
+    marginBottom: 32,
+  },
+  expenseIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 16,
+    backgroundColor: 'rgba(45, 212, 191, 0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  expenseTitle: {
+    color: '#fff',
+    marginBottom: 8,
+    lineHeight: 32,
+  },
+  expenseSubtitle: {
+    color: 'rgba(255,255,255,0.6)',
+    textAlign: 'center',
+  },
+  privacyNote: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.5)',
+    textAlign: 'center',
+    marginTop: 8,
+    lineHeight: 18,
   },
 });
