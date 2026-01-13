@@ -541,8 +541,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   glassCard: {
-    borderWidth: 1,
-    borderColor: 'rgba(45, 212, 191, 0.2)',
   },
   glassInput: {
     backgroundColor: 'rgba(26, 26, 36, 0.8)',
