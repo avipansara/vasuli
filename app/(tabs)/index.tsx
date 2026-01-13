@@ -1,7 +1,7 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors } from '@/constants/theme';
+import { Colors, Glows, Gradients } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { calculateBalances, groupService, initDatabase, userService } from '@/services/database';
 import type { GroupWithMembers } from '@/types/database';
@@ -85,9 +85,7 @@ export default function GroupsScreen() {
     const isPositive = balance > 0;
     const isSettled = balance === 0;
 
-    const gradientColors = (colorScheme === 'dark'
-      ? ['#27272a', '#18181b'] // Zinc-800 to Zinc-900
-      : ['#f4f4f5', '#e4e4e7']) as [string, string]; // Zinc-100 to Zinc-200
+    const gradientColors = Gradients.cardPrimary;
 
     return (
       <Animated.View
@@ -100,13 +98,13 @@ export default function GroupsScreen() {
             colors={gradientColors}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
-            style={styles.groupCard}>
+            style={[styles.groupCard, styles.glassCard]}>
             <View style={styles.groupCardContent}>
               <View style={styles.groupHeader}>
                 <View style={[styles.groupIconContainer, { 
-                  backgroundColor: colorScheme === 'dark' ? '#3f3f46' : '#d4d4d8', // Zinc-700 / Zinc-300
+                  backgroundColor: 'rgba(45, 212, 191, 0.15)',
                 }]}>
-                  <IconSymbol size={28} name="person.3.fill" color={Colors[colorScheme ?? 'light'].text} />
+                  <IconSymbol size={28} name="person.3.fill" color="#2DD4BF" />
                 </View>
                 <View style={styles.groupInfo}>
                   <ThemedText style={styles.groupName}>
@@ -120,7 +118,7 @@ export default function GroupsScreen() {
                 </View>
               </View>
               
-              <View style={[styles.balanceSection, { borderTopColor: colorScheme === 'dark' ? '#3f3f46' : '#d4d4d8' }]}>
+              <View style={[styles.balanceSection, { borderTopColor: 'rgba(45, 212, 191, 0.2)' }]}>
                 <View style={styles.balanceContent}>
                   <ThemedText style={styles.balanceLabel}>
                     {isSettled ? 'All settled up' : isPositive ? 'You are owed' : 'You owe'}
@@ -147,7 +145,7 @@ export default function GroupsScreen() {
   return (
     <ThemedView style={styles.container}>
       <LinearGradient
-        colors={colorScheme === 'dark' ? ['#09090b', '#09090b'] : ['#ffffff', '#ffffff']}
+        colors={Gradients.hero}
         style={styles.headerGradient}>
         <Animated.View entering={FadeInUp.springify()} style={styles.header}>
           <View>
@@ -159,28 +157,32 @@ export default function GroupsScreen() {
           <TouchableOpacity
             style={styles.addButton}
             onPress={() => setModalVisible(true)}>
-            <View style={[styles.addButtonGradient, { backgroundColor: Colors[colorScheme ?? 'light'].text }]}>
-              <IconSymbol size={24} name="plus" color={Colors[colorScheme ?? 'light'].background} />
-            </View>
+            <LinearGradient
+              colors={Gradients.buttonPrimary}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.addButtonGradient}>
+              <IconSymbol size={24} name="plus" color="#0A0A0F" />
+            </LinearGradient>
           </TouchableOpacity>
         </Animated.View>
 
         {groups.length > 0 && (
-          <Animated.View entering={FadeInDown.delay(100).springify()} style={styles.summaryCard}>
+          <Animated.View entering={FadeInDown.delay(100).springify()} style={[styles.summaryCard, Glows.teal]}>
             <LinearGradient
-              colors={colorScheme === 'dark' ? ['#27272a', '#18181b'] : ['#f4f4f5', '#e4e4e7']}
+              colors={Gradients.cardAccent}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
-              style={styles.summaryGradient}>
-              <ThemedText style={[styles.summaryLabel, { color: Colors[colorScheme ?? 'light'].text }]}>Total Balance</ThemedText>
+              style={[styles.summaryGradient, styles.glassCard]}>
+              <ThemedText style={styles.summaryLabel}>Total Balance</ThemedText>
               <ThemedText style={[
                 styles.summaryAmount,
-                { color: totalBalance === 0 ? Colors[colorScheme ?? 'light'].text : (totalBalance > 0 ? '#10b981' : '#ef4444') }
+                { color: totalBalance === 0 ? '#2DD4BF' : (totalBalance > 0 ? '#10b981' : '#ef4444') }
               ]}>
                 {totalBalance === 0 ? 'All settled' : `$${Math.abs(totalBalance).toFixed(2)}`}
               </ThemedText>
               {totalBalance !== 0 && (
-                <ThemedText style={[styles.summarySubtext, { color: Colors[colorScheme ?? 'light'].icon }]}>
+                <ThemedText style={styles.summarySubtext}>
                   {totalBalance > 0 ? 'You are owed' : 'You owe'}
                 </ThemedText>
               )}
@@ -195,7 +197,7 @@ export default function GroupsScreen() {
         </View>
       ) : groups.length === 0 ? (
         <Animated.View entering={FadeInDown.springify()} style={styles.emptyContainer}>
-          <View style={[styles.emptyIconContainer, { backgroundColor: colorScheme === 'dark' ? '#27272a' : '#f4f4f5' }]}>
+          <View style={[styles.emptyIconContainer, { backgroundColor: 'rgba(45, 212, 191, 0.1)' }]}>
             <IconSymbol size={80} name="person.3" color={Colors[colorScheme ?? 'light'].icon} />
           </View>
           <ThemedText type="subtitle" style={styles.emptyTitle}>
@@ -207,10 +209,14 @@ export default function GroupsScreen() {
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={() => setModalVisible(true)}>
-            <View style={[styles.createButton, { backgroundColor: Colors[colorScheme ?? 'light'].text }]}>
-              <IconSymbol size={20} name="plus.circle.fill" color={Colors[colorScheme ?? 'light'].background} />
-              <ThemedText style={[styles.createButtonText, { color: Colors[colorScheme ?? 'light'].background }]}>Create Your First Group</ThemedText>
-            </View>
+            <LinearGradient
+              colors={Gradients.buttonPrimary}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.createButton}>
+              <IconSymbol size={20} name="plus.circle.fill" color="#0A0A0F" />
+              <ThemedText style={[styles.createButtonText, { color: '#0A0A0F' }]}>Create Your First Group</ThemedText>
+            </LinearGradient>
           </TouchableOpacity>
         </Animated.View>
       ) : (
@@ -231,7 +237,7 @@ export default function GroupsScreen() {
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.modalContainer}>
-          <View style={[styles.modalContent, { backgroundColor: Colors[colorScheme ?? 'light'].background }]}>
+          <View style={[styles.modalContent, { backgroundColor: '#0A0A0F' }]}>
             <View style={styles.modalHeader}>
               <ThemedText type="subtitle" style={styles.modalTitle}>Create New Group</ThemedText>
               <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.closeButton}>
@@ -246,13 +252,9 @@ export default function GroupsScreen() {
               <View style={styles.formGroup}>
                 <ThemedText style={styles.label}>Group Name</ThemedText>
                 <TextInput
-                  style={[styles.input, { 
-                    backgroundColor: colorScheme === 'dark' ? '#27272a' : '#f4f4f5',
-                    color: Colors[colorScheme ?? 'light'].text,
-                    borderColor: colorScheme === 'dark' ? '#3f3f46' : '#e4e4e7',
-                  }]}
+                  style={[styles.input, styles.glassInput]}
                   placeholder="e.g. Summer Trip 2024"
-                  placeholderTextColor={Colors[colorScheme ?? 'light'].icon}
+                  placeholderTextColor="#6B7280"
                   value={newGroupName}
                   onChangeText={setNewGroupName}
                   autoFocus
@@ -262,13 +264,9 @@ export default function GroupsScreen() {
               <View style={styles.formGroup}>
                 <ThemedText style={styles.label}>Description</ThemedText>
                 <TextInput
-                  style={[styles.input, styles.textArea, { 
-                    backgroundColor: colorScheme === 'dark' ? '#27272a' : '#f4f4f5',
-                    color: Colors[colorScheme ?? 'light'].text,
-                    borderColor: colorScheme === 'dark' ? '#3f3f46' : '#e4e4e7',
-                  }]}
+                  style={[styles.input, styles.textArea, styles.glassInput]}
                   placeholder="What's this group for? (optional)"
-                  placeholderTextColor={Colors[colorScheme ?? 'light'].icon}
+                  placeholderTextColor="#6B7280"
                   value={newGroupDescription}
                   onChangeText={setNewGroupDescription}
                   multiline
@@ -278,19 +276,21 @@ export default function GroupsScreen() {
               </View>
             </ScrollView>
 
-            <View style={[styles.modalFooter, { borderTopColor: colorScheme === 'dark' ? '#27272a' : '#f4f4f5' }]}>
+            <View style={[styles.modalFooter, { borderTopColor: 'rgba(45, 212, 191, 0.15)' }]}>
               <TouchableOpacity
                 activeOpacity={0.8}
                 onPress={createGroup}
                 disabled={!newGroupName.trim()}>
-                <View
+                <LinearGradient
+                  colors={!newGroupName.trim() ? ['#1A1A24', '#12121A'] : Gradients.buttonPrimary}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
                   style={[
                     styles.submitButton, 
-                    { backgroundColor: !newGroupName.trim() ? (colorScheme === 'dark' ? '#3f3f46' : '#d4d4d8') : Colors[colorScheme ?? 'light'].text },
                     !newGroupName.trim() && styles.disabledButton
                   ]}>
-                  <ThemedText style={[styles.submitButtonText, { color: Colors[colorScheme ?? 'light'].background }]}>Create Group</ThemedText>
-                </View>
+                  <ThemedText style={[styles.submitButtonText, { color: !newGroupName.trim() ? '#6B7280' : '#0A0A0F' }]}>Create Group</ThemedText>
+                </LinearGradient>
               </TouchableOpacity>
             </View>
           </View>
@@ -316,11 +316,11 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   headerTitle: {
-    fontSize: 32,
+    fontSize: 24,
     fontWeight: 'bold',
   },
   headerSubtitle: {
-    fontSize: 14,
+    fontSize: 12,
     opacity: 0.6,
     marginTop: 4,
   },
@@ -334,8 +334,9 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   addButtonGradient: {
-    width: 56,
-    height: 56,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -350,23 +351,23 @@ const styles = StyleSheet.create({
     elevation: 10,
   },
   summaryGradient: {
-    padding: 24,
+    padding: 20,
     alignItems: 'center',
   },
   summaryLabel: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#fff',
     opacity: 0.9,
     fontWeight: '500',
   },
   summaryAmount: {
-    fontSize: 36,
+    fontSize: 28,
     fontWeight: 'bold',
     color: '#fff',
-    marginTop: 8,
+    marginTop: 6,
   },
   summarySubtext: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#fff',
     opacity: 0.8,
     marginTop: 4,
@@ -396,24 +397,24 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   groupIconContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 16,
+    marginRight: 12,
   },
   groupInfo: {
     flex: 1,
   },
   groupName: {
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: 'bold',
     color: '#fff',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   groupDescription: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#fff',
     opacity: 0.8,
   },
@@ -431,13 +432,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   balanceLabel: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#fff',
     opacity: 0.9,
     fontWeight: '500',
   },
   balanceAmount: {
-    fontSize: 24,
+    fontSize: 18,
     fontWeight: 'bold',
     color: '#fff',
   },
@@ -458,32 +459,32 @@ const styles = StyleSheet.create({
     padding: 40,
   },
   emptyIconContainer: {
-    width: 140,
-    height: 140,
-    borderRadius: 70,
+    width: 100,
+    height: 100,
+    borderRadius: 50,
     backgroundColor: 'rgba(24, 24, 27, 0.05)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 20,
   },
   emptyTitle: {
-    marginBottom: 12,
-    fontSize: 24,
+    marginBottom: 8,
+    fontSize: 18,
   },
   emptyText: {
     textAlign: 'center',
     opacity: 0.6,
-    marginBottom: 32,
-    fontSize: 16,
-    lineHeight: 24,
+    marginBottom: 24,
+    fontSize: 13,
+    lineHeight: 20,
   },
   createButton: {
     flexDirection: 'row',
-    paddingHorizontal: 32,
-    paddingVertical: 16,
-    borderRadius: 30,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 24,
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
@@ -493,7 +494,7 @@ const styles = StyleSheet.create({
   createButtonText: {
     color: '#fff',
     fontWeight: '600',
-    fontSize: 16,
+    fontSize: 14,
   },
   modalContainer: {
     flex: 1,
@@ -511,7 +512,7 @@ const styles = StyleSheet.create({
     paddingTop: 40,
   },
   modalTitle: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: 'bold',
   },
   closeButton: {
@@ -525,9 +526,9 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   label: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '600',
-    marginBottom: 8,
+    marginBottom: 6,
     opacity: 0.7,
   },
   modalFooter: {
@@ -538,16 +539,16 @@ const styles = StyleSheet.create({
   input: {
     borderWidth: 1,
     borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
+    padding: 14,
+    fontSize: 14,
   },
   textArea: {
     height: 120,
     textAlignVertical: 'top',
   },
   submitButton: {
-    padding: 16,
-    borderRadius: 16,
+    padding: 14,
+    borderRadius: 14,
     alignItems: 'center',
   },
   disabledButton: {
@@ -555,7 +556,16 @@ const styles = StyleSheet.create({
   },
   submitButtonText: {
     color: '#fff',
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
+  },
+  glassCard: {
+    borderWidth: 1,
+    borderColor: 'rgba(45, 212, 191, 0.2)',
+  },
+  glassInput: {
+    backgroundColor: 'rgba(26, 26, 36, 0.8)',
+    color: '#f4f4f5',
+    borderColor: 'rgba(45, 212, 191, 0.2)',
   },
 });
