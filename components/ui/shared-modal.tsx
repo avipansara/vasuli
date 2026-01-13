@@ -2,9 +2,8 @@ import {
   ACCENT_TEAL,
   BG_ICON_DARK,
   BG_ICON_LIGHT,
-  BTN_CLOSE_LIGHT,
   BTN_DISABLED_DARK,
-  BTN_DISABLED_LIGHT,
+  BTN_DISABLED_LIGHT
 } from '@/constants/theme';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -60,8 +59,7 @@ export function SharedModal({
 
   const defaultIconBg = isDark ? BG_ICON_DARK : BG_ICON_LIGHT;
   const defaultIconColor = isDark ? ACCENT_TEAL : colors.tint;
-  const closeBtnBg = isDark ? undefined : { backgroundColor: BTN_CLOSE_LIGHT };
-  const closeIconColor = isDark ? '#fff' : colors.text;
+  const closeIconColor = '#EF4444';
 
   const disabledColors = isDark ? BTN_DISABLED_DARK : BTN_DISABLED_LIGHT;
   const buttonColors = submitDisabled
@@ -81,7 +79,7 @@ export function SharedModal({
           <View style={styles.header}>
             <TouchableOpacity
               onPress={onClose}
-              style={[styles.closeButton, closeBtnBg]}>
+              style={styles.closeButton}>
               <IconSymbol size={20} name="xmark" color={closeIconColor} />
             </TouchableOpacity>
           </View>
@@ -216,8 +214,8 @@ const styles = StyleSheet.create({
   closeButton: {
     width: 36,
     height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 10,
+    backgroundColor: 'rgba(239, 68, 68, 0.15)',
     justifyContent: 'center',
     alignItems: 'center',
   },
