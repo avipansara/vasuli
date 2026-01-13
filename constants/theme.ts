@@ -5,28 +5,62 @@
 
 import { Platform } from 'react-native';
 
-// Primary accent - Teal/Cyan for dark mode
-const accentTeal = '#2DD4BF'; // Bright teal
-// Green accent for light mode (matching reference)
-const accentGreen = '#22C55E'; // Green like reference image
+// ============================================
+// COLOR CONSTANTS
+// ============================================
 
-// Secondary accent - Purple/Violet gradient colors
-const accentPurple = '#A78BFA'; // Violet
+// Primary accents
+export const ACCENT_TEAL = '#2DD4BF';
+export const ACCENT_GREEN = '#22C55E';
+export const ACCENT_PURPLE = '#A78BFA';
+export const ACCENT_YELLOW = '#FACC15';
 
-// Dark mode background colors
-const backgroundDark = '#0A0A0F'; // Near black with slight blue
-const backgroundCardDark = '#12121A'; // Slightly lighter for cards
+// Status colors
+export const SUCCESS_DARK = '#10b981';
+export const SUCCESS_LIGHT = '#22C55E';
+export const ERROR_COLOR = '#EF4444';
 
-// Light mode background colors (clean white/gray like reference)
-const backgroundLight = '#F5F5F5'; // Light gray background
-const backgroundCardLight = '#FFFFFF'; // White for cards
+// Dark mode backgrounds
+export const BG_DARK = '#0A0A0F';
+export const BG_CARD_DARK = '#12121A';
+export const BG_GLASS_DARK = 'rgba(26, 26, 36, 0.8)';
+export const BG_ICON_DARK = 'rgba(45, 212, 191, 0.15)';
+export const BG_ICON_SUCCESS_DARK = 'rgba(16, 185, 129, 0.15)';
 
-// Surface colors for glass effect - Dark mode
-const surfaceGlassDark = 'rgba(26, 26, 36, 0.8)'; // Semi-transparent glass
-const surfaceBorderDark = 'rgba(45, 212, 191, 0.2)'; // Teal border glow
+// Light mode backgrounds
+export const BG_LIGHT = '#F5F5F5';
+export const BG_CARD_LIGHT = '#FFFFFF';
+export const BG_ICON_LIGHT = 'rgba(34, 197, 94, 0.1)';
 
-// Surface colors for light mode
-const surfaceBorderLight = '#E5E5E5'; // Light gray border
+// Borders
+export const BORDER_DARK = 'rgba(45, 212, 191, 0.2)';
+export const BORDER_LIGHT = '#E5E5E5';
+export const BORDER_ACCENT_DARK = 'rgba(45, 212, 191, 0.3)';
+export const BORDER_ACCENT_LIGHT = 'rgba(34, 197, 94, 0.3)';
+
+// Text colors
+export const TEXT_DARK = '#f4f4f5';
+export const TEXT_LIGHT = '#1A1A1A';
+export const TEXT_SECONDARY_DARK = '#9CA3AF';
+export const TEXT_SECONDARY_LIGHT = '#6B7280';
+
+// Button backgrounds
+export const BTN_CLOSE_DARK = 'rgba(255, 255, 255, 0.1)';
+export const BTN_CLOSE_LIGHT = 'rgba(0, 0, 0, 0.05)';
+export const BTN_DISABLED_DARK = ['#1A1A24', '#12121A'] as const;
+export const BTN_DISABLED_LIGHT = ['#E5E5E5', '#D4D4D4'] as const;
+
+// Legacy aliases for backward compatibility
+const accentTeal = ACCENT_TEAL;
+const accentGreen = ACCENT_GREEN;
+const accentPurple = ACCENT_PURPLE;
+const backgroundDark = BG_DARK;
+const backgroundCardDark = BG_CARD_DARK;
+const backgroundLight = BG_LIGHT;
+const backgroundCardLight = BG_CARD_LIGHT;
+const surfaceGlassDark = BG_GLASS_DARK;
+const surfaceBorderDark = BORDER_DARK;
+const surfaceBorderLight = BORDER_LIGHT;
 
 export const Colors = {
   light: {
