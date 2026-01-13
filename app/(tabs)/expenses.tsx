@@ -3,7 +3,7 @@ import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors, Gradients } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { expenseService, groupService, initDatabase, userService } from '@/services/database';
+import { expenseService, groupService, initDatabase, userService } from '@/services/api';
 import type { Expense, Group } from '@/types/database';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useState } from 'react';

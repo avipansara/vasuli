@@ -3,7 +3,7 @@ import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors, Glows, Gradients } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { calculateBalances, groupService, initDatabase, userService } from '@/services/database';
+import { calculateBalances, groupService, initDatabase, userService } from '@/services/api';
 import type { GroupWithMembers } from '@/types/database';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';

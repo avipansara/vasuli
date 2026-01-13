@@ -42,6 +42,13 @@ export default function TabLayout() {
         },
       }}>
       <Tabs.Screen
+        name="friends"
+        options={{
+          title: 'Friends',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="person.2.fill" color={color} />,
+        }}
+      />
+      <Tabs.Screen
         name="index"
         options={{
           title: 'Groups',
@@ -53,13 +60,6 @@ export default function TabLayout() {
         options={{
           title: 'Expenses',
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="dollarsign.circle.fill" color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="friends"
-        options={{
-          title: 'Friends',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="person.2.fill" color={color} />,
         }}
       />
       <Tabs.Screen

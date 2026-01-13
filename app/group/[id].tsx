@@ -8,7 +8,7 @@ import {
   groupService,
   settlementService,
   userService
-} from '@/services/database';
+} from '@/services/api';
 import type { Expense, Group, GroupMember, User } from '@/types/database';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';

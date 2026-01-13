@@ -3,7 +3,7 @@ import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { expenseService, groupService, initDatabase, settlementService, userService } from '@/services/database';
+import { expenseService, groupService, initDatabase, settlementService, userService } from '@/services/api';
 import type { Group, User } from '@/types/database';
 import { useEffect, useState } from 'react';
 import { FlatList, StyleSheet, View } from 'react-native';
