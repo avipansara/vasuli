@@ -194,8 +194,8 @@ export default function ExpensesScreen() {
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             style={styles.modalKeyboard}>
             <View style={styles.modalHeader}>
-              <TouchableOpacity onPress={() => setModalVisible(false)} style={[styles.closeButtonRect, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)' }]}>
-                <IconSymbol size={20} name="xmark" color={colors.text} />
+              <TouchableOpacity onPress={() => setModalVisible(false)} style={[styles.closeButtonRect, !isDark && { backgroundColor: 'rgba(0, 0, 0, 0.05)' }]}>
+                <IconSymbol size={20} name="xmark" color={isDark ? '#fff' : colors.text} />
               </TouchableOpacity>
             </View>
 
@@ -206,18 +206,18 @@ export default function ExpensesScreen() {
               
               <View style={styles.expenseHeader}>
                 <View style={[styles.expenseIconContainer, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)' }]}>
-                  <IconSymbol size={40} name="dollarsign.circle.fill" color={colors.tint} />
+                  <IconSymbol size={40} name="dollarsign.circle.fill" color={isDark ? '#2DD4BF' : colors.tint} />
                 </View>
-                <ThemedText type="title" style={[styles.expenseTitle, { color: colors.text }]}>Add Expense</ThemedText>
-                <ThemedText style={[styles.expenseSubtitle, { color: colors.textSecondary }]}>
+                <ThemedText type="title" style={[styles.expenseTitle, !isDark && { color: colors.text }]}>Add Expense</ThemedText>
+                <ThemedText style={[styles.expenseSubtitle, !isDark && { color: colors.textSecondary }]}>
                   Track what you spent and split with your group
                 </ThemedText>
               </View>
 
               <View style={styles.formGroup}>
-                <ThemedText style={styles.label}>Description *</ThemedText>
+                <ThemedText style={[styles.label, !isDark && { color: colors.textSecondary }]}>Description *</ThemedText>
                 <TextInput
-                  style={[styles.input, styles.glassInput]}
+                  style={[styles.input, styles.glassInput, !isDark && { backgroundColor: colors.inputBackground, borderColor: colors.inputBorder, color: colors.text }]}
                   placeholder="e.g. Dinner at Mario's"
                   placeholderTextColor="#6B7280"
                   value={description}
@@ -228,9 +228,9 @@ export default function ExpensesScreen() {
               </View>
 
               <View style={styles.formGroup}>
-                <ThemedText style={styles.label}>Amount *</ThemedText>
+                <ThemedText style={[styles.label, !isDark && { color: colors.textSecondary }]}>Amount *</ThemedText>
                 <TextInput
-                  style={[styles.input, styles.glassInput]}
+                  style={[styles.input, styles.glassInput, !isDark && { backgroundColor: colors.inputBackground, borderColor: colors.inputBorder, color: colors.text }]}
                   placeholder="0.00"
                   placeholderTextColor="#6B7280"
                   value={amount}
@@ -241,7 +241,7 @@ export default function ExpensesScreen() {
               </View>
 
               <View style={styles.formGroup}>
-                <ThemedText style={styles.label}>Select Group *</ThemedText>
+                <ThemedText style={[styles.label, !isDark && { color: colors.textSecondary }]}>Select Group *</ThemedText>
                 <View style={styles.groupButtons}>
                   {groups.map(group => (
                     <TouchableOpacity
@@ -249,14 +249,14 @@ export default function ExpensesScreen() {
                       style={[
                         styles.groupButton,
                         selectedGroupId === group.id && styles.groupButtonSelected,
-                        selectedGroupId !== group.id && styles.groupButtonUnselected,
+                        selectedGroupId !== group.id && (isDark ? styles.groupButtonUnselected : { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }),
                       ]}
                       onPress={() => setSelectedGroupId(group.id)}>
                       <ThemedText
                         style={[
                           styles.groupButtonText,
                           selectedGroupId === group.id && { color: '#0A0A0F' },
-                          selectedGroupId !== group.id && { color: '#f4f4f5' }
+                          selectedGroupId !== group.id && { color: isDark ? '#f4f4f5' : colors.text }
                         ]}>
                         {group.name}
                       </ThemedText>
@@ -265,18 +265,18 @@ export default function ExpensesScreen() {
                 </View>
               </View>
 
-              <ThemedText style={styles.privacyNote}>
+              <ThemedText style={[styles.privacyNote, !isDark && { color: colors.textSecondary }]}>
                 The expense will be split equally among all group members.
               </ThemedText>
             </ScrollView>
 
-            <View style={[styles.modalFooter, { borderTopColor: 'rgba(45, 212, 191, 0.15)' }]}>
+            <View style={[styles.modalFooter, { borderTopColor: isDark ? 'rgba(45, 212, 191, 0.15)' : colors.border }]}>
               <TouchableOpacity
                 activeOpacity={0.8}
                 onPress={createExpense}
                 disabled={!description.trim() || !amount.trim() || !selectedGroupId}>
                 <LinearGradient
-                  colors={(!description.trim() || !amount.trim() || !selectedGroupId) ? ['#1A1A24', '#12121A'] : gradients.buttonPrimary}
+                  colors={(!description.trim() || !amount.trim() || !selectedGroupId) ? (isDark ? ['#1A1A24', '#12121A'] : ['#E5E5E5', '#D4D4D4']) : gradients.buttonPrimary}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={[

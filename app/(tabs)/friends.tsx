@@ -207,8 +207,8 @@ export default function FriendsScreen() {
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             style={styles.modalKeyboard}>
             <View style={styles.modalHeader}>
-              <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.closeButtonRect}>
-                <IconSymbol size={20} name="xmark" color="#fff" />
+              <TouchableOpacity onPress={() => setModalVisible(false)} style={[styles.closeButtonRect, !isDark && { backgroundColor: 'rgba(0, 0, 0, 0.05)' }]}>
+                <IconSymbol size={20} name="xmark" color={isDark ? '#fff' : colors.text} />
               </TouchableOpacity>
             </View>
 
@@ -218,38 +218,38 @@ export default function FriendsScreen() {
               keyboardShouldPersistTaps="handled">
               
               <View style={styles.inviteHeader}>
-                <View style={styles.inviteIconContainer}>
-                  <IconSymbol size={40} name="person.badge.plus" color="#2DD4BF" />
+                <View style={[styles.inviteIconContainer, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)' }]}>
+                  <IconSymbol size={40} name="person.badge.plus" color={isDark ? '#2DD4BF' : colors.tint} />
                 </View>
-                <ThemedText type="title" style={styles.inviteTitle}>Invite a Friend</ThemedText>
-                <ThemedText style={styles.inviteSubtitle}>
+                <ThemedText type="title" style={[styles.inviteTitle, !isDark && { color: colors.text }]}>Invite a Friend</ThemedText>
+                <ThemedText style={[styles.inviteSubtitle, !isDark && { color: colors.textSecondary }]}>
                   Send an invite via email or phone number
                 </ThemedText>
               </View>
 
               <View style={styles.methodToggle}>
                 <TouchableOpacity
-                  style={[styles.methodButton, inviteMethod === 'email' && styles.methodButtonActive]}
+                  style={[styles.methodButton, inviteMethod === 'email' && styles.methodButtonActive, !isDark && inviteMethod !== 'email' && { backgroundColor: colors.card, borderColor: colors.border }]}
                   onPress={() => setInviteMethod('email')}>
-                  <IconSymbol size={20} name="envelope.fill" color={inviteMethod === 'email' ? '#0A0A0F' : '#2DD4BF'} />
-                  <ThemedText style={[styles.methodButtonText, inviteMethod === 'email' && styles.methodButtonTextActive]}>
+                  <IconSymbol size={20} name="envelope.fill" color={inviteMethod === 'email' ? '#0A0A0F' : (isDark ? '#2DD4BF' : colors.tint)} />
+                  <ThemedText style={[styles.methodButtonText, inviteMethod === 'email' && styles.methodButtonTextActive, !isDark && inviteMethod !== 'email' && { color: colors.text }]}>
                     Email
                   </ThemedText>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={[styles.methodButton, inviteMethod === 'phone' && styles.methodButtonActive]}
+                  style={[styles.methodButton, inviteMethod === 'phone' && styles.methodButtonActive, !isDark && inviteMethod !== 'phone' && { backgroundColor: colors.card, borderColor: colors.border }]}
                   onPress={() => setInviteMethod('phone')}>
-                  <IconSymbol size={20} name="phone.fill" color={inviteMethod === 'phone' ? '#0A0A0F' : '#2DD4BF'} />
-                  <ThemedText style={[styles.methodButtonText, inviteMethod === 'phone' && styles.methodButtonTextActive]}>
+                  <IconSymbol size={20} name="phone.fill" color={inviteMethod === 'phone' ? '#0A0A0F' : (isDark ? '#2DD4BF' : colors.tint)} />
+                  <ThemedText style={[styles.methodButtonText, inviteMethod === 'phone' && styles.methodButtonTextActive, !isDark && inviteMethod !== 'phone' && { color: colors.text }]}>
                     Phone
                   </ThemedText>
                 </TouchableOpacity>
               </View>
 
               <View style={styles.formGroup}>
-                <ThemedText style={styles.label}>Name (Optional)</ThemedText>
+                <ThemedText style={[styles.label, !isDark && { color: colors.textSecondary }]}>Name (Optional)</ThemedText>
                 <TextInput
-                  style={[styles.input, styles.glassInput]}
+                  style={[styles.input, styles.glassInput, !isDark && { backgroundColor: colors.inputBackground, borderColor: colors.inputBorder, color: colors.text }]}
                   placeholder="e.g. John Doe"
                   placeholderTextColor="#6B7280"
                   value={newFriendName}
@@ -260,9 +260,9 @@ export default function FriendsScreen() {
 
               {inviteMethod === 'email' ? (
                 <View style={styles.formGroup}>
-                  <ThemedText style={styles.label}>Email Address *</ThemedText>
+                  <ThemedText style={[styles.label, !isDark && { color: colors.textSecondary }]}>Email Address *</ThemedText>
                   <TextInput
-                    style={[styles.input, styles.glassInput]}
+                    style={[styles.input, styles.glassInput, !isDark && { backgroundColor: colors.inputBackground, borderColor: colors.inputBorder, color: colors.text }]}
                     placeholder="friend@example.com"
                     placeholderTextColor="#6B7280"
                     value={newFriendEmail}
@@ -275,9 +275,9 @@ export default function FriendsScreen() {
                 </View>
               ) : (
                 <View style={styles.formGroup}>
-                  <ThemedText style={styles.label}>Phone Number *</ThemedText>
+                  <ThemedText style={[styles.label, !isDark && { color: colors.textSecondary }]}>Phone Number *</ThemedText>
                   <TextInput
-                    style={[styles.input, styles.glassInput]}
+                    style={[styles.input, styles.glassInput, !isDark && { backgroundColor: colors.inputBackground, borderColor: colors.inputBorder, color: colors.text }]}
                     placeholder="+1 (555) 123-4567"
                     placeholderTextColor="#6B7280"
                     value={newFriendPhone}
@@ -289,18 +289,18 @@ export default function FriendsScreen() {
                 </View>
               )}
 
-              <ThemedText style={styles.privacyNote}>
+              <ThemedText style={[styles.privacyNote, !isDark && { color: colors.textSecondary }]}>
                 We will send them an invite to join Vasuli. They will be able to accept and connect with you.
               </ThemedText>
             </ScrollView>
 
-            <View style={styles.modalFooter}>
+            <View style={[styles.modalFooter, !isDark && { borderTopColor: colors.border }]}>
               <TouchableOpacity
                 activeOpacity={0.8}
                 onPress={sendInvite}
                 disabled={inviteMethod === 'email' ? !newFriendEmail.trim() : !newFriendPhone.trim()}>
                 <LinearGradient
-                  colors={(inviteMethod === 'email' ? !newFriendEmail.trim() : !newFriendPhone.trim()) ? ['#1A1A24', '#12121A'] : gradients.buttonPrimary}
+                  colors={(inviteMethod === 'email' ? !newFriendEmail.trim() : !newFriendPhone.trim()) ? (isDark ? ['#1A1A24', '#12121A'] : ['#E5E5E5', '#D4D4D4']) : gradients.buttonPrimary}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={[

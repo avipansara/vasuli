@@ -342,8 +342,8 @@ export default function GroupDetailScreen() {
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             style={styles.modalKeyboard}>
             <View style={styles.modalHeader}>
-              <TouchableOpacity onPress={() => setExpenseModalVisible(false)} style={styles.closeButtonRect}>
-                <IconSymbol size={20} name="xmark" color="#fff" />
+              <TouchableOpacity onPress={() => setExpenseModalVisible(false)} style={[styles.closeButtonRect, !isDark && { backgroundColor: 'rgba(0, 0, 0, 0.05)' }]}>
+                <IconSymbol size={20} name="xmark" color={isDark ? '#fff' : colors.text} />
               </TouchableOpacity>
             </View>
 
@@ -353,19 +353,19 @@ export default function GroupDetailScreen() {
               keyboardShouldPersistTaps="handled">
               
               <View style={styles.modalHeaderContent}>
-                <View style={styles.modalIconContainer}>
-                  <IconSymbol size={40} name="dollarsign.circle.fill" color="#2DD4BF" />
+                <View style={[styles.modalIconContainer, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)' }]}>
+                  <IconSymbol size={40} name="dollarsign.circle.fill" color={isDark ? '#2DD4BF' : colors.tint} />
                 </View>
-                <ThemedText type="title" style={styles.modalTitleText}>Add Expense</ThemedText>
-                <ThemedText style={styles.modalSubtitle}>
+                <ThemedText type="title" style={[styles.modalTitleText, !isDark && { color: colors.text }]}>Add Expense</ThemedText>
+                <ThemedText style={[styles.modalSubtitle, !isDark && { color: colors.textSecondary }]}>
                   Track what you spent in this group
                 </ThemedText>
               </View>
 
               <View style={styles.formGroup}>
-                <ThemedText style={styles.label}>Description *</ThemedText>
+                <ThemedText style={[styles.label, !isDark && { color: colors.textSecondary }]}>Description *</ThemedText>
                 <TextInput
-                  style={[styles.input, styles.glassInput]}
+                  style={[styles.input, styles.glassInput, !isDark && { backgroundColor: colors.inputBackground, borderColor: colors.inputBorder, color: colors.text }]}
                   placeholder="e.g. Dinner at Mario's"
                   placeholderTextColor="#6B7280"
                   value={description}
@@ -376,9 +376,9 @@ export default function GroupDetailScreen() {
               </View>
 
               <View style={styles.formGroup}>
-                <ThemedText style={styles.label}>Amount *</ThemedText>
+                <ThemedText style={[styles.label, !isDark && { color: colors.textSecondary }]}>Amount *</ThemedText>
                 <TextInput
-                  style={[styles.input, styles.glassInput]}
+                  style={[styles.input, styles.glassInput, !isDark && { backgroundColor: colors.inputBackground, borderColor: colors.inputBorder, color: colors.text }]}
                   placeholder="0.00"
                   placeholderTextColor="#6B7280"
                   value={amount}
@@ -388,18 +388,18 @@ export default function GroupDetailScreen() {
                 />
               </View>
 
-              <ThemedText style={styles.privacyNote}>
+              <ThemedText style={[styles.privacyNote, !isDark && { color: colors.textSecondary }]}>
                 The expense will be split equally among all group members.
               </ThemedText>
             </ScrollView>
 
-            <View style={[styles.modalFooter, { borderTopColor: 'rgba(45, 212, 191, 0.15)' }]}>
+            <View style={[styles.modalFooter, { borderTopColor: isDark ? 'rgba(45, 212, 191, 0.15)' : colors.border }]}>
               <TouchableOpacity
                 activeOpacity={0.8}
                 onPress={addExpense}
                 disabled={!description.trim() || !amount.trim()}>
                 <LinearGradient
-                  colors={(!description.trim() || !amount.trim()) ? ['#1A1A24', '#12121A'] : gradients.buttonPrimary}
+                  colors={(!description.trim() || !amount.trim()) ? (isDark ? ['#1A1A24', '#12121A'] : ['#E5E5E5', '#D4D4D4']) : gradients.buttonPrimary}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={[
@@ -425,8 +425,8 @@ export default function GroupDetailScreen() {
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             style={styles.modalKeyboard}>
             <View style={styles.modalHeader}>
-              <TouchableOpacity onPress={() => setMemberModalVisible(false)} style={styles.closeButtonRect}>
-                <IconSymbol size={20} name="xmark" color="#fff" />
+              <TouchableOpacity onPress={() => setMemberModalVisible(false)} style={[styles.closeButtonRect, !isDark && { backgroundColor: 'rgba(0, 0, 0, 0.05)' }]}>
+                <IconSymbol size={20} name="xmark" color={isDark ? '#fff' : colors.text} />
               </TouchableOpacity>
             </View>
 
@@ -436,20 +436,20 @@ export default function GroupDetailScreen() {
               keyboardShouldPersistTaps="handled">
               
               <View style={styles.modalHeaderContent}>
-                <View style={styles.modalIconContainer}>
-                  <IconSymbol size={40} name="person.badge.plus" color="#2DD4BF" />
+                <View style={[styles.modalIconContainer, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)' }]}>
+                  <IconSymbol size={40} name="person.badge.plus" color={isDark ? '#2DD4BF' : colors.tint} />
                 </View>
-                <ThemedText type="title" style={styles.modalTitleText}>Add Member</ThemedText>
-                <ThemedText style={styles.modalSubtitle}>
+                <ThemedText type="title" style={[styles.modalTitleText, !isDark && { color: colors.text }]}>Add Member</ThemedText>
+                <ThemedText style={[styles.modalSubtitle, !isDark && { color: colors.textSecondary }]}>
                   Add a friend to this group
                 </ThemedText>
               </View>
 
               <View style={styles.formGroup}>
-                <ThemedText style={styles.label}>Select Friend *</ThemedText>
+                <ThemedText style={[styles.label, !isDark && { color: colors.textSecondary }]}>Select Friend *</ThemedText>
                 <View style={styles.userList}>
                   {availableUsers.length === 0 ? (
-                    <ThemedText style={styles.emptyText}>No available users. Add friends first.</ThemedText>
+                    <ThemedText style={[styles.emptyText, !isDark && { color: colors.textSecondary }]}>No available users. Add friends first.</ThemedText>
                   ) : (
                     availableUsers.map(user => (
                       <TouchableOpacity
@@ -457,13 +457,13 @@ export default function GroupDetailScreen() {
                         style={[
                           styles.userOption,
                           selectedUserId === user.id && styles.userOptionSelected,
-                          selectedUserId !== user.id && styles.userOptionUnselected,
+                          selectedUserId !== user.id && (isDark ? styles.userOptionUnselected : { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }),
                         ]}
                         onPress={() => setSelectedUserId(user.id)}>
                         <ThemedText style={[
                           styles.userOptionText,
                           selectedUserId === user.id && { color: '#0A0A0F' },
-                          selectedUserId !== user.id && { color: '#f4f4f5' }
+                          selectedUserId !== user.id && { color: isDark ? '#f4f4f5' : colors.text }
                         ]}>
                           {user.name}
                         </ThemedText>
@@ -473,19 +473,19 @@ export default function GroupDetailScreen() {
                 </View>
               </View>
 
-              <ThemedText style={styles.privacyNote}>
+              <ThemedText style={[styles.privacyNote, !isDark && { color: colors.textSecondary }]}>
                 They will be able to see and add expenses to this group.
               </ThemedText>
             </ScrollView>
 
-            <View style={[styles.modalFooter, { borderTopColor: 'rgba(45, 212, 191, 0.15)' }]}>
+            <View style={[styles.modalFooter, { borderTopColor: isDark ? 'rgba(45, 212, 191, 0.15)' : colors.border }]}>
               {availableUsers.length > 0 && (
                 <TouchableOpacity
                   activeOpacity={0.8}
                   onPress={addMember}
                   disabled={!selectedUserId}>
                   <LinearGradient
-                    colors={!selectedUserId ? ['#1A1A24', '#12121A'] : gradients.buttonPrimary}
+                    colors={!selectedUserId ? (isDark ? ['#1A1A24', '#12121A'] : ['#E5E5E5', '#D4D4D4']) : gradients.buttonPrimary}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
                     style={[
@@ -512,8 +512,8 @@ export default function GroupDetailScreen() {
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             style={styles.modalKeyboard}>
             <View style={styles.modalHeader}>
-              <TouchableOpacity onPress={() => setSettleModalVisible(false)} style={styles.closeButtonRect}>
-                <IconSymbol size={20} name="xmark" color="#fff" />
+              <TouchableOpacity onPress={() => setSettleModalVisible(false)} style={[styles.closeButtonRect, !isDark && { backgroundColor: 'rgba(0, 0, 0, 0.05)' }]}>
+                <IconSymbol size={20} name="xmark" color={isDark ? '#fff' : colors.text} />
               </TouchableOpacity>
             </View>
 
@@ -526,14 +526,14 @@ export default function GroupDetailScreen() {
                 <View style={[styles.modalIconContainer, { backgroundColor: 'rgba(16, 185, 129, 0.15)' }]}>
                   <IconSymbol size={40} name="checkmark.circle.fill" color="#10b981" />
                 </View>
-                <ThemedText type="title" style={styles.modalTitleText}>Settle Up</ThemedText>
-                <ThemedText style={styles.modalSubtitle}>
+                <ThemedText type="title" style={[styles.modalTitleText, !isDark && { color: colors.text }]}>Settle Up</ThemedText>
+                <ThemedText style={[styles.modalSubtitle, !isDark && { color: colors.textSecondary }]}>
                   Record a payment to settle your balance
                 </ThemedText>
               </View>
 
               <View style={styles.formGroup}>
-                <ThemedText style={styles.label}>Settle with *</ThemedText>
+                <ThemedText style={[styles.label, !isDark && { color: colors.textSecondary }]}>Settle with *</ThemedText>
                 <View style={styles.userList}>
                   {members.filter(m => m.userId !== 'current-user').map(member => (
                     <TouchableOpacity
@@ -541,13 +541,13 @@ export default function GroupDetailScreen() {
                       style={[
                         styles.userOption,
                         settleWithUserId === member.userId && styles.userOptionSelected,
-                        settleWithUserId !== member.userId && styles.userOptionUnselected,
+                        settleWithUserId !== member.userId && (isDark ? styles.userOptionUnselected : { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }),
                       ]}
                       onPress={() => setSettleWithUserId(member.userId)}>
                       <ThemedText style={[
                         styles.userOptionText,
                         settleWithUserId === member.userId && { color: '#0A0A0F' },
-                        settleWithUserId !== member.userId && { color: '#f4f4f5' }
+                        settleWithUserId !== member.userId && { color: isDark ? '#f4f4f5' : colors.text }
                       ]}>
                         {member.user?.name || 'Unknown'}
                       </ThemedText>
@@ -557,9 +557,9 @@ export default function GroupDetailScreen() {
               </View>
 
               <View style={styles.formGroup}>
-                <ThemedText style={styles.label}>Amount *</ThemedText>
+                <ThemedText style={[styles.label, !isDark && { color: colors.textSecondary }]}>Amount *</ThemedText>
                 <TextInput
-                  style={[styles.input, styles.glassInput]}
+                  style={[styles.input, styles.glassInput, !isDark && { backgroundColor: colors.inputBackground, borderColor: colors.inputBorder, color: colors.text }]}
                   placeholder="0.00"
                   placeholderTextColor="#6B7280"
                   value={settleAmount}
@@ -569,18 +569,18 @@ export default function GroupDetailScreen() {
                 />
               </View>
 
-              <ThemedText style={styles.privacyNote}>
+              <ThemedText style={[styles.privacyNote, !isDark && { color: colors.textSecondary }]}>
                 This will record a payment and update your balances.
               </ThemedText>
             </ScrollView>
 
-            <View style={[styles.modalFooter, { borderTopColor: 'rgba(45, 212, 191, 0.15)' }]}>
+            <View style={[styles.modalFooter, { borderTopColor: isDark ? 'rgba(45, 212, 191, 0.15)' : colors.border }]}>
               <TouchableOpacity
                 activeOpacity={0.8}
                 onPress={settleUp}
                 disabled={!settleWithUserId || !settleAmount.trim()}>
                 <LinearGradient
-                  colors={(!settleWithUserId || !settleAmount.trim()) ? ['#1A1A24', '#12121A'] : ['#10b981', '#059669']}
+                  colors={(!settleWithUserId || !settleAmount.trim()) ? (isDark ? ['#1A1A24', '#12121A'] : ['#E5E5E5', '#D4D4D4']) : ['#10b981', '#059669']}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={[
