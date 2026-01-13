@@ -323,7 +323,7 @@ export const expenseService = {
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
-        expense.groupId,
+        expense.groupId || null,
         expense.description,
         expense.amount,
         expense.currency,

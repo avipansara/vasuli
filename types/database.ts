@@ -26,7 +26,7 @@ export interface GroupMember {
 
 export interface Expense {
   id: string;
-  groupId: string;
+  groupId?: string;
   description: string;
   amount: number;
   currency: string;
