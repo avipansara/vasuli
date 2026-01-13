@@ -249,18 +249,21 @@ export default function GroupDetailScreen() {
   const currentUserBalance = balances.get('current-user') || 0;
 
   return (
-    <ThemedView style={styles.container}>
-      <LinearGradient
-        colors={Gradients.hero}
-        style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <IconSymbol size={24} name="chevron.left" color="#2DD4BF" />
+    <LinearGradient
+      colors={Gradients.screenBackground}
+      style={styles.container}>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButtonRect}>
+          <IconSymbol size={20} name="chevron.left" color="#2DD4BF" />
         </TouchableOpacity>
-        <ThemedText type="title">{group.name}</ThemedText>
+        <ThemedText type="title" style={styles.headerTitle}>{group.name}</ThemedText>
         <View style={styles.headerSpacer} />
-      </LinearGradient>
+      </View>
 
-      <ScrollView style={styles.content}>
+      <ScrollView 
+        style={styles.content}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}>
         <LinearGradient
           colors={Gradients.cardAccent}
           start={{ x: 0, y: 0 }}
@@ -309,9 +312,11 @@ export default function GroupDetailScreen() {
 
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <ThemedText type="subtitle">Members</ThemedText>
-            <TouchableOpacity onPress={() => setMemberModalVisible(true)}>
-              <IconSymbol size={20} name="plus.circle" color="#2DD4BF" />
+            <ThemedText type="subtitle" style={styles.sectionTitleText}>Members</ThemedText>
+            <TouchableOpacity 
+              style={styles.addButtonRect}
+              onPress={() => setMemberModalVisible(true)}>
+              <IconSymbol size={18} name="plus" color="#2DD4BF" />
             </TouchableOpacity>
           </View>
           {members.map(member => (
@@ -320,9 +325,12 @@ export default function GroupDetailScreen() {
         </View>
 
         <View style={styles.section}>
-          <ThemedText type="subtitle" style={styles.sectionTitle}>Expenses</ThemedText>
+          <ThemedText type="subtitle" style={[styles.sectionTitle, styles.sectionTitleText]}>Expenses</ThemedText>
           {expenses.length === 0 ? (
-            <ThemedText style={styles.emptyText}>No expenses yet</ThemedText>
+            <View style={styles.emptySection}>
+              <IconSymbol size={48} name="dollarsign.circle" color="rgba(45, 212, 191, 0.3)" />
+              <ThemedText style={styles.emptyText}>No expenses yet</ThemedText>
+            </View>
           ) : (
             expenses.map(expense => (
               <View key={expense.id}>{renderExpense({ item: expense })}</View>
@@ -334,16 +342,15 @@ export default function GroupDetailScreen() {
       <Modal
         visible={expenseModalVisible}
         animationType="slide"
-        presentationStyle="pageSheet"
+        presentationStyle="fullScreen"
         onRequestClose={() => setExpenseModalVisible(false)}>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.modalContainer}>
-          <View style={[styles.modalContent, { backgroundColor: '#0A0A0F' }]}>
+        <LinearGradient colors={Gradients.screenBackground} style={styles.modalContainer}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={styles.modalKeyboard}>
             <View style={styles.modalHeader}>
-              <ThemedText type="subtitle" style={styles.modalTitle}>Add Expense</ThemedText>
-              <TouchableOpacity onPress={() => setExpenseModalVisible(false)} style={styles.closeButton}>
-                <IconSymbol size={28} name="xmark.circle.fill" color="#6B7280" />
+              <TouchableOpacity onPress={() => setExpenseModalVisible(false)} style={styles.closeButtonRect}>
+                <IconSymbol size={20} name="xmark" color="#fff" />
               </TouchableOpacity>
             </View>
 
@@ -351,8 +358,19 @@ export default function GroupDetailScreen() {
               showsVerticalScrollIndicator={false}
               contentContainerStyle={styles.modalScrollContent}
               keyboardShouldPersistTaps="handled">
+              
+              <View style={styles.modalHeaderContent}>
+                <View style={styles.modalIconContainer}>
+                  <IconSymbol size={40} name="dollarsign.circle.fill" color="#2DD4BF" />
+                </View>
+                <ThemedText type="title" style={styles.modalTitleText}>Add Expense</ThemedText>
+                <ThemedText style={styles.modalSubtitle}>
+                  Track what you spent in this group
+                </ThemedText>
+              </View>
+
               <View style={styles.formGroup}>
-                <ThemedText style={styles.label}>Description</ThemedText>
+                <ThemedText style={styles.label}>Description *</ThemedText>
                 <TextInput
                   style={[styles.input, styles.glassInput]}
                   placeholder="e.g. Dinner at Mario's"
@@ -360,11 +378,12 @@ export default function GroupDetailScreen() {
                   value={description}
                   onChangeText={setDescription}
                   autoFocus
+                  returnKeyType="done"
                 />
               </View>
 
               <View style={styles.formGroup}>
-                <ThemedText style={styles.label}>Amount</ThemedText>
+                <ThemedText style={styles.label}>Amount *</ThemedText>
                 <TextInput
                   style={[styles.input, styles.glassInput]}
                   placeholder="0.00"
@@ -372,8 +391,13 @@ export default function GroupDetailScreen() {
                   value={amount}
                   onChangeText={setAmount}
                   keyboardType="decimal-pad"
+                  returnKeyType="done"
                 />
               </View>
+
+              <ThemedText style={styles.privacyNote}>
+                The expense will be split equally among all group members.
+              </ThemedText>
             </ScrollView>
 
             <View style={[styles.modalFooter, { borderTopColor: 'rgba(45, 212, 191, 0.15)' }]}>
@@ -389,27 +413,27 @@ export default function GroupDetailScreen() {
                     styles.submitButton,
                     (!description.trim() || !amount.trim()) && styles.disabledButton
                   ]}>
+                  <IconSymbol size={20} name="plus.circle.fill" color={(!description.trim() || !amount.trim()) ? '#6B7280' : '#0A0A0F'} />
                   <ThemedText style={[styles.submitButtonText, { color: (!description.trim() || !amount.trim()) ? '#6B7280' : '#0A0A0F' }]}>Add Expense</ThemedText>
                 </LinearGradient>
               </TouchableOpacity>
             </View>
-          </View>
-        </KeyboardAvoidingView>
+          </KeyboardAvoidingView>
+        </LinearGradient>
       </Modal>
 
       <Modal
         visible={memberModalVisible}
         animationType="slide"
-        presentationStyle="pageSheet"
+        presentationStyle="fullScreen"
         onRequestClose={() => setMemberModalVisible(false)}>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.modalContainer}>
-          <View style={[styles.modalContent, { backgroundColor: '#0A0A0F' }]}>
+        <LinearGradient colors={Gradients.screenBackground} style={styles.modalContainer}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={styles.modalKeyboard}>
             <View style={styles.modalHeader}>
-              <ThemedText type="subtitle" style={styles.modalTitle}>Add Member</ThemedText>
-              <TouchableOpacity onPress={() => setMemberModalVisible(false)} style={styles.closeButton}>
-                <IconSymbol size={28} name="xmark.circle.fill" color="#6B7280" />
+              <TouchableOpacity onPress={() => setMemberModalVisible(false)} style={styles.closeButtonRect}>
+                <IconSymbol size={20} name="xmark" color="#fff" />
               </TouchableOpacity>
             </View>
 
@@ -417,8 +441,19 @@ export default function GroupDetailScreen() {
               showsVerticalScrollIndicator={false}
               contentContainerStyle={styles.modalScrollContent}
               keyboardShouldPersistTaps="handled">
+              
+              <View style={styles.modalHeaderContent}>
+                <View style={styles.modalIconContainer}>
+                  <IconSymbol size={40} name="person.badge.plus" color="#2DD4BF" />
+                </View>
+                <ThemedText type="title" style={styles.modalTitleText}>Add Member</ThemedText>
+                <ThemedText style={styles.modalSubtitle}>
+                  Add a friend to this group
+                </ThemedText>
+              </View>
+
               <View style={styles.formGroup}>
-                <ThemedText style={styles.label}>Select Friend</ThemedText>
+                <ThemedText style={styles.label}>Select Friend *</ThemedText>
                 <View style={styles.userList}>
                   {availableUsers.length === 0 ? (
                     <ThemedText style={styles.emptyText}>No available users. Add friends first.</ThemedText>
@@ -444,6 +479,10 @@ export default function GroupDetailScreen() {
                   )}
                 </View>
               </View>
+
+              <ThemedText style={styles.privacyNote}>
+                They will be able to see and add expenses to this group.
+              </ThemedText>
             </ScrollView>
 
             <View style={[styles.modalFooter, { borderTopColor: 'rgba(45, 212, 191, 0.15)' }]}>
@@ -460,28 +499,28 @@ export default function GroupDetailScreen() {
                       styles.submitButton,
                       !selectedUserId && styles.disabledButton
                     ]}>
+                    <IconSymbol size={20} name="person.badge.plus" color={!selectedUserId ? '#6B7280' : '#0A0A0F'} />
                     <ThemedText style={[styles.submitButtonText, { color: !selectedUserId ? '#6B7280' : '#0A0A0F' }]}>Add Member</ThemedText>
                   </LinearGradient>
                 </TouchableOpacity>
               )}
             </View>
-          </View>
-        </KeyboardAvoidingView>
+          </KeyboardAvoidingView>
+        </LinearGradient>
       </Modal>
 
       <Modal
         visible={settleModalVisible}
         animationType="slide"
-        presentationStyle="pageSheet"
+        presentationStyle="fullScreen"
         onRequestClose={() => setSettleModalVisible(false)}>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.modalContainer}>
-          <View style={[styles.modalContent, { backgroundColor: '#0A0A0F' }]}>
+        <LinearGradient colors={Gradients.screenBackground} style={styles.modalContainer}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={styles.modalKeyboard}>
             <View style={styles.modalHeader}>
-              <ThemedText type="subtitle" style={styles.modalTitle}>Settle Up</ThemedText>
-              <TouchableOpacity onPress={() => setSettleModalVisible(false)} style={styles.closeButton}>
-                <IconSymbol size={28} name="xmark.circle.fill" color="#6B7280" />
+              <TouchableOpacity onPress={() => setSettleModalVisible(false)} style={styles.closeButtonRect}>
+                <IconSymbol size={20} name="xmark" color="#fff" />
               </TouchableOpacity>
             </View>
 
@@ -489,8 +528,19 @@ export default function GroupDetailScreen() {
               showsVerticalScrollIndicator={false}
               contentContainerStyle={styles.modalScrollContent}
               keyboardShouldPersistTaps="handled">
+              
+              <View style={styles.modalHeaderContent}>
+                <View style={[styles.modalIconContainer, { backgroundColor: 'rgba(16, 185, 129, 0.15)' }]}>
+                  <IconSymbol size={40} name="checkmark.circle.fill" color="#10b981" />
+                </View>
+                <ThemedText type="title" style={styles.modalTitleText}>Settle Up</ThemedText>
+                <ThemedText style={styles.modalSubtitle}>
+                  Record a payment to settle your balance
+                </ThemedText>
+              </View>
+
               <View style={styles.formGroup}>
-                <ThemedText style={styles.label}>Settle with</ThemedText>
+                <ThemedText style={styles.label}>Settle with *</ThemedText>
                 <View style={styles.userList}>
                   {members.filter(m => m.userId !== 'current-user').map(member => (
                     <TouchableOpacity
@@ -514,7 +564,7 @@ export default function GroupDetailScreen() {
               </View>
 
               <View style={styles.formGroup}>
-                <ThemedText style={styles.label}>Amount</ThemedText>
+                <ThemedText style={styles.label}>Amount *</ThemedText>
                 <TextInput
                   style={[styles.input, styles.glassInput]}
                   placeholder="0.00"
@@ -522,8 +572,13 @@ export default function GroupDetailScreen() {
                   value={settleAmount}
                   onChangeText={setSettleAmount}
                   keyboardType="decimal-pad"
+                  returnKeyType="done"
                 />
               </View>
+
+              <ThemedText style={styles.privacyNote}>
+                This will record a payment and update your balances.
+              </ThemedText>
             </ScrollView>
 
             <View style={[styles.modalFooter, { borderTopColor: 'rgba(45, 212, 191, 0.15)' }]}>
@@ -539,14 +594,15 @@ export default function GroupDetailScreen() {
                     styles.submitButton,
                     (!settleWithUserId || !settleAmount.trim()) && styles.disabledButton
                   ]}>
+                  <IconSymbol size={20} name="checkmark.circle.fill" color={(!settleWithUserId || !settleAmount.trim()) ? '#6B7280' : '#fff'} />
                   <ThemedText style={[styles.submitButtonText, { color: (!settleWithUserId || !settleAmount.trim()) ? '#6B7280' : '#fff' }]}>Record Payment</ThemedText>
                 </LinearGradient>
               </TouchableOpacity>
             </View>
-          </View>
-        </KeyboardAvoidingView>
+          </KeyboardAvoidingView>
+        </LinearGradient>
       </Modal>
-    </ThemedView>
+    </LinearGradient>
   );
 }
 
@@ -727,10 +783,10 @@ const styles = StyleSheet.create({
   },
   modalHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end',
     alignItems: 'center',
-    padding: 24,
-    paddingTop: 40,
+    padding: 20,
+    paddingTop: Platform.OS === 'ios' ? 60 : 40,
   },
   modalTitle: {
     fontSize: 20,
@@ -767,6 +823,9 @@ const styles = StyleSheet.create({
     padding: 14,
     borderRadius: 14,
     alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
   },
   disabledButton: {
     opacity: 0.5,
@@ -807,5 +866,79 @@ const styles = StyleSheet.create({
   userOptionUnselected: {
     backgroundColor: 'rgba(26, 26, 36, 0.8)',
     borderColor: 'rgba(45, 212, 191, 0.2)',
+  },
+  modalKeyboard: {
+    flex: 1,
+  },
+  closeButtonRect: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalHeaderContent: {
+    alignItems: 'center',
+    marginBottom: 32,
+  },
+  modalIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 16,
+    backgroundColor: 'rgba(45, 212, 191, 0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  modalTitleText: {
+    color: '#fff',
+    marginBottom: 8,
+    lineHeight: 32,
+  },
+  modalSubtitle: {
+    color: 'rgba(255,255,255,0.6)',
+    textAlign: 'center',
+  },
+  privacyNote: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.5)',
+    textAlign: 'center',
+    marginTop: 8,
+    lineHeight: 18,
+  },
+  backButtonRect: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: 'rgba(45, 212, 191, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(45, 212, 191, 0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerTitle: {
+    color: '#fff',
+  },
+  scrollContent: {
+    paddingBottom: 100,
+  },
+  sectionTitleText: {
+    color: '#fff',
+  },
+  addButtonRect: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: 'rgba(45, 212, 191, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(45, 212, 191, 0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptySection: {
+    alignItems: 'center',
+    paddingVertical: 32,
+    gap: 12,
   },
 });
