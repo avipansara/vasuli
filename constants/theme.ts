@@ -1,29 +1,97 @@
 /**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
+ * Ambient / Liquid Glass UI Theme
+ * Dark theme with teal/cyan accents and purple gradient highlights
  */
 
 import { Platform } from 'react-native';
 
-const tintColorLight = '#18181b'; // Zinc-900 (Nearly Black)
-const tintColorDark = '#ffffff'; // White
+// Primary accent - Teal/Cyan (from reference)
+const accentTeal = '#2DD4BF'; // Bright teal
+
+// Secondary accent - Purple/Violet gradient colors
+const accentPurple = '#A78BFA'; // Violet
+
+// Background colors - Deep dark
+const backgroundDark = '#0A0A0F'; // Near black with slight blue
+const backgroundCard = '#12121A'; // Slightly lighter for cards
+
+// Surface colors for glass effect
+const surfaceGlass = 'rgba(26, 26, 36, 0.8)'; // Semi-transparent glass
+const surfaceBorder = 'rgba(45, 212, 191, 0.2)'; // Teal border glow
 
 export const Colors = {
   light: {
-    text: '#18181b',
-    background: '#ffffff',
-    tint: tintColorLight,
-    icon: '#71717a', // Zinc-500
-    tabIconDefault: '#a1a1aa', // Zinc-400
-    tabIconSelected: tintColorLight,
+    text: '#f4f4f5',
+    background: backgroundDark,
+    tint: accentTeal,
+    icon: '#6B7280',
+    tabIconDefault: '#4B5563',
+    tabIconSelected: accentTeal,
+    // Extended palette
+    accent: accentTeal,
+    accentSecondary: accentPurple,
+    card: backgroundCard,
+    cardGlass: surfaceGlass,
+    border: surfaceBorder,
+    success: '#10B981',
+    error: '#EF4444',
   },
   dark: {
-    text: '#f4f4f5', // Zinc-100
-    background: '#09090b', // Zinc-950
-    tint: tintColorDark,
-    icon: '#a1a1aa', // Zinc-400
-    tabIconDefault: '#71717a', // Zinc-500
-    tabIconSelected: tintColorDark,
+    text: '#f4f4f5',
+    background: backgroundDark,
+    tint: accentTeal,
+    icon: '#6B7280',
+    tabIconDefault: '#4B5563',
+    tabIconSelected: accentTeal,
+    // Extended palette
+    accent: accentTeal,
+    accentSecondary: accentPurple,
+    card: backgroundCard,
+    cardGlass: surfaceGlass,
+    border: surfaceBorder,
+    success: '#10B981',
+    error: '#EF4444',
+  },
+};
+
+// Gradient presets for liquid glass effects
+export const Gradients = {
+  // Card gradient - teal to purple
+  cardPrimary: ['#1A1A24', '#12121A'] as [string, string],
+  // Accent card with teal glow
+  cardAccent: ['rgba(45, 212, 191, 0.15)', 'rgba(139, 92, 246, 0.1)'] as [string, string],
+  // Header/hero gradient
+  hero: ['#0A0A0F', '#12121A'] as [string, string],
+  // Button gradient
+  buttonPrimary: ['#2DD4BF', '#14B8A6'] as [string, string],
+  // Purple accent gradient
+  purpleAccent: ['#A78BFA', '#8B5CF6'] as [string, string],
+  // Glass overlay
+  glassOverlay: ['rgba(26, 26, 36, 0.9)', 'rgba(18, 18, 26, 0.95)'] as [string, string],
+};
+
+// Glow/shadow effects for ambient UI
+export const Glows = {
+  teal: {
+    shadowColor: '#2DD4BF',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  purple: {
+    shadowColor: '#8B5CF6',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 6,
+  },
+  card: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 16,
+    elevation: 10,
   },
 };
 
