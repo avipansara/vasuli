@@ -1,10 +1,11 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors } from '@/constants/theme';
+import { Colors, Gradients } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { expenseService, groupService, initDatabase, userService } from '@/services/database';
 import type { Expense, Group } from '@/types/database';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useState } from 'react';
 import { Alert, FlatList, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 
@@ -97,9 +98,13 @@ export default function ExpensesScreen() {
     const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
     return (
-      <View style={[styles.expenseCard, { backgroundColor: Colors[colorScheme ?? 'light'].background }]}>
+      <LinearGradient
+        colors={Gradients.cardPrimary}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.expenseCard}>
         <View style={styles.expenseIcon}>
-          <IconSymbol size={24} name="dollarsign.circle.fill" color={Colors[colorScheme ?? 'light'].tint} />
+          <IconSymbol size={24} name="dollarsign.circle.fill" color="#2DD4BF" />
         </View>
         <View style={styles.expenseInfo}>
           <ThemedText type="defaultSemiBold" style={styles.expenseDescription}>
@@ -116,20 +121,28 @@ export default function ExpensesScreen() {
           <ThemedText style={styles.amount}>${item.amount.toFixed(2)}</ThemedText>
           <ThemedText style={styles.paidLabel}>you paid</ThemedText>
         </View>
-      </View>
+      </LinearGradient>
     );
   }
 
   return (
     <ThemedView style={styles.container}>
-      <View style={[styles.header, { backgroundColor: Colors[colorScheme ?? 'light'].background }]}>
+      <LinearGradient
+        colors={Gradients.hero}
+        style={styles.header}>
         <ThemedText type="title">Expenses</ThemedText>
         <TouchableOpacity
-          style={[styles.addButton, { backgroundColor: Colors[colorScheme ?? 'light'].tint }]}
+          style={styles.addButton}
           onPress={() => setModalVisible(true)}>
-          <IconSymbol size={24} name="plus" color="#fff" />
+          <LinearGradient
+            colors={Gradients.buttonPrimary}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.addButtonGradient}>
+            <IconSymbol size={24} name="plus" color="#0A0A0F" />
+          </LinearGradient>
         </TouchableOpacity>
-      </View>
+      </LinearGradient>
 
       {loading ? (
         <View style={styles.emptyContainer}>
@@ -137,13 +150,26 @@ export default function ExpensesScreen() {
         </View>
       ) : expenses.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <IconSymbol size={64} name="dollarsign.circle" color={Colors[colorScheme ?? 'light'].icon} />
+          <View style={styles.emptyIconContainer}>
+            <IconSymbol size={64} name="dollarsign.circle" color="#2DD4BF" />
+          </View>
           <ThemedText type="subtitle" style={styles.emptyTitle}>
             No expenses yet
           </ThemedText>
           <ThemedText style={styles.emptyText}>
             Add an expense to start tracking
           </ThemedText>
+          <TouchableOpacity
+            style={styles.createButton}
+            onPress={() => setModalVisible(true)}>
+            <LinearGradient
+              colors={Gradients.buttonPrimary}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.createButtonGradient}>
+              <ThemedText style={styles.createButtonText}>Add Expense</ThemedText>
+            </LinearGradient>
+          </TouchableOpacity>
         </View>
       ) : (
         <FlatList
@@ -162,7 +188,7 @@ export default function ExpensesScreen() {
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.modalContainer}>
-          <View style={[styles.modalContent, { backgroundColor: Colors[colorScheme ?? 'light'].background }]}>
+          <View style={[styles.modalContent, { backgroundColor: '#0A0A0F' }]}>
             <View style={styles.modalHeader}>
               <ThemedText type="subtitle" style={styles.modalTitle}>Add Expense</ThemedText>
               <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.closeButton}>
@@ -177,13 +203,9 @@ export default function ExpensesScreen() {
               <View style={styles.formGroup}>
                 <ThemedText style={styles.label}>Description</ThemedText>
                 <TextInput
-                  style={[styles.input, { 
-                    backgroundColor: colorScheme === 'dark' ? '#1f2937' : '#f9fafb',
-                    color: Colors[colorScheme ?? 'light'].text,
-                    borderColor: colorScheme === 'dark' ? '#374151' : '#e5e7eb',
-                  }]}
+                  style={[styles.input, styles.glassInput]}
                   placeholder="e.g. Dinner at Mario's"
-                  placeholderTextColor={Colors[colorScheme ?? 'light'].icon}
+                  placeholderTextColor="#6B7280"
                   value={description}
                   onChangeText={setDescription}
                   autoFocus
@@ -193,13 +215,9 @@ export default function ExpensesScreen() {
               <View style={styles.formGroup}>
                 <ThemedText style={styles.label}>Amount</ThemedText>
                 <TextInput
-                  style={[styles.input, { 
-                    backgroundColor: colorScheme === 'dark' ? '#1f2937' : '#f9fafb',
-                    color: Colors[colorScheme ?? 'light'].text,
-                    borderColor: colorScheme === 'dark' ? '#374151' : '#e5e7eb',
-                  }]}
+                  style={[styles.input, styles.glassInput]}
                   placeholder="0.00"
-                  placeholderTextColor={Colors[colorScheme ?? 'light'].icon}
+                  placeholderTextColor="#6B7280"
                   value={amount}
                   onChangeText={setAmount}
                   keyboardType="decimal-pad"
@@ -214,21 +232,15 @@ export default function ExpensesScreen() {
                       key={group.id}
                       style={[
                         styles.groupButton,
-                        selectedGroupId === group.id && {
-                          backgroundColor: Colors[colorScheme ?? 'light'].tint,
-                          borderColor: Colors[colorScheme ?? 'light'].tint,
-                        },
-                        selectedGroupId !== group.id && {
-                          backgroundColor: colorScheme === 'dark' ? '#1f2937' : '#f3f4f6',
-                          borderColor: colorScheme === 'dark' ? '#374151' : '#e5e7eb',
-                        }
+                        selectedGroupId === group.id && styles.groupButtonSelected,
+                        selectedGroupId !== group.id && styles.groupButtonUnselected,
                       ]}
                       onPress={() => setSelectedGroupId(group.id)}>
                       <ThemedText
                         style={[
                           styles.groupButtonText,
-                          selectedGroupId === group.id && { color: '#fff' },
-                          selectedGroupId !== group.id && { color: Colors[colorScheme ?? 'light'].text }
+                          selectedGroupId === group.id && { color: '#0A0A0F' },
+                          selectedGroupId !== group.id && { color: '#f4f4f5' }
                         ]}>
                         {group.name}
                       </ThemedText>
@@ -238,19 +250,21 @@ export default function ExpensesScreen() {
               </View>
             </ScrollView>
 
-            <View style={[styles.modalFooter, { borderTopColor: colorScheme === 'dark' ? '#374151' : '#e5e7eb' }]}>
+            <View style={[styles.modalFooter, { borderTopColor: 'rgba(45, 212, 191, 0.15)' }]}>
               <TouchableOpacity
                 activeOpacity={0.8}
                 onPress={createExpense}
                 disabled={!description.trim() || !amount.trim() || !selectedGroupId}>
-                <View
+                <LinearGradient
+                  colors={(!description.trim() || !amount.trim() || !selectedGroupId) ? ['#1A1A24', '#12121A'] : Gradients.buttonPrimary}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
                   style={[
                     styles.submitButton,
-                    { backgroundColor: (!description.trim() || !amount.trim() || !selectedGroupId) ? (colorScheme === 'dark' ? '#3f3f46' : '#d4d4d8') : Colors[colorScheme ?? 'light'].text },
                     (!description.trim() || !amount.trim() || !selectedGroupId) && styles.disabledButton
                   ]}>
-                  <ThemedText style={[styles.submitButtonText, { color: Colors[colorScheme ?? 'light'].background }]}>Add Expense</ThemedText>
-                </View>
+                  <ThemedText style={[styles.submitButtonText, { color: (!description.trim() || !amount.trim() || !selectedGroupId) ? '#6B7280' : '#0A0A0F' }]}>Add Expense</ThemedText>
+                </LinearGradient>
               </TouchableOpacity>
             </View>
           </View>
@@ -283,7 +297,7 @@ const styles = StyleSheet.create({
   },
   expenseCard: {
     flexDirection: 'row',
-    padding: 16,
+    padding: 12,
     borderRadius: 12,
     marginBottom: 12,
     shadowColor: '#000',
@@ -293,32 +307,32 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   expenseIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#f4f4f5',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(45, 212, 191, 0.15)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: 10,
   },
   expenseInfo: {
     flex: 1,
     justifyContent: 'center',
   },
   expenseDescription: {
-    fontSize: 16,
-    marginBottom: 4,
+    fontSize: 14,
+    marginBottom: 2,
   },
   expenseDetails: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   groupName: {
-    fontSize: 12,
+    fontSize: 11,
     opacity: 0.6,
   },
   expenseDate: {
-    fontSize: 12,
+    fontSize: 11,
     opacity: 0.6,
   },
   amountContainer: {
@@ -326,12 +340,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   amount: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
     marginBottom: 2,
   },
   paidLabel: {
-    fontSize: 11,
+    fontSize: 10,
     opacity: 0.6,
   },
   emptyContainer: {
@@ -364,7 +378,7 @@ const styles = StyleSheet.create({
     paddingTop: 40,
   },
   modalTitle: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: 'bold',
   },
   closeButton: {
@@ -378,9 +392,9 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   label: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '600',
-    marginBottom: 8,
+    marginBottom: 6,
     opacity: 0.7,
   },
   modalFooter: {
@@ -391,16 +405,16 @@ const styles = StyleSheet.create({
   input: {
     borderWidth: 1,
     borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
+    padding: 14,
+    fontSize: 14,
   },
   picker: {
     marginBottom: 16,
   },
   pickerLabel: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '600',
-    marginBottom: 8,
+    marginBottom: 6,
     opacity: 0.7,
   },
   groupButtons: {
@@ -409,18 +423,18 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   groupButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 16,
     borderWidth: 1,
   },
   groupButtonText: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '500',
   },
   submitButton: {
-    padding: 16,
-    borderRadius: 16,
+    padding: 14,
+    borderRadius: 14,
     alignItems: 'center',
   },
   disabledButton: {
@@ -428,7 +442,51 @@ const styles = StyleSheet.create({
   },
   submitButtonText: {
     color: '#fff',
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
+  },
+  addButtonGradient: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(45, 212, 191, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  createButton: {
+    marginTop: 24,
+    borderRadius: 24,
+    overflow: 'hidden',
+  },
+  createButtonGradient: {
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 20,
+  },
+  createButtonText: {
+    color: '#0A0A0F',
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  glassInput: {
+    backgroundColor: 'rgba(26, 26, 36, 0.8)',
+    color: '#f4f4f5',
+    borderColor: 'rgba(45, 212, 191, 0.2)',
+  },
+  groupButtonSelected: {
+    backgroundColor: '#2DD4BF',
+    borderColor: '#2DD4BF',
+  },
+  groupButtonUnselected: {
+    backgroundColor: 'rgba(26, 26, 36, 0.8)',
+    borderColor: 'rgba(45, 212, 191, 0.2)',
   },
 });
