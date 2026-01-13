@@ -1,22 +1,22 @@
 import {
-    ACCENT_TEAL,
-    BG_ICON_DARK,
-    BG_ICON_LIGHT,
-    BTN_CLOSE_LIGHT,
-    BTN_DISABLED_DARK,
-    BTN_DISABLED_LIGHT,
+  ACCENT_TEAL,
+  BG_ICON_DARK,
+  BG_ICON_LIGHT,
+  BTN_CLOSE_LIGHT,
+  BTN_DISABLED_DARK,
+  BTN_DISABLED_LIGHT,
 } from '@/constants/theme';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
 import {
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    TouchableOpacity,
-    View
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { ThemedText } from '../themed-text';
 import { IconSymbol, IconSymbolName } from './icon-symbol';
@@ -102,18 +102,20 @@ export function SharedModal({
                   color={iconColor || defaultIconColor}
                 />
               </View>
-              <ThemedText
-                type="title"
-                style={[styles.title, !isDark && { color: colors.text }]}>
-                {title}
-              </ThemedText>
-              <ThemedText
-                style={[
-                  styles.subtitle,
-                  !isDark && { color: colors.textSecondary },
-                ]}>
-                {subtitle}
-              </ThemedText>
+              <View>
+                <ThemedText
+                  type="title"
+                  style={[styles.title, !isDark && { color: colors.text }]}>
+                  {title}
+                </ThemedText>
+                <ThemedText
+                  style={[
+                    styles.subtitle,
+                    !isDark && { color: colors.textSecondary },
+                  ]}>
+                  {subtitle}
+                </ThemedText>
+              </View>
             </View>
 
             {children}
@@ -228,8 +230,8 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   iconContainer: {
-    width: 80,
-    height: 80,
+    width: 60,
+    height: 60,
     borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',

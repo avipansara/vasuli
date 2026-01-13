@@ -127,7 +127,7 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'column',
     padding: 20,
-    paddingTop: Platform.OS === 'ios' ? 60 : 40,
+    paddingTop: Platform.OS === 'ios' ? 60 : 50,
     gap: 4,
   },
   headerLabel: {

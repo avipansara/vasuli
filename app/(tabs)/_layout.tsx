@@ -24,7 +24,7 @@ export default function TabLayout() {
           left: 16,
           right: 16,
           height: 70,
-          backgroundColor: isDark ? 'rgba(20, 30, 35, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+          backgroundColor: isDark ? 'rgba(20, 30, 35, 0.50)' : 'rgba(255, 255, 255, 0.50)',
           borderRadius: 16,
           paddingHorizontal: 8,
           shadowColor: isDark ? '#000' : '#64748B',
@@ -33,14 +33,14 @@ export default function TabLayout() {
           shadowRadius: 16,
           elevation: 10,
           marginHorizontal: 16,
-          borderWidth: isDark ? 0 : 1,
-          borderColor: isDark ? 'transparent' : 'rgba(0, 0, 0, 0.05)',
+          borderWidth: isDark ? 1 : 1,
+          borderColor: isDark ? 'rgba(45, 212, 191, 0.1)' : 'rgba(0, 0, 0, 0.05)',
         },
         tabBarBackground: () => (
           <View style={[StyleSheet.absoluteFill, { borderRadius: 16, overflow: 'hidden' }]}>
             {Platform.OS === 'ios' && (
               <BlurView
-                intensity={60}
+                intensity={40}
                 tint={isDark ? 'dark' : 'light'}
                 style={StyleSheet.absoluteFill}
               />
