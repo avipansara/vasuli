@@ -5,7 +5,6 @@ import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { calculateBalances, groupService, initDatabase, userService } from '@/services/database';
 import type { User } from '@/types/database';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useState } from 'react';
 import { Alert, FlatList, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 
@@ -95,8 +94,8 @@ export default function FriendsScreen() {
 
     return (
       <View style={[styles.friendCard, { backgroundColor: Colors[colorScheme ?? 'light'].background }]}>
-        <View style={styles.avatar}>
-          <ThemedText style={styles.avatarText}>
+        <View style={[styles.avatar, { backgroundColor: colorScheme === 'dark' ? '#27272a' : '#f4f4f5' }]}>
+          <ThemedText style={[styles.avatarText, { color: Colors[colorScheme ?? 'light'].text }]}>
             {item.name.charAt(0).toUpperCase()}
           </ThemedText>
         </View>
@@ -225,13 +224,14 @@ export default function FriendsScreen() {
                 activeOpacity={0.8}
                 onPress={addFriend}
                 disabled={!newFriendName.trim()}>
-                <LinearGradient
-                  colors={!newFriendName.trim() ? ['#9ca3af', '#6b7280'] : ['#6366f1', '#4f46e5']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={[styles.submitButton, !newFriendName.trim() && styles.disabledButton]}>
-                  <ThemedText style={styles.submitButtonText}>Add Friend</ThemedText>
-                </LinearGradient>
+                <View
+                  style={[
+                    styles.submitButton,
+                    { backgroundColor: !newFriendName.trim() ? (colorScheme === 'dark' ? '#3f3f46' : '#d4d4d8') : Colors[colorScheme ?? 'light'].text },
+                    !newFriendName.trim() && styles.disabledButton
+                  ]}>
+                  <ThemedText style={[styles.submitButtonText, { color: Colors[colorScheme ?? 'light'].background }]}>Add Friend</ThemedText>
+                </View>
               </TouchableOpacity>
             </View>
           </View>
@@ -277,7 +277,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#e0e7ff',
+    backgroundColor: '#f4f4f5',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -285,7 +285,7 @@ const styles = StyleSheet.create({
   avatarText: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#4f46e5',
+    color: '#18181b',
   },
   friendInfo: {
     flex: 1,

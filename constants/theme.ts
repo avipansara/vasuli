@@ -5,24 +5,24 @@
 
 import { Platform } from 'react-native';
 
-const tintColorLight = '#0a7ea4';
-const tintColorDark = '#fff';
+const tintColorLight = '#18181b'; // Zinc-900 (Nearly Black)
+const tintColorDark = '#ffffff'; // White
 
 export const Colors = {
   light: {
-    text: '#11181C',
-    background: '#fff',
+    text: '#18181b',
+    background: '#ffffff',
     tint: tintColorLight,
-    icon: '#687076',
-    tabIconDefault: '#687076',
+    icon: '#71717a', // Zinc-500
+    tabIconDefault: '#a1a1aa', // Zinc-400
     tabIconSelected: tintColorLight,
   },
   dark: {
-    text: '#ECEDEE',
-    background: '#151718',
+    text: '#f4f4f5', // Zinc-100
+    background: '#09090b', // Zinc-950
     tint: tintColorDark,
-    icon: '#9BA1A6',
-    tabIconDefault: '#9BA1A6',
+    icon: '#a1a1aa', // Zinc-400
+    tabIconDefault: '#71717a', // Zinc-500
     tabIconSelected: tintColorDark,
   },
 };

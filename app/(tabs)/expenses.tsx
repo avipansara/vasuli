@@ -5,7 +5,6 @@ import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { expenseService, groupService, initDatabase, userService } from '@/services/database';
 import type { Expense, Group } from '@/types/database';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useState } from 'react';
 import { Alert, FlatList, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 
@@ -244,13 +243,14 @@ export default function ExpensesScreen() {
                 activeOpacity={0.8}
                 onPress={createExpense}
                 disabled={!description.trim() || !amount.trim() || !selectedGroupId}>
-                <LinearGradient
-                  colors={(!description.trim() || !amount.trim() || !selectedGroupId) ? ['#9ca3af', '#6b7280'] : ['#6366f1', '#4f46e5']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={[styles.submitButton, (!description.trim() || !amount.trim() || !selectedGroupId) && styles.disabledButton]}>
-                  <ThemedText style={styles.submitButtonText}>Add Expense</ThemedText>
-                </LinearGradient>
+                <View
+                  style={[
+                    styles.submitButton,
+                    { backgroundColor: (!description.trim() || !amount.trim() || !selectedGroupId) ? (colorScheme === 'dark' ? '#3f3f46' : '#d4d4d8') : Colors[colorScheme ?? 'light'].text },
+                    (!description.trim() || !amount.trim() || !selectedGroupId) && styles.disabledButton
+                  ]}>
+                  <ThemedText style={[styles.submitButtonText, { color: Colors[colorScheme ?? 'light'].background }]}>Add Expense</ThemedText>
+                </View>
               </TouchableOpacity>
             </View>
           </View>
@@ -296,7 +296,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#f3f4f6',
+    backgroundColor: '#f4f4f5',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,

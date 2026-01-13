@@ -78,11 +78,11 @@ export default function ActivityScreen() {
     const timeStr = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
 
     const iconName = item.type === 'expense' ? 'dollarsign.circle.fill' : 'arrow.right.circle.fill';
-    const iconColor = item.type === 'expense' ? Colors[colorScheme ?? 'light'].tint : '#10b981';
+    const iconColor = item.type === 'expense' ? Colors[colorScheme ?? 'light'].text : '#10b981';
 
     return (
       <View style={[styles.activityCard, { backgroundColor: Colors[colorScheme ?? 'light'].background }]}>
-        <View style={[styles.activityIcon, { backgroundColor: item.type === 'expense' ? '#f3f4f6' : '#d1fae5' }]}>
+        <View style={[styles.activityIcon, { backgroundColor: item.type === 'expense' ? (colorScheme === 'dark' ? '#27272a' : '#f4f4f5') : (colorScheme === 'dark' ? '#064e3b' : '#d1fae5') }]}>
           <IconSymbol size={24} name={iconName} color={iconColor} />
         </View>
         <View style={styles.activityInfo}>

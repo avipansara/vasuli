@@ -11,7 +11,6 @@ import {
   userService
 } from '@/services/database';
 import type { Expense, Group, GroupMember, User } from '@/types/database';
-import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { Alert, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
@@ -180,8 +179,8 @@ export default function GroupDetailScreen() {
 
     return (
       <View style={[styles.expenseCard, { backgroundColor: Colors[colorScheme ?? 'light'].background }]}>
-        <View style={styles.expenseIcon}>
-          <IconSymbol size={24} name="dollarsign.circle.fill" color={Colors[colorScheme ?? 'light'].tint} />
+        <View style={[styles.expenseIcon, { backgroundColor: colorScheme === 'dark' ? '#27272a' : '#f4f4f5' }]}>
+          <IconSymbol size={24} name="dollarsign.circle.fill" color={Colors[colorScheme ?? 'light'].text} />
         </View>
         <View style={styles.expenseInfo}>
           <ThemedText type="defaultSemiBold">{item.description}</ThemedText>
@@ -200,8 +199,8 @@ export default function GroupDetailScreen() {
 
     return (
       <View style={styles.memberCard}>
-        <View style={styles.memberAvatar}>
-          <ThemedText style={styles.avatarText}>
+        <View style={[styles.memberAvatar, { backgroundColor: colorScheme === 'dark' ? '#27272a' : '#f4f4f5' }]}>
+          <ThemedText style={[styles.avatarText, { color: Colors[colorScheme ?? 'light'].text }]}>
             {item.user?.name.charAt(0).toUpperCase() || '?'}
           </ThemedText>
         </View>
@@ -274,10 +273,10 @@ export default function GroupDetailScreen() {
 
         <View style={styles.actionButtons}>
           <TouchableOpacity
-            style={[styles.actionButton, { backgroundColor: Colors[colorScheme ?? 'light'].tint }]}
+            style={[styles.actionButton, { backgroundColor: Colors[colorScheme ?? 'light'].text }]}
             onPress={() => setExpenseModalVisible(true)}>
-            <IconSymbol size={20} name="plus.circle.fill" color="#fff" />
-            <ThemedText style={styles.actionButtonText}>Add Expense</ThemedText>
+            <IconSymbol size={20} name="plus.circle.fill" color={Colors[colorScheme ?? 'light'].background} />
+            <ThemedText style={[styles.actionButtonText, { color: Colors[colorScheme ?? 'light'].background }]}>Add Expense</ThemedText>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.actionButton, { backgroundColor: '#10b981' }]}
@@ -369,13 +368,14 @@ export default function GroupDetailScreen() {
                 activeOpacity={0.8}
                 onPress={addExpense}
                 disabled={!description.trim() || !amount.trim()}>
-                <LinearGradient
-                  colors={(!description.trim() || !amount.trim()) ? ['#9ca3af', '#6b7280'] : ['#6366f1', '#4f46e5']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={[styles.submitButton, (!description.trim() || !amount.trim()) && styles.disabledButton]}>
-                  <ThemedText style={styles.submitButtonText}>Add Expense</ThemedText>
-                </LinearGradient>
+                <View
+                  style={[
+                    styles.submitButton,
+                    { backgroundColor: (!description.trim() || !amount.trim()) ? (colorScheme === 'dark' ? '#3f3f46' : '#d4d4d8') : Colors[colorScheme ?? 'light'].text },
+                    (!description.trim() || !amount.trim()) && styles.disabledButton
+                  ]}>
+                  <ThemedText style={[styles.submitButtonText, { color: Colors[colorScheme ?? 'light'].background }]}>Add Expense</ThemedText>
+                </View>
               </TouchableOpacity>
             </View>
           </View>
@@ -443,13 +443,14 @@ export default function GroupDetailScreen() {
                   activeOpacity={0.8}
                   onPress={addMember}
                   disabled={!selectedUserId}>
-                  <LinearGradient
-                    colors={!selectedUserId ? ['#9ca3af', '#6b7280'] : ['#6366f1', '#4f46e5']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={[styles.submitButton, !selectedUserId && styles.disabledButton]}>
-                    <ThemedText style={styles.submitButtonText}>Add Member</ThemedText>
-                  </LinearGradient>
+                  <View
+                    style={[
+                      styles.submitButton,
+                      { backgroundColor: !selectedUserId ? (colorScheme === 'dark' ? '#3f3f46' : '#d4d4d8') : Colors[colorScheme ?? 'light'].text },
+                      !selectedUserId && styles.disabledButton
+                    ]}>
+                    <ThemedText style={[styles.submitButtonText, { color: Colors[colorScheme ?? 'light'].background }]}>Add Member</ThemedText>
+                  </View>
                 </TouchableOpacity>
               )}
             </View>
@@ -529,13 +530,14 @@ export default function GroupDetailScreen() {
                 activeOpacity={0.8}
                 onPress={settleUp}
                 disabled={!settleWithUserId || !settleAmount.trim()}>
-                <LinearGradient
-                  colors={(!settleWithUserId || !settleAmount.trim()) ? ['#9ca3af', '#6b7280'] : ['#10b981', '#059669']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={[styles.submitButton, (!settleWithUserId || !settleAmount.trim()) && styles.disabledButton]}>
+                <View
+                  style={[
+                    styles.submitButton,
+                    { backgroundColor: (!settleWithUserId || !settleAmount.trim()) ? (colorScheme === 'dark' ? '#3f3f46' : '#d4d4d8') : '#10b981' },
+                    (!settleWithUserId || !settleAmount.trim()) && styles.disabledButton
+                  ]}>
                   <ThemedText style={styles.submitButtonText}>Record Payment</ThemedText>
-                </LinearGradient>
+                </View>
               </TouchableOpacity>
             </View>
           </View>
@@ -638,7 +640,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#e0e7ff',
+    backgroundColor: '#f4f4f5',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -646,7 +648,7 @@ const styles = StyleSheet.create({
   avatarText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#4f46e5',
+    color: '#18181b',
   },
   memberInfo: {
     flex: 1,
@@ -685,7 +687,6 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#f3f4f6',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
