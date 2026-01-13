@@ -8,7 +8,7 @@ import type { GroupWithMembers } from '@/types/database';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert, FlatList, Modal, Platform, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, FlatList, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 
 export default function GroupsScreen() {
@@ -236,50 +236,74 @@ export default function GroupsScreen() {
       <Modal
         visible={modalVisible}
         animationType="slide"
-        transparent={true}
+        presentationStyle="pageSheet"
         onRequestClose={() => setModalVisible(false)}>
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.modalContainer}>
           <View style={[styles.modalContent, { backgroundColor: Colors[colorScheme ?? 'light'].background }]}>
             <View style={styles.modalHeader}>
-              <ThemedText type="subtitle">Create New Group</ThemedText>
-              <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <IconSymbol size={24} name="xmark" color={Colors[colorScheme ?? 'light'].text} />
+              <ThemedText type="subtitle" style={styles.modalTitle}>Create New Group</ThemedText>
+              <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.closeButton}>
+                <IconSymbol size={28} name="xmark.circle.fill" color={Colors[colorScheme ?? 'light'].icon} />
               </TouchableOpacity>
             </View>
 
-            <TextInput
-              style={[styles.input, { 
-                backgroundColor: Colors[colorScheme ?? 'light'].background,
-                color: Colors[colorScheme ?? 'light'].text,
-                borderColor: Colors[colorScheme ?? 'light'].icon,
-              }]}
-              placeholder="Group name"
-              placeholderTextColor={Colors[colorScheme ?? 'light'].icon}
-              value={newGroupName}
-              onChangeText={setNewGroupName}
-            />
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.modalScrollContent}
+              keyboardShouldPersistTaps="handled">
+              <View style={styles.formGroup}>
+                <ThemedText style={styles.label}>Group Name</ThemedText>
+                <TextInput
+                  style={[styles.input, { 
+                    backgroundColor: colorScheme === 'dark' ? '#1f2937' : '#f9fafb',
+                    color: Colors[colorScheme ?? 'light'].text,
+                    borderColor: colorScheme === 'dark' ? '#374151' : '#e5e7eb',
+                  }]}
+                  placeholder="e.g. Summer Trip 2024"
+                  placeholderTextColor={Colors[colorScheme ?? 'light'].icon}
+                  value={newGroupName}
+                  onChangeText={setNewGroupName}
+                  autoFocus
+                />
+              </View>
 
-            <TextInput
-              style={[styles.input, styles.textArea, { 
-                backgroundColor: Colors[colorScheme ?? 'light'].background,
-                color: Colors[colorScheme ?? 'light'].text,
-                borderColor: Colors[colorScheme ?? 'light'].icon,
-              }]}
-              placeholder="Description (optional)"
-              placeholderTextColor={Colors[colorScheme ?? 'light'].icon}
-              value={newGroupDescription}
-              onChangeText={setNewGroupDescription}
-              multiline
-              numberOfLines={3}
-            />
+              <View style={styles.formGroup}>
+                <ThemedText style={styles.label}>Description</ThemedText>
+                <TextInput
+                  style={[styles.input, styles.textArea, { 
+                    backgroundColor: colorScheme === 'dark' ? '#1f2937' : '#f9fafb',
+                    color: Colors[colorScheme ?? 'light'].text,
+                    borderColor: colorScheme === 'dark' ? '#374151' : '#e5e7eb',
+                  }]}
+                  placeholder="What's this group for? (optional)"
+                  placeholderTextColor={Colors[colorScheme ?? 'light'].icon}
+                  value={newGroupDescription}
+                  onChangeText={setNewGroupDescription}
+                  multiline
+                  numberOfLines={4}
+                  textAlignVertical="top"
+                />
+              </View>
+            </ScrollView>
 
-            <TouchableOpacity
-              style={[styles.submitButton, { backgroundColor: Colors[colorScheme ?? 'light'].tint }]}
-              onPress={createGroup}>
-              <ThemedText style={styles.submitButtonText}>Create Group</ThemedText>
-            </TouchableOpacity>
+            <View style={[styles.modalFooter, { borderTopColor: colorScheme === 'dark' ? '#374151' : '#e5e7eb' }]}>
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={createGroup}
+                disabled={!newGroupName.trim()}>
+                <LinearGradient
+                  colors={!newGroupName.trim() ? ['#9ca3af', '#6b7280'] : ['#6366f1', '#4f46e5']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={[styles.submitButton, !newGroupName.trim() && styles.disabledButton]}>
+                  <ThemedText style={styles.submitButtonText}>Create Group</ThemedText>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </ThemedView>
   );
@@ -480,39 +504,63 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: 16,
   },
-  modalOverlay: {
+  modalContainer: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
+    backgroundColor: 'transparent',
   },
   modalContent: {
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: 24,
-    minHeight: 300,
+    flex: 1,
+    paddingTop: Platform.OS === 'ios' ? 20 : 0,
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    padding: 24,
+    paddingTop: 40,
+  },
+  modalTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+  },
+  closeButton: {
+    padding: 4,
+  },
+  modalScrollContent: {
+    padding: 24,
+    paddingTop: 0,
+  },
+  formGroup: {
     marginBottom: 24,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 8,
+    opacity: 0.7,
+  },
+  modalFooter: {
+    padding: 24,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 24,
+    borderTopWidth: 1,
   },
   input: {
     borderWidth: 1,
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 16,
+    borderRadius: 12,
+    padding: 16,
     fontSize: 16,
   },
   textArea: {
-    height: 80,
+    height: 120,
     textAlignVertical: 'top',
   },
   submitButton: {
     padding: 16,
-    borderRadius: 8,
+    borderRadius: 16,
     alignItems: 'center',
-    marginTop: 8,
+  },
+  disabledButton: {
+    opacity: 0.5,
   },
   submitButtonText: {
     color: '#fff',

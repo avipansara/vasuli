@@ -5,8 +5,9 @@ import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { expenseService, groupService, initDatabase, userService } from '@/services/database';
 import type { Expense, Group } from '@/types/database';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useState } from 'react';
-import { Alert, FlatList, Modal, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, FlatList, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 
 export default function ExpensesScreen() {
   const colorScheme = useColorScheme();
@@ -157,74 +158,103 @@ export default function ExpensesScreen() {
       <Modal
         visible={modalVisible}
         animationType="slide"
-        transparent={true}
+        presentationStyle="pageSheet"
         onRequestClose={() => setModalVisible(false)}>
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.modalContainer}>
           <View style={[styles.modalContent, { backgroundColor: Colors[colorScheme ?? 'light'].background }]}>
             <View style={styles.modalHeader}>
-              <ThemedText type="subtitle">Add Expense</ThemedText>
-              <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <IconSymbol size={24} name="xmark" color={Colors[colorScheme ?? 'light'].text} />
+              <ThemedText type="subtitle" style={styles.modalTitle}>Add Expense</ThemedText>
+              <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.closeButton}>
+                <IconSymbol size={28} name="xmark.circle.fill" color={Colors[colorScheme ?? 'light'].icon} />
               </TouchableOpacity>
             </View>
 
-            <TextInput
-              style={[styles.input, {
-                backgroundColor: Colors[colorScheme ?? 'light'].background,
-                color: Colors[colorScheme ?? 'light'].text,
-                borderColor: Colors[colorScheme ?? 'light'].icon,
-              }]}
-              placeholder="Description"
-              placeholderTextColor={Colors[colorScheme ?? 'light'].icon}
-              value={description}
-              onChangeText={setDescription}
-            />
-
-            <TextInput
-              style={[styles.input, {
-                backgroundColor: Colors[colorScheme ?? 'light'].background,
-                color: Colors[colorScheme ?? 'light'].text,
-                borderColor: Colors[colorScheme ?? 'light'].icon,
-              }]}
-              placeholder="Amount"
-              placeholderTextColor={Colors[colorScheme ?? 'light'].icon}
-              value={amount}
-              onChangeText={setAmount}
-              keyboardType="decimal-pad"
-            />
-
-            <View style={[styles.picker, { borderColor: Colors[colorScheme ?? 'light'].icon }]}>
-              <ThemedText style={styles.pickerLabel}>Group:</ThemedText>
-              <View style={styles.groupButtons}>
-                {groups.map(group => (
-                  <TouchableOpacity
-                    key={group.id}
-                    style={[
-                      styles.groupButton,
-                      selectedGroupId === group.id && {
-                        backgroundColor: Colors[colorScheme ?? 'light'].tint,
-                      },
-                    ]}
-                    onPress={() => setSelectedGroupId(group.id)}>
-                    <ThemedText
-                      style={[
-                        styles.groupButtonText,
-                        selectedGroupId === group.id && { color: '#fff' },
-                      ]}>
-                      {group.name}
-                    </ThemedText>
-                  </TouchableOpacity>
-                ))}
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.modalScrollContent}
+              keyboardShouldPersistTaps="handled">
+              <View style={styles.formGroup}>
+                <ThemedText style={styles.label}>Description</ThemedText>
+                <TextInput
+                  style={[styles.input, { 
+                    backgroundColor: colorScheme === 'dark' ? '#1f2937' : '#f9fafb',
+                    color: Colors[colorScheme ?? 'light'].text,
+                    borderColor: colorScheme === 'dark' ? '#374151' : '#e5e7eb',
+                  }]}
+                  placeholder="e.g. Dinner at Mario's"
+                  placeholderTextColor={Colors[colorScheme ?? 'light'].icon}
+                  value={description}
+                  onChangeText={setDescription}
+                  autoFocus
+                />
               </View>
-            </View>
 
-            <TouchableOpacity
-              style={[styles.submitButton, { backgroundColor: Colors[colorScheme ?? 'light'].tint }]}
-              onPress={createExpense}>
-              <ThemedText style={styles.submitButtonText}>Add Expense</ThemedText>
-            </TouchableOpacity>
+              <View style={styles.formGroup}>
+                <ThemedText style={styles.label}>Amount</ThemedText>
+                <TextInput
+                  style={[styles.input, { 
+                    backgroundColor: colorScheme === 'dark' ? '#1f2937' : '#f9fafb',
+                    color: Colors[colorScheme ?? 'light'].text,
+                    borderColor: colorScheme === 'dark' ? '#374151' : '#e5e7eb',
+                  }]}
+                  placeholder="0.00"
+                  placeholderTextColor={Colors[colorScheme ?? 'light'].icon}
+                  value={amount}
+                  onChangeText={setAmount}
+                  keyboardType="decimal-pad"
+                />
+              </View>
+
+              <View style={styles.formGroup}>
+                <ThemedText style={styles.label}>Group</ThemedText>
+                <View style={styles.groupButtons}>
+                  {groups.map(group => (
+                    <TouchableOpacity
+                      key={group.id}
+                      style={[
+                        styles.groupButton,
+                        selectedGroupId === group.id && {
+                          backgroundColor: Colors[colorScheme ?? 'light'].tint,
+                          borderColor: Colors[colorScheme ?? 'light'].tint,
+                        },
+                        selectedGroupId !== group.id && {
+                          backgroundColor: colorScheme === 'dark' ? '#1f2937' : '#f3f4f6',
+                          borderColor: colorScheme === 'dark' ? '#374151' : '#e5e7eb',
+                        }
+                      ]}
+                      onPress={() => setSelectedGroupId(group.id)}>
+                      <ThemedText
+                        style={[
+                          styles.groupButtonText,
+                          selectedGroupId === group.id && { color: '#fff' },
+                          selectedGroupId !== group.id && { color: Colors[colorScheme ?? 'light'].text }
+                        ]}>
+                        {group.name}
+                      </ThemedText>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            </ScrollView>
+
+            <View style={[styles.modalFooter, { borderTopColor: colorScheme === 'dark' ? '#374151' : '#e5e7eb' }]}>
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={createExpense}
+                disabled={!description.trim() || !amount.trim() || !selectedGroupId}>
+                <LinearGradient
+                  colors={(!description.trim() || !amount.trim() || !selectedGroupId) ? ['#9ca3af', '#6b7280'] : ['#6366f1', '#4f46e5']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={[styles.submitButton, (!description.trim() || !amount.trim() || !selectedGroupId) && styles.disabledButton]}>
+                  <ThemedText style={styles.submitButtonText}>Add Expense</ThemedText>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </ThemedView>
   );
@@ -318,40 +348,60 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     opacity: 0.6,
   },
-  modalOverlay: {
+  modalContainer: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
+    backgroundColor: 'transparent',
   },
   modalContent: {
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: 24,
-    minHeight: 400,
+    flex: 1,
+    paddingTop: Platform.OS === 'ios' ? 20 : 0,
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    padding: 24,
+    paddingTop: 40,
+  },
+  modalTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+  },
+  closeButton: {
+    padding: 4,
+  },
+  modalScrollContent: {
+    padding: 24,
+    paddingTop: 0,
+  },
+  formGroup: {
     marginBottom: 24,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 8,
+    opacity: 0.7,
+  },
+  modalFooter: {
+    padding: 24,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 24,
+    borderTopWidth: 1,
   },
   input: {
     borderWidth: 1,
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 16,
+    borderRadius: 12,
+    padding: 16,
     fontSize: 16,
   },
   picker: {
-    borderWidth: 1,
-    borderRadius: 8,
-    padding: 12,
     marginBottom: 16,
   },
   pickerLabel: {
     fontSize: 14,
+    fontWeight: '600',
     marginBottom: 8,
-    opacity: 0.6,
+    opacity: 0.7,
   },
   groupButtons: {
     flexDirection: 'row',
@@ -360,18 +410,21 @@ const styles = StyleSheet.create({
   },
   groupButton: {
     paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 16,
-    backgroundColor: '#f3f4f6',
+    paddingVertical: 10,
+    borderRadius: 20,
+    borderWidth: 1,
   },
   groupButtonText: {
     fontSize: 14,
+    fontWeight: '500',
   },
   submitButton: {
     padding: 16,
-    borderRadius: 8,
+    borderRadius: 16,
     alignItems: 'center',
-    marginTop: 8,
+  },
+  disabledButton: {
+    opacity: 0.5,
   },
   submitButtonText: {
     color: '#fff',
