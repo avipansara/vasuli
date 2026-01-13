@@ -109,9 +109,9 @@ function generateId(): string {
 }
 
 export const userService = {
-  async create(user: Omit<User, 'id' | 'createdAt'>): Promise<User> {
+  async create(user: Omit<User, 'id' | 'createdAt'> & { id?: string }): Promise<User> {
     const database = await getDatabase();
-    const id = generateId();
+    const id = user.id || generateId();
     const createdAt = Date.now();
     
     await database.runAsync(
