@@ -42,13 +42,16 @@ export default function ExpensesScreen() {
       
       const allUsers = await userService.getAll();
       // Filter out current user from friends list
-      setFriends(allUsers.filter(u => u.id !== 'current-user'));
+      setFriends(allUsers.filter((u: User) => u.id !== 'current-user'));
 
-      const allExpenses: (Expense & { group?: Group })[] = [];
-      for (const group of allGroups) {
-        const groupExpenses = await expenseService.getByGroup(group.id);
-        allExpenses.push(...groupExpenses.map(e => ({ ...e, group })));
-      }
+      // Fetch ALL expenses (including friend-only expenses without groupId)
+      const allExpensesRaw = await expenseService.getAll();
+      
+      // Map expenses to include group info where applicable
+      const allExpenses: (Expense & { group?: Group })[] = allExpensesRaw.map((e: Expense) => {
+        const group = e.groupId ? allGroups.find((g: Group) => g.id === e.groupId) : undefined;
+        return { ...e, group };
+      });
 
       allExpenses.sort((a, b) => b.date - a.date);
       setExpenses(allExpenses);

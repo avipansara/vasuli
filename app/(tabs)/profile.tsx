@@ -1,33 +1,17 @@
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { useAuth } from '@/contexts/auth-context';
 import { useTheme } from '@/contexts/theme-context';
 import { useThemeColors } from '@/hooks/use-theme-colors';
-import { userService } from '@/services/api';
-import type { User } from '@/types/database';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Alert, Platform, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
 
 export default function ProfileScreen() {
   const { gradients, isDark, colors } = useThemeColors();
   const { toggleTheme } = useTheme();
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const { user: currentUser, signOut } = useAuth();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
-
-  useEffect(() => {
-    loadCurrentUser();
-  }, []);
-
-  async function loadCurrentUser() {
-    try {
-      const users = await userService.getAll();
-      if (users.length > 0) {
-        setCurrentUser(users[0]);
-      }
-    } catch (error) {
-      console.error('Error loading user:', error);
-    }
-  }
 
   function handleEditProfile() {
     Alert.alert('Edit Profile', 'Profile editing coming soon!');
@@ -37,10 +21,12 @@ export default function ProfileScreen() {
     Alert.alert(setting, `${setting} settings coming soon!`);
   }
 
-  function handleLogout() {
+  async function handleLogout() {
     Alert.alert('Logout', 'Are you sure you want to logout?', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Logout', style: 'destructive', onPress: () => Alert.alert('Logged out') },
+      { text: 'Logout', style: 'destructive', onPress: async () => {
+        await signOut();
+      }},
     ]);
   }
 
