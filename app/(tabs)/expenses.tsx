@@ -8,7 +8,7 @@ import type { Expense, Group, User } from '@/types/database';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert, FlatList, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Alert, Platform, SectionList, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 export default function ExpensesScreen() {
   const { gradients, colors, isDark } = useThemeColors();
@@ -136,6 +136,30 @@ export default function ExpensesScreen() {
   // Calculate total spent
   const totalSpent = expenses.reduce((sum, e) => sum + e.amount, 0);
 
+  // Group expenses by time period
+  function getTimePeriod(timestamp: number): string {
+    const now = new Date();
+    const date = new Date(timestamp);
+    const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0 && date.toDateString() === now.toDateString()) return 'Today';
+    if (diffDays === 1 || (diffDays === 0 && date.toDateString() !== now.toDateString())) return 'Yesterday';
+    if (diffDays < 7) return 'This Week';
+    if (diffDays < 30) return 'This Month';
+    return 'Earlier';
+  }
+
+  const groupedExpenses = expenses.reduce((acc, expense) => {
+    const period = getTimePeriod(expense.date);
+    const existing = acc.find(g => g.title === period);
+    if (existing) {
+      existing.data.push(expense);
+    } else {
+      acc.push({ title: period, data: [expense] });
+    }
+    return acc;
+  }, [] as { title: string; data: (Expense & { group?: Group })[] }[]);
+
   return (
     <LinearGradient
       colors={gradients.screenBackground}
@@ -197,11 +221,19 @@ export default function ExpensesScreen() {
           </TouchableOpacity>
         </View>
       ) : (
-        <FlatList
-          data={expenses}
+        <SectionList
+          sections={groupedExpenses}
           renderItem={({ item }) => <ExpenseListCard expense={item} />}
+          renderSectionHeader={({ section: { title } }) => (
+            <View style={styles.sectionHeader}>
+              <ThemedText style={[styles.sectionTitle, !isDark && { color: colors.textSecondary }]}>
+                {title}
+              </ThemedText>
+            </View>
+          )}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
+          stickySectionHeadersEnabled={false}
         />
       )}
 
@@ -260,6 +292,18 @@ const styles = StyleSheet.create({
   listContent: {
     padding: 16,
     paddingBottom: 120,
+  },
+  sectionHeader: {
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+    marginTop: 8,
+  },
+  sectionTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    color: 'rgba(255, 255, 255, 0.5)',
   },
   expenseCard: {
     flexDirection: 'row',

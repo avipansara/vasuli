@@ -6,7 +6,7 @@ import { expenseService, groupService, initDatabase, settlementService, userServ
 import type { Group, User } from '@/types/database';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useState } from 'react';
-import { FlatList, Platform, StyleSheet, View } from 'react-native';
+import { Platform, SectionList, StyleSheet, View } from 'react-native';
 
 type ActivityItem = {
   id: string;
@@ -72,6 +72,30 @@ export default function ActivityScreen() {
     }
   }
 
+  // Group activities by time period
+  function getTimePeriod(timestamp: number): string {
+    const now = new Date();
+    const date = new Date(timestamp);
+    const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0 && date.toDateString() === now.toDateString()) return 'Today';
+    if (diffDays === 1 || (diffDays === 0 && date.toDateString() !== now.toDateString())) return 'Yesterday';
+    if (diffDays < 7) return 'This Week';
+    if (diffDays < 30) return 'This Month';
+    return 'Earlier';
+  }
+
+  const groupedActivities = activities.reduce((acc, activity) => {
+    const period = getTimePeriod(activity.date);
+    const existing = acc.find(g => g.title === period);
+    if (existing) {
+      existing.data.push(activity);
+    } else {
+      acc.push({ title: period, data: [activity] });
+    }
+    return acc;
+  }, [] as { title: string; data: ActivityItem[] }[]);
+
   return (
     <LinearGradient
       colors={gradients.screenBackground}
@@ -98,8 +122,8 @@ export default function ActivityScreen() {
           </ThemedText>
         </View>
       ) : (
-        <FlatList
-          data={activities}
+        <SectionList
+          sections={groupedActivities}
           renderItem={({ item }) => (
             <ActivityCard
               activity={{
@@ -112,8 +136,16 @@ export default function ActivityScreen() {
               }}
             />
           )}
+          renderSectionHeader={({ section: { title } }) => (
+            <View style={styles.sectionHeader}>
+              <ThemedText style={[styles.sectionTitle, !isDark && { color: colors.textSecondary }]}>
+                {title}
+              </ThemedText>
+            </View>
+          )}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
+          stickySectionHeadersEnabled={false}
         />
       )}
     </LinearGradient>
@@ -141,6 +173,18 @@ const styles = StyleSheet.create({
   listContent: {
     padding: 16,
     paddingBottom: 120,
+  },
+  sectionHeader: {
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+    marginTop: 8,
+  },
+  sectionTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    color: 'rgba(255, 255, 255, 0.5)',
   },
   activityCard: {
     flexDirection: 'row',
