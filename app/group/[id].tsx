@@ -1,7 +1,7 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Gradients } from '@/constants/theme';
+import { useThemeColors } from '@/hooks/use-theme-colors';
 import {
   calculateBalances,
   expenseService,
@@ -16,6 +16,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Alert, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 
 export default function GroupDetailScreen() {
+  const { gradients, colors, isDark } = useThemeColors();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [group, setGroup] = useState<Group | null>(null);
   const [expenses, setExpenses] = useState<(Expense & { paidByUser?: User })[]>([]);
@@ -177,40 +178,36 @@ export default function GroupDetailScreen() {
     const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
     return (
-      <LinearGradient
-        colors={Gradients.cardPrimary}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.expenseCard}>
-        <View style={styles.expenseIcon}>
-          <IconSymbol size={24} name="dollarsign.circle.fill" color="#2DD4BF" />
+      <View style={[styles.expenseCard, !isDark && { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <View style={[styles.expenseIcon, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)' }]}>
+          <IconSymbol size={24} name="dollarsign.circle.fill" color={isDark ? '#2DD4BF' : colors.tint} />
         </View>
         <View style={styles.expenseInfo}>
-          <ThemedText type="defaultSemiBold">{item.description}</ThemedText>
-          <ThemedText style={styles.expenseDate}>
+          <ThemedText type="defaultSemiBold" style={!isDark ? { color: colors.text } : undefined}>{item.description}</ThemedText>
+          <ThemedText style={[styles.expenseDate, !isDark && { color: colors.textSecondary }]}>
             {dateStr} • Paid by {item.paidByUser?.name || 'Unknown'}
           </ThemedText>
         </View>
-        <ThemedText style={styles.expenseAmount}>${item.amount.toFixed(2)}</ThemedText>
-      </LinearGradient>
+        <ThemedText style={[styles.expenseAmount, !isDark && { color: colors.text }]}>${item.amount.toFixed(2)}</ThemedText>
+      </View>
     );
   }
 
   function renderMember({ item }: { item: GroupMember & { user?: User } }) {
     const balance = balances.get(item.userId) || 0;
-    const balanceColor = balance > 0 ? '#10b981' : balance < 0 ? '#ef4444' : '#2DD4BF';
+    const balanceColor = balance > 0 ? (isDark ? '#10b981' : colors.success) : balance < 0 ? (isDark ? '#ef4444' : colors.error) : (isDark ? '#2DD4BF' : colors.tint);
 
     return (
-      <View style={styles.memberCard}>
-        <View style={styles.memberAvatar}>
-          <ThemedText style={styles.avatarText}>
+      <View style={[styles.memberCard, !isDark && { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <View style={[styles.memberAvatar, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)' }]}>
+          <ThemedText style={[styles.avatarText, { color: isDark ? '#2DD4BF' : colors.tint }]}>
             {item.user?.name.charAt(0).toUpperCase() || '?'}
           </ThemedText>
         </View>
         <View style={styles.memberInfo}>
-          <ThemedText type="defaultSemiBold">{item.user?.name || 'Unknown'}</ThemedText>
+          <ThemedText type="defaultSemiBold" style={!isDark ? { color: colors.text } : undefined}>{item.user?.name || 'Unknown'}</ThemedText>
           {item.role === 'admin' && (
-            <ThemedText style={styles.roleLabel}>Admin</ThemedText>
+            <ThemedText style={[styles.roleLabel, { color: isDark ? '#2DD4BF' : colors.tint }]}>Admin</ThemedText>
           )}
         </View>
         <View style={styles.balanceInfo}>
@@ -219,13 +216,13 @@ export default function GroupDetailScreen() {
               <ThemedText style={[styles.balanceAmount, { color: balanceColor }]}>
                 ${Math.abs(balance).toFixed(2)}
               </ThemedText>
-              <ThemedText style={styles.balanceLabel}>
+              <ThemedText style={[styles.balanceLabel, !isDark && { color: colors.textSecondary }]}>
                 {balance > 0 ? 'gets back' : 'owes'}
               </ThemedText>
             </>
           )}
           {balance === 0 && (
-            <ThemedText style={styles.settledLabel}>settled</ThemedText>
+            <ThemedText style={[styles.settledLabel, !isDark && { color: colors.textSecondary }]}>settled</ThemedText>
           )}
         </View>
       </View>
@@ -250,13 +247,13 @@ export default function GroupDetailScreen() {
 
   return (
     <LinearGradient
-      colors={Gradients.screenBackground}
+      colors={gradients.screenBackground}
       style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButtonRect}>
-          <IconSymbol size={20} name="chevron.left" color="#2DD4BF" />
+        <TouchableOpacity onPress={() => router.back()} style={[styles.backButtonRect, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)', borderColor: isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(34, 197, 94, 0.3)' }]}>
+          <IconSymbol size={20} name="chevron.left" color={isDark ? '#2DD4BF' : colors.tint} />
         </TouchableOpacity>
-        <ThemedText type="title" style={styles.headerTitle}>{group.name}</ThemedText>
+        <ThemedText type="title" style={[styles.headerTitle, !isDark && { color: colors.text }]}>{group.name}</ThemedText>
         <View style={styles.headerSpacer} />
       </View>
 
@@ -264,31 +261,27 @@ export default function GroupDetailScreen() {
         style={styles.content}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}>
-        <LinearGradient
-          colors={Gradients.cardAccent}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.balanceCard}>
-          <ThemedText style={styles.balanceTitle}>Your Balance</ThemedText>
+        <View style={[styles.balanceCard, !isDark && { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <ThemedText style={[styles.balanceTitle, !isDark && { color: colors.textSecondary }]}>Your Balance</ThemedText>
           <ThemedText style={[
             styles.totalBalance,
-            { color: currentUserBalance > 0 ? '#10b981' : currentUserBalance < 0 ? '#ef4444' : '#2DD4BF' }
+            { color: currentUserBalance > 0 ? (isDark ? '#10b981' : colors.success) : currentUserBalance < 0 ? (isDark ? '#ef4444' : colors.error) : (isDark ? '#2DD4BF' : colors.tint) }
           ]}>
             {currentUserBalance === 0 ? 'Settled up' : `$${Math.abs(currentUserBalance).toFixed(2)}`}
           </ThemedText>
           {currentUserBalance !== 0 && (
-            <ThemedText style={styles.balanceSubtitle}>
+            <ThemedText style={[styles.balanceSubtitle, !isDark && { color: colors.textSecondary }]}>
               {currentUserBalance > 0 ? 'You are owed' : 'You owe'}
             </ThemedText>
           )}
-        </LinearGradient>
+        </View>
 
         <View style={styles.actionButtons}>
           <TouchableOpacity
             style={styles.actionButton}
             onPress={() => setExpenseModalVisible(true)}>
             <LinearGradient
-              colors={Gradients.buttonPrimary}
+              colors={gradients.buttonPrimary}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.actionButtonGradient}>
@@ -312,11 +305,11 @@ export default function GroupDetailScreen() {
 
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <ThemedText type="subtitle" style={styles.sectionTitleText}>Members</ThemedText>
+            <ThemedText type="subtitle" style={[styles.sectionTitleText, !isDark && { color: colors.text }]}>Members</ThemedText>
             <TouchableOpacity 
-              style={styles.addButtonRect}
+              style={[styles.addButtonRect, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)', borderColor: isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(34, 197, 94, 0.3)' }]}
               onPress={() => setMemberModalVisible(true)}>
-              <IconSymbol size={18} name="plus" color="#2DD4BF" />
+              <IconSymbol size={18} name="plus" color={isDark ? '#2DD4BF' : colors.tint} />
             </TouchableOpacity>
           </View>
           {members.map(member => (
@@ -325,11 +318,11 @@ export default function GroupDetailScreen() {
         </View>
 
         <View style={styles.section}>
-          <ThemedText type="subtitle" style={[styles.sectionTitle, styles.sectionTitleText]}>Expenses</ThemedText>
+          <ThemedText type="subtitle" style={[styles.sectionTitle, styles.sectionTitleText, !isDark && { color: colors.text }]}>Expenses</ThemedText>
           {expenses.length === 0 ? (
             <View style={styles.emptySection}>
-              <IconSymbol size={48} name="dollarsign.circle" color="rgba(45, 212, 191, 0.3)" />
-              <ThemedText style={styles.emptyText}>No expenses yet</ThemedText>
+              <IconSymbol size={48} name="dollarsign.circle" color={isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(34, 197, 94, 0.3)'} />
+              <ThemedText style={[styles.emptyText, !isDark && { color: colors.textSecondary }]}>No expenses yet</ThemedText>
             </View>
           ) : (
             expenses.map(expense => (
@@ -344,7 +337,7 @@ export default function GroupDetailScreen() {
         animationType="slide"
         presentationStyle="fullScreen"
         onRequestClose={() => setExpenseModalVisible(false)}>
-        <LinearGradient colors={Gradients.screenBackground} style={styles.modalContainer}>
+        <LinearGradient colors={gradients.screenBackground} style={styles.modalContainer}>
           <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             style={styles.modalKeyboard}>
@@ -406,7 +399,7 @@ export default function GroupDetailScreen() {
                 onPress={addExpense}
                 disabled={!description.trim() || !amount.trim()}>
                 <LinearGradient
-                  colors={(!description.trim() || !amount.trim()) ? ['#1A1A24', '#12121A'] : Gradients.buttonPrimary}
+                  colors={(!description.trim() || !amount.trim()) ? ['#1A1A24', '#12121A'] : gradients.buttonPrimary}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={[
@@ -427,7 +420,7 @@ export default function GroupDetailScreen() {
         animationType="slide"
         presentationStyle="fullScreen"
         onRequestClose={() => setMemberModalVisible(false)}>
-        <LinearGradient colors={Gradients.screenBackground} style={styles.modalContainer}>
+        <LinearGradient colors={gradients.screenBackground} style={styles.modalContainer}>
           <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             style={styles.modalKeyboard}>
@@ -492,7 +485,7 @@ export default function GroupDetailScreen() {
                   onPress={addMember}
                   disabled={!selectedUserId}>
                   <LinearGradient
-                    colors={!selectedUserId ? ['#1A1A24', '#12121A'] : Gradients.buttonPrimary}
+                    colors={!selectedUserId ? ['#1A1A24', '#12121A'] : gradients.buttonPrimary}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
                     style={[
@@ -514,7 +507,7 @@ export default function GroupDetailScreen() {
         animationType="slide"
         presentationStyle="fullScreen"
         onRequestClose={() => setSettleModalVisible(false)}>
-        <LinearGradient colors={Gradients.screenBackground} style={styles.modalContainer}>
+        <LinearGradient colors={gradients.screenBackground} style={styles.modalContainer}>
           <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             style={styles.modalKeyboard}>

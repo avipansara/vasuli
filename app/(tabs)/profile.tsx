@@ -1,6 +1,7 @@
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Gradients } from '@/constants/theme';
+import { useTheme } from '@/contexts/theme-context';
+import { useThemeColors } from '@/hooks/use-theme-colors';
 import { userService } from '@/services/api';
 import type { User } from '@/types/database';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -8,9 +9,10 @@ import { useEffect, useState } from 'react';
 import { Alert, Platform, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
 
 export default function ProfileScreen() {
+  const { gradients, isDark, colors } = useThemeColors();
+  const { toggleTheme } = useTheme();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
-  const [darkModeEnabled, setDarkModeEnabled] = useState(true);
 
   useEffect(() => {
     loadCurrentUser();
@@ -45,28 +47,28 @@ export default function ProfileScreen() {
   const settingsItems = [
     { icon: 'person.badge.plus', title: 'Add a Friend', onPress: () => handleSettingPress('Add a Friend') },
     { icon: 'bell.fill', title: 'Notifications', hasSwitch: true, value: notificationsEnabled, onToggle: setNotificationsEnabled },
-    { icon: 'moon.fill', title: 'Dark Mode', hasSwitch: true, value: darkModeEnabled, onToggle: setDarkModeEnabled },
+    { icon: 'moon.fill', title: 'Dark Mode', hasSwitch: true, value: isDark, onToggle: toggleTheme },
     { icon: 'questionmark.circle.fill', title: 'Help & Support', onPress: () => handleSettingPress('Help & Support') },
     { icon: 'info.circle.fill', title: 'About', onPress: () => handleSettingPress('About') },
   ];
 
   return (
-    <LinearGradient colors={Gradients.screenBackground} style={styles.container}>
+    <LinearGradient colors={gradients.screenBackground} style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <ThemedText style={styles.headerTitle}>Profile</ThemedText>
+          <ThemedText style={[styles.headerTitle, !isDark && { color: colors.text }]}>Profile</ThemedText>
         </View>
 
         <View style={styles.profileSection}>
-          <View style={styles.avatarLarge}>
-            <ThemedText style={styles.avatarLargeText}>
+          <View style={[styles.avatarLarge, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)' }]}>
+            <ThemedText style={[styles.avatarLargeText, { color: isDark ? '#2DD4BF' : colors.tint }]}>
               {currentUser?.name?.charAt(0).toUpperCase() || 'U'}
             </ThemedText>
           </View>
-          <ThemedText type="title" style={styles.userName}>
+          <ThemedText type="title" style={[styles.userName, !isDark && { color: colors.text }]}>
             {currentUser?.name || 'User'}
           </ThemedText>
-          <ThemedText style={styles.userEmail}>
+          <ThemedText style={[styles.userEmail, !isDark && { color: colors.textSecondary }]}>
             {currentUser?.email || 'No email set'}
           </ThemedText>
           <Pressable style={styles.editButton} onPress={handleEditProfile}>
@@ -74,46 +76,46 @@ export default function ProfileScreen() {
           </Pressable>
         </View>
 
-        <View style={styles.statsSection}>
+        <View style={[styles.statsSection, !isDark && { backgroundColor: colors.card, borderColor: colors.border }]}>
           <View style={styles.statItem}>
-            <ThemedText style={styles.statValue}>$0.00</ThemedText>
-            <ThemedText style={styles.statLabel}>Total Owed</ThemedText>
+            <ThemedText style={[styles.statValue, !isDark && { color: colors.text }]}>$0.00</ThemedText>
+            <ThemedText style={[styles.statLabel, !isDark && { color: colors.textSecondary }]}>Total Owed</ThemedText>
           </View>
-          <View style={styles.statDivider} />
+          <View style={[styles.statDivider, !isDark && { backgroundColor: colors.border }]} />
           <View style={styles.statItem}>
-            <ThemedText style={styles.statValue}>$0.00</ThemedText>
-            <ThemedText style={styles.statLabel}>Total Owing</ThemedText>
+            <ThemedText style={[styles.statValue, !isDark && { color: colors.text }]}>$0.00</ThemedText>
+            <ThemedText style={[styles.statLabel, !isDark && { color: colors.textSecondary }]}>Total Owing</ThemedText>
           </View>
-          <View style={styles.statDivider} />
+          <View style={[styles.statDivider, !isDark && { backgroundColor: colors.border }]} />
           <View style={styles.statItem}>
-            <ThemedText style={styles.statValue}>0</ThemedText>
-            <ThemedText style={styles.statLabel}>Groups</ThemedText>
+            <ThemedText style={[styles.statValue, !isDark && { color: colors.text }]}>0</ThemedText>
+            <ThemedText style={[styles.statLabel, !isDark && { color: colors.textSecondary }]}>Groups</ThemedText>
           </View>
         </View>
 
         <View style={styles.settingsSection}>
-          <ThemedText style={styles.sectionTitle}>Settings</ThemedText>
+          <ThemedText style={[styles.sectionTitle, !isDark && { color: colors.textSecondary }]}>Settings</ThemedText>
           {settingsItems.map((item, index) => (
             <Pressable
               key={index}
-              style={styles.settingItem}
+              style={[styles.settingItem, !isDark && { backgroundColor: colors.card, borderColor: colors.border }]}
               onPress={item.onPress}
               disabled={item.hasSwitch}>
               <View style={styles.settingLeft}>
-                <View style={styles.settingIcon}>
-                  <IconSymbol name={item.icon as any} size={20} color="#2DD4BF" />
+                <View style={[styles.settingIcon, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)' }]}>
+                  <IconSymbol name={item.icon as any} size={20} color={isDark ? '#2DD4BF' : colors.tint} />
                 </View>
-                <ThemedText style={styles.settingTitle}>{item.title}</ThemedText>
+                <ThemedText style={[styles.settingTitle, !isDark && { color: colors.text }]}>{item.title}</ThemedText>
               </View>
               {item.hasSwitch ? (
                 <Switch
                   value={item.value}
                   onValueChange={item.onToggle}
-                  trackColor={{ false: '#333', true: 'rgba(45, 212, 191, 0.4)' }}
-                  thumbColor={item.value ? '#2DD4BF' : '#666'}
+                  trackColor={{ false: isDark ? '#333' : '#D4D4D4', true: isDark ? 'rgba(45, 212, 191, 0.4)' : 'rgba(34, 197, 94, 0.4)' }}
+                  thumbColor={item.value ? (isDark ? '#2DD4BF' : colors.tint) : (isDark ? '#666' : '#999')}
                 />
               ) : (
-                <IconSymbol name="chevron.right" size={16} color="rgba(255,255,255,0.4)" />
+                <IconSymbol name="chevron.right" size={16} color={isDark ? 'rgba(255,255,255,0.4)' : colors.textSecondary} />
               )}
             </Pressable>
           ))}
@@ -124,7 +126,7 @@ export default function ProfileScreen() {
           <ThemedText style={styles.logoutText}>Logout</ThemedText>
         </Pressable>
 
-        <ThemedText style={styles.versionText}>Version 1.0.0</ThemedText>
+        <ThemedText style={[styles.versionText, !isDark && { color: colors.textSecondary }]}>Version 1.0.0</ThemedText>
       </ScrollView>
     </LinearGradient>
   );

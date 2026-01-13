@@ -16,6 +16,7 @@ export function ThemedText({
   ...rest
 }: ThemedTextProps) {
   const color = useThemeColor({ light: lightColor, dark: darkColor }, 'text');
+  const tintColor = useThemeColor({}, 'tint');
 
   return (
     <Text
@@ -25,7 +26,7 @@ export function ThemedText({
         type === 'title' ? styles.title : undefined,
         type === 'defaultSemiBold' ? styles.defaultSemiBold : undefined,
         type === 'subtitle' ? styles.subtitle : undefined,
-        type === 'link' ? styles.link : undefined,
+        type === 'link' ? [styles.link, { color: tintColor }] : undefined,
         type === 'header' ? styles.header : undefined,
         style,
       ]}
@@ -60,6 +61,5 @@ const styles = StyleSheet.create({
   link: {
     lineHeight: 24,
     fontSize: 14,
-    color: '#2DD4BF',
   },
 });

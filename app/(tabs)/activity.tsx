@@ -1,6 +1,6 @@
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Gradients } from '@/constants/theme';
+import { useThemeColors } from '@/hooks/use-theme-colors';
 import { expenseService, groupService, initDatabase, settlementService, userService } from '@/services/api';
 import type { Group, User } from '@/types/database';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -18,6 +18,7 @@ type ActivityItem = {
 };
 
 export default function ActivityScreen() {
+  const { gradients, colors, isDark } = useThemeColors();
   const [activities, setActivities] = useState<ActivityItem[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -76,29 +77,29 @@ export default function ActivityScreen() {
     const timeStr = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
 
     const iconName = item.type === 'expense' ? 'dollarsign.circle.fill' : 'arrow.right.circle.fill';
-    const iconColor = item.type === 'expense' ? '#fff' : '#10b981';
+    const iconColor = item.type === 'expense' ? (isDark ? '#2DD4BF' : colors.tint) : (isDark ? '#10b981' : colors.success);
 
     return (
-      <View style={styles.activityCard}>
-        <View style={[styles.activityIcon, { backgroundColor: item.type === 'expense' ? 'rgba(45, 212, 191, 0.15)' : 'rgba(16, 185, 129, 0.15)' }]}>
+      <View style={[styles.activityCard, !isDark && { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <View style={[styles.activityIcon, { backgroundColor: item.type === 'expense' ? (isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)') : 'rgba(16, 185, 129, 0.15)' }]}>
           <IconSymbol size={20} name={iconName} color={iconColor} />
         </View>
         <View style={styles.activityInfo}>
-          <ThemedText type="defaultSemiBold" style={styles.activityDescription}>
+          <ThemedText type="defaultSemiBold" style={[styles.activityDescription, !isDark && { color: colors.text }]}>
             {item.description}
           </ThemedText>
           <View style={styles.activityDetails}>
             {item.group && (
-              <ThemedText style={styles.groupName}>{item.group.name}</ThemedText>
+              <ThemedText style={[styles.groupName, { color: isDark ? '#2DD4BF' : colors.tint }]}>{item.group.name}</ThemedText>
             )}
-            <ThemedText style={styles.activityDate}> • {dateStr} at {timeStr}</ThemedText>
+            <ThemedText style={[styles.activityDate, !isDark && { color: colors.textSecondary }]}> • {dateStr} at {timeStr}</ThemedText>
           </View>
           {item.type === 'expense' && item.user && (
-            <ThemedText style={styles.paidBy}>Paid by {item.user.name}</ThemedText>
+            <ThemedText style={[styles.paidBy, !isDark && { color: colors.textSecondary }]}>Paid by {item.user.name}</ThemedText>
           )}
         </View>
         <View style={styles.amountContainer}>
-          <ThemedText style={[styles.amount, { color: item.type === 'expense' ? '#fff' : '#10b981' }]}>
+          <ThemedText style={[styles.amount, { color: item.type === 'expense' ? (isDark ? '#fff' : colors.text) : (isDark ? '#10b981' : colors.success) }]}>
             ${item.amount.toFixed(2)}
           </ThemedText>
         </View>
@@ -108,11 +109,11 @@ export default function ActivityScreen() {
 
   return (
     <LinearGradient
-      colors={Gradients.screenBackground}
+      colors={gradients.screenBackground}
       style={styles.container}>
       <View style={styles.header}>
-        <ThemedText style={styles.headerLabel}>Recent</ThemedText>
-        <ThemedText type="header" style={styles.headerTitle}>Activity</ThemedText>
+        <ThemedText style={[styles.headerLabel, !isDark && { color: colors.textSecondary }]}>Recent</ThemedText>
+        <ThemedText type="header" style={[styles.headerTitle, !isDark && { color: colors.text }]}>Activity</ThemedText>
       </View>
 
       {loading ? (
@@ -121,13 +122,13 @@ export default function ActivityScreen() {
         </View>
       ) : activities.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <View style={styles.emptyIconContainer}>
-            <IconSymbol size={48} name="clock" color="#2DD4BF" />
+          <View style={[styles.emptyIconContainer, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.1)' : 'rgba(34, 197, 94, 0.1)' }]}>
+            <IconSymbol size={48} name="clock" color={isDark ? '#2DD4BF' : colors.tint} />
           </View>
-          <ThemedText type="subtitle" style={styles.emptyTitle}>
+          <ThemedText type="subtitle" style={[styles.emptyTitle, !isDark && { color: colors.text }]}>
             No activity yet
           </ThemedText>
-          <ThemedText style={styles.emptyText}>
+          <ThemedText style={[styles.emptyText, !isDark && { color: colors.textSecondary }]}>
             Your expense and payment history will appear here
           </ThemedText>
         </View>

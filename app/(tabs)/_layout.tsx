@@ -5,18 +5,16 @@ import { Platform, StyleSheet, View } from 'react-native';
 
 import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useThemeColors } from '@/hooks/use-theme-colors';
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'dark'];
+  const { colors, isDark } = useThemeColors();
 
   return (
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: colors.tint,
-        tabBarInactiveTintColor: 'rgba(255, 255, 255, 0.5)',
+        tabBarInactiveTintColor: isDark ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.4)',
         headerShown: false,
         tabBarButton: HapticTab,
         tabBarShowLabel: true,
@@ -26,22 +24,24 @@ export default function TabLayout() {
           left: 16,
           right: 16,
           height: 70,
-          backgroundColor: 'rgba(20, 30, 35, 0.95)',
+          backgroundColor: isDark ? 'rgba(20, 30, 35, 0.95)' : 'rgba(255, 255, 255, 0.95)',
           borderRadius: 16,
           paddingHorizontal: 8,
-          shadowColor: '#000',
+          shadowColor: isDark ? '#000' : '#64748B',
           shadowOffset: { width: 0, height: 8 },
-          shadowOpacity: 0.3,
+          shadowOpacity: isDark ? 0.3 : 0.15,
           shadowRadius: 16,
           elevation: 10,
           marginHorizontal: 16,
+          borderWidth: isDark ? 0 : 1,
+          borderColor: isDark ? 'transparent' : 'rgba(0, 0, 0, 0.05)',
         },
         tabBarBackground: () => (
           <View style={[StyleSheet.absoluteFill, { borderRadius: 16, overflow: 'hidden' }]}>
             {Platform.OS === 'ios' && (
               <BlurView
                 intensity={60}
-                tint="dark"
+                tint={isDark ? 'dark' : 'light'}
                 style={StyleSheet.absoluteFill}
               />
             )}

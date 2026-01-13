@@ -1,7 +1,6 @@
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors, Gradients } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useThemeColors } from '@/hooks/use-theme-colors';
 import { calculateBalances, groupService, initDatabase, userService } from '@/services/api';
 import type { GroupWithMembers } from '@/types/database';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -11,7 +10,7 @@ import { Alert, FlatList, KeyboardAvoidingView, Modal, Platform, ScrollView, Sty
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
 export default function GroupsScreen() {
-  const colorScheme = useColorScheme();
+  const { colors, gradients, isDark } = useThemeColors();
   const [groups, setGroups] = useState<GroupWithMembers[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
@@ -84,8 +83,6 @@ export default function GroupsScreen() {
     const isPositive = balance > 0;
     const isSettled = balance === 0;
 
-    const gradientColors = Gradients.cardPrimary;
-
     return (
       <Animated.View
         entering={FadeInDown.delay(index * 100).springify()}
@@ -93,39 +90,35 @@ export default function GroupsScreen() {
         <TouchableOpacity
           activeOpacity={0.7}
           onPress={() => router.push(`/group/${item.id}` as any)}>
-          <LinearGradient
-            colors={gradientColors}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={[styles.groupCard, styles.glassCard]}>
+          <View style={[styles.groupCard, isDark ? styles.glassCard : { backgroundColor: colors.card, borderColor: colors.border }]}>
             <View style={styles.groupCardContent}>
               <View style={styles.groupHeader}>
                 <View style={[styles.groupIconContainer, { 
-                  backgroundColor: 'rgba(45, 212, 191, 0.15)',
+                  backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)',
                 }]}>
-                  <IconSymbol size={28} name="person.3.fill" color="#2DD4BF" />
+                  <IconSymbol size={28} name="person.3.fill" color={isDark ? '#2DD4BF' : colors.tint} />
                 </View>
                 <View style={styles.groupInfo}>
-                  <ThemedText style={styles.groupName}>
+                  <ThemedText style={[styles.groupName, !isDark && { color: colors.text }]}>
                     {item.name}
                   </ThemedText>
                   {item.description && (
-                    <ThemedText style={styles.groupDescription}>
+                    <ThemedText style={[styles.groupDescription, !isDark && { color: colors.textSecondary }]}>
                       {item.description}
                     </ThemedText>
                   )}
                 </View>
               </View>
               
-              <View style={[styles.balanceSection, { borderTopColor: 'rgba(45, 212, 191, 0.2)' }]}>
+              <View style={[styles.balanceSection, { borderTopColor: isDark ? 'rgba(45, 212, 191, 0.2)' : colors.border }]}>
                 <View style={styles.balanceContent}>
-                  <ThemedText style={styles.balanceLabel}>
+                  <ThemedText style={[styles.balanceLabel, !isDark && { color: colors.textSecondary }]}>
                     {isSettled ? 'All settled up' : isPositive ? 'You are owed' : 'You owe'}
                   </ThemedText>
                   {!isSettled && (
                     <ThemedText style={[
                       styles.balanceAmount,
-                      { color: isPositive ? '#10b981' : '#ef4444' }
+                      { color: isPositive ? (isDark ? '#10b981' : colors.success) : (isDark ? '#ef4444' : colors.error) }
                     ]}>
                       ${Math.abs(balance).toFixed(2)}
                     </ThemedText>
@@ -133,7 +126,7 @@ export default function GroupsScreen() {
                 </View>
               </View>
             </View>
-          </LinearGradient>
+          </View>
         </TouchableOpacity>
       </Animated.View>
     );
@@ -143,19 +136,19 @@ export default function GroupsScreen() {
 
   return (
     <LinearGradient
-      colors={Gradients.screenBackground}
+      colors={gradients.screenBackground}
       style={styles.container}>
       <View style={styles.header}>
         <View>
-          <ThemedText style={styles.headerLabel}>Total balance</ThemedText>
-          <ThemedText type="header" style={styles.headerAmount}>
+          <ThemedText style={[styles.headerLabel, !isDark && { color: colors.textSecondary }]}>Total balance</ThemedText>
+          <ThemedText type="header" style={[styles.headerAmount, !isDark && { color: colors.text }]}>
             ${Math.abs(totalBalance).toFixed(2)}
           </ThemedText>
         </View>
         <TouchableOpacity
-          style={styles.addButtonRect}
+          style={[styles.addButtonRect, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)', borderColor: isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(34, 197, 94, 0.3)' }]}
           onPress={() => setModalVisible(true)}>
-         <IconSymbol size={20} name="plus" color="#2DD4BF" />
+         <IconSymbol size={20} name="plus" color={isDark ? '#2DD4BF' : colors.tint} />
         </TouchableOpacity>
       </View>
 
@@ -165,20 +158,20 @@ export default function GroupsScreen() {
         </View>
       ) : groups.length === 0 ? (
         <Animated.View entering={FadeInDown.springify()} style={styles.emptyContainer}>
-          <View style={[styles.emptyIconContainer, { backgroundColor: 'rgba(45, 212, 191, 0.1)' }]}>
-            <IconSymbol size={80} name="person.3" color={Colors[colorScheme ?? 'light'].icon} />
+          <View style={[styles.emptyIconContainer, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.1)' : 'rgba(34, 197, 94, 0.1)' }]}>
+            <IconSymbol size={80} name="person.3" color={isDark ? '#2DD4BF' : colors.tint} />
           </View>
-          <ThemedText type="subtitle" style={styles.emptyTitle}>
+          <ThemedText type="subtitle" style={[styles.emptyTitle, !isDark && { color: colors.text }]}>
             No groups yet
           </ThemedText>
-          <ThemedText style={styles.emptyText}>
+          <ThemedText style={[styles.emptyText, !isDark && { color: colors.textSecondary }]}>
             Create a group to start splitting expenses with friends
           </ThemedText>
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={() => setModalVisible(true)}>
             <LinearGradient
-              colors={Gradients.buttonPrimary}
+              colors={gradients.buttonPrimary}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.createButton}>
@@ -202,13 +195,13 @@ export default function GroupsScreen() {
         animationType="slide"
         presentationStyle="fullScreen"
         onRequestClose={() => setModalVisible(false)}>
-        <LinearGradient colors={Gradients.screenBackground} style={styles.modalContainer}>
+        <LinearGradient colors={gradients.screenBackground} style={styles.modalContainer}>
           <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             style={styles.modalKeyboard}>
             <View style={styles.modalHeader}>
-              <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.closeButtonRect}>
-                <IconSymbol size={20} name="xmark" color="#fff" />
+              <TouchableOpacity onPress={() => setModalVisible(false)} style={[styles.closeButtonRect, !isDark && { backgroundColor: 'rgba(0, 0, 0, 0.05)' }]}>
+                <IconSymbol size={20} name="xmark" color={isDark ? '#fff' : colors.text} />
               </TouchableOpacity>
             </View>
 
@@ -218,19 +211,19 @@ export default function GroupsScreen() {
               keyboardShouldPersistTaps="handled">
               
               <View style={styles.createHeader}>
-                <View style={styles.createIconContainer}>
-                  <IconSymbol size={40} name="person.3.fill" color="#2DD4BF" />
+                <View style={[styles.createIconContainer, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)' }]}>
+                  <IconSymbol size={40} name="person.3.fill" color={isDark ? '#2DD4BF' : colors.tint} />
                 </View>
-                <ThemedText type="title" style={styles.createTitle}>Create a Group</ThemedText>
-                <ThemedText style={styles.createSubtitle}>
+                <ThemedText type="title" style={[styles.createTitle, !isDark && { color: colors.text }]}>Create a Group</ThemedText>
+                <ThemedText style={[styles.createSubtitle, !isDark && { color: colors.textSecondary }]}>
                   Split expenses easily with friends and family
                 </ThemedText>
               </View>
 
               <View style={styles.formGroup}>
-                <ThemedText style={styles.label}>Group Name *</ThemedText>
+                <ThemedText style={[styles.label, !isDark && { color: colors.textSecondary }]}>Group Name *</ThemedText>
                 <TextInput
-                  style={[styles.input, styles.glassInput]}
+                  style={[styles.input, !isDark && { backgroundColor: colors.inputBackground, borderColor: colors.inputBorder, color: colors.text }]}
                   placeholder="e.g. Summer Trip 2024"
                   placeholderTextColor="#6B7280"
                   value={newGroupName}
@@ -241,9 +234,9 @@ export default function GroupsScreen() {
               </View>
 
               <View style={styles.formGroup}>
-                <ThemedText style={styles.label}>Description (Optional)</ThemedText>
+                <ThemedText style={[styles.label, !isDark && { color: colors.textSecondary }]}>Description (Optional)</ThemedText>
                 <TextInput
-                  style={[styles.input, styles.textArea, styles.glassInput]}
+                  style={[styles.input, styles.textArea, !isDark && { backgroundColor: colors.inputBackground, borderColor: colors.inputBorder, color: colors.text }]}
                   placeholder="What is this group for?"
                   placeholderTextColor="#6B7280"
                   value={newGroupDescription}
@@ -256,18 +249,18 @@ export default function GroupsScreen() {
                 />
               </View>
 
-              <ThemedText style={styles.privacyNote}>
+              <ThemedText style={[styles.privacyNote, !isDark && { color: colors.textSecondary }]}>
                 You can add members to your group after creating it.
               </ThemedText>
             </ScrollView>
 
-            <View style={styles.modalFooter}>
+            <View style={[styles.modalFooter, !isDark && { borderTopColor: colors.border }]}>
               <TouchableOpacity
                 activeOpacity={0.8}
                 onPress={createGroup}
                 disabled={!newGroupName.trim()}>
                 <LinearGradient
-                  colors={!newGroupName.trim() ? ['#1A1A24', '#12121A'] : Gradients.buttonPrimary}
+                  colors={!newGroupName.trim() ? (isDark ? ['#1A1A24', '#12121A'] : ['#E5E5E5', '#D4D4D4']) : gradients.buttonPrimary}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={[

@@ -1,6 +1,6 @@
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Gradients } from '@/constants/theme';
+import { useThemeColors } from '@/hooks/use-theme-colors';
 import { calculateBalances, groupService, initDatabase, userService } from '@/services/api';
 import type { User } from '@/types/database';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -13,6 +13,7 @@ interface UserWithBalance extends User {
 }
 
 export default function FriendsScreen() {
+  const { gradients, colors, isDark } = useThemeColors();
   const [friends, setFriends] = useState<UserWithBalance[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
@@ -96,22 +97,22 @@ export default function FriendsScreen() {
 
   function renderFriend({ item }: { item: UserWithBalance }) {
     const balance = item.balance;
-    const balanceColor = balance > 0 ? '#10b981' : balance < 0 ? '#ef4444' : '#2DD4BF';
+    const balanceColor = balance > 0 ? (isDark ? '#10b981' : colors.success) : balance < 0 ? (isDark ? '#ef4444' : colors.error) : (isDark ? '#2DD4BF' : colors.tint);
 
     return (
       <View
-        style={styles.friendCard}>
-        <View style={styles.avatar}>
-          <ThemedText style={styles.avatarText}>
+        style={[styles.friendCard, !isDark && { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <View style={[styles.avatar, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)' }]}>
+          <ThemedText style={[styles.avatarText, { color: isDark ? '#2DD4BF' : colors.tint }]}>
             {item.name.charAt(0).toUpperCase()}
           </ThemedText>
         </View>
         <View style={styles.friendInfo}>
-          <ThemedText type="defaultSemiBold" style={styles.friendName}>
+          <ThemedText type="defaultSemiBold" style={[styles.friendName, !isDark && { color: colors.text }]}>
             {item.name}
           </ThemedText>
           {item.email && (
-            <ThemedText style={styles.friendEmail}>{item.email}</ThemedText>
+            <ThemedText style={[styles.friendEmail, !isDark && { color: colors.textSecondary }]}>{item.email}</ThemedText>
           )}
         </View>
         <View style={styles.balanceContainer}>
@@ -120,13 +121,13 @@ export default function FriendsScreen() {
               <ThemedText style={[styles.balanceAmount, { color: balanceColor }]}>
                 ${Math.abs(balance).toFixed(2)}
               </ThemedText>
-              <ThemedText style={styles.balanceLabel}>
+              <ThemedText style={[styles.balanceLabel, !isDark && { color: colors.textSecondary }]}>
                 {balance > 0 ? 'owes you' : 'you owe'}
               </ThemedText>
             </>
           )}
           {balance === 0 && (
-            <ThemedText style={styles.settledText}>settled up</ThemedText>
+            <ThemedText style={[styles.settledText, !isDark && { color: colors.textSecondary }]}>settled up</ThemedText>
           )}
         </View>
       </View>
@@ -138,24 +139,24 @@ export default function FriendsScreen() {
 
   return (
     <LinearGradient
-      colors={Gradients.screenBackground}
+      colors={gradients.screenBackground}
       style={styles.container}>
       <View style={styles.header}>
         <View style={{ flexDirection: 'column', gap: 4 }}>
-          <ThemedText style={styles.headerLabel}>You owe</ThemedText>
-          <ThemedText type="header" style={styles.headerAmount}>${totalOwed.toFixed(2)}</ThemedText>
+          <ThemedText style={[styles.headerLabel, !isDark && { color: colors.textSecondary }]}>You owe</ThemedText>
+          <ThemedText type="header" style={[styles.headerAmount, !isDark && { color: colors.text }]}>${totalOwed.toFixed(2)}</ThemedText>
         </View>
         <View style={styles.headerButtons}>
           <TouchableOpacity
-            style={styles.addExpenseButton}
+            style={[styles.addExpenseButton, { borderColor: isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(34, 197, 94, 0.3)' }]}
             onPress={() => router.push({ pathname: '/(tabs)/expenses', params: { openModal: 'true' } })}>
-            <IconSymbol size={16} name="plus" color="#2DD4BF" />
-            <ThemedText style={styles.addExpenseText}>Add Expense</ThemedText>
+            <IconSymbol size={16} name="plus" color={isDark ? '#2DD4BF' : colors.tint} />
+            <ThemedText style={[styles.addExpenseText, { color: isDark ? '#2DD4BF' : colors.tint }]}>Add Expense</ThemedText>
           </TouchableOpacity>
           <TouchableOpacity
-            style={styles.addButtonRect}
+            style={[styles.addButtonRect, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)', borderColor: isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(34, 197, 94, 0.3)' }]}
             onPress={() => setModalVisible(true)}>
-            <IconSymbol size={20} name="person.badge.plus" color="#2DD4BF" />
+            <IconSymbol size={20} name="person.badge.plus" color={isDark ? '#2DD4BF' : colors.tint} />
           </TouchableOpacity>
         </View>
       </View>
@@ -166,20 +167,20 @@ export default function FriendsScreen() {
         </View>
       ) : friends.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <View style={styles.emptyIconContainer}>
-            <IconSymbol size={64} name="person.2" color="#2DD4BF" />
+          <View style={[styles.emptyIconContainer, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.1)' : 'rgba(34, 197, 94, 0.1)' }]}>
+            <IconSymbol size={64} name="person.2" color={isDark ? '#2DD4BF' : colors.tint} />
           </View>
-          <ThemedText type="subtitle" style={styles.emptyTitle}>
+          <ThemedText type="subtitle" style={[styles.emptyTitle, !isDark && { color: colors.text }]}>
             No friends yet
           </ThemedText>
-          <ThemedText style={styles.emptyText}>
+          <ThemedText style={[styles.emptyText, !isDark && { color: colors.textSecondary }]}>
             Add friends to split expenses with them
           </ThemedText>
           <TouchableOpacity
             style={styles.createButton}
             onPress={() => setModalVisible(true)}>
             <LinearGradient
-              colors={Gradients.buttonPrimary}
+              colors={gradients.buttonPrimary}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.createButtonGradient}>
@@ -201,7 +202,7 @@ export default function FriendsScreen() {
         animationType="slide"
         presentationStyle="fullScreen"
         onRequestClose={() => setModalVisible(false)}>
-        <LinearGradient colors={Gradients.screenBackground} style={styles.modalContainer}>
+        <LinearGradient colors={gradients.screenBackground} style={styles.modalContainer}>
           <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             style={styles.modalKeyboard}>
@@ -299,7 +300,7 @@ export default function FriendsScreen() {
                 onPress={sendInvite}
                 disabled={inviteMethod === 'email' ? !newFriendEmail.trim() : !newFriendPhone.trim()}>
                 <LinearGradient
-                  colors={(inviteMethod === 'email' ? !newFriendEmail.trim() : !newFriendPhone.trim()) ? ['#1A1A24', '#12121A'] : Gradients.buttonPrimary}
+                  colors={(inviteMethod === 'email' ? !newFriendEmail.trim() : !newFriendPhone.trim()) ? ['#1A1A24', '#12121A'] : gradients.buttonPrimary}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={[
