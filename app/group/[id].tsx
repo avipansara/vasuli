@@ -1,8 +1,7 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { Gradients } from '@/constants/theme';
 import {
   calculateBalances,
   expenseService,
@@ -11,13 +10,13 @@ import {
   userService
 } from '@/services/database';
 import type { Expense, Group, GroupMember, User } from '@/types/database';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { Alert, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 
 export default function GroupDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const colorScheme = useColorScheme();
   const [group, setGroup] = useState<Group | null>(null);
   const [expenses, setExpenses] = useState<(Expense & { paidByUser?: User })[]>([]);
   const [members, setMembers] = useState<(GroupMember & { user?: User })[]>([]);
@@ -178,9 +177,13 @@ export default function GroupDetailScreen() {
     const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
     return (
-      <View style={[styles.expenseCard, { backgroundColor: Colors[colorScheme ?? 'light'].background }]}>
-        <View style={[styles.expenseIcon, { backgroundColor: colorScheme === 'dark' ? '#27272a' : '#f4f4f5' }]}>
-          <IconSymbol size={24} name="dollarsign.circle.fill" color={Colors[colorScheme ?? 'light'].text} />
+      <LinearGradient
+        colors={Gradients.cardPrimary}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.expenseCard}>
+        <View style={styles.expenseIcon}>
+          <IconSymbol size={24} name="dollarsign.circle.fill" color="#2DD4BF" />
         </View>
         <View style={styles.expenseInfo}>
           <ThemedText type="defaultSemiBold">{item.description}</ThemedText>
@@ -189,18 +192,18 @@ export default function GroupDetailScreen() {
           </ThemedText>
         </View>
         <ThemedText style={styles.expenseAmount}>${item.amount.toFixed(2)}</ThemedText>
-      </View>
+      </LinearGradient>
     );
   }
 
   function renderMember({ item }: { item: GroupMember & { user?: User } }) {
     const balance = balances.get(item.userId) || 0;
-    const balanceColor = balance > 0 ? '#10b981' : balance < 0 ? '#ef4444' : Colors[colorScheme ?? 'light'].text;
+    const balanceColor = balance > 0 ? '#10b981' : balance < 0 ? '#ef4444' : '#2DD4BF';
 
     return (
       <View style={styles.memberCard}>
-        <View style={[styles.memberAvatar, { backgroundColor: colorScheme === 'dark' ? '#27272a' : '#f4f4f5' }]}>
-          <ThemedText style={[styles.avatarText, { color: Colors[colorScheme ?? 'light'].text }]}>
+        <View style={styles.memberAvatar}>
+          <ThemedText style={styles.avatarText}>
             {item.user?.name.charAt(0).toUpperCase() || '?'}
           </ThemedText>
         </View>
@@ -247,20 +250,26 @@ export default function GroupDetailScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      <View style={[styles.header, { backgroundColor: Colors[colorScheme ?? 'light'].background }]}>
+      <LinearGradient
+        colors={Gradients.hero}
+        style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <IconSymbol size={24} name="chevron.left" color={Colors[colorScheme ?? 'light'].text} />
+          <IconSymbol size={24} name="chevron.left" color="#2DD4BF" />
         </TouchableOpacity>
         <ThemedText type="title">{group.name}</ThemedText>
         <View style={styles.headerSpacer} />
-      </View>
+      </LinearGradient>
 
       <ScrollView style={styles.content}>
-        <View style={[styles.balanceCard, { backgroundColor: Colors[colorScheme ?? 'light'].background }]}>
+        <LinearGradient
+          colors={Gradients.cardAccent}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.balanceCard}>
           <ThemedText style={styles.balanceTitle}>Your Balance</ThemedText>
           <ThemedText style={[
             styles.totalBalance,
-            { color: currentUserBalance > 0 ? '#10b981' : currentUserBalance < 0 ? '#ef4444' : Colors[colorScheme ?? 'light'].text }
+            { color: currentUserBalance > 0 ? '#10b981' : currentUserBalance < 0 ? '#ef4444' : '#2DD4BF' }
           ]}>
             {currentUserBalance === 0 ? 'Settled up' : `$${Math.abs(currentUserBalance).toFixed(2)}`}
           </ThemedText>
@@ -269,20 +278,32 @@ export default function GroupDetailScreen() {
               {currentUserBalance > 0 ? 'You are owed' : 'You owe'}
             </ThemedText>
           )}
-        </View>
+        </LinearGradient>
 
         <View style={styles.actionButtons}>
           <TouchableOpacity
-            style={[styles.actionButton, { backgroundColor: Colors[colorScheme ?? 'light'].text }]}
+            style={styles.actionButton}
             onPress={() => setExpenseModalVisible(true)}>
-            <IconSymbol size={20} name="plus.circle.fill" color={Colors[colorScheme ?? 'light'].background} />
-            <ThemedText style={[styles.actionButtonText, { color: Colors[colorScheme ?? 'light'].background }]}>Add Expense</ThemedText>
+            <LinearGradient
+              colors={Gradients.buttonPrimary}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.actionButtonGradient}>
+              <IconSymbol size={20} name="plus.circle.fill" color="#0A0A0F" />
+              <ThemedText style={[styles.actionButtonText, { color: '#0A0A0F' }]}>Add Expense</ThemedText>
+            </LinearGradient>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.actionButton, { backgroundColor: '#10b981' }]}
+            style={styles.actionButton}
             onPress={() => setSettleModalVisible(true)}>
-            <IconSymbol size={20} name="checkmark.circle.fill" color="#fff" />
-            <ThemedText style={styles.actionButtonText}>Settle Up</ThemedText>
+            <LinearGradient
+              colors={['#10b981', '#059669']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.actionButtonGradient}>
+              <IconSymbol size={20} name="checkmark.circle.fill" color="#fff" />
+              <ThemedText style={styles.actionButtonText}>Settle Up</ThemedText>
+            </LinearGradient>
           </TouchableOpacity>
         </View>
 
@@ -290,7 +311,7 @@ export default function GroupDetailScreen() {
           <View style={styles.sectionHeader}>
             <ThemedText type="subtitle">Members</ThemedText>
             <TouchableOpacity onPress={() => setMemberModalVisible(true)}>
-              <IconSymbol size={20} name="plus.circle" color={Colors[colorScheme ?? 'light'].tint} />
+              <IconSymbol size={20} name="plus.circle" color="#2DD4BF" />
             </TouchableOpacity>
           </View>
           {members.map(member => (
@@ -318,11 +339,11 @@ export default function GroupDetailScreen() {
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.modalContainer}>
-          <View style={[styles.modalContent, { backgroundColor: Colors[colorScheme ?? 'light'].background }]}>
+          <View style={[styles.modalContent, { backgroundColor: '#0A0A0F' }]}>
             <View style={styles.modalHeader}>
               <ThemedText type="subtitle" style={styles.modalTitle}>Add Expense</ThemedText>
               <TouchableOpacity onPress={() => setExpenseModalVisible(false)} style={styles.closeButton}>
-                <IconSymbol size={28} name="xmark.circle.fill" color={Colors[colorScheme ?? 'light'].icon} />
+                <IconSymbol size={28} name="xmark.circle.fill" color="#6B7280" />
               </TouchableOpacity>
             </View>
 
@@ -333,13 +354,9 @@ export default function GroupDetailScreen() {
               <View style={styles.formGroup}>
                 <ThemedText style={styles.label}>Description</ThemedText>
                 <TextInput
-                  style={[styles.input, {
-                    backgroundColor: colorScheme === 'dark' ? '#1f2937' : '#f9fafb',
-                    color: Colors[colorScheme ?? 'light'].text,
-                    borderColor: colorScheme === 'dark' ? '#374151' : '#e5e7eb',
-                  }]}
+                  style={[styles.input, styles.glassInput]}
                   placeholder="e.g. Dinner at Mario's"
-                  placeholderTextColor={Colors[colorScheme ?? 'light'].icon}
+                  placeholderTextColor="#6B7280"
                   value={description}
                   onChangeText={setDescription}
                   autoFocus
@@ -349,13 +366,9 @@ export default function GroupDetailScreen() {
               <View style={styles.formGroup}>
                 <ThemedText style={styles.label}>Amount</ThemedText>
                 <TextInput
-                  style={[styles.input, {
-                    backgroundColor: colorScheme === 'dark' ? '#1f2937' : '#f9fafb',
-                    color: Colors[colorScheme ?? 'light'].text,
-                    borderColor: colorScheme === 'dark' ? '#374151' : '#e5e7eb',
-                  }]}
+                  style={[styles.input, styles.glassInput]}
                   placeholder="0.00"
-                  placeholderTextColor={Colors[colorScheme ?? 'light'].icon}
+                  placeholderTextColor="#6B7280"
                   value={amount}
                   onChangeText={setAmount}
                   keyboardType="decimal-pad"
@@ -363,19 +376,21 @@ export default function GroupDetailScreen() {
               </View>
             </ScrollView>
 
-            <View style={[styles.modalFooter, { borderTopColor: colorScheme === 'dark' ? '#374151' : '#e5e7eb' }]}>
+            <View style={[styles.modalFooter, { borderTopColor: 'rgba(45, 212, 191, 0.15)' }]}>
               <TouchableOpacity
                 activeOpacity={0.8}
                 onPress={addExpense}
                 disabled={!description.trim() || !amount.trim()}>
-                <View
+                <LinearGradient
+                  colors={(!description.trim() || !amount.trim()) ? ['#1A1A24', '#12121A'] : Gradients.buttonPrimary}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
                   style={[
                     styles.submitButton,
-                    { backgroundColor: (!description.trim() || !amount.trim()) ? (colorScheme === 'dark' ? '#3f3f46' : '#d4d4d8') : Colors[colorScheme ?? 'light'].text },
                     (!description.trim() || !amount.trim()) && styles.disabledButton
                   ]}>
-                  <ThemedText style={[styles.submitButtonText, { color: Colors[colorScheme ?? 'light'].background }]}>Add Expense</ThemedText>
-                </View>
+                  <ThemedText style={[styles.submitButtonText, { color: (!description.trim() || !amount.trim()) ? '#6B7280' : '#0A0A0F' }]}>Add Expense</ThemedText>
+                </LinearGradient>
               </TouchableOpacity>
             </View>
           </View>
@@ -390,11 +405,11 @@ export default function GroupDetailScreen() {
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.modalContainer}>
-          <View style={[styles.modalContent, { backgroundColor: Colors[colorScheme ?? 'light'].background }]}>
+          <View style={[styles.modalContent, { backgroundColor: '#0A0A0F' }]}>
             <View style={styles.modalHeader}>
               <ThemedText type="subtitle" style={styles.modalTitle}>Add Member</ThemedText>
               <TouchableOpacity onPress={() => setMemberModalVisible(false)} style={styles.closeButton}>
-                <IconSymbol size={28} name="xmark.circle.fill" color={Colors[colorScheme ?? 'light'].icon} />
+                <IconSymbol size={28} name="xmark.circle.fill" color="#6B7280" />
               </TouchableOpacity>
             </View>
 
@@ -413,20 +428,14 @@ export default function GroupDetailScreen() {
                         key={user.id}
                         style={[
                           styles.userOption,
-                          selectedUserId === user.id && {
-                            backgroundColor: Colors[colorScheme ?? 'light'].tint,
-                            borderColor: Colors[colorScheme ?? 'light'].tint,
-                          },
-                          selectedUserId !== user.id && {
-                            backgroundColor: colorScheme === 'dark' ? '#1f2937' : '#f3f4f6',
-                            borderColor: colorScheme === 'dark' ? '#374151' : '#e5e7eb',
-                          }
+                          selectedUserId === user.id && styles.userOptionSelected,
+                          selectedUserId !== user.id && styles.userOptionUnselected,
                         ]}
                         onPress={() => setSelectedUserId(user.id)}>
                         <ThemedText style={[
                           styles.userOptionText,
-                          selectedUserId === user.id && { color: '#fff' },
-                          selectedUserId !== user.id && { color: Colors[colorScheme ?? 'light'].text }
+                          selectedUserId === user.id && { color: '#0A0A0F' },
+                          selectedUserId !== user.id && { color: '#f4f4f5' }
                         ]}>
                           {user.name}
                         </ThemedText>
@@ -437,20 +446,22 @@ export default function GroupDetailScreen() {
               </View>
             </ScrollView>
 
-            <View style={[styles.modalFooter, { borderTopColor: colorScheme === 'dark' ? '#374151' : '#e5e7eb' }]}>
+            <View style={[styles.modalFooter, { borderTopColor: 'rgba(45, 212, 191, 0.15)' }]}>
               {availableUsers.length > 0 && (
                 <TouchableOpacity
                   activeOpacity={0.8}
                   onPress={addMember}
                   disabled={!selectedUserId}>
-                  <View
+                  <LinearGradient
+                    colors={!selectedUserId ? ['#1A1A24', '#12121A'] : Gradients.buttonPrimary}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
                     style={[
                       styles.submitButton,
-                      { backgroundColor: !selectedUserId ? (colorScheme === 'dark' ? '#3f3f46' : '#d4d4d8') : Colors[colorScheme ?? 'light'].text },
                       !selectedUserId && styles.disabledButton
                     ]}>
-                    <ThemedText style={[styles.submitButtonText, { color: Colors[colorScheme ?? 'light'].background }]}>Add Member</ThemedText>
-                  </View>
+                    <ThemedText style={[styles.submitButtonText, { color: !selectedUserId ? '#6B7280' : '#0A0A0F' }]}>Add Member</ThemedText>
+                  </LinearGradient>
                 </TouchableOpacity>
               )}
             </View>
@@ -466,11 +477,11 @@ export default function GroupDetailScreen() {
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.modalContainer}>
-          <View style={[styles.modalContent, { backgroundColor: Colors[colorScheme ?? 'light'].background }]}>
+          <View style={[styles.modalContent, { backgroundColor: '#0A0A0F' }]}>
             <View style={styles.modalHeader}>
               <ThemedText type="subtitle" style={styles.modalTitle}>Settle Up</ThemedText>
               <TouchableOpacity onPress={() => setSettleModalVisible(false)} style={styles.closeButton}>
-                <IconSymbol size={28} name="xmark.circle.fill" color={Colors[colorScheme ?? 'light'].icon} />
+                <IconSymbol size={28} name="xmark.circle.fill" color="#6B7280" />
               </TouchableOpacity>
             </View>
 
@@ -486,20 +497,14 @@ export default function GroupDetailScreen() {
                       key={member.id}
                       style={[
                         styles.userOption,
-                        settleWithUserId === member.userId && {
-                          backgroundColor: Colors[colorScheme ?? 'light'].tint,
-                          borderColor: Colors[colorScheme ?? 'light'].tint,
-                        },
-                        settleWithUserId !== member.userId && {
-                          backgroundColor: colorScheme === 'dark' ? '#1f2937' : '#f3f4f6',
-                          borderColor: colorScheme === 'dark' ? '#374151' : '#e5e7eb',
-                        }
+                        settleWithUserId === member.userId && styles.userOptionSelected,
+                        settleWithUserId !== member.userId && styles.userOptionUnselected,
                       ]}
                       onPress={() => setSettleWithUserId(member.userId)}>
                       <ThemedText style={[
                         styles.userOptionText,
-                        settleWithUserId === member.userId && { color: '#fff' },
-                        settleWithUserId !== member.userId && { color: Colors[colorScheme ?? 'light'].text }
+                        settleWithUserId === member.userId && { color: '#0A0A0F' },
+                        settleWithUserId !== member.userId && { color: '#f4f4f5' }
                       ]}>
                         {member.user?.name || 'Unknown'}
                       </ThemedText>
@@ -511,13 +516,9 @@ export default function GroupDetailScreen() {
               <View style={styles.formGroup}>
                 <ThemedText style={styles.label}>Amount</ThemedText>
                 <TextInput
-                  style={[styles.input, { 
-                    backgroundColor: colorScheme === 'dark' ? '#1f2937' : '#f9fafb',
-                    color: Colors[colorScheme ?? 'light'].text,
-                    borderColor: colorScheme === 'dark' ? '#374151' : '#e5e7eb',
-                  }]}
+                  style={[styles.input, styles.glassInput]}
                   placeholder="0.00"
-                  placeholderTextColor={Colors[colorScheme ?? 'light'].icon}
+                  placeholderTextColor="#6B7280"
                   value={settleAmount}
                   onChangeText={setSettleAmount}
                   keyboardType="decimal-pad"
@@ -525,19 +526,21 @@ export default function GroupDetailScreen() {
               </View>
             </ScrollView>
 
-            <View style={[styles.modalFooter, { borderTopColor: colorScheme === 'dark' ? '#374151' : '#e5e7eb' }]}>
+            <View style={[styles.modalFooter, { borderTopColor: 'rgba(45, 212, 191, 0.15)' }]}>
               <TouchableOpacity
                 activeOpacity={0.8}
                 onPress={settleUp}
                 disabled={!settleWithUserId || !settleAmount.trim()}>
-                <View
+                <LinearGradient
+                  colors={(!settleWithUserId || !settleAmount.trim()) ? ['#1A1A24', '#12121A'] : ['#10b981', '#059669']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
                   style={[
                     styles.submitButton,
-                    { backgroundColor: (!settleWithUserId || !settleAmount.trim()) ? (colorScheme === 'dark' ? '#3f3f46' : '#d4d4d8') : '#10b981' },
                     (!settleWithUserId || !settleAmount.trim()) && styles.disabledButton
                   ]}>
-                  <ThemedText style={styles.submitButtonText}>Record Payment</ThemedText>
-                </View>
+                  <ThemedText style={[styles.submitButtonText, { color: (!settleWithUserId || !settleAmount.trim()) ? '#6B7280' : '#fff' }]}>Record Payment</ThemedText>
+                </LinearGradient>
               </TouchableOpacity>
             </View>
           </View>
@@ -576,7 +579,7 @@ const styles = StyleSheet.create({
   },
   balanceCard: {
     margin: 16,
-    padding: 24,
+    padding: 20,
     borderRadius: 16,
     alignItems: 'center',
     shadowColor: '#000',
@@ -586,17 +589,17 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   balanceTitle: {
-    fontSize: 14,
+    fontSize: 12,
     opacity: 0.6,
-    marginBottom: 8,
+    marginBottom: 6,
   },
   totalBalance: {
-    fontSize: 36,
+    fontSize: 28,
     fontWeight: 'bold',
     marginBottom: 4,
   },
   balanceSubtitle: {
-    fontSize: 14,
+    fontSize: 12,
     opacity: 0.6,
   },
   actionButtons: {
@@ -607,16 +610,21 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     flex: 1,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  actionButtonGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     padding: 12,
-    borderRadius: 8,
-    gap: 8,
+    borderRadius: 10,
+    gap: 6,
   },
   actionButtonText: {
     color: '#fff',
     fontWeight: '600',
+    fontSize: 13,
   },
   section: {
     paddingHorizontal: 16,
@@ -637,24 +645,24 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   memberAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#f4f4f5',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(45, 212, 191, 0.15)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: 10,
   },
   avatarText: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
-    color: '#18181b',
+    color: '#2DD4BF',
   },
   memberInfo: {
     flex: 1,
   },
   roleLabel: {
-    fontSize: 11,
+    fontSize: 10,
     opacity: 0.6,
   },
   balanceInfo: {
@@ -684,24 +692,25 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   expenseIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(45, 212, 191, 0.15)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: 10,
   },
   expenseInfo: {
     flex: 1,
     justifyContent: 'center',
   },
   expenseDate: {
-    fontSize: 12,
+    fontSize: 11,
     opacity: 0.6,
     marginTop: 2,
   },
   expenseAmount: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
   },
   emptyText: {
@@ -725,7 +734,7 @@ const styles = StyleSheet.create({
     paddingTop: 40,
   },
   modalTitle: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: 'bold',
   },
   closeButton: {
@@ -739,9 +748,9 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   label: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '600',
-    marginBottom: 8,
+    marginBottom: 6,
     opacity: 0.7,
   },
   modalFooter: {
@@ -752,12 +761,12 @@ const styles = StyleSheet.create({
   input: {
     borderWidth: 1,
     borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
+    padding: 14,
+    fontSize: 14,
   },
   submitButton: {
-    padding: 16,
-    borderRadius: 16,
+    padding: 14,
+    borderRadius: 14,
     alignItems: 'center',
   },
   disabledButton: {
@@ -765,26 +774,39 @@ const styles = StyleSheet.create({
   },
   submitButtonText: {
     color: '#fff',
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
   },
   userList: {
     marginBottom: 16,
   },
   userOption: {
-    padding: 16,
+    padding: 14,
     borderRadius: 12,
     marginBottom: 8,
     borderWidth: 1,
   },
   userOptionText: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '500',
   },
   settleLabel: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '600',
-    marginBottom: 12,
+    marginBottom: 10,
     opacity: 0.7,
+  },
+  glassInput: {
+    backgroundColor: 'rgba(26, 26, 36, 0.8)',
+    color: '#f4f4f5',
+    borderColor: 'rgba(45, 212, 191, 0.2)',
+  },
+  userOptionSelected: {
+    backgroundColor: '#2DD4BF',
+    borderColor: '#2DD4BF',
+  },
+  userOptionUnselected: {
+    backgroundColor: 'rgba(26, 26, 36, 0.8)',
+    borderColor: 'rgba(45, 212, 191, 0.2)',
   },
 });
