@@ -198,7 +198,7 @@ export default function GroupDetailScreen() {
     const balanceColor = balance > 0 ? (isDark ? '#10b981' : colors.success) : balance < 0 ? (isDark ? '#ef4444' : colors.error) : (isDark ? '#2DD4BF' : colors.tint);
 
     return (
-      <View style={[styles.memberCard, !isDark && { backgroundColor: colors.card, borderColor: colors.border }]}>
+      <View style={[styles.memberCard, !isDark && { borderColor: colors.border }]}>
         <View style={[styles.memberAvatar, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)' }]}>
           <ThemedText style={[styles.avatarText, { color: isDark ? '#2DD4BF' : colors.tint }]}>
             {item.user?.name.charAt(0).toUpperCase() || '?'}
