@@ -7,6 +7,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { ActivityIndicator, View } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
 
 SplashScreen.preventAutoHideAsync();
@@ -76,8 +77,9 @@ function RootLayoutNav() {
   }
 
   return (
-    <ThemeProvider value={isDark ? AmbientDarkTheme : AmbientLightTheme}>
-      <Stack>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <ThemeProvider value={isDark ? AmbientDarkTheme : AmbientLightTheme}>
+        <Stack>
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
@@ -89,9 +91,10 @@ function RootLayoutNav() {
         <Stack.Screen name="add-friend" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
         <Stack.Screen name="edit-group/[id]" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
         <Stack.Screen name="edit-expense/[id]" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
-      </Stack>
-      <StatusBar style={isDark ? 'light' : 'dark'} />
-    </ThemeProvider>
+        </Stack>
+        <StatusBar style={isDark ? 'light' : 'dark'} />
+      </ThemeProvider>
+    </GestureHandlerRootView>
   );
 }
 

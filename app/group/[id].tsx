@@ -20,6 +20,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Animated, Platform, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import Swipeable from 'react-native-gesture-handler/Swipeable';
 
 export default function GroupDetailScreen() {
   const { gradients, colors, isDark } = useThemeColors();
@@ -210,26 +211,8 @@ export default function GroupDetailScreen() {
     }
   }
 
-  function handleExpenseOptions(expense: Expense) {
-    Alert.alert(
-      'Expense Options',
-      'What would you like to do?',
-      [
-        {
-          text: 'Edit Expense',
-          onPress: () => router.push(`/edit-expense/${expense.id}` as any),
-        },
-        {
-          text: 'Delete Expense',
-          onPress: () => handleDeleteExpense(expense.id),
-          style: 'destructive',
-        },
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-      ]
-    );
+  function handleEditExpense(expenseId: string) {
+    router.push(`/edit-expense/${expenseId}` as any);
   }
 
   async function handleDeleteExpense(expenseId: string) {
@@ -258,25 +241,71 @@ export default function GroupDetailScreen() {
     );
   }
 
+  function renderLeftActions(progress: any, dragX: any, expenseId: string) {
+    const trans = dragX.interpolate({
+      inputRange: [0, 80],
+      outputRange: [0, 1],
+      extrapolate: 'clamp',
+    });
+
+    return (
+      <Animated.View style={[styles.swipeActionLeft, { opacity: trans }]}>
+        <TouchableOpacity
+          onPress={() => handleEditExpense(expenseId)}
+          style={styles.swipeActionButton}>
+          <IconSymbol name="pencil" size={20} color="#fff" />
+          <ThemedText style={styles.swipeActionText}>Edit</ThemedText>
+        </TouchableOpacity>
+      </Animated.View>
+    );
+  }
+
+  function renderRightActions(progress: any, dragX: any, expenseId: string) {
+    const trans = dragX.interpolate({
+      inputRange: [-80, 0],
+      outputRange: [1, 0],
+      extrapolate: 'clamp',
+    });
+
+    return (
+      <Animated.View style={[styles.swipeActionRight, { opacity: trans }]}>
+        <TouchableOpacity
+          onPress={() => handleDeleteExpense(expenseId)}
+          style={styles.swipeActionButton}>
+          <IconSymbol name="trash" size={20} color="#fff" />
+          <ThemedText style={styles.swipeActionText}>Delete</ThemedText>
+        </TouchableOpacity>
+      </Animated.View>
+    );
+  }
+
   function renderExpense({ item }: { item: Expense & { paidByUser?: User } }) {
     const date = new Date(item.date);
     const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
     return (
-      <TouchableOpacity 
-        onLongPress={() => handleExpenseOptions(item)}
-        style={[styles.expenseCard, !isDark && { backgroundColor: colors.card, borderColor: colors.border }]}>
-        <View style={[styles.expenseIcon, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)' }]}>
-          <IconSymbol size={24} name="dollarsign.circle.fill" color={isDark ? '#2DD4BF' : colors.tint} />
+      <Swipeable
+        renderLeftActions={(progress, dragX) => renderLeftActions(progress, dragX, item.id)}
+        renderRightActions={(progress, dragX) => renderRightActions(progress, dragX, item.id)}
+        overshootLeft={false}
+        overshootRight={false}
+        friction={2}
+        overshootFriction={8}
+        enableTrackpadTwoFingerGesture
+        containerStyle={{ overflow: 'visible' }}>
+        <View style={[styles.expenseCard, !isDark && { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={[styles.expenseIcon, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)' }]}>
+            <IconSymbol size={24} name="dollarsign.circle.fill" color={isDark ? '#2DD4BF' : colors.tint} />
+          </View>
+          <View style={styles.expenseInfo}>
+            <ThemedText type="defaultSemiBold" style={!isDark ? { color: colors.text } : undefined}>{item.description}</ThemedText>
+            <ThemedText style={[styles.expenseDate, !isDark && { color: colors.textSecondary }]}>
+              {dateStr} • Paid by {item.paidByUser?.name || 'Unknown'}
+            </ThemedText>
+          </View>
+          <ThemedText style={[styles.expenseAmount, !isDark && { color: colors.text }]}>${item.amount.toFixed(2)}</ThemedText>
         </View>
-        <View style={styles.expenseInfo}>
-          <ThemedText type="defaultSemiBold" style={!isDark ? { color: colors.text } : undefined}>{item.description}</ThemedText>
-          <ThemedText style={[styles.expenseDate, !isDark && { color: colors.textSecondary }]}>
-            {dateStr} • Paid by {item.paidByUser?.name || 'Unknown'}
-          </ThemedText>
-        </View>
-        <ThemedText style={[styles.expenseAmount, !isDark && { color: colors.text }]}>${item.amount.toFixed(2)}</ThemedText>
-      </TouchableOpacity>
+      </Swipeable>
     );
   }
 
@@ -935,5 +964,33 @@ const styles = StyleSheet.create({
     fontSize: 14,
     opacity: 0.6,
     textAlign: 'center',
+  },
+  swipeActionLeft: {
+    backgroundColor: '#3b82f6',
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+    width: 80,
+    borderRadius: 14,
+    marginBottom: 10,
+  },
+  swipeActionRight: {
+    backgroundColor: '#ef4444',
+    justifyContent: 'center',
+    alignItems: 'flex-end',
+    width: 80,
+    borderRadius: 14,
+    marginBottom: 10,
+  },
+  swipeActionButton: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 80,
+    height: '100%',
+    gap: 4,
+  },
+  swipeActionText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
   },
 });

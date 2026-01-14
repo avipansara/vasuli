@@ -11,6 +11,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Animated, FlatList, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
+import Swipeable from 'react-native-gesture-handler/Swipeable';
 
 interface UserWithBalance extends User {
   balance: number;
@@ -171,6 +172,36 @@ export default function FriendDetailScreen() {
       console.error('Error settling up:', error);
       Alert.alert('Error', 'Failed to settle up');
     }
+  }
+
+  function handleEditExpense(expenseId: string) {
+    router.push(`/edit-expense/${expenseId}` as any);
+  }
+
+  async function handleDeleteExpense(expenseId: string) {
+    Alert.alert(
+      'Delete Expense',
+      'Are you sure you want to delete this expense?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await expenseService.delete(expenseId);
+              loadFriendData();
+            } catch (error) {
+              console.error('Error deleting expense:', error);
+              Alert.alert('Error', 'Failed to delete expense');
+            }
+          },
+        },
+      ]
+    );
   }
 
   const formatDate = (timestamp: number) => {
@@ -375,15 +406,38 @@ export default function FriendDetailScreen() {
             keyExtractor={(item) => item.id}
             showsVerticalScrollIndicator={false}
             renderItem={({ item, index }) => (
-              <Animated.View
-                style={[
-                  styles.expenseCard,
-                  !isDark && { backgroundColor: colors.card },
-                  {
-                    opacity: fadeAnim,
-                    transform: [{ translateY: Animated.multiply(slideAnim, new Animated.Value((index + 1) * 0.2)) }],
-                  }
-                ]}>
+              <Swipeable
+                renderLeftActions={(progress, dragX) => (
+                  <Animated.View style={[styles.swipeActionLeft, { opacity: dragX.interpolate({ inputRange: [0, 80], outputRange: [0, 1], extrapolate: 'clamp' }) }]}>
+                    <TouchableOpacity onPress={() => handleEditExpense(item.id)} style={styles.swipeActionButton}>
+                      <IconSymbol name="pencil" size={20} color="#fff" />
+                      <ThemedText style={styles.swipeActionText}>Edit</ThemedText>
+                    </TouchableOpacity>
+                  </Animated.View>
+                )}
+                renderRightActions={(progress, dragX) => (
+                  <Animated.View style={[styles.swipeActionRight, { opacity: dragX.interpolate({ inputRange: [-80, 0], outputRange: [1, 0], extrapolate: 'clamp' }) }]}>
+                    <TouchableOpacity onPress={() => handleDeleteExpense(item.id)} style={styles.swipeActionButton}>
+                      <IconSymbol name="trash" size={20} color="#fff" />
+                      <ThemedText style={styles.swipeActionText}>Delete</ThemedText>
+                    </TouchableOpacity>
+                  </Animated.View>
+                )}
+                overshootLeft={false}
+                overshootRight={false}
+                friction={2}
+                overshootFriction={8}
+                enableTrackpadTwoFingerGesture
+                containerStyle={{ overflow: 'visible' }}>
+                <Animated.View
+                  style={[
+                    styles.expenseCard,
+                    !isDark && { backgroundColor: colors.card },
+                    {
+                      opacity: fadeAnim,
+                      transform: [{ translateY: Animated.multiply(slideAnim, new Animated.Value((index + 1) * 0.2)) }],
+                    }
+                  ]}>
                 <View style={[
                   styles.expenseIcon,
                   { backgroundColor: item.paidBy === currentUserId ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)' }
@@ -417,6 +471,7 @@ export default function FriendDetailScreen() {
                   </ThemedText>
                 </View>
               </Animated.View>
+              </Swipeable>
             )}
             contentContainerStyle={styles.expenseList}
           />
@@ -740,5 +795,33 @@ const styles = StyleSheet.create({
   expenseShare: {
     fontSize: 16,
     fontWeight: '700',
+  },
+  swipeActionLeft: {
+    backgroundColor: '#3b82f6',
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+    width: 80,
+    borderRadius: 14,
+    marginBottom: 10,
+  },
+  swipeActionRight: {
+    backgroundColor: '#ef4444',
+    justifyContent: 'center',
+    alignItems: 'flex-end',
+    width: 80,
+    borderRadius: 14,
+    marginBottom: 10,
+  },
+  swipeActionButton: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 80,
+    height: '100%',
+    gap: 4,
+  },
+  swipeActionText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
   },
 });
