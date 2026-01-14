@@ -310,12 +310,83 @@ export default function GroupDetailScreen() {
     );
   }
 
+  function handleRemoveMember(member: GroupMember & { user?: User }) {
+    // Don't allow removing yourself or if you're not an admin
+    const currentMember = members.find(m => m.userId === currentUserId);
+    if (member.userId === currentUserId) {
+      Alert.alert('Cannot Remove', 'You cannot remove yourself from the group.');
+      return;
+    }
+    if (currentMember?.role !== 'admin') {
+      Alert.alert('Permission Denied', 'Only admins can remove members.');
+      return;
+    }
+
+    Alert.alert(
+      'Remove Member',
+      `Are you sure you want to remove ${member.user?.name || 'this member'} from the group?`,
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await groupService.removeMember(id, member.userId);
+              loadGroupData();
+            } catch (error) {
+              console.error('Error removing member:', error);
+              Alert.alert('Error', 'Failed to remove member');
+            }
+          },
+        },
+      ]
+    );
+  }
+
+  function renderMemberRightActions(progress: any, dragX: any, member: GroupMember & { user?: User }) {
+    const currentMember = members.find(m => m.userId === currentUserId);
+    const canRemove = currentMember?.role === 'admin' && member.userId !== currentUserId;
+    
+    if (!canRemove) return null;
+
+    const trans = dragX.interpolate({
+      inputRange: [-80, 0],
+      outputRange: [1, 0],
+      extrapolate: 'clamp',
+    });
+
+    return (
+      <Animated.View style={[styles.swipeActionRight, { opacity: trans }]}>
+        <TouchableOpacity
+          onPress={() => handleRemoveMember(member)}
+          style={styles.swipeActionButton}>
+          <IconSymbol name="trash" size={20} color="#fff" />
+          <ThemedText style={styles.swipeActionText}>Remove</ThemedText>
+        </TouchableOpacity>
+      </Animated.View>
+    );
+  }
+
   function renderMember({ item }: { item: GroupMember & { user?: User } }) {
     const balance = balances.get(item.userId) || 0;
     const balanceColor = balance > 0 ? (isDark ? '#10b981' : colors.success) : balance < 0 ? (isDark ? '#ef4444' : colors.error) : (isDark ? '#2DD4BF' : colors.tint);
+    const currentMember = members.find(m => m.userId === currentUserId);
+    const canRemove = currentMember?.role === 'admin' && item.userId !== currentUserId;
 
     return (
-      <View style={[styles.memberCard, !isDark && { backgroundColor: colors.card, borderColor: colors.border }]}>
+      <Swipeable
+        renderRightActions={canRemove ? (progress, dragX) => renderMemberRightActions(progress, dragX, item) : undefined}
+        overshootLeft={false}
+        overshootRight={false}
+        friction={2}
+        overshootFriction={8}
+        enableTrackpadTwoFingerGesture
+        containerStyle={{ overflow: 'visible' }}>
+        <View style={[styles.memberCard, !isDark && { backgroundColor: colors.card, borderColor: colors.border }]}>
         <View style={[styles.memberAvatar, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)' }]}>
           <ThemedText style={[styles.avatarText, { color: isDark ? '#2DD4BF' : colors.tint }]}>
             {item.user?.name.charAt(0).toUpperCase() || '?'}
@@ -343,6 +414,7 @@ export default function GroupDetailScreen() {
           )}
         </View>
       </View>
+      </Swipeable>
     );
   }
 
@@ -421,34 +493,6 @@ export default function GroupDetailScreen() {
           <IconSymbol size={20} name="chevron.left" color={isDark ? '#2DD4BF' : colors.tint} />
         </TouchableOpacity>
         <View style={styles.headerSpacer} />
-        <TouchableOpacity 
-          onPress={() => {
-            Alert.alert(
-              'Group Options',
-              'What would you like to do?',
-              [
-                {
-                  text: 'Edit Group',
-                  onPress: () => router.push(`/edit-group/${id}`),
-                },
-                {
-                  text: 'Delete Group',
-                  onPress: () => handleDeleteGroup(),
-                  style: 'destructive',
-                },
-                {
-                  text: 'Cancel',
-                  style: 'cancel',
-                },
-              ]
-            );
-          }}
-          style={[styles.backButtonRect, { 
-            backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)', 
-            borderColor: isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(34, 197, 94, 0.3)' 
-          }]}>
-          <IconSymbol size={20} name="ellipsis" color={isDark ? '#2DD4BF' : colors.tint} />
-        </TouchableOpacity>
       </View>
 
       <ScrollView 

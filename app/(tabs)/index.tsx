@@ -159,7 +159,7 @@ export default function GroupsScreen() {
       ) : (
         <FlatList
           data={groups}
-          renderItem={({ item, index }) => <GroupCard group={item} index={index} />}
+          renderItem={({ item, index }) => <GroupCard group={item} index={index} onRefresh={loadGroups} />}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
