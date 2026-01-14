@@ -502,7 +502,7 @@ const styles = StyleSheet.create({
   },
   tagline: {
     fontSize: 15,
-    fontWeight: '500',
+    fontFamily: 'Nunito_500Medium',
   },
   cardWrapper: {
     marginBottom: 24,
@@ -519,11 +519,12 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     fontSize: 24,
-    fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
     marginBottom: 4,
   },
   cardSubtitle: {
     fontSize: 14,
+    fontFamily: 'Nunito_400Regular',
     marginBottom: 24,
   },
   inputWrapper: {
@@ -541,7 +542,7 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontSize: 15,
-    fontWeight: '500',
+    fontFamily: 'Nunito_500Medium',
     textAlignVertical: 'center',
     paddingVertical: 0,
   },
@@ -551,7 +552,7 @@ const styles = StyleSheet.create({
   },
   forgotPasswordText: {
     fontSize: 13,
-    fontWeight: '600',
+    fontFamily: 'Nunito_600SemiBold',
   },
   signInButton: {
     borderRadius: 14,
@@ -574,7 +575,7 @@ const styles = StyleSheet.create({
   signInButtonText: {
     color: '#fff',
     fontSize: 16,
-    fontWeight: '600',
+    fontFamily: 'Nunito_600SemiBold',
   },
   divider: {
     flexDirection: 'row',
