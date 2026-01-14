@@ -3,6 +3,7 @@ import { InviteFriendModal } from '@/components/friends/invite-friend-modal';
 import { QRCodeModal } from '@/components/friends/qr-code-modal';
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { LoadingState } from '@/components/ui/loading-state';
 import { useAuth } from '@/contexts/auth-context';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { calculateFriendBalance, initDatabase, userService } from '@/services/api';
@@ -125,9 +126,7 @@ export default function FriendsScreen() {
       </View>
 
       {loading ? (
-        <View style={styles.emptyContainer}>
-          <ThemedText>Loading...</ThemedText>
-        </View>
+        <LoadingState message="Loading friends..." />
       ) : friends.length === 0 ? (
         <View style={styles.emptyContainer}>
           <View style={[styles.emptyIconContainer, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.1)' : 'rgba(34, 197, 94, 0.1)' }]}>

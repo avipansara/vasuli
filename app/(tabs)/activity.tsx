@@ -1,6 +1,7 @@
 import { ActivityCard } from '@/components/activity/activity-card';
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { LoadingState } from '@/components/ui/loading-state';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { expenseService, groupService, initDatabase, settlementService, userService } from '@/services/api';
 import type { Group, User } from '@/types/database';
@@ -127,12 +128,7 @@ export default function ActivityScreen() {
       </View>
 
       {loading ? (
-        <View style={styles.loadingContainer}>
-          <View style={styles.loadingSpinner}>
-            <IconSymbol size={32} name="arrow.trianglehead.2.clockwise" color={isDark ? '#2DD4BF' : colors.tint} />
-          </View>
-          <ThemedText style={styles.loadingText}>Loading...</ThemedText>
-        </View>
+        <LoadingState message="Loading activity..." />
       ) : activities.length === 0 ? (
         <Animated.View style={[
           styles.emptyContainer,

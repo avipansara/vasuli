@@ -1,6 +1,7 @@
 import { CreateGroupModal, GroupCard } from '@/components/groups';
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { LoadingState } from '@/components/ui/loading-state';
 import { useAuth } from '@/contexts/auth-context';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { calculateBalances, groupService, initDatabase, userService } from '@/services/api';
@@ -123,12 +124,7 @@ export default function GroupsScreen() {
       </View>
 
       {loading ? (
-        <View style={styles.loadingContainer}>
-          <View style={styles.loadingSpinner}>
-            <IconSymbol size={32} name="arrow.trianglehead.2.clockwise" color={isDark ? '#2DD4BF' : colors.tint} />
-          </View>
-          <ThemedText style={styles.loadingText}>Loading...</ThemedText>
-        </View>
+        <LoadingState message="Loading your groups..." />
       ) : groups.length === 0 ? (
         <Animated.View style={[
           styles.emptyContainer,

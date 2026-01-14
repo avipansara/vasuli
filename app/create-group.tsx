@@ -1,6 +1,7 @@
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { KeyboardAwareScroll } from '@/components/ui/keyboard-aware-scroll';
+import { ThemedInput } from '@/components/ui/themed-input';
 import { useAuth } from '@/contexts/auth-context';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { groupService, initDatabase } from '@/services/api';
@@ -14,7 +15,6 @@ import {
   Keyboard,
   Platform,
   StyleSheet,
-  TextInput,
   TouchableOpacity,
   View
 } from 'react-native';
@@ -45,8 +45,8 @@ export default function CreateGroupScreen() {
   const slideAnim = useRef(new Animated.Value(30)).current;
 
   // Input refs for focus management
-  const groupNameInputRef = useRef<TextInput>(null);
-  const descriptionInputRef = useRef<TextInput>(null);
+  const groupNameInputRef = useRef<any>(null);
+  const descriptionInputRef = useRef<any>(null);
 
   useEffect(() => {
     Animated.parallel([
@@ -144,23 +144,16 @@ export default function CreateGroupScreen() {
               <ThemedText style={[styles.inputLabel, !isDark && { color: colors.textSecondary }]}>
                 Group Name *
               </ThemedText>
-              <View style={[styles.inputContainer, {
-                backgroundColor: isDark ? 'rgba(30, 41, 59, 0.6)' : 'rgba(241, 245, 249, 0.9)',
-                borderColor: isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(34, 197, 94, 0.2)',
-              }]}>
-                <IconSymbol name="pencil" size={20} color={isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'} />
-                <TextInput
-                  ref={groupNameInputRef}
-                  style={[styles.textInput, { color: isDark ? '#fff' : colors.text }]}
-                  value={groupName}
-                  onChangeText={setGroupName}
-                  placeholder="e.g. Summer Trip 2024"
-                  placeholderTextColor={isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'}
-                  returnKeyType="next"
-                  onSubmitEditing={() => descriptionInputRef.current?.focus()}
-                  blurOnSubmit={false}
-                />
-              </View>
+              <ThemedInput
+                ref={groupNameInputRef}
+                icon="pencil"
+                value={groupName}
+                onChangeText={setGroupName}
+                placeholder="e.g. Summer Trip 2024"
+                returnKeyType="next"
+                onSubmitEditing={() => descriptionInputRef.current?.focus()}
+                autoCapitalize="words"
+              />
             </View>
 
             {/* Description Input */}
@@ -168,25 +161,18 @@ export default function CreateGroupScreen() {
               <ThemedText style={[styles.inputLabel, !isDark && { color: colors.textSecondary }]}>
                 Description (Optional)
               </ThemedText>
-              <View style={[styles.textAreaContainer, {
-                backgroundColor: isDark ? 'rgba(30, 41, 59, 0.6)' : 'rgba(241, 245, 249, 0.9)',
-                borderColor: isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(34, 197, 94, 0.2)',
-              }]}>
-                <TextInput
-                  ref={descriptionInputRef}
-                  style={[styles.textArea, { color: isDark ? '#fff' : colors.text }]}
-                  value={description}
-                  onChangeText={setDescription}
-                  placeholder="What is this group for?"
-                  placeholderTextColor={isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'}  
-                  multiline
-                  numberOfLines={3}
-                  textAlignVertical="top"
-                  returnKeyType="done"
-                  blurOnSubmit
-                  onSubmitEditing={() => Keyboard.dismiss()}
-                />
-              </View>
+              <ThemedInput
+                ref={descriptionInputRef}
+                value={description}
+                onChangeText={setDescription}
+                placeholder="Optional description"
+                multiline
+                numberOfLines={3}
+                textAlignVertical="top"
+                returnKeyType="done"
+                onSubmitEditing={() => Keyboard.dismiss()}
+                style={{ minHeight: 80 }}
+              />
             </View>
 
             {/* Icon Selection */}

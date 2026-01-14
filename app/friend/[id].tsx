@@ -1,6 +1,7 @@
 import { SettleUpModal } from '@/components/friends/settle-up-modal';
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { LoadingState } from '@/components/ui/loading-state';
 import { useAuth } from '@/contexts/auth-context';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { calculateFriendBalance, expenseService, initDatabase, settlementService, userService } from '@/services/api';
@@ -210,22 +211,12 @@ export default function FriendDetailScreen() {
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
-  if (loading || !friend) {
-    return (
-      <LinearGradient colors={gradients.screenBackground} style={styles.container}>
-        {/* Animated background orbs */}
-        <View style={styles.orbContainer}>
-          <View style={[styles.orb, styles.orb1]} />
-          <View style={[styles.orb, styles.orb2]} />
-        </View>
-        <View style={styles.loadingContainer}>
-          <View style={styles.loadingSpinner}>
-            <IconSymbol size={32} name="arrow.trianglehead.2.clockwise" color={isDark ? '#2DD4BF' : colors.tint} />
-          </View>
-          <ThemedText style={styles.loadingText}>Loading...</ThemedText>
-        </View>
-      </LinearGradient>
-    );
+  if (loading) {
+    return <LoadingState message="Loading friend details..." />;
+  }
+
+  if (!friend) {
+    return null;
   }
 
   const balance = friend.balance;

@@ -1,6 +1,7 @@
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { KeyboardAwareScroll } from '@/components/ui/keyboard-aware-scroll';
+import { ThemedInput } from '@/components/ui/themed-input';
 import { useAuth } from '@/contexts/auth-context';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { initDatabase, userService } from '@/services/api';
@@ -13,7 +14,6 @@ import {
     Keyboard,
     Platform,
     StyleSheet,
-    TextInput,
     TouchableOpacity,
     View
 } from 'react-native';
@@ -30,8 +30,8 @@ export default function EditProfileScreen() {
   const slideAnim = useRef(new Animated.Value(30)).current;
 
   // Input refs
-  const firstNameInputRef = useRef<TextInput>(null);
-  const lastNameInputRef = useRef<TextInput>(null);
+  const firstNameInputRef = useRef<any>(null);
+  const lastNameInputRef = useRef<any>(null);
 
   useEffect(() => {
     // Split current name into first and last
@@ -124,23 +124,16 @@ export default function EditProfileScreen() {
               <ThemedText style={[styles.inputLabel, !isDark && { color: colors.textSecondary }]}>
                 First Name *
               </ThemedText>
-              <View style={[styles.inputContainer, {
-                backgroundColor: isDark ? 'rgba(30, 41, 59, 0.6)' : 'rgba(241, 245, 249, 0.9)',
-                borderColor: isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(34, 197, 94, 0.2)',
-              }]}>
-                <IconSymbol name="person.fill" size={20} color={isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'} />
-                <TextInput
-                  ref={firstNameInputRef}
-                  style={[styles.textInput, { color: isDark ? '#fff' : colors.text }]}
-                  value={firstName}
-                  onChangeText={setFirstName}
-                  placeholder="John"
-                  placeholderTextColor={isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'}
-                  returnKeyType="next"
-                  onSubmitEditing={() => lastNameInputRef.current?.focus()}
-                  blurOnSubmit={false}
-                />
-              </View>
+              <ThemedInput
+                ref={firstNameInputRef}
+                icon="person.fill"
+                value={firstName}
+                onChangeText={setFirstName}
+                placeholder="John"
+                returnKeyType="next"
+                onSubmitEditing={() => lastNameInputRef.current?.focus()}
+                autoCapitalize="words"
+              />
             </View>
 
             {/* Last Name Input */}
@@ -148,22 +141,16 @@ export default function EditProfileScreen() {
               <ThemedText style={[styles.inputLabel, !isDark && { color: colors.textSecondary }]}>
                 Last Name (Optional)
               </ThemedText>
-              <View style={[styles.inputContainer, {
-                backgroundColor: isDark ? 'rgba(30, 41, 59, 0.6)' : 'rgba(241, 245, 249, 0.9)',
-                borderColor: isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(34, 197, 94, 0.2)',
-              }]}>
-                <IconSymbol name="person.fill" size={20} color={isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'} />
-                <TextInput
-                  ref={lastNameInputRef}
-                  style={[styles.textInput, { color: isDark ? '#fff' : colors.text }]}
-                  value={lastName}
-                  onChangeText={setLastName}
-                  placeholder="Doe"
-                  placeholderTextColor={isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'}
-                  returnKeyType="done"
-                  onSubmitEditing={() => Keyboard.dismiss()}
-                />
-              </View>
+              <ThemedInput
+                ref={lastNameInputRef}
+                icon="person.fill"
+                value={lastName}
+                onChangeText={setLastName}
+                placeholder="Doe"
+                returnKeyType="done"
+                onSubmitEditing={() => Keyboard.dismiss()}
+                autoCapitalize="words"
+              />
             </View>
 
             {/* Info Card */}

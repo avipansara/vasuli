@@ -5,6 +5,7 @@ import {
 } from '@/components/group';
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { LoadingState } from '@/components/ui/loading-state';
 import { useAuth } from '@/contexts/auth-context';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import {
@@ -443,20 +444,7 @@ export default function GroupDetailScreen() {
   }, [loading, group]);
 
   if (loading) {
-    return (
-      <LinearGradient colors={gradients.screenBackground} style={styles.container}>
-        <View style={styles.orbContainer}>
-          <View style={[styles.orb, styles.orb1]} />
-          <View style={[styles.orb, styles.orb2]} />
-        </View>
-        <View style={styles.loadingContainer}>
-          <View style={styles.loadingSpinner}>
-            <IconSymbol size={32} name="arrow.trianglehead.2.clockwise" color={isDark ? '#2DD4BF' : colors.tint} />
-          </View>
-          <ThemedText style={styles.loadingText}>Loading...</ThemedText>
-        </View>
-      </LinearGradient>
-    );
+    return <LoadingState message="Loading group details..." />;
   }
 
   if (!group) {
