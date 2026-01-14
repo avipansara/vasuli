@@ -1,19 +1,42 @@
--- Vasuli Database Schema for Supabase (Fixed Ordering)
+-- Vasuli Database Schema - Fresh Start
+-- This script will DROP all existing tables and recreate them from scratch
 -- Run this in your Supabase SQL Editor
--- This version creates all tables first, then adds RLS policies to avoid dependency errors
 
 -- ============================================
--- STEP 1: EXTENSIONS
+-- STEP 1: DROP ALL EXISTING TABLES
+-- ============================================
+DROP TABLE IF EXISTS public.invitations CASCADE;
+DROP TABLE IF EXISTS public.friendships CASCADE;
+DROP TABLE IF EXISTS public.settlements CASCADE;
+DROP TABLE IF EXISTS public.expense_splits CASCADE;
+DROP TABLE IF EXISTS public.expenses CASCADE;
+DROP TABLE IF EXISTS public.group_members CASCADE;
+DROP TABLE IF EXISTS public.groups CASCADE;
+DROP TABLE IF EXISTS public.users CASCADE;
+
+-- Drop existing functions
+DROP FUNCTION IF EXISTS public.handle_new_user() CASCADE;
+DROP FUNCTION IF EXISTS public.handle_invitation_on_signup() CASCADE;
+DROP FUNCTION IF EXISTS public.update_updated_at() CASCADE;
+
+-- Drop storage policies
+DROP POLICY IF EXISTS "Authenticated users can upload images" ON storage.objects;
+DROP POLICY IF EXISTS "Public read access for images" ON storage.objects;
+DROP POLICY IF EXISTS "Users can update own images" ON storage.objects;
+DROP POLICY IF EXISTS "Users can delete own images" ON storage.objects;
+
+-- ============================================
+-- STEP 2: ENABLE EXTENSIONS
 -- ============================================
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- ============================================
--- STEP 2: CREATE ALL TABLES
+-- STEP 3: CREATE ALL TABLES
 -- ============================================
 
 -- USERS TABLE
--- Note: This extends Supabase Auth users
-CREATE TABLE IF NOT EXISTS public.users (
+-- Tied to auth.users for authenticated users
+CREATE TABLE public.users (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   email TEXT UNIQUE,
@@ -23,7 +46,7 @@ CREATE TABLE IF NOT EXISTS public.users (
 );
 
 -- GROUPS TABLE
-CREATE TABLE IF NOT EXISTS public.groups (
+CREATE TABLE public.groups (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   name TEXT NOT NULL,
   description TEXT,
@@ -33,7 +56,7 @@ CREATE TABLE IF NOT EXISTS public.groups (
 );
 
 -- GROUP MEMBERS TABLE
-CREATE TABLE IF NOT EXISTS public.group_members (
+CREATE TABLE public.group_members (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   group_id UUID NOT NULL REFERENCES public.groups(id) ON DELETE CASCADE,
   user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
@@ -43,7 +66,7 @@ CREATE TABLE IF NOT EXISTS public.group_members (
 );
 
 -- EXPENSES TABLE
-CREATE TABLE IF NOT EXISTS public.expenses (
+CREATE TABLE public.expenses (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   group_id UUID REFERENCES public.groups(id) ON DELETE CASCADE,
   description TEXT NOT NULL,
@@ -59,7 +82,7 @@ CREATE TABLE IF NOT EXISTS public.expenses (
 );
 
 -- EXPENSE SPLITS TABLE
-CREATE TABLE IF NOT EXISTS public.expense_splits (
+CREATE TABLE public.expense_splits (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   expense_id UUID NOT NULL REFERENCES public.expenses(id) ON DELETE CASCADE,
   user_id UUID NOT NULL REFERENCES public.users(id),
@@ -70,7 +93,7 @@ CREATE TABLE IF NOT EXISTS public.expense_splits (
 );
 
 -- SETTLEMENTS TABLE
-CREATE TABLE IF NOT EXISTS public.settlements (
+CREATE TABLE public.settlements (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   group_id UUID REFERENCES public.groups(id) ON DELETE SET NULL,
   from_user_id UUID NOT NULL REFERENCES public.users(id),
@@ -83,7 +106,7 @@ CREATE TABLE IF NOT EXISTS public.settlements (
 );
 
 -- FRIENDSHIPS TABLE
-CREATE TABLE IF NOT EXISTS public.friendships (
+CREATE TABLE public.friendships (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
   friend_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
@@ -93,8 +116,22 @@ CREATE TABLE IF NOT EXISTS public.friendships (
   CHECK (user_id != friend_id)
 );
 
+-- INVITATIONS TABLE
+-- For friend invitations before they sign up
+CREATE TABLE public.invitations (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  inviter_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+  invitee_email TEXT NOT NULL,
+  invitee_phone TEXT,
+  invitee_name TEXT,
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'declined', 'expired')),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  expires_at TIMESTAMPTZ DEFAULT (NOW() + INTERVAL '30 days'),
+  UNIQUE(inviter_id, invitee_email)
+);
+
 -- ============================================
--- STEP 3: ENABLE ROW LEVEL SECURITY
+-- STEP 4: ENABLE ROW LEVEL SECURITY
 -- ============================================
 
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
@@ -104,9 +141,10 @@ ALTER TABLE public.expenses ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.expense_splits ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.settlements ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.friendships ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.invitations ENABLE ROW LEVEL SECURITY;
 
 -- ============================================
--- STEP 4: CREATE RLS POLICIES
+-- STEP 5: CREATE RLS POLICIES
 -- ============================================
 
 -- USERS POLICIES
@@ -152,37 +190,32 @@ CREATE POLICY "Admins can delete groups" ON public.groups
     )
   );
 
--- GROUP MEMBERS POLICIES
+-- GROUP MEMBERS POLICIES (Fixed for no recursion)
 CREATE POLICY "Users can view group members" ON public.group_members
   FOR SELECT USING (
-    EXISTS (
-      SELECT 1 FROM public.group_members gm
-      WHERE gm.group_id = group_members.group_id 
-      AND gm.user_id = auth.uid()
+    user_id = auth.uid()
+    OR group_id IN (
+      SELECT group_id FROM public.group_members WHERE user_id = auth.uid()
     )
   );
 
 CREATE POLICY "Admins can add members" ON public.group_members
   FOR INSERT WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM public.group_members gm
-      WHERE gm.group_id = group_members.group_id 
-      AND gm.user_id = auth.uid()
-      AND gm.role = 'admin'
-    )
-    OR NOT EXISTS (
-      SELECT 1 FROM public.group_members gm
-      WHERE gm.group_id = group_members.group_id
+    -- Allow if user is adding themselves as first member (group creation)
+    NOT EXISTS (SELECT 1 FROM public.group_members WHERE group_id = group_members.group_id)
+    OR
+    -- Allow if current user is an admin of this group
+    group_id IN (
+      SELECT group_id FROM public.group_members 
+      WHERE user_id = auth.uid() AND role = 'admin'
     )
   );
 
 CREATE POLICY "Admins can remove members" ON public.group_members
   FOR DELETE USING (
-    EXISTS (
-      SELECT 1 FROM public.group_members gm
-      WHERE gm.group_id = group_members.group_id 
-      AND gm.user_id = auth.uid()
-      AND gm.role = 'admin'
+    group_id IN (
+      SELECT group_id FROM public.group_members 
+      WHERE user_id = auth.uid() AND role = 'admin'
     )
   );
 
@@ -245,24 +278,42 @@ CREATE POLICY "Users can create friendships" ON public.friendships
 CREATE POLICY "Users can accept/reject friendships" ON public.friendships
   FOR UPDATE USING (friend_id = auth.uid());
 
+-- INVITATIONS POLICIES
+CREATE POLICY "Users can view their invitations" ON public.invitations
+  FOR SELECT USING (
+    inviter_id = auth.uid()
+    OR invitee_email = (SELECT email FROM public.users WHERE id = auth.uid())
+  );
+
+CREATE POLICY "Users can create invitations" ON public.invitations
+  FOR INSERT WITH CHECK (inviter_id = auth.uid());
+
+CREATE POLICY "Users can update received invitations" ON public.invitations
+  FOR UPDATE USING (
+    invitee_email = (SELECT email FROM public.users WHERE id = auth.uid())
+  );
+
 -- ============================================
--- STEP 5: CREATE INDEXES FOR PERFORMANCE
+-- STEP 6: CREATE INDEXES FOR PERFORMANCE
 -- ============================================
 
-CREATE INDEX IF NOT EXISTS idx_group_members_group_id ON public.group_members(group_id);
-CREATE INDEX IF NOT EXISTS idx_group_members_user_id ON public.group_members(user_id);
-CREATE INDEX IF NOT EXISTS idx_expenses_group_id ON public.expenses(group_id);
-CREATE INDEX IF NOT EXISTS idx_expenses_paid_by ON public.expenses(paid_by);
-CREATE INDEX IF NOT EXISTS idx_expenses_date ON public.expenses(date DESC);
-CREATE INDEX IF NOT EXISTS idx_expense_splits_expense_id ON public.expense_splits(expense_id);
-CREATE INDEX IF NOT EXISTS idx_expense_splits_user_id ON public.expense_splits(user_id);
-CREATE INDEX IF NOT EXISTS idx_settlements_from_user ON public.settlements(from_user_id);
-CREATE INDEX IF NOT EXISTS idx_settlements_to_user ON public.settlements(to_user_id);
-CREATE INDEX IF NOT EXISTS idx_friendships_user_id ON public.friendships(user_id);
-CREATE INDEX IF NOT EXISTS idx_friendships_friend_id ON public.friendships(friend_id);
+CREATE INDEX idx_group_members_group_id ON public.group_members(group_id);
+CREATE INDEX idx_group_members_user_id ON public.group_members(user_id);
+CREATE INDEX idx_expenses_group_id ON public.expenses(group_id);
+CREATE INDEX idx_expenses_paid_by ON public.expenses(paid_by);
+CREATE INDEX idx_expenses_date ON public.expenses(date DESC);
+CREATE INDEX idx_expense_splits_expense_id ON public.expense_splits(expense_id);
+CREATE INDEX idx_expense_splits_user_id ON public.expense_splits(user_id);
+CREATE INDEX idx_settlements_from_user ON public.settlements(from_user_id);
+CREATE INDEX idx_settlements_to_user ON public.settlements(to_user_id);
+CREATE INDEX idx_friendships_user_id ON public.friendships(user_id);
+CREATE INDEX idx_friendships_friend_id ON public.friendships(friend_id);
+CREATE INDEX idx_invitations_inviter ON public.invitations(inviter_id);
+CREATE INDEX idx_invitations_email ON public.invitations(invitee_email);
+CREATE INDEX idx_invitations_status ON public.invitations(status);
 
 -- ============================================
--- STEP 6: CREATE FUNCTIONS AND TRIGGERS
+-- STEP 7: CREATE FUNCTIONS AND TRIGGERS
 -- ============================================
 
 -- Function to automatically create user profile on signup
@@ -280,10 +331,51 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Trigger to create user profile on auth signup
-DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- Function to auto-accept invitations on signup
+CREATE OR REPLACE FUNCTION public.handle_invitation_on_signup()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- When a new user signs up, automatically accept any pending invitations
+  -- and create friendships
+  INSERT INTO public.friendships (user_id, friend_id, status)
+  SELECT 
+    NEW.id,
+    i.inviter_id,
+    'accepted'
+  FROM public.invitations i
+  WHERE i.invitee_email = NEW.email
+    AND i.status = 'pending'
+  ON CONFLICT DO NOTHING;
+
+  -- Also create the reverse friendship
+  INSERT INTO public.friendships (user_id, friend_id, status)
+  SELECT 
+    i.inviter_id,
+    NEW.id,
+    'accepted'
+  FROM public.invitations i
+  WHERE i.invitee_email = NEW.email
+    AND i.status = 'pending'
+  ON CONFLICT DO NOTHING;
+
+  -- Mark invitations as accepted
+  UPDATE public.invitations
+  SET status = 'accepted'
+  WHERE invitee_email = NEW.email
+    AND status = 'pending';
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Trigger to auto-accept invitations when user signs up
+CREATE TRIGGER on_user_signup_accept_invitations
+  AFTER INSERT ON public.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_invitation_on_signup();
 
 -- Function to update updated_at timestamp
 CREATE OR REPLACE FUNCTION public.update_updated_at()
@@ -304,7 +396,7 @@ CREATE TRIGGER update_expenses_updated_at
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
 
 -- ============================================
--- STEP 7: CREATE STORAGE BUCKET
+-- STEP 8: CREATE STORAGE BUCKET
 -- ============================================
 
 -- Create storage bucket for images
@@ -335,3 +427,7 @@ CREATE POLICY "Users can delete own images"
 ON storage.objects FOR DELETE
 TO authenticated
 USING (bucket_id = 'vasuli-images');
+
+-- ============================================
+-- DONE! Your database is ready to use.
+-- ============================================

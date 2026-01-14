@@ -79,3 +79,14 @@ export interface GroupWithMembers extends Group {
   totalExpenses?: number;
   yourBalance?: number;
 }
+
+export interface Invitation {
+  id: string;
+  inviterId: string;
+  inviteeEmail: string;
+  inviteePhone?: string;
+  inviteeName?: string;
+  status: 'pending' | 'accepted' | 'declined' | 'expired';
+  createdAt: number;
+  expiresAt: number;
+}

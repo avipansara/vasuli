@@ -3,7 +3,8 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { KeyboardAwareScroll } from '@/components/ui/keyboard-aware-scroll';
 import { useAuth } from '@/contexts/auth-context';
 import { useThemeColors } from '@/hooks/use-theme-colors';
-import { initDatabase, userService } from '@/services/api';
+import { initDatabase } from '@/services/api';
+import { invitationService } from '@/services/invitation-service';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
@@ -69,13 +70,16 @@ export default function AddFriendScreen() {
     try {
       await initDatabase();
       
-      // Create a placeholder user for the friend
+      // Create an invitation for the friend
       const friendEmail = inviteMethod === 'email' ? email.trim() : `${phone.replace(/\D/g, '')}@phone.placeholder`;
       const friendName = name.trim() || (inviteMethod === 'email' ? email.split('@')[0] : phone);
+      const friendPhone = inviteMethod === 'phone' ? phone.trim() : undefined;
       
-      const newFriend = await userService.create({
-        name: friendName,
-        email: friendEmail,
+      await invitationService.create({
+        inviterId: currentUserId,
+        inviteeEmail: friendEmail,
+        inviteePhone: friendPhone,
+        inviteeName: friendName,
       });
 
       Alert.alert(
