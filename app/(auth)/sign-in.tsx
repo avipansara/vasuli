@@ -1,27 +1,81 @@
-import { ThemedText } from '@/components/themed-text';
-import { FormInput } from '@/components/ui/form-input';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useAuth } from '@/contexts/auth-context';
 import { useThemeColors } from '@/hooks/use-theme-colors';
+import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Link, router } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
-    Alert,
-    KeyboardAvoidingView,
-    Platform,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    View,
+  Alert,
+  Animated,
+  Dimensions,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
 } from 'react-native';
 
+const { width, height } = Dimensions.get('window');
+
 export default function SignInScreen() {
-  const { gradients, colors, isDark } = useThemeColors();
+  const { colors, isDark } = useThemeColors();
   const { signIn } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [focusedField, setFocusedField] = useState<string | null>(null);
+
+  // Animations
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(50)).current;
+  const scaleAnim = useRef(new Animated.Value(0.9)).current;
+  const floatAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 800,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        friction: 8,
+        tension: 40,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    // Floating animation for decorative elements
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(floatAnim, {
+          toValue: 1,
+          duration: 3000,
+          useNativeDriver: true,
+        }),
+        Animated.timing(floatAnim, {
+          toValue: 0,
+          duration: 3000,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  }, []);
+
+  const floatTranslate = floatAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, -15],
+  });
 
   async function handleSignIn() {
     if (!email.trim() || !password.trim()) {
@@ -41,7 +95,45 @@ export default function SignInScreen() {
   }
 
   return (
-    <LinearGradient colors={gradients.screenBackground} style={styles.container}>
+    <View style={styles.container}>
+      {/* Animated Background */}
+      <LinearGradient
+        colors={isDark ? ['#0A0A0F', '#0F172A', '#0A0A0F'] : ['#F0FDF4', '#ECFDF5', '#F0FDF4']}
+        style={StyleSheet.absoluteFill}
+      />
+      
+      {/* Decorative Floating Orbs */}
+      <Animated.View
+        style={[
+          styles.orb,
+          styles.orb1,
+          {
+            backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.15)',
+            transform: [{ translateY: floatTranslate }],
+          },
+        ]}
+      />
+      <Animated.View
+        style={[
+          styles.orb,
+          styles.orb2,
+          {
+            backgroundColor: isDark ? 'rgba(99, 102, 241, 0.1)' : 'rgba(59, 130, 246, 0.1)',
+            transform: [{ translateY: Animated.multiply(floatTranslate, -1) }],
+          },
+        ]}
+      />
+      <Animated.View
+        style={[
+          styles.orb,
+          styles.orb3,
+          {
+            backgroundColor: isDark ? 'rgba(236, 72, 153, 0.08)' : 'rgba(236, 72, 153, 0.08)',
+            transform: [{ translateY: floatTranslate }],
+          },
+        ]}
+      />
+
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}>
@@ -49,86 +141,201 @@ export default function SignInScreen() {
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}>
-          <View style={styles.header}>
-            <View style={[styles.logoContainer, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)' }]}>
-              <IconSymbol name="dollarsign.circle.fill" size={48} color={isDark ? '#2DD4BF' : colors.tint} />
-            </View>
-            <ThemedText type="title" style={[styles.title, !isDark && { color: colors.text }]}>
-              Welcome Back
-            </ThemedText>
-            <ThemedText style={[styles.subtitle, !isDark && { color: colors.textSecondary }]}>
-              Sign in to continue tracking expenses
-            </ThemedText>
-          </View>
-
-          <View style={styles.form}>
-            <View style={styles.inputGroup}>
-              <ThemedText style={[styles.label, !isDark && { color: colors.textSecondary }]}>Email</ThemedText>
-              <FormInput
-                placeholder="Enter your email"
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoComplete="email"
-              />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <ThemedText style={[styles.label, !isDark && { color: colors.textSecondary }]}>Password</ThemedText>
-              <FormInput
-                placeholder="Enter your password"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
-                autoComplete="password"
-              />
-            </View>
-
-            <Pressable
-              style={[styles.forgotPassword]}
-              onPress={() => Alert.alert('Reset Password', 'Password reset coming soon!')}>
-              <ThemedText style={[styles.forgotPasswordText, { color: isDark ? '#2DD4BF' : colors.tint }]}>
-                Forgot password?
-              </ThemedText>
-            </Pressable>
-
-            <Pressable
-              onPress={handleSignIn}
-              disabled={loading}
-              style={({ pressed }) => [styles.submitButton, pressed && styles.submitButtonPressed]}>
+          
+          {/* Hero Section */}
+          <Animated.View
+            style={[
+              styles.heroSection,
+              {
+                opacity: fadeAnim,
+                transform: [{ translateY: slideAnim }, { scale: scaleAnim }],
+              },
+            ]}>
+            <View style={styles.logoWrapper}>
               <LinearGradient
-                colors={gradients.buttonPrimary}
+                colors={isDark ? ['#2DD4BF', '#22D3EE'] : ['#22C55E', '#10B981']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
-                style={[styles.submitButtonGradient, loading && styles.submitButtonDisabled]}>
-                {loading ? (
-                  <ThemedText style={styles.submitButtonText}>Signing in...</ThemedText>
-                ) : (
-                  <>
-                    <ThemedText style={styles.submitButtonText}>Sign In</ThemedText>
-                    <IconSymbol name="arrow.right" size={18} color="#0A0A0F" />
-                  </>
-                )}
+                style={styles.logoGradient}>
+                <IconSymbol name="dollarsign.circle.fill" size={40} color="#fff" />
               </LinearGradient>
-            </Pressable>
-          </View>
+            </View>
+            <Text style={[styles.appName, { color: isDark ? '#fff' : colors.text }]}>
+              Vasuli
+            </Text>
+            <Text style={[styles.tagline, { color: isDark ? 'rgba(255,255,255,0.6)' : colors.textSecondary }]}>
+              Split expenses, not friendships
+            </Text>
+          </Animated.View>
 
-          <View style={styles.footer}>
-            <ThemedText style={[styles.footerText, !isDark && { color: colors.textSecondary }]}>
+          {/* Glass Card */}
+          <Animated.View
+            style={[
+              styles.cardWrapper,
+              {
+                opacity: fadeAnim,
+                transform: [{ translateY: slideAnim }],
+              },
+            ]}>
+            <BlurView
+              intensity={isDark ? 40 : 80}
+              tint={isDark ? 'dark' : 'light'}
+              style={styles.glassCard}>
+              <View style={[
+                styles.cardInner,
+                { backgroundColor: isDark ? 'rgba(15, 23, 42, 0.6)' : 'rgba(255, 255, 255, 0.8)' }
+              ]}>
+                <Text style={[styles.cardTitle, { color: isDark ? '#fff' : colors.text }]}>
+                  Welcome back
+                </Text>
+                <Text style={[styles.cardSubtitle, { color: isDark ? 'rgba(255,255,255,0.5)' : colors.textSecondary }]}>
+                  Sign in to your account
+                </Text>
+
+                {/* Email Input */}
+                <View style={styles.inputWrapper}>
+                  <View
+                    style={[
+                      styles.inputContainer,
+                      {
+                        backgroundColor: isDark ? 'rgba(30, 41, 59, 0.8)' : 'rgba(241, 245, 249, 0.9)',
+                        borderColor: focusedField === 'email'
+                          ? (isDark ? '#2DD4BF' : '#22C55E')
+                          : (isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(34, 197, 94, 0.2)'),
+                      },
+                    ]}>
+                    <IconSymbol
+                      name="envelope.fill"
+                      size={18}
+                      color={focusedField === 'email' ? (isDark ? '#2DD4BF' : '#22C55E') : (isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)')}
+                    />
+                    <TextInput
+                      style={[styles.input, { color: isDark ? '#fff' : colors.text }]}
+                      placeholder="Email address"
+                      placeholderTextColor={isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'}
+                      value={email}
+                      onChangeText={setEmail}
+                      onFocus={() => setFocusedField('email')}
+                      onBlur={() => setFocusedField(null)}
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                      autoComplete="email"
+                    />
+                  </View>
+                </View>
+
+                {/* Password Input */}
+                <View style={styles.inputWrapper}>
+                  <View
+                    style={[
+                      styles.inputContainer,
+                      {
+                        backgroundColor: isDark ? 'rgba(30, 41, 59, 0.8)' : 'rgba(241, 245, 249, 0.9)',
+                        borderColor: focusedField === 'password'
+                          ? (isDark ? '#2DD4BF' : '#22C55E')
+                          : (isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(34, 197, 94, 0.2)'),
+                      },
+                    ]}>
+                    <IconSymbol
+                      name="lock.fill"
+                      size={18}
+                      color={focusedField === 'password' ? (isDark ? '#2DD4BF' : '#22C55E') : (isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)')}
+                    />
+                    <TextInput
+                      style={[styles.input, { color: isDark ? '#fff' : colors.text }]}
+                      placeholder="Password"
+                      placeholderTextColor={isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'}
+                      value={password}
+                      onChangeText={setPassword}
+                      onFocus={() => setFocusedField('password')}
+                      onBlur={() => setFocusedField(null)}
+                      secureTextEntry
+                      autoComplete="password"
+                    />
+                  </View>
+                </View>
+
+                {/* Forgot Password */}
+                <Pressable
+                  style={styles.forgotPassword}
+                  onPress={() => Alert.alert('Reset Password', 'Password reset coming soon!')}>
+                  <Text style={[styles.forgotPasswordText, { color: isDark ? '#2DD4BF' : '#22C55E' }]}>
+                    Forgot password?
+                  </Text>
+                </Pressable>
+
+                {/* Sign In Button */}
+                <Pressable
+                  onPress={handleSignIn}
+                  disabled={loading}
+                  style={({ pressed }) => [
+                    styles.signInButton,
+                    pressed && styles.signInButtonPressed,
+                  ]}>
+                  <LinearGradient
+                    colors={isDark ? ['#2DD4BF', '#22D3EE'] : ['#22C55E', '#10B981']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={[styles.signInButtonGradient, loading && styles.signInButtonDisabled]}>
+                    {loading ? (
+                      <Text style={styles.signInButtonText}>Signing in...</Text>
+                    ) : (
+                      <>
+                        <Text style={styles.signInButtonText}>Sign In</Text>
+                        <IconSymbol name="arrow.right" size={18} color="#fff" />
+                      </>
+                    )}
+                  </LinearGradient>
+                </Pressable>
+
+                {/* Divider */}
+                <View style={styles.divider}>
+                  <View style={[styles.dividerLine, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }]} />
+                  <Text style={[styles.dividerText, { color: isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)' }]}>
+                    or continue with
+                  </Text>
+                  <View style={[styles.dividerLine, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }]} />
+                </View>
+
+                {/* Social Buttons */}
+                <View style={styles.socialButtons}>
+                  <Pressable
+                    style={[
+                      styles.socialButton,
+                      { backgroundColor: isDark ? 'rgba(30, 41, 59, 0.8)' : 'rgba(241, 245, 249, 0.9)' },
+                    ]}
+                    onPress={() => Alert.alert('Coming Soon', 'Google sign in coming soon!')}>
+                    <IconSymbol name="globe" size={20} color={isDark ? '#fff' : colors.text} />
+                  </Pressable>
+                  <Pressable
+                    style={[
+                      styles.socialButton,
+                      { backgroundColor: isDark ? 'rgba(30, 41, 59, 0.8)' : 'rgba(241, 245, 249, 0.9)' },
+                    ]}
+                    onPress={() => Alert.alert('Coming Soon', 'Apple sign in coming soon!')}>
+                    <IconSymbol name="apple.logo" size={20} color={isDark ? '#fff' : colors.text} />
+                  </Pressable>
+                </View>
+              </View>
+            </BlurView>
+          </Animated.View>
+
+          {/* Footer */}
+          <Animated.View style={[styles.footer, { opacity: fadeAnim }]}>
+            <Text style={[styles.footerText, { color: isDark ? 'rgba(255,255,255,0.5)' : colors.textSecondary }]}>
               {"Don't have an account? "}
-            </ThemedText>
+            </Text>
             <Link href="/sign-up" asChild>
               <Pressable>
-                <ThemedText style={[styles.linkText, { color: isDark ? '#2DD4BF' : colors.tint }]}>
-                  Sign Up
-                </ThemedText>
+                <Text style={[styles.linkText, { color: isDark ? '#2DD4BF' : '#22C55E' }]}>
+                  Create one
+                </Text>
               </Pressable>
             </Link>
-          </View>
+          </Animated.View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </LinearGradient>
+    </View>
   );
 }
 
@@ -145,53 +352,113 @@ const styles = StyleSheet.create({
     padding: 24,
     paddingTop: Platform.OS === 'ios' ? 60 : 40,
   },
-  header: {
-    alignItems: 'center',
-    marginBottom: 40,
+  orb: {
+    position: 'absolute',
+    borderRadius: 999,
   },
-  logoContainer: {
-    width: 80,
-    height: 80,
+  orb1: {
+    width: width * 0.8,
+    height: width * 0.8,
+    top: -width * 0.3,
+    right: -width * 0.3,
+  },
+  orb2: {
+    width: width * 0.6,
+    height: width * 0.6,
+    bottom: height * 0.1,
+    left: -width * 0.3,
+  },
+  orb3: {
+    width: width * 0.4,
+    height: width * 0.4,
+    top: height * 0.4,
+    right: -width * 0.1,
+  },
+  heroSection: {
+    alignItems: 'center',
+    marginBottom: 32,
+  },
+  logoWrapper: {
+    marginBottom: 16,
+  },
+  logoGradient: {
+    width: 72,
+    height: 72,
     borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: '#2DD4BF',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  appName: {
+    fontSize: 32,
+    fontWeight: '700',
+    letterSpacing: -0.5,
+    marginBottom: 4,
+  },
+  tagline: {
+    fontSize: 15,
+    fontWeight: '500',
+  },
+  cardWrapper: {
     marginBottom: 24,
   },
-  title: {
-    marginBottom: 8,
+  glassCard: {
+    borderRadius: 24,
+    overflow: 'hidden',
   },
-  subtitle: {
-    textAlign: 'center',
-    opacity: 0.7,
+  cardInner: {
+    padding: 24,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
-  form: {
-    marginBottom: 32,
+  cardTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    marginBottom: 4,
   },
-  inputGroup: {
-    marginBottom: 20,
-  },
-  label: {
+  cardSubtitle: {
     fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 8,
-    opacity: 0.8,
+    marginBottom: 24,
+  },
+  inputWrapper: {
+    marginBottom: 16,
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    gap: 12,
+  },
+  input: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '500',
   },
   forgotPassword: {
     alignSelf: 'flex-end',
-    marginBottom: 24,
+    marginBottom: 20,
   },
   forgotPasswordText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
   },
-  submitButton: {
+  signInButton: {
     borderRadius: 14,
     overflow: 'hidden',
+    marginBottom: 20,
   },
-  submitButtonPressed: {
-    opacity: 0.9,
+  signInButtonPressed: {
+    transform: [{ scale: 0.98 }],
   },
-  submitButtonGradient: {
+  signInButtonGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -199,13 +466,39 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingHorizontal: 24,
   },
-  submitButtonDisabled: {
+  signInButtonDisabled: {
     opacity: 0.7,
   },
-  submitButtonText: {
-    color: '#0A0A0F',
+  signInButtonText: {
+    color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+  },
+  dividerText: {
+    fontSize: 12,
+    fontWeight: '500',
+    paddingHorizontal: 12,
+  },
+  socialButtons: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 16,
+  },
+  socialButton: {
+    width: 52,
+    height: 52,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   footer: {
     flexDirection: 'row',
@@ -214,9 +507,10 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontSize: 14,
+    fontWeight: '500',
   },
   linkText: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '700',
   },
 });
