@@ -2,7 +2,7 @@ import { SettleUpModal } from '@/components/friends/settle-up-modal';
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useThemeColors } from '@/hooks/use-theme-colors';
-import { calculateFriendBalance, expenseService, initDatabase, settlementService, userService } from '@/services/api';
+import { calculateBalances, calculateFriendBalance, expenseService, groupService, initDatabase, settlementService, userService } from '@/services/api';
 import type { Expense, ExpenseSplit, User } from '@/types/database';
 import { useFocusEffect } from '@react-navigation/native';
 import { BlurView } from 'expo-blur';
@@ -90,11 +90,8 @@ export default function FriendDetailScreen() {
       setLoading(true);
       await initDatabase();
       
-      console.log('[FriendDetail] Loading friend with id:', id);
-      
       // Get friend info
       const friendData = await userService.getById(id);
-      console.log('[FriendDetail] Friend data:', friendData);
       
       if (!friendData) {
         Alert.alert('Error', 'Friend not found');
@@ -102,10 +99,36 @@ export default function FriendDetailScreen() {
         return;
       }
 
-      // Calculate balance
-      const balance = await calculateFriendBalance(currentUserId, id);
-      console.log('[FriendDetail] Balance:', balance);
-      setFriend({ ...friendData, balance });
+      // Calculate total balance (friend-only + shared groups)
+      let totalBalance = 0;
+      
+      // 1. Calculate balance from friend-only expenses (no group)
+      const friendOnlyBalance = await calculateFriendBalance(currentUserId, id);
+      totalBalance += friendOnlyBalance;
+      
+      // 2. Calculate balance from shared group expenses
+      const groups = await groupService.getAll();
+      for (const group of groups) {
+        const members = await groupService.getMembers(group.id);
+        const currentUserIsMember = members.some((m: { userId: string }) => m.userId === currentUserId);
+        const friendIsMember = members.some((m: { userId: string }) => m.userId === id);
+        
+        // Only calculate if BOTH users are in the group
+        if (currentUserIsMember && friendIsMember) {
+          const balances = await calculateBalances(group.id);
+          const friendBalance = balances.get(id) || 0;
+          const currentUserBalance = balances.get(currentUserId) || 0;
+          
+          // Calculate what friend owes current user (or vice versa)
+          if (friendBalance < 0 && currentUserBalance > 0) {
+            totalBalance += Math.min(Math.abs(friendBalance), currentUserBalance);
+          } else if (friendBalance > 0 && currentUserBalance < 0) {
+            totalBalance -= Math.min(friendBalance, Math.abs(currentUserBalance));
+          }
+        }
+      }
+      
+      setFriend({ ...friendData, balance: totalBalance });
 
       // Get all expenses and filter for ones involving both users
       const allExpenses = await expenseService.getAll();
