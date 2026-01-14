@@ -1,175 +1,183 @@
-import { CreateGroupModal, GroupCard } from '@/components/groups';
+import { FriendCard } from '@/components/friends/friend-card';
+import { InviteFriendModal } from '@/components/friends/invite-friend-modal';
+import { QRCodeModal } from '@/components/friends/qr-code-modal';
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { LoadingState } from '@/components/ui/loading-state';
 import { useAuth } from '@/contexts/auth-context';
 import { useThemeColors } from '@/hooks/use-theme-colors';
-import { calculateBalances, groupService, initDatabase, userService } from '@/services/api';
-import type { GroupWithMembers } from '@/types/database';
+import { calculateFriendBalance, initDatabase, userService } from '@/services/api';
+import type { User } from '@/types/database';
+import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
-import { Alert, Animated, FlatList, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { useCallback, useState } from 'react';
+import { Alert, FlatList, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
 
-export default function GroupsScreen() {
-  const { colors, gradients, isDark } = useThemeColors();
-  const [groups, setGroups] = useState<GroupWithMembers[]>([]);
+interface UserWithBalance extends User {
+  balance: number;
+}
+
+export default function FriendsScreen() {
+  const { gradients, colors, isDark } = useThemeColors();
+  const [friends, setFriends] = useState<UserWithBalance[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
-  const [newGroupName, setNewGroupName] = useState('');
-  const [newGroupDescription, setNewGroupDescription] = useState('');
+  const [newFriendName, setNewFriendName] = useState('');
+  const [newFriendEmail, setNewFriendEmail] = useState('');
+  const [newFriendPhone, setNewFriendPhone] = useState('');
+  const [inviteMethod, setInviteMethod] = useState<'email' | 'phone'>('email');
+  const [qrModalVisible, setQrModalVisible] = useState(false);
   const { user } = useAuth();
   const currentUserId = user?.id || '';
 
-  // Animations
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(30)).current;
+  useFocusEffect(
+    useCallback(() => {
+      loadFriends();
+    }, [])
+  );
 
-  useEffect(() => {
-    loadGroups();
-  }, []);
-
-  useEffect(() => {
-    if (!loading) {
-      Animated.parallel([
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 400,
-          useNativeDriver: true,
-        }),
-        Animated.timing(slideAnim, {
-          toValue: 0,
-          duration: 400,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    }
-  }, [loading]);
-
-  async function loadGroups() {
+  async function loadFriends() {
+    if (!currentUserId) return;
     try {
       await initDatabase();
-      const allGroups = await groupService.getAll();
+      const allUsers = await userService.getAll();
       
-      const groupsWithData = await Promise.all(
-        allGroups.map(async (group) => {
-          const balances = await calculateBalances(group.id);
-          const yourBalance = balances.get(currentUserId) || 0;
-          
-          return {
-            ...group,
-            yourBalance,
-          };
-        })
+      const friendsWithBalances = await Promise.all(
+        allUsers
+          .filter((user: User) => user.id !== currentUserId)
+          .map(async (user: User) => {
+            // Calculate balance (includes all shared expenses - friend-only and group)
+            const balance = await calculateFriendBalance(currentUserId, user.id);
+            return { ...user, balance };
+          })
       );
-      
-      setGroups(groupsWithData);
+
+      setFriends(friendsWithBalances);
     } catch (error) {
-      console.error('Error loading groups:', error);
+      console.error('Error loading friends:', error);
     } finally {
       setLoading(false);
     }
   }
 
-  async function createGroup() {
-    if (!newGroupName.trim()) {
-      Alert.alert('Error', 'Please enter a group name');
+  async function sendInvite() {
+    const contact = inviteMethod === 'email' ? newFriendEmail.trim() : newFriendPhone.trim();
+    
+    if (!contact) {
+      Alert.alert('Required', `Please enter ${inviteMethod === 'email' ? 'an email address' : 'a phone number'}`);
       return;
     }
 
     try {
-      const group = await groupService.create({
-        name: newGroupName.trim(),
-        description: newGroupDescription.trim() || undefined,
+      await userService.create({
+        name: newFriendName.trim() || contact,
+        email: inviteMethod === 'email' ? contact : undefined,
+        phone: inviteMethod === 'phone' ? contact : undefined,
       });
 
-      const currentUser = await userService.getById(currentUserId);
-      if (!currentUser) {
-        await userService.create({
-          name: user?.name,
-          email: user?.email,
-        });
-      }
-
-      await groupService.addMember(group.id, currentUserId, 'admin');
-
-      setNewGroupName('');
-      setNewGroupDescription('');
+      setNewFriendName('');
+      setNewFriendEmail('');
+      setNewFriendPhone('');
       setModalVisible(false);
-      loadGroups();
+      loadFriends();
+      Alert.alert('Invite Sent!', `An invite has been sent to ${contact}`);
     } catch (error) {
-      console.error('Error creating group:', error);
-      Alert.alert('Error', 'Failed to create group');
+      console.error('Error sending invite:', error);
+      Alert.alert('Error', 'Failed to send invite');
     }
   }
 
-  const totalBalance = groups.reduce((sum, g) => sum + (g.yourBalance || 0), 0);
+  function handleFriendPress(friend: UserWithBalance) {
+    router.push(`/friend/${friend.id}` as any);
+  }
+
+  // Calculate net balance (positive = you are owed, negative = you owe)
+  const netBalance = friends.reduce((sum, f) => sum + f.balance, 0);
+  const balanceLabel = netBalance > 0 ? 'You are owed' : netBalance < 0 ? 'You owe' : 'All settled';
+  const balanceColor = netBalance > 0 ? '#10b981' : netBalance < 0 ? '#ef4444' : (isDark ? '#2DD4BF' : colors.tint);
 
   return (
     <LinearGradient
       colors={gradients.screenBackground}
       style={styles.container}>
       <View style={styles.header}>
-        <View>
-          <ThemedText style={[styles.headerLabel, !isDark && { color: colors.textSecondary }]}>Total balance</ThemedText>
-          <ThemedText type="header" style={[styles.headerAmount, !isDark && { color: colors.text }]}>
-            ${Math.abs(totalBalance).toFixed(2)}
-          </ThemedText>
+        <View style={{ flexDirection: 'column', gap: 4 }}>
+          <ThemedText style={[styles.headerLabel, !isDark && { color: colors.textSecondary }]}>{balanceLabel}</ThemedText>
+          <ThemedText type="header" style={[styles.headerAmount, { color: balanceColor }]}>${Math.abs(netBalance).toFixed(2)}</ThemedText>
         </View>
-        <TouchableOpacity
-          style={[styles.addButtonRect, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)', borderColor: isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(34, 197, 94, 0.3)' }]}
-          onPress={() => router.push('/create-group')}>
-         <IconSymbol size={20} name="plus" color={isDark ? '#2DD4BF' : colors.tint} />
-        </TouchableOpacity>
+        <View style={styles.headerButtons}>
+          <TouchableOpacity
+            style={[styles.addButtonRect, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)', borderColor: isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(34, 197, 94, 0.3)' }]}
+            onPress={() => setQrModalVisible(true)}>
+            <IconSymbol size={20} name="qrcode" color={isDark ? '#2DD4BF' : colors.tint} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.addButtonRect, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)', borderColor: isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(34, 197, 94, 0.3)' }]}
+            onPress={() => router.push('/scan-qr')}>
+            <IconSymbol size={20} name="qrcode.viewfinder" color={isDark ? '#2DD4BF' : colors.tint} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.addButtonRect, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)', borderColor: isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(34, 197, 94, 0.3)' }]}
+            onPress={() => router.push('/add-friend')}>
+            <IconSymbol size={20} name="person.badge.plus" color={isDark ? '#2DD4BF' : colors.tint} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {loading ? (
-        <LoadingState message="Loading your groups..." />
-      ) : groups.length === 0 ? (
-        <Animated.View style={[
-          styles.emptyContainer,
-          { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }
-        ]}>
+        <LoadingState message="Loading friends..." />
+      ) : friends.length === 0 ? (
+        <View style={styles.emptyContainer}>
           <View style={[styles.emptyIconContainer, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.1)' : 'rgba(34, 197, 94, 0.1)' }]}>
-            <IconSymbol size={80} name="person.3" color={isDark ? '#2DD4BF' : colors.tint} />
+            <IconSymbol size={64} name="person.2" color={isDark ? '#2DD4BF' : colors.tint} />
           </View>
           <ThemedText type="subtitle" style={[styles.emptyTitle, !isDark && { color: colors.text }]}>
-            No groups yet
+            No friends yet
           </ThemedText>
           <ThemedText style={[styles.emptyText, !isDark && { color: colors.textSecondary }]}>
-            Create a group to start splitting expenses with friends
+            Add friends to split expenses with them
           </ThemedText>
           <TouchableOpacity
-            activeOpacity={0.8}
-            onPress={() => router.push('/create-group')}>
+            style={styles.createButton}
+            onPress={() => router.push('/add-friend')}>
             <LinearGradient
               colors={gradients.buttonPrimary}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
-              style={styles.createButton}>
-              <IconSymbol size={20} name="plus.circle.fill" color="#0A0A0F" />
-              <ThemedText style={[styles.createButtonText, { color: '#0A0A0F' }]}>Create Your First Group</ThemedText>
+              style={styles.createButtonGradient}>
+              <ThemedText style={styles.createButtonText}>Add Friend</ThemedText>
             </LinearGradient>
           </TouchableOpacity>
-        </Animated.View>
+        </View>
       ) : (
         <FlatList
-          data={groups}
-          renderItem={({ item, index }) => <GroupCard group={item} index={index} onRefresh={loadGroups} />}
+          data={friends}
+          renderItem={({ item }) => <FriendCard friend={item} onPress={handleFriendPress} />}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
         />
       )}
 
-      <CreateGroupModal
+      <InviteFriendModal
         visible={modalVisible}
         onClose={() => setModalVisible(false)}
-        groupName={newGroupName}
-        setGroupName={setNewGroupName}
-        groupDescription={newGroupDescription}
-        setGroupDescription={setNewGroupDescription}
-        onSubmit={createGroup}
+        name={newFriendName}
+        setName={setNewFriendName}
+        email={newFriendEmail}
+        setEmail={setNewFriendEmail}
+        phone={newFriendPhone}
+        setPhone={setNewFriendPhone}
+        inviteMethod={inviteMethod}
+        setInviteMethod={setInviteMethod}
+        onSubmit={sendInvite}
+      />
+
+      <QRCodeModal
+        visible={qrModalVisible}
+        onClose={() => setQrModalVisible(false)}
+        userId={currentUserId}
+        userName={user?.name || ''}
       />
     </LinearGradient>
   );
@@ -179,31 +187,12 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingSpinner: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: 'rgba(45, 212, 191, 0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  loadingText: {
-    fontSize: 16,
-    opacity: 0.7,
-  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
+    padding: 20,
     paddingTop: Platform.OS === 'ios' ? 60 : 50,
-    marginBottom: 16,
   },
   headerLabel: {
     fontSize: 14,
@@ -212,6 +201,13 @@ const styles = StyleSheet.create({
   },
   headerAmount: {
     color: '#fff',
+  },
+  addButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   addButtonCircle: {
     width: 44,
@@ -223,190 +219,83 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  addButtonRect: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: 'rgba(45, 212, 191, 0.15)',
-    borderWidth: 1,
-    borderColor: 'rgba(45, 212, 191, 0.3)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-  },
-  headerSubtitle: {
-    fontSize: 12,
-    opacity: 0.6,
-    marginTop: 4,
-  },
-  addButton: {
-    borderRadius: 28,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  addButtonGradient: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  summaryCard: {
-    marginHorizontal: 20,
-    borderRadius: 20,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
-    elevation: 10,
-  },
-  summaryGradient: {
-    padding: 20,
-    alignItems: 'center',
-  },
-  summaryLabel: {
-    fontSize: 12,
-    color: '#fff',
-    opacity: 0.9,
-    fontWeight: '500',
-  },
-  summaryAmount: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginTop: 6,
-  },
-  summarySubtext: {
-    fontSize: 11,
-    color: '#fff',
-    opacity: 0.8,
-    marginTop: 4,
-  },
   listContent: {
     padding: 16,
     paddingBottom: 120,
   },
-  groupCardWrapper: {
-    marginBottom: 10,
-  },
-  groupCard: {
+  friendCard: {
+    flexDirection: 'row',
+    padding: 14,
     borderRadius: 12,
-    overflow: 'hidden',
+    marginBottom: 10,
     backgroundColor: 'rgba(20, 35, 38, 0.6)',
   },
-  groupCardContent: {
-    padding: 16,
-  },
-  groupHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  groupIconContainer: {
-    width: 44,
-    height: 44,
+  avatar: {
+    width: 40,
+    height: 40,
     borderRadius: 10,
+    backgroundColor: 'rgba(45, 212, 191, 0.15)',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
   },
-  groupInfo: {
-    flex: 1,
-  },
-  groupName: {
+  avatarText: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: '#fff',
+    fontWeight: '600',
+    color: '#2DD4BF',
+  },
+  friendInfo: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  friendName: {
+    fontSize: 14,
     marginBottom: 2,
   },
-  groupDescription: {
-    fontSize: 12,
-    color: '#fff',
-    opacity: 0.8,
+  friendEmail: {
+    fontSize: 11,
+    opacity: 0.6,
   },
-  balanceSection: {
-    marginTop: 8,
-  },
-  balanceDivider: {
-    height: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    marginBottom: 12,
-  },
-  balanceContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  balanceLabel: {
-    fontSize: 12,
-    color: '#fff',
-    opacity: 0.9,
-    fontWeight: '500',
+  balanceContainer: {
+    alignItems: 'flex-end',
+    justifyContent: 'center',
   },
   balanceAmount: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 2,
   },
-  cardShine: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    width: 100,
-    height: 100,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 50,
-    transform: [{ translateX: 30 }, { translateY: -30 }],
+  balanceLabel: {
+    fontSize: 10,
+    opacity: 0.6,
+  },
+  settledText: {
+    fontSize: 11,
+    opacity: 0.6,
   },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 40,
-  },
-  emptyIconContainer: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: 'rgba(24, 24, 27, 0.05)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 20,
+    padding: 32,
   },
   emptyTitle: {
+    marginTop: 16,
     marginBottom: 8,
-    fontSize: 18,
   },
   emptyText: {
     textAlign: 'center',
     opacity: 0.6,
     marginBottom: 24,
-    fontSize: 13,
-    lineHeight: 20,
   },
   createButton: {
-    flexDirection: 'row',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 24,
-    alignItems: 'center',
-    gap: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+    overflow: 'hidden',
   },
   createButtonText: {
-    color: '#fff',
+    color: '#0A0A0F',
     fontWeight: '600',
     fontSize: 14,
   },
@@ -465,10 +354,6 @@ const styles = StyleSheet.create({
     padding: 14,
     fontSize: 14,
   },
-  textArea: {
-    height: 120,
-    textAlignVertical: 'top',
-  },
   submitButton: {
     padding: 14,
     borderRadius: 14,
@@ -485,7 +370,26 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
-  glassCard: {
+  addButtonGradient: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(45, 212, 191, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  createButtonGradient: {
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 20,
   },
   glassInput: {
     backgroundColor: 'rgba(26, 26, 36, 0.8)',
@@ -495,11 +399,11 @@ const styles = StyleSheet.create({
   modalKeyboard: {
     flex: 1,
   },
-  createHeader: {
+  inviteHeader: {
     alignItems: 'center',
     marginBottom: 32,
   },
-  createIconContainer: {
+  inviteIconContainer: {
     width: 80,
     height: 80,
     borderRadius: 16,
@@ -508,14 +412,40 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 16,
   },
-  createTitle: {
+  inviteTitle: {
     color: '#fff',
     marginBottom: 8,
     lineHeight: 32,
   },
-  createSubtitle: {
+  inviteSubtitle: {
     color: 'rgba(255,255,255,0.6)',
     textAlign: 'center',
+  },
+  methodToggle: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(20, 35, 38, 0.6)',
+    borderRadius: 12,
+    padding: 4,
+    marginBottom: 24,
+  },
+  methodButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: 10,
+    gap: 8,
+  },
+  methodButtonActive: {
+    backgroundColor: '#2DD4BF',
+  },
+  methodButtonText: {
+    color: '#2DD4BF',
+    fontWeight: '600',
+  },
+  methodButtonTextActive: {
+    color: '#0A0A0F',
   },
   privacyNote: {
     fontSize: 12,
@@ -523,5 +453,36 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 8,
     lineHeight: 18,
+  },
+  headerButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  addExpenseButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: 'rgba(45, 212, 191, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(45, 212, 191, 0.3)',
+    gap: 6,
+  },
+  addExpenseText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#2DD4BF',
+  },
+  addButtonRect: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: 'rgba(45, 212, 191, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(45, 212, 191, 0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

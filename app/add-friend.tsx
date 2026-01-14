@@ -11,6 +11,7 @@ import { useEffect, useRef, useState } from 'react';
 import {
   Alert,
   Animated,
+  Keyboard,
   Platform,
   StyleSheet,
   TextInput,

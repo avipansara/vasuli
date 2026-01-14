@@ -1,10 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import type { Expense, ExpenseSplit, Group, GroupMember, Settlement, User } from '@/types/database';
 
-function generateId(): string {
-  return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-}
-
 export async function initDatabase() {
   // No initialization needed for Supabase - tables are created in the dashboard
   return true;
@@ -12,19 +8,25 @@ export async function initDatabase() {
 
 export const userService = {
   async create(user: Omit<User, 'id' | 'createdAt'> & { id?: string }): Promise<User> {
-    const id = user.id || generateId();
     const createdAt = new Date().toISOString();
+    
+    // Let Supabase auto-generate UUID if no ID provided
+    const insertData: any = {
+      name: user.name,
+      email: user.email || null,
+      phone: user.phone || null,
+      avatar: user.avatar || null,
+      created_at: createdAt,
+    };
+    
+    // Only include ID if it's a valid UUID (from auth.users)
+    if (user.id) {
+      insertData.id = user.id;
+    }
     
     const { data, error } = await supabase
       .from('users')
-      .insert({
-        id,
-        name: user.name,
-        email: user.email || null,
-        phone: user.phone || null,
-        avatar: user.avatar || null,
-        created_at: createdAt,
-      })
+      .insert(insertData)
       .select()
       .single();
     
@@ -106,13 +108,11 @@ export const userService = {
 
 export const groupService = {
   async create(group: Omit<Group, 'id' | 'createdAt' | 'updatedAt'>): Promise<Group> {
-    const id = generateId();
     const now = new Date().toISOString();
     
     const { data, error } = await supabase
       .from('groups')
       .insert({
-        id,
         name: group.name,
         description: group.description || null,
         image_url: group.imageUrl || null,
@@ -198,13 +198,11 @@ export const groupService = {
   },
 
   async addMember(groupId: string, userId: string, role: 'admin' | 'member' = 'member'): Promise<GroupMember> {
-    const id = generateId();
     const joinedAt = new Date().toISOString();
     
     const { data, error } = await supabase
       .from('group_members')
       .insert({
-        id,
         group_id: groupId,
         user_id: userId,
         role,
@@ -257,13 +255,11 @@ export const expenseService = {
     expense: Omit<Expense, 'id' | 'createdAt' | 'updatedAt'>,
     splits: Omit<ExpenseSplit, 'id' | 'expenseId'>[]
   ): Promise<Expense> {
-    const id = generateId();
     const now = new Date().toISOString();
     
     const { data, error } = await supabase
       .from('expenses')
       .insert({
-        id,
         group_id: expense.groupId || null,
         description: expense.description,
         amount: expense.amount,
@@ -284,8 +280,7 @@ export const expenseService = {
     // Insert splits
     if (splits.length > 0) {
       const splitsToInsert = splits.map(split => ({
-        id: generateId(),
-        expense_id: id,
+        expense_id: data.id,
         user_id: split.userId,
         amount: split.amount,
         split_type: split.splitType,
@@ -422,13 +417,11 @@ export const expenseService = {
 
 export const settlementService = {
   async create(settlement: Omit<Settlement, 'id' | 'createdAt'>): Promise<Settlement> {
-    const id = generateId();
     const createdAt = new Date().toISOString();
     
     const { data, error } = await supabase
       .from('settlements')
       .insert({
-        id,
         group_id: settlement.groupId,
         from_user_id: settlement.fromUserId,
         to_user_id: settlement.toUserId,
