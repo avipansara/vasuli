@@ -108,6 +108,10 @@ export default function FriendsScreen() {
     }
   }
 
+  function handleFriendPress(friend: UserWithBalance) {
+    router.push(`/friend/${friend.id}` as any);
+  }
+
   // Calculate total owed
   const totalOwed = friends.reduce((sum, f) => f.balance < 0 ? sum + Math.abs(f.balance) : sum, 0);
 
@@ -165,7 +169,7 @@ export default function FriendsScreen() {
       ) : (
         <FlatList
           data={friends}
-          renderItem={({ item }) => <FriendCard friend={item} />}
+          renderItem={({ item }) => <FriendCard friend={item} onPress={handleFriendPress} />}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
         />

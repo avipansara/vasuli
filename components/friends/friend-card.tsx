@@ -1,8 +1,9 @@
 import { ThemedText } from '@/components/themed-text';
+import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import type { User } from '@/types/database';
 import React from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, TouchableOpacity, View } from 'react-native';
 
 interface UserWithBalance extends User {
   balance: number;
@@ -10,9 +11,10 @@ interface UserWithBalance extends User {
 
 interface FriendCardProps {
   friend: UserWithBalance;
+  onPress?: (friend: UserWithBalance) => void;
 }
 
-export function FriendCard({ friend }: FriendCardProps) {
+export function FriendCard({ friend, onPress }: FriendCardProps) {
   const { colors, isDark } = useThemeColors();
   const balance = friend.balance;
   const balanceColor =
@@ -23,11 +25,13 @@ export function FriendCard({ friend }: FriendCardProps) {
       : isDark ? '#2DD4BF' : colors.tint;
 
   return (
-    <View
+    <TouchableOpacity
       style={[
         styles.card,
         !isDark && { backgroundColor: colors.card },
-      ]}>
+      ]}
+      onPress={() => onPress?.(friend)}
+      activeOpacity={0.7}>
       <View
         style={[
           styles.avatar,
@@ -69,7 +73,13 @@ export function FriendCard({ friend }: FriendCardProps) {
           </ThemedText>
         )}
       </View>
-    </View>
+      <IconSymbol 
+        size={16} 
+        name="chevron.right" 
+        color={isDark ? 'rgba(255,255,255,0.3)' : colors.textSecondary} 
+        style={styles.chevron}
+      />
+    </TouchableOpacity>
   );
 }
 
@@ -120,5 +130,8 @@ const styles = StyleSheet.create({
   settledText: {
     fontSize: 12,
     opacity: 0.6,
+  },
+  chevron: {
+    marginLeft: 8,
   },
 });
