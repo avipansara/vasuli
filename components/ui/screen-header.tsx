@@ -90,7 +90,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 60,
+    paddingTop: Platform.OS === 'ios' ? 60 : 50,
     paddingBottom: 16,
   },
   headerLeft: {
@@ -120,5 +120,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
+    // Increase touch target on Android
+    ...(Platform.OS === 'android' && {
+      padding: 4,
+    }),
   },
 });

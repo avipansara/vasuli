@@ -1,4 +1,5 @@
 import { useThemeColors } from '@/hooks/use-theme-colors';
+import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect, useState } from 'react';
 import {
     Keyboard,
@@ -60,8 +61,8 @@ export function KeyboardAwareScroll({
         {children}
       </ScrollView>
 
-      {/* Keyboard Dismiss Button - Shows when keyboard is visible */}
-      {showDismissButton && keyboardVisible && (
+      {/* Keyboard Dismiss Button - Shows when keyboard is visible (only on iOS or when Android keyboard doesn't have done button) */}
+      {showDismissButton && keyboardVisible && Platform.OS === 'ios' && (
         <View style={styles.dismissButtonContainer}>
           <TouchableOpacity
             onPress={dismissKeyboard}
@@ -83,6 +84,10 @@ export function KeyboardAwareScroll({
       {/* Footer - Always visible above keyboard */}
       {footer && (
         <View style={[styles.footerContainer, keyboardVisible && styles.footerWithKeyboard]}>
+          <LinearGradient
+            colors={isDark ? ['rgba(10, 10, 15, 0)', 'rgba(10, 10, 15, 0.95)', 'rgba(10, 10, 15, 1)'] : ['rgba(255, 255, 255, 0)', 'rgba(255, 255, 255, 0.95)', 'rgba(255, 255, 255, 1)']}
+            style={styles.footerGradient}
+          />
           {footer}
         </View>
       )}
@@ -98,7 +103,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 120,
+    paddingBottom: 140,
   },
   dismissButtonContainer: {
     position: 'absolute',
@@ -128,8 +133,16 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingTop: 20,
     paddingBottom: Platform.OS === 'ios' ? 34 : 20,
+  },
+  footerGradient: {
+    position: 'absolute',
+    top: -40,
+    left: 0,
+    right: 0,
+    height: 60,
   },
   footerWithKeyboard: {
     position: 'relative',

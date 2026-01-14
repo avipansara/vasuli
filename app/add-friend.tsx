@@ -35,6 +35,11 @@ export default function AddFriendScreen() {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
 
+  // Input refs for focus management
+  const nameInputRef = useRef<TextInput>(null);
+  const emailInputRef = useRef<TextInput>(null);
+  const phoneInputRef = useRef<TextInput>(null);
+
   useEffect(() => {
     Animated.parallel([
       Animated.timing(fadeAnim, {
@@ -221,11 +226,21 @@ export default function AddFriendScreen() {
               }]}>
                 <IconSymbol name="person" size={20} color={isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'} />
                 <TextInput
+                  ref={nameInputRef}
                   style={[styles.textInput, { color: isDark ? '#fff' : colors.text }]}
                   value={name}
                   onChangeText={setName}
                   placeholder="e.g. John Doe"
                   placeholderTextColor={isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'}
+                  returnKeyType="next"
+                  onSubmitEditing={() => {
+                    if (inviteMethod === 'email') {
+                      emailInputRef.current?.focus();
+                    } else {
+                      phoneInputRef.current?.focus();
+                    }
+                  }}
+                  blurOnSubmit={false}
                 />
               </View>
             </View>
@@ -242,6 +257,7 @@ export default function AddFriendScreen() {
                 }]}>
                   <IconSymbol name="envelope" size={20} color={isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'} />
                   <TextInput
+                    ref={emailInputRef}
                     style={[styles.textInput, { color: isDark ? '#fff' : colors.text }]}
                     value={email}
                     onChangeText={setEmail}
@@ -249,7 +265,8 @@ export default function AddFriendScreen() {
                     placeholderTextColor={isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'}
                     keyboardType="email-address"
                     autoCapitalize="none"
-                    autoFocus
+                    returnKeyType="done"
+                    onSubmitEditing={handleSubmit}
                   />
                 </View>
               </View>
@@ -264,13 +281,15 @@ export default function AddFriendScreen() {
                 }]}>
                   <IconSymbol name="phone" size={20} color={isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'} />
                   <TextInput
+                    ref={phoneInputRef}
                     style={[styles.textInput, { color: isDark ? '#fff' : colors.text }]}
                     value={phone}
                     onChangeText={setPhone}
                     placeholder="+1 (555) 123-4567"
                     placeholderTextColor={isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'}
                     keyboardType="phone-pad"
-                    autoFocus
+                    returnKeyType="done"
+                    onSubmitEditing={handleSubmit}
                   />
                 </View>
               </View>
@@ -323,7 +342,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'ios' ? 60 : 40,
+    paddingTop: Platform.OS === 'ios' ? 60 : 50,
     paddingBottom: 16,
   },
   backButton: {

@@ -12,6 +12,7 @@ import { useEffect, useRef, useState } from 'react';
 import {
   Alert,
   Animated,
+  Keyboard,
   Platform,
   StyleSheet,
   Text,
@@ -62,6 +63,10 @@ export default function AddExpenseScreen() {
   // Animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
+
+  // Input refs for focus management
+  const amountInputRef = useRef<TextInput>(null);
+  const descriptionInputRef = useRef<TextInput>(null);
 
   useEffect(() => {
     loadData();
@@ -213,13 +218,16 @@ export default function AddExpenseScreen() {
               <View style={styles.amountInputRow}>
                 <Text style={[styles.currencySymbol, { color: isDark ? '#2DD4BF' : colors.tint }]}>$</Text>
                 <TextInput
+                  ref={amountInputRef}
                   style={[styles.amountInput, { color: isDark ? '#fff' : colors.text }]}
                   value={amount}
                   onChangeText={setAmount}
                   placeholder="0.00"
                   placeholderTextColor={isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)'}
                   keyboardType="decimal-pad"
-                  autoFocus
+                  returnKeyType="next"
+                  onSubmitEditing={() => descriptionInputRef.current?.focus()}
+                  blurOnSubmit={false}
                 />
               </View>
             </View>
@@ -235,11 +243,14 @@ export default function AddExpenseScreen() {
               }]}>
                 <IconSymbol name="doc.text" size={20} color={isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'} />
                 <TextInput
+                  ref={descriptionInputRef}
                   style={[styles.textInput, { color: isDark ? '#fff' : colors.text }]}
                   value={description}
                   onChangeText={setDescription}
                   placeholder="e.g. Dinner, Groceries, Uber..."
                   placeholderTextColor={isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'}
+                  returnKeyType="done"
+                  onSubmitEditing={() => Keyboard.dismiss()}
                 />
               </View>
             </View>
@@ -562,7 +573,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'ios' ? 60 : 40,
+    paddingTop: Platform.OS === 'ios' ? 60 : 50,
     paddingBottom: 16,
   },
   backButton: {

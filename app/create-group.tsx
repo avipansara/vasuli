@@ -11,6 +11,7 @@ import { useEffect, useRef, useState } from 'react';
 import {
   Alert,
   Animated,
+  Keyboard,
   Platform,
   StyleSheet,
   TextInput,
@@ -42,6 +43,10 @@ export default function CreateGroupScreen() {
   // Animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
+
+  // Input refs for focus management
+  const groupNameInputRef = useRef<TextInput>(null);
+  const descriptionInputRef = useRef<TextInput>(null);
 
   useEffect(() => {
     Animated.parallel([
@@ -152,12 +157,15 @@ export default function CreateGroupScreen() {
               }]}>
                 <IconSymbol name="pencil" size={20} color={isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'} />
                 <TextInput
+                  ref={groupNameInputRef}
                   style={[styles.textInput, { color: isDark ? '#fff' : colors.text }]}
                   value={groupName}
                   onChangeText={setGroupName}
                   placeholder="e.g. Summer Trip 2024"
                   placeholderTextColor={isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'}
-                  autoFocus
+                  returnKeyType="next"
+                  onSubmitEditing={() => descriptionInputRef.current?.focus()}
+                  blurOnSubmit={false}
                 />
               </View>
             </View>
@@ -172,14 +180,21 @@ export default function CreateGroupScreen() {
                 borderColor: isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(34, 197, 94, 0.2)',
               }]}>
                 <TextInput
+                  ref={descriptionInputRef}
                   style={[styles.textArea, { color: isDark ? '#fff' : colors.text }]}
                   value={description}
                   onChangeText={setDescription}
                   placeholder="What is this group for?"
-                  placeholderTextColor={isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'}
+                  placeholderTextColor={isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'}  
                   multiline
                   numberOfLines={3}
                   textAlignVertical="top"
+                  returnKeyType="done"
+                  blurOnSubmit
+                  onSubmitEditing={() => {
+                    Keyboard.dismiss();
+                    if (isValid) handleSubmit();
+                  }}
                 />
               </View>
             </View>
@@ -240,7 +255,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'ios' ? 60 : 40,
+    paddingTop: Platform.OS === 'ios' ? 60 : 50,
     paddingBottom: 16,
   },
   backButton: {
