@@ -169,6 +169,17 @@ export const mockExpenses: Expense[] = [
     createdAt: Date.now() - 2 * 24 * 60 * 60 * 1000,
     updatedAt: Date.now() - 2 * 24 * 60 * 60 * 1000,
   },
+  // Friend-only expense (no group)
+  {
+    id: 'exp-9',
+    description: 'Coffee with Alex',
+    amount: 20.00,
+    currency: 'USD',
+    paidBy: 'current-user',
+    date: Date.now() - 1 * 24 * 60 * 60 * 1000,
+    createdAt: Date.now() - 1 * 24 * 60 * 60 * 1000,
+    updatedAt: Date.now() - 1 * 24 * 60 * 60 * 1000,
+  },
 ];
 
 // Mock Expense Splits (equal splits for simplicity)
@@ -208,6 +219,9 @@ export const mockExpenseSplits: ExpenseSplit[] = [
   { id: 'split-25', expenseId: 'exp-8', userId: 'current-user', amount: 12.00, splitType: 'equal' },
   { id: 'split-26', expenseId: 'exp-8', userId: 'user-2', amount: 12.00, splitType: 'equal' },
   { id: 'split-27', expenseId: 'exp-8', userId: 'user-4', amount: 12.00, splitType: 'equal' },
+  // Coffee with Alex (friend-only, no group) - current-user paid, split with user-1
+  { id: 'split-28', expenseId: 'exp-9', userId: 'current-user', amount: 10.00, splitType: 'equal' },
+  { id: 'split-29', expenseId: 'exp-9', userId: 'user-1', amount: 10.00, splitType: 'equal' },
 ];
 
 // Mock Settlements

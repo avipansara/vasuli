@@ -210,7 +210,8 @@ const mockExpenseService = {
       groups[groupIndex].updatedAt = now;
     }
     
-    console.log('[Mock API] Expense created:', newExpense.description);
+    console.log('[Mock API] Expense created:', newExpense.description, 'groupId:', newExpense.groupId, 'splits:', splits.length);
+    console.log('[Mock API] Total expenses now:', expenses.length, 'Total splits now:', expenseSplits.length);
     return newExpense;
   },
 
@@ -306,6 +307,60 @@ async function mockCalculateBalances(groupId: string): Promise<Map<string, numbe
   return balances;
 }
 
+// Calculate balance between current user and a specific friend (including friend-only expenses)
+async function mockCalculateFriendBalance(currentUserId: string, friendId: string): Promise<number> {
+  await delay(API_DELAY / 2);
+  let balance = 0;
+  
+  // Get all expenses where both users are involved (friend-only expenses without groupId)
+  console.log('[FriendBalance] Calculating for currentUser:', currentUserId, 'friend:', friendId);
+  console.log('[FriendBalance] All expenses:', expenses.map(e => ({ id: e.id, groupId: e.groupId, desc: e.description })));
+  const friendExpenses = expenses.filter(e => e.groupId === undefined || e.groupId === null || e.groupId === '');
+  console.log('[FriendBalance] Friend expenses (no groupId):', friendExpenses.length, friendExpenses.map(e => ({ id: e.id, desc: e.description, paidBy: e.paidBy })));
+  console.log('[FriendBalance] All expense splits:', expenseSplits.length);
+  
+  for (const expense of friendExpenses) {
+    const splits = expenseSplits.filter(s => s.expenseId === expense.id);
+    console.log('[FriendBalance] Splits for expense', expense.id, ':', splits.map(s => ({ userId: s.userId, amount: s.amount })));
+    
+    const currentUserSplit = splits.find(s => s.userId === currentUserId);
+    const friendSplit = splits.find(s => s.userId === friendId);
+    
+    console.log('[FriendBalance] currentUserSplit:', currentUserSplit, 'friendSplit:', friendSplit);
+    
+    // Only process if both users are part of this expense
+    if (currentUserSplit && friendSplit) {
+      if (expense.paidBy === currentUserId) {
+        // Current user paid, friend owes their share
+        balance += friendSplit.amount;
+        console.log('[FriendBalance] Current user paid, friend owes:', friendSplit.amount);
+      } else if (expense.paidBy === friendId) {
+        // Friend paid, current user owes their share
+        balance -= currentUserSplit.amount;
+        console.log('[FriendBalance] Friend paid, current user owes:', currentUserSplit.amount);
+      }
+    }
+  }
+  
+  // Apply friend-only settlements (no groupId)
+  const friendSettlements = settlements.filter(s => !s.groupId && 
+    ((s.fromUserId === currentUserId && s.toUserId === friendId) ||
+     (s.fromUserId === friendId && s.toUserId === currentUserId)));
+  
+  for (const settlement of friendSettlements) {
+    if (settlement.fromUserId === currentUserId) {
+      // Current user paid friend
+      balance -= settlement.amount;
+    } else {
+      // Friend paid current user
+      balance += settlement.amount;
+    }
+  }
+  
+  console.log('[FriendBalance] Final balance for', friendId, ':', balance);
+  return balance;
+}
+
 // Helper to get database (for compatibility)
 export async function getDatabase(): Promise<null> {
   return null;
@@ -346,3 +401,10 @@ export const calculateBalances = USE_SUPABASE
       return supa.calculateBalances;
     })()
   : mockCalculateBalances;
+
+export const calculateFriendBalance: (currentUserId: string, friendId: string) => Promise<number> = USE_SUPABASE
+  ? (() => {
+      const supa = require('./supabase-database');
+      return supa.calculateFriendBalance;
+    })()
+  : mockCalculateFriendBalance;

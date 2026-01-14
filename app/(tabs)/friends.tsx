@@ -3,11 +3,12 @@ import { InviteFriendModal } from '@/components/friends/invite-friend-modal';
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useThemeColors } from '@/hooks/use-theme-colors';
-import { calculateBalances, groupService, initDatabase, userService } from '@/services/api';
+import { calculateBalances, calculateFriendBalance, groupService, initDatabase, userService } from '@/services/api';
 import type { User } from '@/types/database';
+import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Alert, FlatList, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 interface UserWithBalance extends User {
@@ -24,9 +25,11 @@ export default function FriendsScreen() {
   const [newFriendPhone, setNewFriendPhone] = useState('');
   const [inviteMethod, setInviteMethod] = useState<'email' | 'phone'>('email');
 
-  useEffect(() => {
-    loadFriends();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      loadFriends();
+    }, [])
+  );
 
   async function loadFriends() {
     try {
@@ -36,20 +39,28 @@ export default function FriendsScreen() {
       
       const friendsWithBalances = await Promise.all(
         allUsers
-          .filter(user => user.id !== currentUserId)
-          .map(async (user) => {
+          .filter((user: User) => user.id !== currentUserId)
+          .map(async (user: User) => {
             let totalBalance = 0;
-            const groups = await groupService.getAll();
             
+            // 1. Calculate balance from friend-only expenses (no group)
+            const friendOnlyBalance = await calculateFriendBalance(currentUserId, user.id);
+            totalBalance += friendOnlyBalance;
+            
+            // 2. Calculate balance from shared group expenses
+            const groups = await groupService.getAll();
             for (const group of groups) {
               const members = await groupService.getMembers(group.id);
-              const isMember = members.some(m => m.userId === user.id);
+              const currentUserIsMember = members.some((m: { userId: string }) => m.userId === currentUserId);
+              const friendIsMember = members.some((m: { userId: string }) => m.userId === user.id);
               
-              if (isMember) {
+              // Only calculate if BOTH users are in the group
+              if (currentUserIsMember && friendIsMember) {
                 const balances = await calculateBalances(group.id);
                 const userBalance = balances.get(user.id) || 0;
                 const currentUserBalance = balances.get(currentUserId) || 0;
                 
+                // Calculate what friend owes current user (or vice versa)
                 if (userBalance < 0 && currentUserBalance > 0) {
                   totalBalance += Math.min(Math.abs(userBalance), currentUserBalance);
                 } else if (userBalance > 0 && currentUserBalance < 0) {
