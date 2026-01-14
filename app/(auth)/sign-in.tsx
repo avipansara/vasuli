@@ -463,8 +463,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    paddingVertical: 16,
-    paddingHorizontal: 24,
+    paddingVertical: 12,
   },
   signInButtonDisabled: {
     opacity: 0.7,

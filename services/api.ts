@@ -21,7 +21,7 @@ const USE_SUPABASE = process.env.EXPO_PUBLIC_USE_SUPABASE === 'true' &&
 
 // Simulate network delay
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-const API_DELAY = 300; // ms
+const API_DELAY = 100; // ms
 
 // In-memory data store (mutable copies)
 let users = [...mockUsers];

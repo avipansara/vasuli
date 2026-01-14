@@ -50,7 +50,7 @@ export interface ExpenseSplit {
 
 export interface Settlement {
   id: string;
-  groupId: string;
+  groupId?: string;
   fromUserId: string;
   toUserId: string;
   amount: number;
