@@ -50,7 +50,7 @@ export default function ProfileScreen() {
   }
 
   const settingsItems = [
-    { icon: 'person.badge.plus', title: 'Add a Friend', onPress: () => handleSettingPress('Add a Friend') },
+    { icon: 'person.badge.plus', title: 'Invite a Friend', onPress: () => handleSettingPress('Invite a Friend') },
     { icon: 'bell.fill', title: 'Notifications', hasSwitch: true, value: notificationsEnabled, onToggle: setNotificationsEnabled },
     { icon: 'moon.fill', title: 'Dark Mode', hasSwitch: true, value: isDark, onToggle: toggleTheme },
     { icon: 'questionmark.circle.fill', title: 'Help & Support', onPress: () => handleSettingPress('Help & Support') },

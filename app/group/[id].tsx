@@ -399,7 +399,7 @@ export default function GroupDetailScreen() {
         <View style={styles.quickActions}>
           <TouchableOpacity
             style={styles.quickActionButton}
-            onPress={() => setExpenseModalVisible(true)}>
+            onPress={() => router.push(`/add-expense?groupId=${id}`)}>
             <LinearGradient
               colors={gradients.buttonPrimary}
               start={{ x: 0, y: 0 }}

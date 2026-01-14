@@ -7,7 +7,7 @@ import { useThemeColors } from '@/hooks/use-theme-colors';
 import { expenseService, groupService, initDatabase, userService } from '@/services/api';
 import type { Expense, Group, User } from '@/types/database';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Alert, Platform, SectionList, StyleSheet, TouchableOpacity, View } from 'react-native';
 
@@ -177,14 +177,7 @@ export default function ExpensesScreen() {
         <TouchableOpacity
           activeOpacity={0.7}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          onPress={() => {
-            setDescription('');
-            setAmount('');
-            setSelectedGroupId('');
-            setSelectedFriendIds([]);
-            setSplitType('group');
-            setModalVisible(true);
-          }}>
+          onPress={() => router.push('/add-expense')}>
           <View style={[styles.addButtonRect, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)', borderColor: isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(34, 197, 94, 0.3)' }]}>
             <IconSymbol size={20} name="plus" color={isDark ? '#2DD4BF' : colors.tint} />
           </View>

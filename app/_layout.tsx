@@ -80,6 +80,7 @@ function RootLayoutNav() {
         <Stack.Screen name="group/[id]" options={{ headerShown: false }} />
         <Stack.Screen name="friend/[id]" options={{ headerShown: false }} />
         <Stack.Screen name="scan-qr" options={{ headerShown: false }} />
+        <Stack.Screen name="add-expense" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
       </Stack>
       <StatusBar style={isDark ? 'light' : 'dark'} />
     </ThemeProvider>
