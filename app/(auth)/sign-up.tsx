@@ -418,6 +418,8 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 15,
     fontWeight: '500',
+    textAlignVertical: 'center',
+    paddingVertical: 0,
   },
   requirements: {
     marginBottom: 16,

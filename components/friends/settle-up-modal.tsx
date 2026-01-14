@@ -2,14 +2,15 @@ import { ThemedText } from '@/components/themed-text';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import type { User } from '@/types/database';
 import { LinearGradient } from 'expo-linear-gradient';
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
-    Modal,
-    Platform,
-    StyleSheet,
-    TouchableOpacity,
-    TouchableWithoutFeedback,
-    View,
+  Modal,
+  Platform,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  View,
 } from 'react-native';
 
 interface UserWithBalance extends User {
@@ -25,15 +26,33 @@ interface SettleUpModalProps {
 
 export function SettleUpModal({ visible, onClose, friend, onConfirm }: SettleUpModalProps) {
   const { colors, isDark } = useThemeColors();
+  const [editableAmount, setEditableAmount] = useState('');
+
+  const balance = friend?.balance ?? 0;
+  const maxAmount = Math.abs(balance);
+  const isOwedToYou = balance > 0;
+
+  useEffect(() => {
+    if (visible && friend) {
+      setEditableAmount(maxAmount.toFixed(2));
+    }
+  }, [visible, friend, maxAmount]);
 
   if (!friend) return null;
 
-  const balance = friend.balance;
-  const amount = Math.abs(balance);
-  const isOwedToYou = balance > 0;
+  const handleAmountChange = (text: string) => {
+    const cleaned = text.replace(/[^0-9.]/g, '');
+    const parts = cleaned.split('.');
+    if (parts.length > 2) return;
+    if (parts[1] && parts[1].length > 2) return;
+    setEditableAmount(cleaned);
+  };
+
+  const currentAmount = parseFloat(editableAmount) || 0;
 
   const handleConfirm = () => {
-    onConfirm(friend.id, amount);
+    if (currentAmount <= 0) return;
+    onConfirm(friend.id, currentAmount);
     onClose();
   };
 
@@ -74,32 +93,42 @@ export function SettleUpModal({ visible, onClose, friend, onConfirm }: SettleUpM
                 </View>
 
                 <View style={styles.summaryText}>
-                  {isOwedToYou ? (
-                    <>
-                      <ThemedText style={[styles.summaryLabel, !isDark && { color: colors.textSecondary }]}>
-                        {friend.name} owes you
-                      </ThemedText>
-                      <ThemedText style={[styles.summaryAmount, { color: '#10b981' }]}>
-                        ${amount.toFixed(2)}
-                      </ThemedText>
-                    </>
-                  ) : (
-                    <>
-                      <ThemedText style={[styles.summaryLabel, !isDark && { color: colors.textSecondary }]}>
-                        You owe {friend.name}
-                      </ThemedText>
-                      <ThemedText style={[styles.summaryAmount, { color: '#ef4444' }]}>
-                        ${amount.toFixed(2)}
-                      </ThemedText>
-                    </>
-                  )}
+                  <ThemedText style={[styles.summaryLabel, !isDark && { color: colors.textSecondary }]}>
+                    {isOwedToYou ? `${friend.name} owes you` : `You owe ${friend.name}`}
+                  </ThemedText>
+                  <ThemedText style={[styles.maxAmount, !isDark && { color: colors.textSecondary }]}>
+                    Total: ${maxAmount.toFixed(2)}
+                  </ThemedText>
                 </View>
+              </View>
+
+              <View style={styles.amountInputContainer}>
+                <ThemedText style={[styles.amountLabel, !isDark && { color: colors.textSecondary }]}>
+                  Amount to settle
+                </ThemedText>
+                <View style={[styles.amountInputWrapper, { borderColor: isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(34, 197, 94, 0.3)' }]}>
+                  <ThemedText style={[styles.currencySymbol, { color: isOwedToYou ? '#10b981' : '#ef4444' }]}>$</ThemedText>
+                  <TextInput
+                    style={[styles.amountInput, { color: isOwedToYou ? '#10b981' : '#ef4444' }]}
+                    value={editableAmount}
+                    onChangeText={handleAmountChange}
+                    keyboardType="decimal-pad"
+                    placeholder="0.00"
+                    placeholderTextColor="rgba(255,255,255,0.3)"
+                    selectTextOnFocus
+                  />
+                </View>
+                {currentAmount > maxAmount && (
+                  <ThemedText style={styles.warningText}>
+                    Amount exceeds total owed
+                  </ThemedText>
+                )}
               </View>
 
               <ThemedText style={[styles.description, !isDark && { color: colors.textSecondary }]}>
                 {isOwedToYou
-                  ? `Record that ${friend.name} paid you $${amount.toFixed(2)} to settle up.`
-                  : `Record that you paid ${friend.name} $${amount.toFixed(2)} to settle up.`}
+                  ? `Record that ${friend.name} paid you $${currentAmount.toFixed(2)} to settle up.`
+                  : `Record that you paid ${friend.name} $${currentAmount.toFixed(2)} to settle up.`}
               </ThemedText>
 
               <View style={styles.buttonRow}>
@@ -194,9 +223,52 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.7)',
     marginBottom: 4,
   },
-  summaryAmount: {
-    fontSize: 28,
+  maxAmount: {
+    fontSize: 16,
+    fontWeight: '600',
+    opacity: 0.8,
+  },
+  amountInputContainer: {
+    marginBottom: 16,
+  },
+  amountLabel: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.7)',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  amountInputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    minHeight: 60,
+  },
+  currencySymbol: {
+    fontSize: 32,
     fontWeight: '700',
+    lineHeight: 40,
+    marginRight: 4,
+  },
+  amountInput: {
+    fontSize: 32,
+    fontWeight: '700',
+    lineHeight: 40,
+    minWidth: 120,
+    textAlign: 'center',
+    textAlignVertical: 'center',
+    paddingVertical: 0,
+    paddingHorizontal: 0,
+  },
+  warningText: {
+    fontSize: 12,
+    color: '#ef4444',
+    textAlign: 'center',
+    marginTop: 8,
   },
   description: {
     fontSize: 14,

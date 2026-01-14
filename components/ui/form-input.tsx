@@ -33,6 +33,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     fontSize: 16,
     color: '#f4f4f5',
+    textAlign: 'left',
+    textAlignVertical: 'center',
   },
   glassInput: {
     backgroundColor: 'rgba(26, 26, 36, 0.8)',
