@@ -6,6 +6,7 @@ import { useThemeColors } from '@/hooks/use-theme-colors';
 import { calculateBalances, groupService, initDatabase, userService } from '@/services/api';
 import type { GroupWithMembers } from '@/types/database';
 import { LinearGradient } from 'expo-linear-gradient';
+import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { Alert, Animated, FlatList, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
 
@@ -116,7 +117,7 @@ export default function GroupsScreen() {
         </View>
         <TouchableOpacity
           style={[styles.addButtonRect, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)', borderColor: isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(34, 197, 94, 0.3)' }]}
-          onPress={() => setModalVisible(true)}>
+          onPress={() => router.push('/create-group')}>
          <IconSymbol size={20} name="plus" color={isDark ? '#2DD4BF' : colors.tint} />
         </TouchableOpacity>
       </View>
@@ -144,7 +145,7 @@ export default function GroupsScreen() {
           </ThemedText>
           <TouchableOpacity
             activeOpacity={0.8}
-            onPress={() => setModalVisible(true)}>
+            onPress={() => router.push('/create-group')}>
             <LinearGradient
               colors={gradients.buttonPrimary}
               start={{ x: 0, y: 0 }}

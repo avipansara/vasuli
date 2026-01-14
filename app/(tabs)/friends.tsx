@@ -118,7 +118,7 @@ export default function FriendsScreen() {
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.addButtonRect, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)', borderColor: isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(34, 197, 94, 0.3)' }]}
-            onPress={() => setModalVisible(true)}>
+            onPress={() => router.push('/add-friend')}>
             <IconSymbol size={20} name="person.badge.plus" color={isDark ? '#2DD4BF' : colors.tint} />
           </TouchableOpacity>
         </View>
@@ -141,7 +141,7 @@ export default function FriendsScreen() {
           </ThemedText>
           <TouchableOpacity
             style={styles.createButton}
-            onPress={() => setModalVisible(true)}>
+            onPress={() => router.push('/add-friend')}>
             <LinearGradient
               colors={gradients.buttonPrimary}
               start={{ x: 0, y: 0 }}
