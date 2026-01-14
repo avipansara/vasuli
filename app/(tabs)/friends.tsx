@@ -1,9 +1,10 @@
 import { FriendCard } from '@/components/friends/friend-card';
 import { InviteFriendModal } from '@/components/friends/invite-friend-modal';
+import { QRCodeModal } from '@/components/friends/qr-code-modal';
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useThemeColors } from '@/hooks/use-theme-colors';
-import { calculateBalances, calculateFriendBalance, groupService, initDatabase, userService } from '@/services/api';
+import { calculateFriendBalance, initDatabase, userService } from '@/services/api';
 import type { User } from '@/types/database';
 import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -24,6 +25,8 @@ export default function FriendsScreen() {
   const [newFriendEmail, setNewFriendEmail] = useState('');
   const [newFriendPhone, setNewFriendPhone] = useState('');
   const [inviteMethod, setInviteMethod] = useState<'email' | 'phone'>('email');
+  const [qrModalVisible, setQrModalVisible] = useState(false);
+  const currentUserId = 'current-user';
 
   useFocusEffect(
     useCallback(() => {
@@ -41,35 +44,9 @@ export default function FriendsScreen() {
         allUsers
           .filter((user: User) => user.id !== currentUserId)
           .map(async (user: User) => {
-            let totalBalance = 0;
-            
-            // 1. Calculate balance from friend-only expenses (no group)
-            const friendOnlyBalance = await calculateFriendBalance(currentUserId, user.id);
-            totalBalance += friendOnlyBalance;
-            
-            // 2. Calculate balance from shared group expenses
-            const groups = await groupService.getAll();
-            for (const group of groups) {
-              const members = await groupService.getMembers(group.id);
-              const currentUserIsMember = members.some((m: { userId: string }) => m.userId === currentUserId);
-              const friendIsMember = members.some((m: { userId: string }) => m.userId === user.id);
-              
-              // Only calculate if BOTH users are in the group
-              if (currentUserIsMember && friendIsMember) {
-                const balances = await calculateBalances(group.id);
-                const userBalance = balances.get(user.id) || 0;
-                const currentUserBalance = balances.get(currentUserId) || 0;
-                
-                // Calculate what friend owes current user (or vice versa)
-                if (userBalance < 0 && currentUserBalance > 0) {
-                  totalBalance += Math.min(Math.abs(userBalance), currentUserBalance);
-                } else if (userBalance > 0 && currentUserBalance < 0) {
-                  totalBalance -= Math.min(userBalance, Math.abs(currentUserBalance));
-                }
-              }
-            }
-            
-            return { ...user, balance: totalBalance };
+            // Calculate balance (includes all shared expenses - friend-only and group)
+            const balance = await calculateFriendBalance(currentUserId, user.id);
+            return { ...user, balance };
           })
       );
 
@@ -112,8 +89,10 @@ export default function FriendsScreen() {
     router.push(`/friend/${friend.id}` as any);
   }
 
-  // Calculate total owed
-  const totalOwed = friends.reduce((sum, f) => f.balance < 0 ? sum + Math.abs(f.balance) : sum, 0);
+  // Calculate net balance (positive = you are owed, negative = you owe)
+  const netBalance = friends.reduce((sum, f) => sum + f.balance, 0);
+  const balanceLabel = netBalance > 0 ? 'You are owed' : netBalance < 0 ? 'You owe' : 'All settled';
+  const balanceColor = netBalance > 0 ? '#10b981' : netBalance < 0 ? '#ef4444' : (isDark ? '#2DD4BF' : colors.tint);
 
   return (
     <LinearGradient
@@ -121,15 +100,19 @@ export default function FriendsScreen() {
       style={styles.container}>
       <View style={styles.header}>
         <View style={{ flexDirection: 'column', gap: 4 }}>
-          <ThemedText style={[styles.headerLabel, !isDark && { color: colors.textSecondary }]}>You owe</ThemedText>
-          <ThemedText type="header" style={[styles.headerAmount, !isDark && { color: colors.text }]}>${totalOwed.toFixed(2)}</ThemedText>
+          <ThemedText style={[styles.headerLabel, !isDark && { color: colors.textSecondary }]}>{balanceLabel}</ThemedText>
+          <ThemedText type="header" style={[styles.headerAmount, { color: balanceColor }]}>${Math.abs(netBalance).toFixed(2)}</ThemedText>
         </View>
         <View style={styles.headerButtons}>
           <TouchableOpacity
-            style={[styles.addExpenseButton, { borderColor: isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(34, 197, 94, 0.3)' }]}
-            onPress={() => router.push({ pathname: '/(tabs)/expenses', params: { openModal: 'true' } })}>
-            <IconSymbol size={16} name="plus" color={isDark ? '#2DD4BF' : colors.tint} />
-            <ThemedText style={[styles.addExpenseText, { color: isDark ? '#2DD4BF' : colors.tint }]}>Add Expense</ThemedText>
+            style={[styles.addButtonRect, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)', borderColor: isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(34, 197, 94, 0.3)' }]}
+            onPress={() => setQrModalVisible(true)}>
+            <IconSymbol size={20} name="qrcode" color={isDark ? '#2DD4BF' : colors.tint} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.addButtonRect, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)', borderColor: isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(34, 197, 94, 0.3)' }]}
+            onPress={() => router.push('/scan-qr')}>
+            <IconSymbol size={20} name="qrcode.viewfinder" color={isDark ? '#2DD4BF' : colors.tint} />
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.addButtonRect, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)', borderColor: isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(34, 197, 94, 0.3)' }]}
@@ -187,6 +170,13 @@ export default function FriendsScreen() {
         inviteMethod={inviteMethod}
         setInviteMethod={setInviteMethod}
         onSubmit={sendInvite}
+      />
+
+      <QRCodeModal
+        visible={qrModalVisible}
+        onClose={() => setQrModalVisible(false)}
+        userId={currentUserId}
+        userName="You"
       />
     </LinearGradient>
   );

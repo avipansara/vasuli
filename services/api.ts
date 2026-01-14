@@ -307,45 +307,34 @@ async function mockCalculateBalances(groupId: string): Promise<Map<string, numbe
   return balances;
 }
 
-// Calculate balance between current user and a specific friend (including friend-only expenses)
+// Calculate balance between current user and a specific friend (including all shared expenses)
 async function mockCalculateFriendBalance(currentUserId: string, friendId: string): Promise<number> {
   await delay(API_DELAY / 2);
   let balance = 0;
   
-  // Get all expenses where both users are involved (friend-only expenses without groupId)
-  console.log('[FriendBalance] Calculating for currentUser:', currentUserId, 'friend:', friendId);
-  console.log('[FriendBalance] All expenses:', expenses.map(e => ({ id: e.id, groupId: e.groupId, desc: e.description })));
-  const friendExpenses = expenses.filter(e => e.groupId === undefined || e.groupId === null || e.groupId === '');
-  console.log('[FriendBalance] Friend expenses (no groupId):', friendExpenses.length, friendExpenses.map(e => ({ id: e.id, desc: e.description, paidBy: e.paidBy })));
-  console.log('[FriendBalance] All expense splits:', expenseSplits.length);
-  
-  for (const expense of friendExpenses) {
+  // Get ALL expenses where both users are involved (friend-only AND group expenses)
+  for (const expense of expenses) {
     const splits = expenseSplits.filter(s => s.expenseId === expense.id);
-    console.log('[FriendBalance] Splits for expense', expense.id, ':', splits.map(s => ({ userId: s.userId, amount: s.amount })));
     
     const currentUserSplit = splits.find(s => s.userId === currentUserId);
     const friendSplit = splits.find(s => s.userId === friendId);
-    
-    console.log('[FriendBalance] currentUserSplit:', currentUserSplit, 'friendSplit:', friendSplit);
     
     // Only process if both users are part of this expense
     if (currentUserSplit && friendSplit) {
       if (expense.paidBy === currentUserId) {
         // Current user paid, friend owes their share
         balance += friendSplit.amount;
-        console.log('[FriendBalance] Current user paid, friend owes:', friendSplit.amount);
       } else if (expense.paidBy === friendId) {
         // Friend paid, current user owes their share
         balance -= currentUserSplit.amount;
-        console.log('[FriendBalance] Friend paid, current user owes:', currentUserSplit.amount);
       }
     }
   }
   
-  // Apply friend-only settlements (no groupId)
-  const friendSettlements = settlements.filter(s => !s.groupId && 
-    ((s.fromUserId === currentUserId && s.toUserId === friendId) ||
-     (s.fromUserId === friendId && s.toUserId === currentUserId)));
+  // Apply all settlements between these two users (both friend-only and group)
+  const friendSettlements = settlements.filter(s => 
+    (s.fromUserId === currentUserId && s.toUserId === friendId) ||
+    (s.fromUserId === friendId && s.toUserId === currentUserId));
   
   for (const settlement of friendSettlements) {
     if (settlement.fromUserId === currentUserId) {
@@ -357,7 +346,6 @@ async function mockCalculateFriendBalance(currentUserId: string, friendId: strin
     }
   }
   
-  console.log('[FriendBalance] Final balance for', friendId, ':', balance);
   return balance;
 }
 
