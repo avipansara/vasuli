@@ -327,3 +327,36 @@ CREATE TRIGGER update_groups_updated_at
 CREATE TRIGGER update_expenses_updated_at
   BEFORE UPDATE ON public.expenses
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
+
+-- ============================================
+-- STORAGE BUCKET
+-- ============================================
+
+-- Create storage bucket for images
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('vasuli-images', 'vasuli-images', true)
+ON CONFLICT (id) DO NOTHING;
+
+-- Allow authenticated users to upload images
+CREATE POLICY "Authenticated users can upload images"
+ON storage.objects FOR INSERT
+TO authenticated
+WITH CHECK (bucket_id = 'vasuli-images');
+
+-- Allow public read access for images
+CREATE POLICY "Public read access for images"
+ON storage.objects FOR SELECT
+TO public
+USING (bucket_id = 'vasuli-images');
+
+-- Allow users to update their own images
+CREATE POLICY "Users can update own images"
+ON storage.objects FOR UPDATE
+TO authenticated
+USING (bucket_id = 'vasuli-images');
+
+-- Allow users to delete their own images
+CREATE POLICY "Users can delete own images"
+ON storage.objects FOR DELETE
+TO authenticated
+USING (bucket_id = 'vasuli-images');

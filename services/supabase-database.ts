@@ -570,11 +570,11 @@ export async function calculateFriendBalance(currentUserId: string, friendId: st
   
   for (const settlement of friendSettlements) {
     if (settlement.fromUserId === currentUserId) {
-      // Current user paid friend
-      balance -= settlement.amount;
-    } else {
-      // Friend paid current user
+      // Current user paid friend (reduces what you owe, so balance goes up)
       balance += settlement.amount;
+    } else {
+      // Friend paid current user (reduces what they owe, so balance goes down)
+      balance -= settlement.amount;
     }
   }
   
