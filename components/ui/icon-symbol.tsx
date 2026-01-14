@@ -68,6 +68,10 @@ const MAPPING: IconMapping = {
   'banknote': 'payments',
   'banknote.fill': 'payments',
   'divide.circle': 'pie-chart',
+  'plusminus': 'calculate',
+  'percent': 'percent',
+  'chart.pie': 'donut-large',
+  'keyboard.chevron.compact.down': 'keyboard-hide',
   
   // Documents
   'doc': 'description',

@@ -1,5 +1,6 @@
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { KeyboardAwareScroll } from '@/components/ui/keyboard-aware-scroll';
 import { useAuth } from '@/contexts/auth-context';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { expenseService, groupService, initDatabase, userService } from '@/services/api';
@@ -9,19 +10,34 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import {
-    Alert,
-    Animated,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  Animated,
+  Platform,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 
-type SplitType = 'group' | 'friends';
+enum SplitType {
+  GROUP = 'group',
+  FRIENDS = 'friends',
+}
+
+enum SplitMethod {
+  EQUAL = 'equal',
+  UNEQUAL = 'unequal',
+  PERCENTAGE = 'percentage',
+  SHARES = 'shares',
+}
+
+const SPLIT_METHODS = [
+  { id: SplitMethod.EQUAL, label: 'Equal', icon: 'divide.circle' as const, description: 'Split evenly' },
+  { id: SplitMethod.UNEQUAL, label: 'Unequal', icon: 'plusminus' as const, description: 'Enter amounts' },
+  { id: SplitMethod.PERCENTAGE, label: 'Percentage', icon: 'percent' as const, description: 'By percent' },
+  { id: SplitMethod.SHARES, label: 'Shares', icon: 'chart.pie' as const, description: 'By shares' },
+];
 
 export default function AddExpenseScreen() {
   const { gradients, colors, isDark } = useThemeColors();
@@ -31,13 +47,17 @@ export default function AddExpenseScreen() {
 
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
-  const [splitType, setSplitType] = useState<SplitType>(preselectedGroupId ? 'group' : 'group');
+  const [splitType, setSplitType] = useState<SplitType>(preselectedGroupId ? SplitType.GROUP : SplitType.GROUP);
   const [groups, setGroups] = useState<Group[]>([]);
   const [friends, setFriends] = useState<User[]>([]);
   const [selectedGroupId, setSelectedGroupId] = useState(preselectedGroupId || '');
   const [selectedFriendIds, setSelectedFriendIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [dataLoading, setDataLoading] = useState(true);
+  const [splitMethod, setSplitMethod] = useState<SplitMethod>(SplitMethod.EQUAL);
+  const [customAmounts, setCustomAmounts] = useState<Record<string, string>>({});
+  const [customPercentages, setCustomPercentages] = useState<Record<string, string>>({});
+  const [customShares, setCustomShares] = useState<Record<string, string>>({});
 
   // Animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -84,7 +104,7 @@ export default function AddExpenseScreen() {
   };
 
   const isValid = description.trim() && amount.trim() && parseFloat(amount) > 0 &&
-    (splitType === 'group' ? selectedGroupId : selectedFriendIds.length > 0);
+    (splitType === SplitType.GROUP ? selectedGroupId : selectedFriendIds.length > 0);
 
   async function handleSubmit() {
     if (!isValid) return;
@@ -93,7 +113,7 @@ export default function AddExpenseScreen() {
     try {
       const amountNum = parseFloat(amount);
 
-      if (splitType === 'group') {
+      if (splitType === SplitType.GROUP) {
         const members = await groupService.getMembers(selectedGroupId);
         const splitAmount = amountNum / members.length;
 
@@ -161,16 +181,30 @@ export default function AddExpenseScreen() {
         <View style={styles.headerRight} />
       </View>
 
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardView}>
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled">
-
-          <Animated.View style={[styles.content, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+      <KeyboardAwareScroll
+        contentContainerStyle={styles.scrollContent}
+        footer={
+          <TouchableOpacity
+            onPress={handleSubmit}
+            disabled={!isValid || loading}
+            style={[styles.submitButton, (!isValid || loading) && styles.submitButtonDisabled]}>
+            <LinearGradient
+              colors={isValid ? (isDark ? ['#2DD4BF', '#22D3EE'] : ['#22C55E', '#10B981']) : ['#6B7280', '#4B5563']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.submitButtonGradient}>
+              {loading ? (
+                <ThemedText style={styles.submitButtonText}>Adding...</ThemedText>
+              ) : (
+                <>
+                  <IconSymbol name="plus.circle.fill" size={20} color="#fff" />
+                  <ThemedText style={styles.submitButtonText}>Add Expense</ThemedText>
+                </>
+              )}
+            </LinearGradient>
+          </TouchableOpacity>
+        }>
+        <Animated.View style={[styles.content, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
             {/* Amount Input - Hero Style */}
             <View style={styles.amountSection}>
               <ThemedText style={[styles.amountLabel, !isDark && { color: colors.textSecondary }]}>
@@ -219,19 +253,19 @@ export default function AddExpenseScreen() {
                 <TouchableOpacity
                   style={[
                     styles.toggleButton,
-                    splitType === 'group' && styles.toggleButtonActive,
-                    !isDark && splitType !== 'group' && { backgroundColor: colors.card, borderColor: colors.border },
+                    splitType === SplitType.GROUP && styles.toggleButtonActive,
+                    !isDark && splitType !== SplitType.GROUP && { backgroundColor: colors.card, borderColor: colors.border },
                   ]}
-                  onPress={() => setSplitType('group')}>
+                  onPress={() => setSplitType(SplitType.GROUP)}>
                   <IconSymbol
                     name="person.3.fill"
                     size={18}
-                    color={splitType === 'group' ? '#0A0A0F' : (isDark ? '#2DD4BF' : colors.tint)}
+                    color={splitType === SplitType.GROUP ? '#0A0A0F' : (isDark ? '#2DD4BF' : colors.tint)}
                   />
                   <ThemedText style={[
                     styles.toggleText,
-                    splitType === 'group' && styles.toggleTextActive,
-                    !isDark && splitType !== 'group' && { color: colors.text },
+                    splitType === SplitType.GROUP && styles.toggleTextActive,
+                    !isDark && splitType !== SplitType.GROUP && { color: colors.text },
                   ]}>
                     Group
                   </ThemedText>
@@ -239,19 +273,19 @@ export default function AddExpenseScreen() {
                 <TouchableOpacity
                   style={[
                     styles.toggleButton,
-                    splitType === 'friends' && styles.toggleButtonActive,
-                    !isDark && splitType !== 'friends' && { backgroundColor: colors.card, borderColor: colors.border },
+                    splitType === SplitType.FRIENDS && styles.toggleButtonActive,
+                    !isDark && splitType !== SplitType.FRIENDS && { backgroundColor: colors.card, borderColor: colors.border },
                   ]}
-                  onPress={() => setSplitType('friends')}>
+                  onPress={() => setSplitType(SplitType.FRIENDS)}>
                   <IconSymbol
                     name="person.2.fill"
                     size={18}
-                    color={splitType === 'friends' ? '#0A0A0F' : (isDark ? '#2DD4BF' : colors.tint)}
+                    color={splitType === SplitType.FRIENDS ? '#0A0A0F' : (isDark ? '#2DD4BF' : colors.tint)}
                   />
                   <ThemedText style={[
                     styles.toggleText,
-                    splitType === 'friends' && styles.toggleTextActive,
-                    !isDark && splitType !== 'friends' && { color: colors.text },
+                    splitType === SplitType.FRIENDS && styles.toggleTextActive,
+                    !isDark && splitType !== SplitType.FRIENDS && { color: colors.text },
                   ]}>
                     Friends
                   </ThemedText>
@@ -259,17 +293,59 @@ export default function AddExpenseScreen() {
               </View>
             </View>
 
+            {/* Split Method Selection */}
+            <View style={styles.inputSection}>
+              <ThemedText style={[styles.inputLabel, !isDark && { color: colors.textSecondary }]}>
+                How to split?
+              </ThemedText>
+              <View style={styles.splitMethodContainer}>
+                {SPLIT_METHODS.map(method => {
+                  const isActive = splitMethod === method.id;
+                  return (
+                    <TouchableOpacity
+                      key={method.id}
+                      style={[
+                        styles.splitMethodButton,
+                        isActive && styles.splitMethodButtonActive,
+                        {
+                          backgroundColor: isActive
+                            ? (isDark ? '#2DD4BF' : colors.tint)
+                            : (isDark ? 'rgba(30, 41, 59, 0.6)' : 'rgba(241, 245, 249, 0.9)'),
+                          borderColor: isActive
+                            ? (isDark ? '#2DD4BF' : colors.tint)
+                            : (isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(34, 197, 94, 0.2)'),
+                        },
+                      ]}
+                      onPress={() => setSplitMethod(method.id)}>
+                      <IconSymbol
+                        name={method.icon}
+                        size={18}
+                        color={isActive ? '#0A0A0F' : (isDark ? '#2DD4BF' : colors.tint)}
+                      />
+                      <ThemedText style={[
+                        styles.splitMethodText,
+                        isActive && styles.splitMethodTextActive,
+                        !isDark && !isActive && { color: colors.text },
+                      ]}>
+                        {method.label}
+                      </ThemedText>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+
             {/* Selection List */}
             <View style={styles.selectionSection}>
               <ThemedText style={[styles.inputLabel, !isDark && { color: colors.textSecondary }]}>
-                {splitType === 'group' ? 'Select a group' : 'Select friends'}
+                {splitType === SplitType.GROUP ? 'Select a group' : 'Select friends'}
               </ThemedText>
 
               {dataLoading ? (
                 <View style={styles.loadingContainer}>
                   <ThemedText style={{ opacity: 0.6 }}>Loading...</ThemedText>
                 </View>
-              ) : splitType === 'group' ? (
+              ) : splitType === SplitType.GROUP ? (
                 <View style={styles.optionsList}>
                   {groups.length === 0 ? (
                     <View style={styles.emptyState}>
@@ -365,43 +441,114 @@ export default function AddExpenseScreen() {
               )}
             </View>
 
+            {/* Custom Split Inputs - Show when non-equal split is selected */}
+            {splitMethod !== SplitMethod.EQUAL && (splitType === SplitType.FRIENDS ? selectedFriendIds.length > 0 : selectedGroupId) && amount && parseFloat(amount) > 0 && (
+              <View style={styles.customSplitSection}>
+                <ThemedText style={[styles.inputLabel, !isDark && { color: colors.textSecondary }]}>
+                  {splitMethod === SplitMethod.UNEQUAL ? 'Enter amounts' : splitMethod === SplitMethod.PERCENTAGE ? 'Enter percentages' : 'Enter shares'}
+                </ThemedText>
+                
+                {/* Current User */}
+                <View style={[styles.customSplitCard, {
+                  backgroundColor: isDark ? 'rgba(30, 41, 59, 0.6)' : 'rgba(241, 245, 249, 0.9)',
+                  borderColor: isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(34, 197, 94, 0.2)',
+                }]}>
+                  <View style={[styles.customSplitAvatar, {
+                    backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)',
+                  }]}>
+                    <ThemedText style={{ color: isDark ? '#2DD4BF' : colors.tint, fontWeight: '600' }}>
+                      You
+                    </ThemedText>
+                  </View>
+                  <ThemedText style={[styles.customSplitName, !isDark && { color: colors.text }]}>
+                    You (payer)
+                  </ThemedText>
+                  <TextInput
+                    style={[styles.customSplitInput, {
+                      backgroundColor: isDark ? 'rgba(20, 35, 38, 0.8)' : 'rgba(255,255,255,0.9)',
+                      color: isDark ? '#fff' : colors.text,
+                      borderWidth: 1,
+                      borderColor: isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(34, 197, 94, 0.3)',
+                    }]}
+                    value={splitMethod === SplitMethod.UNEQUAL ? customAmounts[currentUserId] : splitMethod === SplitMethod.PERCENTAGE ? customPercentages[currentUserId] : customShares[currentUserId]}
+                    onChangeText={(text) => {
+                      if (splitMethod === SplitMethod.UNEQUAL) setCustomAmounts(prev => ({ ...prev, [currentUserId]: text }));
+                      else if (splitMethod === SplitMethod.PERCENTAGE) setCustomPercentages(prev => ({ ...prev, [currentUserId]: text }));
+                      else setCustomShares(prev => ({ ...prev, [currentUserId]: text }));
+                    }}
+                    placeholder="0"
+                    placeholderTextColor={isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)'}
+                    keyboardType="decimal-pad"
+                  />
+                  <ThemedText style={[styles.customSplitSuffix, !isDark && { color: colors.textSecondary }]}>
+                    {splitMethod === SplitMethod.UNEQUAL ? '$' : splitMethod === SplitMethod.PERCENTAGE ? '%' : 'x'}
+                  </ThemedText>
+                </View>
+
+                {/* Selected Friends */}
+                {splitType === SplitType.FRIENDS && selectedFriendIds.map(friendId => {
+                  const friend = friends.find(f => f.id === friendId);
+                  if (!friend) return null;
+                  return (
+                    <View key={friendId} style={[styles.customSplitCard, {
+                      backgroundColor: isDark ? 'rgba(30, 41, 59, 0.6)' : 'rgba(241, 245, 249, 0.9)',
+                      borderColor: isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(34, 197, 94, 0.2)',
+                    }]}>
+                      <View style={[styles.customSplitAvatar, {
+                        backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)',
+                      }]}>
+                        <ThemedText style={{ color: isDark ? '#2DD4BF' : colors.tint, fontWeight: '600' }}>
+                          {friend.name.charAt(0).toUpperCase()}
+                        </ThemedText>
+                      </View>
+                      <ThemedText style={[styles.customSplitName, !isDark && { color: colors.text }]}>
+                        {friend.name}
+                      </ThemedText>
+                      <TextInput
+                        style={[styles.customSplitInput, {
+                          backgroundColor: isDark ? 'rgba(20, 35, 38, 0.8)' : 'rgba(255,255,255,0.9)',
+                          color: isDark ? '#fff' : colors.text,
+                          borderWidth: 1,
+                          borderColor: isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(34, 197, 94, 0.3)',
+                        }]}
+                        value={splitMethod === SplitMethod.UNEQUAL ? customAmounts[friendId] : splitMethod === SplitMethod.PERCENTAGE ? customPercentages[friendId] : customShares[friendId]}
+                        onChangeText={(text) => {
+                          if (splitMethod === SplitMethod.UNEQUAL) setCustomAmounts(prev => ({ ...prev, [friendId]: text }));
+                          else if (splitMethod === SplitMethod.PERCENTAGE) setCustomPercentages(prev => ({ ...prev, [friendId]: text }));
+                          else setCustomShares(prev => ({ ...prev, [friendId]: text }));
+                        }}
+                        placeholder="0"
+                        placeholderTextColor={isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)'}
+                        keyboardType="decimal-pad"
+                      />
+                      <ThemedText style={[styles.customSplitSuffix, !isDark && { color: colors.textSecondary }]}>
+                        {splitMethod === SplitMethod.UNEQUAL ? '$' : splitMethod === SplitMethod.PERCENTAGE ? '%' : 'x'}
+                      </ThemedText>
+                    </View>
+                  );
+                })}
+              </View>
+            )}
+
             {/* Split Preview */}
             {isValid && (
               <BlurView intensity={isDark ? 20 : 40} tint={isDark ? 'dark' : 'light'} style={styles.previewCard}>
                 <View style={[styles.previewContent, !isDark && { backgroundColor: 'rgba(255,255,255,0.8)' }]}>
                   <IconSymbol name="divide.circle" size={20} color={isDark ? '#2DD4BF' : colors.tint} />
                   <ThemedText style={[styles.previewText, !isDark && { color: colors.textSecondary }]}>
-                    Split equally: ${(parseFloat(amount) / (splitType === 'group' ? 1 : selectedFriendIds.length + 1)).toFixed(2)} each
+                    {splitMethod === SplitMethod.EQUAL 
+                      ? `Split equally: $${(parseFloat(amount) / (splitType === SplitType.GROUP ? 1 : selectedFriendIds.length + 1)).toFixed(2)} each`
+                      : splitMethod === SplitMethod.UNEQUAL
+                        ? 'Custom amounts per person'
+                        : splitMethod === SplitMethod.PERCENTAGE
+                          ? 'Split by percentage'
+                          : 'Split by shares'}
                   </ThemedText>
                 </View>
               </BlurView>
             )}
-          </Animated.View>
-        </ScrollView>
-
-        {/* Submit Button */}
-        <View style={styles.footer}>
-          <TouchableOpacity
-            onPress={handleSubmit}
-            disabled={!isValid || loading}
-            style={[styles.submitButton, (!isValid || loading) && styles.submitButtonDisabled]}>
-            <LinearGradient
-              colors={isValid ? (isDark ? ['#2DD4BF', '#22D3EE'] : ['#22C55E', '#10B981']) : ['#6B7280', '#4B5563']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.submitButtonGradient}>
-              {loading ? (
-                <ThemedText style={styles.submitButtonText}>Adding...</ThemedText>
-              ) : (
-                <>
-                  <IconSymbol name="plus.circle.fill" size={20} color="#fff" />
-                  <ThemedText style={styles.submitButtonText}>Add Expense</ThemedText>
-                </>
-              )}
-            </LinearGradient>
-          </TouchableOpacity>
-        </View>
-      </KeyboardAvoidingView>
+        </Animated.View>
+      </KeyboardAwareScroll>
     </View>
   );
 }
@@ -520,6 +667,71 @@ const styles = StyleSheet.create({
   },
   toggleTextActive: {
     color: '#0A0A0F',
+  },
+  splitMethodContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  splitMethodButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    minWidth: '22%',
+  },
+  splitMethodButtonActive: {
+    borderWidth: 1.5,
+  },
+  splitMethodText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  splitMethodTextActive: {
+    color: '#0A0A0F',
+  },
+  customSplitSection: {
+    marginBottom: 16,
+  },
+  customSplitCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 12,
+    marginBottom: 8,
+  },
+  customSplitAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  customSplitName: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  customSplitInput: {
+    width: 80,
+    height: 36,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'right',
+  },
+  customSplitSuffix: {
+    fontSize: 14,
+    fontWeight: '500',
+    marginLeft: 4,
   },
   selectionSection: {
     marginBottom: 24,

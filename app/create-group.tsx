@@ -1,5 +1,6 @@
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { KeyboardAwareScroll } from '@/components/ui/keyboard-aware-scroll';
 import { useAuth } from '@/contexts/auth-context';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { groupService, initDatabase } from '@/services/api';
@@ -8,15 +9,13 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import {
-    Alert,
-    Animated,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    TextInput,
-    TouchableOpacity,
-    View
+  Alert,
+  Animated,
+  Platform,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 
 const GROUP_ICONS = [
@@ -105,18 +104,32 @@ export default function CreateGroupScreen() {
         <View style={styles.headerRight} />
       </View>
 
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardView}>
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled">
-
-          <Animated.View style={[styles.content, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+      <KeyboardAwareScroll
+        contentContainerStyle={styles.scrollContent}
+        footer={
+          <TouchableOpacity
+            onPress={handleSubmit}
+            disabled={!isValid || loading}
+            style={[styles.submitButton, (!isValid || loading) && styles.submitButtonDisabled]}>
+            <LinearGradient
+              colors={isValid ? (isDark ? ['#2DD4BF', '#22D3EE'] : ['#22C55E', '#10B981']) : ['#6B7280', '#4B5563']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.submitButtonGradient}>
+              {loading ? (
+                <ThemedText style={styles.submitButtonText}>Creating...</ThemedText>
+              ) : (
+                <>
+                  <IconSymbol name="plus.circle.fill" size={20} color="#fff" />
+                  <ThemedText style={styles.submitButtonText}>Create Group</ThemedText>
+                </>
+              )}
+            </LinearGradient>
+          </TouchableOpacity>
+        }>
+        <Animated.View style={[styles.content, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
             {/* Icon Preview */}
-            <View style={styles.iconPreviewSection}>
+            {/* <View style={styles.iconPreviewSection}>
               <View style={[styles.iconPreview, {
                 backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)',
                 borderColor: isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(34, 197, 94, 0.3)',
@@ -126,7 +139,7 @@ export default function CreateGroupScreen() {
               <ThemedText style={[styles.iconPreviewLabel, !isDark && { color: colors.textSecondary }]}>
                 {groupName || 'New Group'}
               </ThemedText>
-            </View>
+            </View> */}
 
             {/* Group Name Input */}
             <View style={styles.inputSection}>
@@ -212,32 +225,8 @@ export default function CreateGroupScreen() {
                 </ThemedText>
               </View>
             </BlurView>
-          </Animated.View>
-        </ScrollView>
-
-        {/* Submit Button */}
-        <View style={styles.footer}>
-          <TouchableOpacity
-            onPress={handleSubmit}
-            disabled={!isValid || loading}
-            style={[styles.submitButton, (!isValid || loading) && styles.submitButtonDisabled]}>
-            <LinearGradient
-              colors={isValid ? (isDark ? ['#2DD4BF', '#22D3EE'] : ['#22C55E', '#10B981']) : ['#6B7280', '#4B5563']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.submitButtonGradient}>
-              {loading ? (
-                <ThemedText style={styles.submitButtonText}>Creating...</ThemedText>
-              ) : (
-                <>
-                  <IconSymbol name="plus.circle.fill" size={20} color="#fff" />
-                  <ThemedText style={styles.submitButtonText}>Create Group</ThemedText>
-                </>
-              )}
-            </LinearGradient>
-          </TouchableOpacity>
-        </View>
-      </KeyboardAvoidingView>
+        </Animated.View>
+      </KeyboardAwareScroll>
     </View>
   );
 }
