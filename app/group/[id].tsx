@@ -152,6 +152,32 @@ export default function GroupDetailScreen() {
     }
   }
 
+  async function handleDeleteGroup() {
+    Alert.alert(
+      'Delete Group',
+      'Are you sure you want to delete this group? This action cannot be undone.',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await groupService.delete(id);
+              router.back();
+            } catch (error) {
+              console.error('Error deleting group:', error);
+              Alert.alert('Error', 'Failed to delete group');
+            }
+          },
+        },
+      ]
+    );
+  }
+
   async function settleUp() {
     if (!settleWithUserId || !settleAmount.trim()) {
       Alert.alert('Error', 'Please fill in all fields');
@@ -184,12 +210,62 @@ export default function GroupDetailScreen() {
     }
   }
 
+  function handleExpenseOptions(expense: Expense) {
+    Alert.alert(
+      'Expense Options',
+      'What would you like to do?',
+      [
+        {
+          text: 'Edit Expense',
+          onPress: () => router.push(`/edit-expense/${expense.id}` as any),
+        },
+        {
+          text: 'Delete Expense',
+          onPress: () => handleDeleteExpense(expense.id),
+          style: 'destructive',
+        },
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+      ]
+    );
+  }
+
+  async function handleDeleteExpense(expenseId: string) {
+    Alert.alert(
+      'Delete Expense',
+      'Are you sure you want to delete this expense?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await expenseService.delete(expenseId);
+              loadGroupData();
+            } catch (error) {
+              console.error('Error deleting expense:', error);
+              Alert.alert('Error', 'Failed to delete expense');
+            }
+          },
+        },
+      ]
+    );
+  }
+
   function renderExpense({ item }: { item: Expense & { paidByUser?: User } }) {
     const date = new Date(item.date);
     const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
     return (
-      <View style={[styles.expenseCard, !isDark && { backgroundColor: colors.card, borderColor: colors.border }]}>
+      <TouchableOpacity 
+        onLongPress={() => handleExpenseOptions(item)}
+        style={[styles.expenseCard, !isDark && { backgroundColor: colors.card, borderColor: colors.border }]}>
         <View style={[styles.expenseIcon, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)' }]}>
           <IconSymbol size={24} name="dollarsign.circle.fill" color={isDark ? '#2DD4BF' : colors.tint} />
         </View>
@@ -200,7 +276,7 @@ export default function GroupDetailScreen() {
           </ThemedText>
         </View>
         <ThemedText style={[styles.expenseAmount, !isDark && { color: colors.text }]}>${item.amount.toFixed(2)}</ThemedText>
-      </View>
+      </TouchableOpacity>
     );
   }
 
@@ -315,6 +391,34 @@ export default function GroupDetailScreen() {
           <IconSymbol size={20} name="chevron.left" color={isDark ? '#2DD4BF' : colors.tint} />
         </TouchableOpacity>
         <View style={styles.headerSpacer} />
+        <TouchableOpacity 
+          onPress={() => {
+            Alert.alert(
+              'Group Options',
+              'What would you like to do?',
+              [
+                {
+                  text: 'Edit Group',
+                  onPress: () => router.push(`/edit-group/${id}`),
+                },
+                {
+                  text: 'Delete Group',
+                  onPress: () => handleDeleteGroup(),
+                  style: 'destructive',
+                },
+                {
+                  text: 'Cancel',
+                  style: 'cancel',
+                },
+              ]
+            );
+          }}
+          style={[styles.backButtonRect, { 
+            backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)', 
+            borderColor: isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(34, 197, 94, 0.3)' 
+          }]}>
+          <IconSymbol size={20} name="ellipsis" color={isDark ? '#2DD4BF' : colors.tint} />
+        </TouchableOpacity>
       </View>
 
       <ScrollView 

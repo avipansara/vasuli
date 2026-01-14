@@ -260,7 +260,7 @@ export default function AddFriendScreen() {
                     keyboardType="email-address"
                     autoCapitalize="none"
                     returnKeyType="done"
-                    onSubmitEditing={handleSubmit}
+                    onSubmitEditing={() => Keyboard.dismiss()}
                   />
                 </View>
               </View>
@@ -283,7 +283,7 @@ export default function AddFriendScreen() {
                     placeholderTextColor={isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'}
                     keyboardType="phone-pad"
                     returnKeyType="done"
-                    onSubmitEditing={handleSubmit}
+                    onSubmitEditing={() => Keyboard.dismiss()}
                   />
                 </View>
               </View>
@@ -336,7 +336,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'ios' ? 60 : 50,
+    paddingTop: Platform.OS === 'ios' ? 60 : 54,
     paddingBottom: 16,
   },
   backButton: {
