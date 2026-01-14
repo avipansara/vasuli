@@ -111,32 +111,26 @@ export default function AddFriendScreen() {
         <ThemedText type="subtitle" style={[styles.headerTitle, !isDark && { color: colors.text }]}>
           Add Friend
         </ThemedText>
-        <View style={styles.headerRight} />
+        <TouchableOpacity
+          onPress={handleSubmit}
+          disabled={!isValid || loading}
+          style={[
+            styles.headerButton,
+            {
+              backgroundColor: isValid && !loading ? (isDark ? '#2DD4BF' : '#22C55E') : (isDark ? '#374151' : '#E5E7EB'),
+            },
+          ]}>
+          {loading ? (
+            <ThemedText style={[styles.headerButtonText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>...</ThemedText>
+          ) : (
+            <ThemedText style={[styles.headerButtonText, { color: isValid && !loading ? '#FFFFFF' : (isDark ? '#9CA3AF' : '#6B7280') }]}>
+              Send
+            </ThemedText>
+          )}
+        </TouchableOpacity>
       </View>
 
-      <KeyboardAwareScroll
-        contentContainerStyle={styles.scrollContent}
-        footer={
-          <TouchableOpacity
-            onPress={handleSubmit}
-            disabled={!isValid || loading}
-            style={[styles.submitButton, (!isValid || loading) && styles.submitButtonDisabled]}>
-            <LinearGradient
-              colors={isValid ? (isDark ? ['#2DD4BF', '#22D3EE'] : ['#22C55E', '#10B981']) : ['#6B7280', '#4B5563']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.submitButtonGradient}>
-              {loading ? (
-                <ThemedText style={styles.submitButtonText}>Sending...</ThemedText>
-              ) : (
-                <>
-                  <IconSymbol name="paperplane.fill" size={20} color="#fff" />
-                  <ThemedText style={styles.submitButtonText}>Send Invite</ThemedText>
-                </>
-              )}
-            </LinearGradient>
-          </TouchableOpacity>
-        }>
+      <KeyboardAwareScroll contentContainerStyle={styles.scrollContent}>
         <Animated.View style={[styles.content, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
             {/* Hero Section */}
             <View style={styles.heroSection}>
@@ -359,6 +353,18 @@ const styles = StyleSheet.create({
   },
   headerRight: {
     width: 44,
+  },
+  headerButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 12,
+    minWidth: 60,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
   },
   keyboardView: {
     flex: 1,

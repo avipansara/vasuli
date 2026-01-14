@@ -24,7 +24,9 @@ export default function TabLayout() {
           left: 16,
           right: 16,
           height: 70,
-          backgroundColor: isDark ? 'rgba(20, 30, 35, 0.50)' : 'rgba(255, 255, 255, 0.50)',
+          backgroundColor: Platform.OS === 'android' 
+            ? (isDark ? 'rgba(20, 30, 35, 0.95)' : 'rgba(255, 255, 255, 0.95)')
+            : (isDark ? 'rgba(20, 30, 35, 0.50)' : 'rgba(255, 255, 255, 0.50)'),
           borderRadius: 16,
           paddingHorizontal: 8,
           shadowColor: isDark ? '#000' : '#64748B',

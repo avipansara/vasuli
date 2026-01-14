@@ -74,7 +74,6 @@ export default function CreateGroupScreen() {
       const newGroup = await groupService.create({
         name: groupName.trim(),
         description: description.trim() || undefined,
-        createdBy: currentUserId,
       });
 
       // Add current user as first member
@@ -106,32 +105,26 @@ export default function CreateGroupScreen() {
         <ThemedText type="subtitle" style={[styles.headerTitle, !isDark && { color: colors.text }]}>
           Create Group
         </ThemedText>
-        <View style={styles.headerRight} />
+        <TouchableOpacity
+          onPress={handleSubmit}
+          disabled={!isValid || loading}
+          style={[
+            styles.headerButton,
+            {
+              backgroundColor: isValid && !loading ? (isDark ? '#2DD4BF' : '#22C55E') : (isDark ? '#374151' : '#E5E7EB'),
+            },
+          ]}>
+          {loading ? (
+            <ThemedText style={[styles.headerButtonText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>...</ThemedText>
+          ) : (
+            <ThemedText style={[styles.headerButtonText, { color: isValid && !loading ? '#FFFFFF' : (isDark ? '#9CA3AF' : '#6B7280') }]}>
+              Create
+            </ThemedText>
+          )}
+        </TouchableOpacity>
       </View>
 
-      <KeyboardAwareScroll
-        contentContainerStyle={styles.scrollContent}
-        footer={
-          <TouchableOpacity
-            onPress={handleSubmit}
-            disabled={!isValid || loading}
-            style={[styles.submitButton, (!isValid || loading) && styles.submitButtonDisabled]}>
-            <LinearGradient
-              colors={isValid ? (isDark ? ['#2DD4BF', '#22D3EE'] : ['#22C55E', '#10B981']) : ['#6B7280', '#4B5563']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.submitButtonGradient}>
-              {loading ? (
-                <ThemedText style={styles.submitButtonText}>Creating...</ThemedText>
-              ) : (
-                <>
-                  <IconSymbol name="plus.circle.fill" size={20} color="#fff" />
-                  <ThemedText style={styles.submitButtonText}>Create Group</ThemedText>
-                </>
-              )}
-            </LinearGradient>
-          </TouchableOpacity>
-        }>
+      <KeyboardAwareScroll contentContainerStyle={styles.scrollContent}>
         <Animated.View style={[styles.content, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
             {/* Icon Preview */}
             {/* <View style={styles.iconPreviewSection}>
@@ -272,6 +265,18 @@ const styles = StyleSheet.create({
   },
   headerRight: {
     width: 44,
+  },
+  headerButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 12,
+    minWidth: 60,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
   },
   keyboardView: {
     flex: 1,

@@ -49,9 +49,9 @@ export function KeyboardAwareScroll({
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       style={styles.container}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}>
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={[styles.scrollContent, contentContainerStyle]}
@@ -82,8 +82,8 @@ export function KeyboardAwareScroll({
       )}
 
       {/* Footer - Always visible above keyboard */}
-      {footer && (
-        <View style={[styles.footerContainer, keyboardVisible && styles.footerWithKeyboard]}>
+      {footer && !keyboardVisible && (
+        <View style={styles.footerContainer}>
           <LinearGradient
             colors={isDark ? ['rgba(10, 10, 15, 0)', 'rgba(10, 10, 15, 0.95)', 'rgba(10, 10, 15, 1)'] : ['rgba(255, 255, 255, 0)', 'rgba(255, 255, 255, 0.95)', 'rgba(255, 255, 255, 1)']}
             style={styles.footerGradient}
