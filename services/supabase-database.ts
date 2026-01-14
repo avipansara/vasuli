@@ -386,6 +386,30 @@ export const expenseService = {
     }));
   },
 
+  async getAll(): Promise<Expense[]> {
+    const { data, error } = await supabase
+      .from('expenses')
+      .select('*')
+      .order('date', { ascending: false });
+    
+    if (error) throw error;
+    
+    return (data || []).map(r => ({
+      id: r.id,
+      groupId: r.group_id || undefined,
+      description: r.description,
+      amount: r.amount,
+      currency: r.currency,
+      paidBy: r.paid_by,
+      category: r.category || undefined,
+      date: new Date(r.date).getTime(),
+      imageUrl: r.image_url || undefined,
+      notes: r.notes || undefined,
+      createdAt: new Date(r.created_at).getTime(),
+      updatedAt: new Date(r.updated_at).getTime(),
+    }));
+  },
+
   async delete(id: string): Promise<void> {
     const { error } = await supabase
       .from('expenses')
@@ -454,6 +478,27 @@ export const settlementService = {
     }));
   },
 
+  async getAll(): Promise<Settlement[]> {
+    const { data, error } = await supabase
+      .from('settlements')
+      .select('*')
+      .order('date', { ascending: false });
+    
+    if (error) throw error;
+    
+    return (data || []).map(r => ({
+      id: r.id,
+      groupId: r.group_id || undefined,
+      fromUserId: r.from_user_id,
+      toUserId: r.to_user_id,
+      amount: r.amount,
+      currency: r.currency,
+      date: new Date(r.date).getTime(),
+      notes: r.notes || undefined,
+      createdAt: new Date(r.created_at).getTime(),
+    }));
+  },
+
   async delete(id: string): Promise<void> {
     const { error } = await supabase
       .from('settlements')
@@ -491,4 +536,47 @@ export async function calculateBalances(groupId: string): Promise<Map<string, nu
   }
   
   return balances;
+}
+
+export async function calculateFriendBalance(currentUserId: string, friendId: string): Promise<number> {
+  let balance = 0;
+  
+  // Get all expenses
+  const allExpenses = await expenseService.getAll();
+  
+  for (const expense of allExpenses) {
+    const splits = await expenseService.getSplits(expense.id);
+    
+    const currentUserSplit = splits.find(s => s.userId === currentUserId);
+    const friendSplit = splits.find(s => s.userId === friendId);
+    
+    // Only process if both users are part of this expense
+    if (currentUserSplit && friendSplit) {
+      if (expense.paidBy === currentUserId) {
+        // Current user paid, friend owes their share
+        balance += friendSplit.amount;
+      } else if (expense.paidBy === friendId) {
+        // Friend paid, current user owes their share
+        balance -= currentUserSplit.amount;
+      }
+    }
+  }
+  
+  // Apply all settlements between these two users
+  const allSettlements = await settlementService.getAll();
+  const friendSettlements = allSettlements.filter(s => 
+    (s.fromUserId === currentUserId && s.toUserId === friendId) ||
+    (s.fromUserId === friendId && s.toUserId === currentUserId));
+  
+  for (const settlement of friendSettlements) {
+    if (settlement.fromUserId === currentUserId) {
+      // Current user paid friend
+      balance -= settlement.amount;
+    } else {
+      // Friend paid current user
+      balance += settlement.amount;
+    }
+  }
+  
+  return balance;
 }

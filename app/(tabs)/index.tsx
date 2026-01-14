@@ -1,6 +1,7 @@
 import { CreateGroupModal, GroupCard } from '@/components/groups';
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { useAuth } from '@/contexts/auth-context';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { calculateBalances, groupService, initDatabase, userService } from '@/services/api';
 import type { GroupWithMembers } from '@/types/database';
@@ -15,6 +16,8 @@ export default function GroupsScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
   const [newGroupDescription, setNewGroupDescription] = useState('');
+  const { user } = useAuth();
+  const currentUserId = user?.id || '';
 
   // Animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -49,7 +52,6 @@ export default function GroupsScreen() {
       const groupsWithData = await Promise.all(
         allGroups.map(async (group) => {
           const balances = await calculateBalances(group.id);
-          const currentUserId = 'current-user';
           const yourBalance = balances.get(currentUserId) || 0;
           
           return {
@@ -79,14 +81,15 @@ export default function GroupsScreen() {
         description: newGroupDescription.trim() || undefined,
       });
 
-      const currentUser = await userService.getById('current-user');
+      const currentUser = await userService.getById(currentUserId);
       if (!currentUser) {
         await userService.create({
-          name: 'You',
+          name: user?.name,
+          email: user?.email,
         });
       }
 
-      await groupService.addMember(group.id, 'current-user', 'admin');
+      await groupService.addMember(group.id, currentUserId, 'admin');
 
       setNewGroupName('');
       setNewGroupDescription('');

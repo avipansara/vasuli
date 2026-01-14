@@ -1,7 +1,10 @@
+import { supabase } from '@/lib/supabase';
 import { userService } from '@/services/api';
 import type { User } from '@/types/database';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useContext, useEffect, useState } from 'react';
+
+// Check if Supabase is configured
+const USE_SUPABASE = !!(process.env.EXPO_PUBLIC_SUPABASE_URL && process.env.EXPO_PUBLIC_SUPABASE_KEY && process.env.EXPO_PUBLIC_USE_SUPABASE === 'true');
 
 interface AuthContextType {
   user: User | null;
@@ -10,77 +13,152 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (name: string, email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-const AUTH_STORAGE_KEY = '@vasuli_auth_user';
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    loadStoredUser();
+    if (USE_SUPABASE) {
+      // Listen for Supabase auth state changes
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+        if (session?.user) {
+          // Fetch user profile from our users table
+          const { data: profile } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+          
+          if (profile) {
+            setUser({
+              id: profile.id,
+              name: profile.name,
+              email: profile.email || undefined,
+              phone: profile.phone || undefined,
+              avatar: profile.avatar || undefined,
+              createdAt: new Date(profile.created_at).getTime(),
+            });
+          }
+        } else {
+          setUser(null);
+        }
+        setIsLoading(false);
+      });
+
+      // Check initial session
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (!session) {
+          setIsLoading(false);
+        }
+      });
+
+      return () => subscription.unsubscribe();
+    } else {
+      // Mock auth - load from userService
+      loadMockUser();
+    }
   }, []);
 
-  async function loadStoredUser() {
+  async function loadMockUser() {
     try {
-      const storedUser = await AsyncStorage.getItem(AUTH_STORAGE_KEY);
-      if (storedUser) {
-        const parsedUser = JSON.parse(storedUser);
-        // Verify user still exists in database
-        const existingUser = await userService.getById(parsedUser.id);
-        if (existingUser) {
-          setUser(existingUser);
-        } else {
-          await AsyncStorage.removeItem(AUTH_STORAGE_KEY);
-        }
+      // For mock, auto-login as first user or create one
+      const allUsers = await userService.getAll();
+      const currentUser = allUsers.find((u: User) => u.id === 'current-user');
+      if (currentUser) {
+        setUser(currentUser);
       }
     } catch (error) {
-      console.error('Error loading stored user:', error);
+      console.error('Error loading mock user:', error);
     } finally {
       setIsLoading(false);
     }
   }
 
   async function signIn(email: string, password: string) {
-    // For mock data, find user by email
-    // In production with Supabase, this would use supabase.auth.signInWithPassword
-    const allUsers = await userService.getAll();
-    const foundUser = allUsers.find((u: User) => u.email?.toLowerCase() === email.toLowerCase());
-    
-    if (!foundUser) {
-      throw new Error('No account found with this email');
+    if (USE_SUPABASE) {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      
+      if (error) {
+        if (error.message.includes('Invalid login credentials')) {
+          throw new Error('Invalid email or password');
+        }
+        throw new Error(error.message);
+      }
+      // User state will be updated by onAuthStateChange listener
+    } else {
+      // Mock auth
+      const allUsers = await userService.getAll();
+      const foundUser = allUsers.find((u: User) => u.email?.toLowerCase() === email.toLowerCase());
+      
+      if (!foundUser) {
+        throw new Error('No account found with this email');
+      }
+      
+      setUser(foundUser);
     }
-    
-    // Mock: Accept any password for now (Supabase will handle real auth)
-    setUser(foundUser);
-    await AsyncStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(foundUser));
   }
 
   async function signUp(name: string, email: string, password: string) {
-    // Check if email already exists
-    const allUsers = await userService.getAll();
-    const existingUser = allUsers.find((u: User) => u.email?.toLowerCase() === email.toLowerCase());
-    
-    if (existingUser) {
-      throw new Error('An account with this email already exists');
+    if (USE_SUPABASE) {
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { name },
+          emailRedirectTo: 'vasuli://auth/callback',
+        },
+      });
+      
+      if (error) {
+        if (error.message.includes('already registered')) {
+          throw new Error('An account with this email already exists');
+        }
+        throw new Error(error.message);
+      }
+      // User profile will be created by database trigger
+      // User state will be updated by onAuthStateChange listener
+    } else {
+      // Mock auth
+      const allUsers = await userService.getAll();
+      const existingUser = allUsers.find((u: User) => u.email?.toLowerCase() === email.toLowerCase());
+      
+      if (existingUser) {
+        throw new Error('An account with this email already exists');
+      }
+      
+      const newUser = await userService.create({ name, email });
+      setUser(newUser);
     }
-    
-    // Create new user
-    const newUser = await userService.create({
-      name,
-      email,
-    });
-    
-    setUser(newUser);
-    await AsyncStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(newUser));
   }
 
   async function signOut() {
+    if (USE_SUPABASE) {
+      await supabase.auth.signOut();
+    }
     setUser(null);
-    await AsyncStorage.removeItem(AUTH_STORAGE_KEY);
+  }
+
+  async function resetPassword(email: string) {
+    if (USE_SUPABASE) {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: 'vasuli://auth/reset-password',
+      });
+      
+      if (error) {
+        throw new Error(error.message);
+      }
+    } else {
+      // Mock - just pretend it worked
+      console.log('Password reset requested for:', email);
+    }
   }
 
   return (
@@ -92,6 +170,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         signIn,
         signUp,
         signOut,
+        resetPassword,
       }}>
       {children}
     </AuthContext.Provider>

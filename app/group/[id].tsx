@@ -5,6 +5,7 @@ import {
 } from '@/components/group';
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { useAuth } from '@/contexts/auth-context';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import {
   calculateBalances,
@@ -42,6 +43,8 @@ export default function GroupDetailScreen() {
   const [selectedUserId, setSelectedUserId] = useState('');
   const [settleWithUserId, setSettleWithUserId] = useState('');
   const [settleAmount, setSettleAmount] = useState('');
+  const { user } = useAuth();
+  const currentUserId = user?.id || '';
 
   const loadGroupData = useCallback(async () => {
     try {
@@ -104,7 +107,6 @@ export default function GroupDetailScreen() {
     }
 
     try {
-      const currentUserId = 'current-user';
       const splitAmount = amountNum / members.length;
 
       await expenseService.create(
@@ -163,7 +165,6 @@ export default function GroupDetailScreen() {
     }
 
     try {
-      const currentUserId = 'current-user';
       await settlementService.create({
         groupId: id,
         fromUserId: currentUserId,
@@ -284,7 +285,7 @@ export default function GroupDetailScreen() {
     return null;
   }
 
-  const currentUserBalance = balances.get('current-user') || 0;
+  const currentUserBalance = balances.get(currentUserId) || 0;
   const balanceColor = currentUserBalance > 0 ? '#10b981' : currentUserBalance < 0 ? '#ef4444' : '#2DD4BF';
   const balanceGradient = currentUserBalance > 0 
     ? ['rgba(16, 185, 129, 0.2)', 'rgba(16, 185, 129, 0.05)']

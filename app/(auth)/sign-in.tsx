@@ -10,12 +10,15 @@ import {
     Animated,
     Dimensions,
     KeyboardAvoidingView,
+    Modal,
     Platform,
     Pressable,
     ScrollView,
     StyleSheet,
     Text,
     TextInput,
+    TouchableOpacity,
+    TouchableWithoutFeedback,
     View,
 } from 'react-native';
 
@@ -23,11 +26,14 @@ const { width, height } = Dimensions.get('window');
 
 export default function SignInScreen() {
   const { colors, isDark } = useThemeColors();
-  const { signIn } = useAuth();
+  const { signIn, resetPassword } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [focusedField, setFocusedField] = useState<string | null>(null);
+  const [showForgotModal, setShowForgotModal] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetLoading, setResetLoading] = useState(false);
 
   // Animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -91,6 +97,28 @@ export default function SignInScreen() {
       Alert.alert('Error', error instanceof Error ? error.message : 'Sign in failed');
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleResetPassword() {
+    if (!resetEmail.trim()) {
+      Alert.alert('Error', 'Please enter your email address');
+      return;
+    }
+
+    setResetLoading(true);
+    try {
+      await resetPassword(resetEmail.trim());
+      setShowForgotModal(false);
+      setResetEmail('');
+      Alert.alert(
+        'Check Your Email',
+        'If an account exists with this email, you will receive a password reset link.'
+      );
+    } catch (error) {
+      Alert.alert('Error', error instanceof Error ? error.message : 'Failed to send reset email');
+    } finally {
+      setResetLoading(false);
     }
   }
 
@@ -258,7 +286,10 @@ export default function SignInScreen() {
                 {/* Forgot Password */}
                 <Pressable
                   style={styles.forgotPassword}
-                  onPress={() => Alert.alert('Reset Password', 'Password reset coming soon!')}>
+                  onPress={() => {
+                    setResetEmail(email);
+                    setShowForgotModal(true);
+                  }}>
                   <Text style={[styles.forgotPasswordText, { color: isDark ? '#2DD4BF' : '#22C55E' }]}>
                     Forgot password?
                   </Text>
@@ -335,6 +366,76 @@ export default function SignInScreen() {
           </Animated.View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Forgot Password Modal */}
+      <Modal
+        visible={showForgotModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowForgotModal(false)}>
+        <TouchableWithoutFeedback onPress={() => setShowForgotModal(false)}>
+          <View style={styles.modalOverlay}>
+            <TouchableWithoutFeedback>
+              <View style={[
+                styles.modalContent,
+                { backgroundColor: isDark ? 'rgba(15, 23, 42, 0.95)' : 'rgba(255, 255, 255, 0.98)' }
+              ]}>
+                <View style={styles.modalHeader}>
+                  <Text style={[styles.modalTitle, { color: isDark ? '#fff' : colors.text }]}>
+                    Reset Password
+                  </Text>
+                  <TouchableOpacity onPress={() => setShowForgotModal(false)}>
+                    <IconSymbol name="xmark" size={24} color={isDark ? '#fff' : colors.text} />
+                  </TouchableOpacity>
+                </View>
+
+                <Text style={[styles.modalDescription, { color: isDark ? 'rgba(255,255,255,0.6)' : colors.textSecondary }]}>
+                  Enter your email address and we&apos;ll send you a link to reset your password.
+                </Text>
+
+                <View style={[
+                  styles.inputContainer,
+                  {
+                    backgroundColor: isDark ? 'rgba(30, 41, 59, 0.8)' : 'rgba(241, 245, 249, 0.9)',
+                    borderColor: isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(34, 197, 94, 0.2)',
+                  }
+                ]}>
+                  <IconSymbol
+                    name="envelope.fill"
+                    size={18}
+                    color={isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'}
+                  />
+                  <TextInput
+                    style={[styles.input, { color: isDark ? '#fff' : colors.text }]}
+                    placeholder="Email address"
+                    placeholderTextColor={isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'}
+                    value={resetEmail}
+                    onChangeText={setResetEmail}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoFocus
+                  />
+                </View>
+
+                <TouchableOpacity
+                  onPress={handleResetPassword}
+                  disabled={resetLoading}
+                  style={styles.modalButton}>
+                  <LinearGradient
+                    colors={isDark ? ['#2DD4BF', '#22D3EE'] : ['#22C55E', '#10B981']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={[styles.modalButtonGradient, resetLoading && { opacity: 0.7 }]}>
+                    <Text style={styles.modalButtonText}>
+                      {resetLoading ? 'Sending...' : 'Send Reset Link'}
+                    </Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
     </View>
   );
 }
@@ -513,5 +614,48 @@ const styles = StyleSheet.create({
   linkText: {
     fontSize: 14,
     fontWeight: '700',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  modalContent: {
+    width: '100%',
+    maxWidth: 400,
+    borderRadius: 24,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  modalDescription: {
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 20,
+  },
+  modalButton: {
+    marginTop: 8,
+  },
+  modalButtonGradient: {
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  modalButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

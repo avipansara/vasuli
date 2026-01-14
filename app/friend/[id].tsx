@@ -1,6 +1,7 @@
 import { SettleUpModal } from '@/components/friends/settle-up-modal';
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { useAuth } from '@/contexts/auth-context';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { calculateFriendBalance, expenseService, initDatabase, settlementService, userService } from '@/services/api';
 import type { Expense, ExpenseSplit, User } from '@/types/database';
@@ -28,7 +29,8 @@ export default function FriendDetailScreen() {
   const [expenses, setExpenses] = useState<ExpenseWithSplit[]>([]);
   const [loading, setLoading] = useState(true);
   const [settleModalVisible, setSettleModalVisible] = useState(false);
-  const currentUserId = 'current-user';
+  const { user } = useAuth();
+  const currentUserId = user?.id || '';
 
   // Animations
   const fadeAnim = useRef(new Animated.Value(0)).current;

@@ -2,6 +2,7 @@ import { AddExpenseModal } from '@/components/expenses/add-expense-modal';
 import { ExpenseListCard } from '@/components/expenses/expense-list-card';
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { useAuth } from '@/contexts/auth-context';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { expenseService, groupService, initDatabase, userService } from '@/services/api';
 import type { Expense, Group, User } from '@/types/database';
@@ -23,6 +24,8 @@ export default function ExpensesScreen() {
   const [splitType, setSplitType] = useState<'group' | 'friends'>('group');
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
+  const { user } = useAuth();
+  const currentUserId = user?.id || '';
 
   useEffect(() => {
     loadData();
@@ -42,7 +45,7 @@ export default function ExpensesScreen() {
       
       const allUsers = await userService.getAll();
       // Filter out current user from friends list
-      setFriends(allUsers.filter((u: User) => u.id !== 'current-user'));
+      setFriends(allUsers.filter((u: User) => u.id !== currentUserId));
 
       // Fetch ALL expenses (including friend-only expenses without groupId)
       const allExpensesRaw = await expenseService.getAll();
@@ -76,10 +79,9 @@ export default function ExpensesScreen() {
     }
 
     try {
-      const currentUserId = 'current-user';
       const currentUser = await userService.getById(currentUserId);
       if (!currentUser) {
-        await userService.create({ name: 'You' });
+        await userService.create({ name: user?.name, email: user?.email });
       }
 
       if (splitType === 'group') {

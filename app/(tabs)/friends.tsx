@@ -3,6 +3,7 @@ import { InviteFriendModal } from '@/components/friends/invite-friend-modal';
 import { QRCodeModal } from '@/components/friends/qr-code-modal';
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { useAuth } from '@/contexts/auth-context';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { calculateFriendBalance, initDatabase, userService } from '@/services/api';
 import type { User } from '@/types/database';
@@ -26,7 +27,8 @@ export default function FriendsScreen() {
   const [newFriendPhone, setNewFriendPhone] = useState('');
   const [inviteMethod, setInviteMethod] = useState<'email' | 'phone'>('email');
   const [qrModalVisible, setQrModalVisible] = useState(false);
-  const currentUserId = 'current-user';
+  const { user } = useAuth();
+  const currentUserId = user?.id || '';
 
   useFocusEffect(
     useCallback(() => {
@@ -35,10 +37,10 @@ export default function FriendsScreen() {
   );
 
   async function loadFriends() {
+    if (!currentUserId) return;
     try {
       await initDatabase();
       const allUsers = await userService.getAll();
-      const currentUserId = 'current-user';
       
       const friendsWithBalances = await Promise.all(
         allUsers
@@ -176,7 +178,7 @@ export default function FriendsScreen() {
         visible={qrModalVisible}
         onClose={() => setQrModalVisible(false)}
         userId={currentUserId}
-        userName="You"
+        userName={user?.name || ''}
       />
     </LinearGradient>
   );
