@@ -1,7 +1,6 @@
 import { ThemedText } from '@/components/themed-text';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Accelerometer } from 'expo-sensors';
 import { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, StyleSheet, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -26,22 +25,21 @@ export function LoadingState({ message = 'Loading...' }: LoadingStateProps) {
   
   const [isAutoPlaying, setIsAutoPlaying] = useState(true);
   const autoPlayRef = useRef<any>(null);
+  const isInteracting = useRef(false);
 
   // Gesture handlers
   const panGesture = Gesture.Pan()
-    .onUpdate((e) => {
-      if (isAutoPlaying) {
-        setIsAutoPlaying(false);
-        if (autoPlayRef.current) {
-          autoPlayRef.current.stop();
-        }
+    .onBegin(() => {
+      isInteracting.current = true;
+      if (autoPlayRef.current) {
+        autoPlayRef.current.stop();
       }
-      
-      // Move left/right based on swipe
+      setIsAutoPlaying(false);
+    })
+    .onUpdate((e) => {
       const newX = Math.max(-50, Math.min(50, e.translationX / 3));
       skateX.setValue(newX);
       
-      // Tilt body based on direction
       if (e.translationX < -10) {
         bodyRotate.setValue(-8);
         boardRotate.setValue(-15);
@@ -54,125 +52,104 @@ export function LoadingState({ message = 'Loading...' }: LoadingStateProps) {
       }
     })
     .onEnd(() => {
-      // Return to center
+      isInteracting.current = false;
       Animated.parallel([
         Animated.spring(skateX, {
           toValue: 0,
           useNativeDriver: true,
+          friction: 8,
         }),
         Animated.spring(bodyRotate, {
           toValue: 12,
           useNativeDriver: true,
+          friction: 8,
         }),
         Animated.spring(boardRotate, {
           toValue: 0,
           useNativeDriver: true,
+          friction: 8,
         }),
       ]).start(() => {
-        setTimeout(() => setIsAutoPlaying(true), 500);
+        setTimeout(() => {
+          if (!isInteracting.current) {
+            setIsAutoPlaying(true);
+          }
+        }, 500);
       });
     });
 
   const tapGesture = Gesture.Tap()
     .numberOfTaps(2)
     .onStart(() => {
-      if (isAutoPlaying) {
-        setIsAutoPlaying(false);
-        if (autoPlayRef.current) {
-          autoPlayRef.current.stop();
-        }
+      isInteracting.current = true;
+      if (autoPlayRef.current) {
+        autoPlayRef.current.stop();
       }
-      performJump();
+      setIsAutoPlaying(false);
+      
+      Animated.parallel([
+        Animated.sequence([
+          Animated.timing(bounceY, {
+            toValue: -32,
+            duration: 600,
+            easing: Easing.out(Easing.quad),
+            useNativeDriver: true,
+          }),
+          Animated.timing(bounceY, {
+            toValue: 0,
+            duration: 400,
+            easing: Easing.in(Easing.quad),
+            useNativeDriver: true,
+          }),
+        ]),
+        Animated.sequence([
+          Animated.timing(bodyRotate, {
+            toValue: 7,
+            duration: 300,
+            useNativeDriver: true,
+          }),
+          Animated.timing(bodyRotate, {
+            toValue: 34,
+            duration: 300,
+            useNativeDriver: true,
+          }),
+          Animated.timing(bodyRotate, {
+            toValue: 12,
+            duration: 400,
+            useNativeDriver: true,
+          }),
+        ]),
+        Animated.sequence([
+          Animated.timing(boardRotate, {
+            toValue: -40,
+            duration: 300,
+            useNativeDriver: true,
+          }),
+          Animated.timing(boardRotate, {
+            toValue: 3,
+            duration: 300,
+            useNativeDriver: true,
+          }),
+          Animated.timing(boardRotate, {
+            toValue: 0,
+            duration: 400,
+            useNativeDriver: true,
+          }),
+        ]),
+      ]).start(() => {
+        isInteracting.current = false;
+        setTimeout(() => {
+          if (!isInteracting.current) {
+            setIsAutoPlaying(true);
+          }
+        }, 500);
+      });
     });
 
   const composedGesture = Gesture.Race(panGesture, tapGesture);
 
-  function performJump() {
-    Animated.parallel([
-      Animated.sequence([
-        Animated.timing(bounceY, {
-          toValue: -32,
-          duration: 600,
-          easing: Easing.out(Easing.quad),
-          useNativeDriver: true,
-        }),
-        Animated.timing(bounceY, {
-          toValue: 0,
-          duration: 400,
-          easing: Easing.in(Easing.quad),
-          useNativeDriver: true,
-        }),
-      ]),
-      Animated.sequence([
-        Animated.timing(bodyRotate, {
-          toValue: 7,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-        Animated.timing(bodyRotate, {
-          toValue: 34,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-        Animated.timing(bodyRotate, {
-          toValue: 12,
-          duration: 400,
-          useNativeDriver: true,
-        }),
-      ]),
-      Animated.sequence([
-        Animated.timing(boardRotate, {
-          toValue: -40,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-        Animated.timing(boardRotate, {
-          toValue: 3,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-        Animated.timing(boardRotate, {
-          toValue: 0,
-          duration: 400,
-          useNativeDriver: true,
-        }),
-      ]),
-    ]).start(() => {
-      setTimeout(() => setIsAutoPlaying(true), 500);
-    });
-  }
-
   useEffect(() => {
-    // Accelerometer for shake detection
-    let subscription: any;
-    Accelerometer.isAvailableAsync().then((available) => {
-      if (available) {
-        Accelerometer.setUpdateInterval(100);
-        subscription = Accelerometer.addListener((data) => {
-          const { x, y, z } = data;
-          const acceleration = Math.sqrt(x * x + y * y + z * z);
-          
-          // Detect shake (strong acceleration)
-          if (acceleration > 2.5 && isAutoPlaying) {
-            setIsAutoPlaying(false);
-            if (autoPlayRef.current) {
-              autoPlayRef.current.stop();
-            }
-            performJump();
-          }
-        });
-      }
-    });
-
-    return () => {
-      if (subscription) {
-        subscription.remove();
-      }
-    };
-  }, [isAutoPlaying]);
-
-  useEffect(() => {
-    if (!isAutoPlaying) return;
+    if (!isAutoPlaying || isInteracting.current) return;
     
     // Skateboard trick animation sequence
     autoPlayRef.current = Animated.loop(

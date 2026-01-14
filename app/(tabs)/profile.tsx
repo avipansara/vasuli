@@ -1,5 +1,6 @@
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { LoadingState } from '@/components/ui/loading-state';
 import { useAuth } from '@/contexts/auth-context';
 import { useTheme } from '@/contexts/theme-context';
 import { useThemeColors } from '@/hooks/use-theme-colors';
@@ -7,7 +8,7 @@ import { calculateBalances, expenseService, groupService, initDatabase } from '@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { Alert, Animated, Platform, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
+import { Alert, Animated, Modal, Platform, Pressable, ScrollView, StyleSheet, Switch, TouchableOpacity, View } from 'react-native';
 
 export default function ProfileScreen() {
   const { gradients, isDark, colors } = useThemeColors();
@@ -87,8 +88,11 @@ export default function ProfileScreen() {
     ]);
   }
 
+  const [playgroundVisible, setPlaygroundVisible] = useState(false);
+
   const settingsItems = [
     { icon: 'person.badge.plus', title: 'Invite a Friend', onPress: () => router.push('/add-friend') },
+    { icon: 'figure.skateboarding', title: 'Loading Playground', onPress: () => setPlaygroundVisible(true) },
     { icon: 'bell.fill', title: 'Notifications', hasSwitch: true, value: notificationsEnabled, onToggle: setNotificationsEnabled },
     { icon: 'moon.fill', title: 'Dark Mode', hasSwitch: true, value: isDark, onToggle: toggleTheme },
     { icon: 'questionmark.circle.fill', title: 'Help & Support', onPress: () => handleSettingPress('Help & Support') },
@@ -168,6 +172,52 @@ export default function ProfileScreen() {
 
         <ThemedText style={[styles.versionText, !isDark && { color: colors.textSecondary }]}>Version 1.0.0</ThemedText>
       </ScrollView>
+
+      {/* Loading Playground Modal */}
+      <Modal
+        visible={playgroundVisible}
+        animationType="slide"
+        presentationStyle="fullScreen"
+        onRequestClose={() => setPlaygroundVisible(false)}>
+        <LinearGradient colors={gradients.screenBackground} style={styles.playgroundContainer}>
+          {/* Header */}
+          <View style={styles.playgroundHeader}>
+            <TouchableOpacity
+              onPress={() => setPlaygroundVisible(false)}
+              style={[styles.closeButton, {
+                backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)',
+                borderColor: isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(34, 197, 94, 0.3)'
+              }]}>
+              <IconSymbol size={20} name="xmark" color={isDark ? '#2DD4BF' : colors.tint} />
+            </TouchableOpacity>
+            <ThemedText type="title" style={[styles.playgroundTitle, !isDark && { color: colors.text }]}>
+              Loading Playground
+            </ThemedText>
+            <View style={{ width: 40 }} />
+          </View>
+
+          {/* Instructions */}
+          <View style={[styles.instructionsCard, {
+            backgroundColor: isDark ? 'rgba(45, 212, 191, 0.1)' : 'rgba(34, 197, 94, 0.1)',
+            borderColor: isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(34, 197, 94, 0.2)'
+          }]}>
+            <ThemedText style={[styles.instructionsTitle, !isDark && { color: colors.text }]}>
+              🎮 How to Play
+            </ThemedText>
+            <ThemedText style={[styles.instructionsText, !isDark && { color: colors.textSecondary }]}>
+              • Swipe left/right to move the skateboard{"\n"}
+              • Double tap to perform a jump trick{"\n"}
+              • Shake your device for a jump{"\n"}
+              • Release to auto-play
+            </ThemedText>
+          </View>
+
+          {/* Loading Animation */}
+          <View style={styles.playgroundContent}>
+            <LoadingState message="Try the controls!" />
+          </View>
+        </LinearGradient>
+      </Modal>
     </LinearGradient>
   );
 }
@@ -311,7 +361,52 @@ const styles = StyleSheet.create({
   versionText: {
     textAlign: 'center',
     fontSize: 12,
-    color: 'rgba(255,255,255,0.3)',
-    marginTop: 24,
+    color: '#fff',
+    opacity: 0.5,
+    marginTop: 20,
+  },
+  playgroundContainer: {
+    flex: 1,
+  },
+  playgroundHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: Platform.OS === 'ios' ? 60 : 50,
+    paddingBottom: 20,
+  },
+  closeButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  playgroundTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  instructionsCard: {
+    marginHorizontal: 20,
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 20,
+  },
+  instructionsTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 8,
+  },
+  instructionsText: {
+    fontSize: 14,
+    lineHeight: 22,
+  },
+  playgroundContent: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
