@@ -10,7 +10,8 @@ import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, Animated, FlatList, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Alert, Animated, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { FlatList } from 'react-native-gesture-handler';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
 
 interface UserWithBalance extends User {

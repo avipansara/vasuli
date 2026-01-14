@@ -91,6 +91,7 @@ function RootLayoutNav() {
         <Stack.Screen name="add-friend" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
         <Stack.Screen name="edit-group/[id]" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
         <Stack.Screen name="edit-expense/[id]" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
+        <Stack.Screen name="edit-profile" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
         </Stack>
         <StatusBar style={isDark ? 'light' : 'dark'} />
       </ThemeProvider>

@@ -3,7 +3,9 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useAuth } from '@/contexts/auth-context';
 import { useTheme } from '@/contexts/theme-context';
 import { useThemeColors } from '@/hooks/use-theme-colors';
+import { calculateBalances, expenseService, groupService, initDatabase } from '@/services/api';
 import { LinearGradient } from 'expo-linear-gradient';
+import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { Alert, Animated, Platform, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
 
@@ -12,12 +14,16 @@ export default function ProfileScreen() {
   const { toggleTheme } = useTheme();
   const { user: currentUser, signOut } = useAuth();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const [totalOwed, setTotalOwed] = useState(0);
+  const [totalOwing, setTotalOwing] = useState(0);
+  const [groupsCount, setGroupsCount] = useState(0);
 
   // Animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
 
   useEffect(() => {
+    loadStats();
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
@@ -32,8 +38,40 @@ export default function ProfileScreen() {
     ]).start();
   }, []);
 
+  async function loadStats() {
+    try {
+      await initDatabase();
+      const currentUserId = currentUser?.id || '';
+      
+      // Get all groups
+      const groups = await groupService.getAll();
+      setGroupsCount(groups.length);
+      
+      // Calculate total owed and owing across all groups
+      let totalOwedAmount = 0;
+      let totalOwingAmount = 0;
+      
+      for (const group of groups) {
+        const expenses = await expenseService.getByGroup(group.id);
+        const balances = await calculateBalances(group.id, expenses);
+        const userBalance = balances.get(currentUserId) || 0;
+        
+        if (userBalance > 0) {
+          totalOwedAmount += userBalance;
+        } else if (userBalance < 0) {
+          totalOwingAmount += Math.abs(userBalance);
+        }
+      }
+      
+      setTotalOwed(totalOwedAmount);
+      setTotalOwing(totalOwingAmount);
+    } catch (error) {
+      console.error('Error loading stats:', error);
+    }
+  }
+
   function handleEditProfile() {
-    Alert.alert('Edit Profile', 'Profile editing coming soon!');
+    router.push('/edit-profile');
   }
 
   function handleSettingPress(setting: string) {
@@ -50,7 +88,7 @@ export default function ProfileScreen() {
   }
 
   const settingsItems = [
-    { icon: 'person.badge.plus', title: 'Invite a Friend', onPress: () => handleSettingPress('Invite a Friend') },
+    { icon: 'person.badge.plus', title: 'Invite a Friend', onPress: () => router.push('/add-friend') },
     { icon: 'bell.fill', title: 'Notifications', hasSwitch: true, value: notificationsEnabled, onToggle: setNotificationsEnabled },
     { icon: 'moon.fill', title: 'Dark Mode', hasSwitch: true, value: isDark, onToggle: toggleTheme },
     { icon: 'questionmark.circle.fill', title: 'Help & Support', onPress: () => handleSettingPress('Help & Support') },
@@ -80,17 +118,17 @@ export default function ProfileScreen() {
 
         <View style={[styles.statsSection, !isDark && { backgroundColor: colors.card, borderColor: colors.border }]}>
           <View style={styles.statItem}>
-            <ThemedText style={[styles.statValue, !isDark && { color: colors.text }]}>$0.00</ThemedText>
+            <ThemedText style={[styles.statValue, !isDark && { color: colors.text }]}>${totalOwed.toFixed(2)}</ThemedText>
             <ThemedText style={[styles.statLabel, !isDark && { color: colors.textSecondary }]}>Total Owed</ThemedText>
           </View>
           <View style={[styles.statDivider, !isDark && { backgroundColor: colors.border }]} />
           <View style={styles.statItem}>
-            <ThemedText style={[styles.statValue, !isDark && { color: colors.text }]}>$0.00</ThemedText>
+            <ThemedText style={[styles.statValue, !isDark && { color: colors.text }]}>${totalOwing.toFixed(2)}</ThemedText>
             <ThemedText style={[styles.statLabel, !isDark && { color: colors.textSecondary }]}>Total Owing</ThemedText>
           </View>
           <View style={[styles.statDivider, !isDark && { backgroundColor: colors.border }]} />
           <View style={styles.statItem}>
-            <ThemedText style={[styles.statValue, !isDark && { color: colors.text }]}>0</ThemedText>
+            <ThemedText style={[styles.statValue, !isDark && { color: colors.text }]}>{groupsCount}</ThemedText>
             <ThemedText style={[styles.statLabel, !isDark && { color: colors.textSecondary }]}>Groups</ThemedText>
           </View>
         </View>

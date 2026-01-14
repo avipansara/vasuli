@@ -19,7 +19,8 @@ import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, Animated, Platform, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Alert, Animated, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { ScrollView } from 'react-native-gesture-handler';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
 
 export default function GroupDetailScreen() {
