@@ -4,7 +4,6 @@ import {
   SettleUpModal,
 } from '@/components/group';
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import {
@@ -15,10 +14,11 @@ import {
   userService
 } from '@/services/api';
 import type { Expense, Group, GroupMember, User } from '@/types/database';
+import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Alert, Animated, Platform, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 export default function GroupDetailScreen() {
   const { gradients, colors, isDark } = useThemeColors();
@@ -29,6 +29,11 @@ export default function GroupDetailScreen() {
   const [balances, setBalances] = useState<Map<string, number>>(new Map());
   const [loading, setLoading] = useState(true);
   const [expenseModalVisible, setExpenseModalVisible] = useState(false);
+
+  // Animations
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(30)).current;
+  const scaleAnim = useRef(new Animated.Value(0.95)).current;
   const [memberModalVisible, setMemberModalVisible] = useState(false);
   const [settleModalVisible, setSettleModalVisible] = useState(false);
   const [description, setDescription] = useState('');
@@ -218,7 +223,7 @@ export default function GroupDetailScreen() {
         <View style={styles.balanceInfo}>
           {balance !== 0 && (
             <>
-              <ThemedText style={[styles.balanceAmount, { color: balanceColor }]}>
+              <ThemedText style={[styles.memberBalanceAmount, { color: balanceColor }]}>
                 ${Math.abs(balance).toFixed(2)}
               </ThemedText>
               <ThemedText style={[styles.balanceLabel, !isDark && { color: colors.textSecondary }]}>
@@ -234,13 +239,44 @@ export default function GroupDetailScreen() {
     );
   }
 
+  // Start animations when data loads
+  useEffect(() => {
+    if (!loading && group) {
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 400,
+          useNativeDriver: true,
+        }),
+        Animated.timing(slideAnim, {
+          toValue: 0,
+          duration: 400,
+          useNativeDriver: true,
+        }),
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          friction: 8,
+          tension: 40,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [loading, group]);
+
   if (loading) {
     return (
-      <ThemedView style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <ThemedText>Loading...</ThemedText>
+      <LinearGradient colors={gradients.screenBackground} style={styles.container}>
+        <View style={styles.orbContainer}>
+          <View style={[styles.orb, styles.orb1]} />
+          <View style={[styles.orb, styles.orb2]} />
         </View>
-      </ThemedView>
+        <View style={styles.loadingContainer}>
+          <View style={styles.loadingSpinner}>
+            <IconSymbol size={32} name="arrow.trianglehead.2.clockwise" color={isDark ? '#2DD4BF' : colors.tint} />
+          </View>
+          <ThemedText style={styles.loadingText}>Loading...</ThemedText>
+        </View>
+      </LinearGradient>
     );
   }
 
@@ -249,16 +285,34 @@ export default function GroupDetailScreen() {
   }
 
   const currentUserBalance = balances.get('current-user') || 0;
+  const balanceColor = currentUserBalance > 0 ? '#10b981' : currentUserBalance < 0 ? '#ef4444' : '#2DD4BF';
+  const balanceGradient = currentUserBalance > 0 
+    ? ['rgba(16, 185, 129, 0.2)', 'rgba(16, 185, 129, 0.05)']
+    : currentUserBalance < 0 
+    ? ['rgba(239, 68, 68, 0.2)', 'rgba(239, 68, 68, 0.05)']
+    : ['rgba(45, 212, 191, 0.2)', 'rgba(45, 212, 191, 0.05)'];
 
   return (
-    <LinearGradient
-      colors={gradients.screenBackground}
-      style={styles.container}>
+    <View style={styles.container}>
+      <LinearGradient colors={gradients.screenBackground} style={StyleSheet.absoluteFill} />
+      
+      {/* Animated background orbs */}
+      <View style={styles.orbContainer}>
+        <View style={[styles.orb, styles.orb1]} />
+        <View style={[styles.orb, styles.orb2]} />
+        <View style={[styles.orb, styles.orb3]} />
+      </View>
+
+      {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={[styles.backButtonRect, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)', borderColor: isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(34, 197, 94, 0.3)' }]}>
+        <TouchableOpacity 
+          onPress={() => router.back()} 
+          style={[styles.backButtonRect, { 
+            backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)', 
+            borderColor: isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(34, 197, 94, 0.3)' 
+          }]}>
           <IconSymbol size={20} name="chevron.left" color={isDark ? '#2DD4BF' : colors.tint} />
         </TouchableOpacity>
-        <ThemedText type="title" style={[styles.headerTitle, !isDark && { color: colors.text }]}>{group.name}</ThemedText>
         <View style={styles.headerSpacer} />
       </View>
 
@@ -266,72 +320,165 @@ export default function GroupDetailScreen() {
         style={styles.content}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}>
-        <View style={[styles.balanceCard, !isDark && { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <ThemedText style={[styles.balanceTitle, !isDark && { color: colors.textSecondary }]}>Your Balance</ThemedText>
-          <ThemedText style={[
-            styles.totalBalance,
-            { color: currentUserBalance > 0 ? (isDark ? '#10b981' : colors.success) : currentUserBalance < 0 ? (isDark ? '#ef4444' : colors.error) : (isDark ? '#2DD4BF' : colors.tint) }
-          ]}>
-            {currentUserBalance === 0 ? 'Settled up' : `$${Math.abs(currentUserBalance).toFixed(2)}`}
+        
+        {/* Group Hero */}
+        <Animated.View style={[
+          styles.heroSection,
+          {
+            opacity: fadeAnim,
+            transform: [{ translateY: slideAnim }, { scale: scaleAnim }],
+          }
+        ]}>
+          <View style={styles.groupIconWrapper}>
+            <LinearGradient
+              colors={isDark ? ['#2DD4BF', '#14B8A6'] : ['#22c55e', '#16a34a']}
+              style={styles.groupIconGlow}
+            />
+            <View style={[styles.groupIcon, { backgroundColor: isDark ? '#0A0A0F' : '#fff' }]}>
+              <LinearGradient
+                colors={isDark ? ['rgba(45, 212, 191, 0.3)', 'rgba(45, 212, 191, 0.1)'] : ['rgba(34, 197, 94, 0.3)', 'rgba(34, 197, 94, 0.1)']}
+                style={styles.groupIconInner}>
+                <IconSymbol size={32} name="person.3.fill" color={isDark ? '#2DD4BF' : colors.tint} />
+              </LinearGradient>
+            </View>
+          </View>
+          <ThemedText type="title" style={[styles.groupName, !isDark && { color: colors.text }]}>
+            {group.name}
           </ThemedText>
-          {currentUserBalance !== 0 && (
-            <ThemedText style={[styles.balanceSubtitle, !isDark && { color: colors.textSecondary }]}>
-              {currentUserBalance > 0 ? 'You are owed' : 'You owe'}
-            </ThemedText>
-          )}
-        </View>
+          <ThemedText style={[styles.memberCount, !isDark && { color: colors.textSecondary }]}>
+            {members.length} {members.length === 1 ? 'member' : 'members'}
+          </ThemedText>
+        </Animated.View>
 
-        <View style={styles.actionButtons}>
+        {/* Balance Card with glassmorphism */}
+        <Animated.View style={[
+          styles.balanceCardWrapper,
+          {
+            opacity: fadeAnim,
+            transform: [{ translateY: slideAnim }],
+          }
+        ]}>
+          <BlurView intensity={isDark ? 40 : 80} tint={isDark ? 'dark' : 'light'} style={styles.balanceCard}>
+            <LinearGradient
+              colors={balanceGradient as [string, string]}
+              style={styles.balanceGradientOverlay}
+            />
+            <View style={styles.balanceContent}>
+              {currentUserBalance !== 0 ? (
+                <>
+                  <View style={styles.balanceHeader}>
+                    <View style={[styles.balanceIndicator, { backgroundColor: balanceColor }]} />
+                    <ThemedText style={[styles.balanceLabel, !isDark && { color: colors.textSecondary }]}>
+                      {currentUserBalance > 0 ? 'You are owed' : 'You owe'}
+                    </ThemedText>
+                  </View>
+                  <ThemedText style={[styles.balanceAmount, { color: balanceColor }]}>
+                    ${Math.abs(currentUserBalance).toFixed(2)}
+                  </ThemedText>
+                </>
+              ) : (
+                <View style={styles.settledContainer}>
+                  <View style={styles.settledIconWrapper}>
+                    <LinearGradient
+                      colors={isDark ? ['#2DD4BF', '#14B8A6'] : ['#22c55e', '#16a34a']}
+                      style={styles.settledIcon}>
+                      <IconSymbol size={28} name="checkmark" color="#fff" />
+                    </LinearGradient>
+                  </View>
+                  <ThemedText style={[styles.settledText, !isDark && { color: colors.text }]}>
+                    All settled up!
+                  </ThemedText>
+                </View>
+              )}
+            </View>
+          </BlurView>
+        </Animated.View>
+
+        {/* Quick Actions */}
+        <View style={styles.quickActions}>
           <TouchableOpacity
-            style={styles.actionButton}
+            style={styles.quickActionButton}
             onPress={() => setExpenseModalVisible(true)}>
             <LinearGradient
               colors={gradients.buttonPrimary}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
-              style={styles.actionButtonGradient}>
+              style={styles.quickActionGradient}>
               <IconSymbol size={20} name="plus.circle.fill" color="#0A0A0F" />
-              <ThemedText style={[styles.actionButtonText, { color: '#0A0A0F' }]}>Add Expense</ThemedText>
+              <ThemedText style={[styles.quickActionText, { color: '#0A0A0F' }]}>Add Expense</ThemedText>
             </LinearGradient>
           </TouchableOpacity>
           <TouchableOpacity
-            style={styles.actionButton}
+            style={styles.quickActionButton}
             onPress={() => setSettleModalVisible(true)}>
             <LinearGradient
               colors={['#10b981', '#059669']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
-              style={styles.actionButtonGradient}>
+              style={styles.quickActionGradient}>
               <IconSymbol size={20} name="checkmark.circle.fill" color="#fff" />
-              <ThemedText style={styles.actionButtonText}>Settle Up</ThemedText>
+              <ThemedText style={styles.quickActionText}>Settle Up</ThemedText>
             </LinearGradient>
           </TouchableOpacity>
         </View>
 
+        {/* Members Section */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <ThemedText type="subtitle" style={[styles.sectionTitleText, !isDark && { color: colors.text }]}>Members</ThemedText>
+            <ThemedText type="subtitle" style={[styles.sectionTitle, !isDark && { color: colors.text }]}>
+              Members
+            </ThemedText>
             <TouchableOpacity 
-              style={[styles.addButtonRect, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)', borderColor: isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(34, 197, 94, 0.3)' }]}
+              style={[styles.addButton, { 
+                backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)', 
+                borderColor: isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(34, 197, 94, 0.3)' 
+              }]}
               onPress={() => setMemberModalVisible(true)}>
-              <IconSymbol size={18} name="plus" color={isDark ? '#2DD4BF' : colors.tint} />
+              <IconSymbol size={16} name="plus" color={isDark ? '#2DD4BF' : colors.tint} />
             </TouchableOpacity>
           </View>
-          {members.map(member => (
-            <View key={member.id}>{renderMember({ item: member })}</View>
+          {members.map((member, index) => (
+            <Animated.View 
+              key={member.id}
+              style={{
+                opacity: fadeAnim,
+                transform: [{ translateY: Animated.multiply(slideAnim, new Animated.Value((index + 1) * 0.15)) }],
+              }}>
+              {renderMember({ item: member })}
+            </Animated.View>
           ))}
         </View>
 
+        {/* Expenses Section */}
         <View style={styles.section}>
-          <ThemedText type="subtitle" style={[styles.sectionTitle, styles.sectionTitleText, !isDark && { color: colors.text }]}>Expenses</ThemedText>
+          <View style={styles.sectionHeader}>
+            <ThemedText type="subtitle" style={[styles.sectionTitle, !isDark && { color: colors.text }]}>
+              Expenses
+            </ThemedText>
+            <ThemedText style={[styles.expenseCount, !isDark && { color: colors.textSecondary }]}>
+              {expenses.length} {expenses.length === 1 ? 'expense' : 'expenses'}
+            </ThemedText>
+          </View>
           {expenses.length === 0 ? (
             <View style={styles.emptySection}>
-              <IconSymbol size={48} name="dollarsign.circle" color={isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(34, 197, 94, 0.3)'} />
-              <ThemedText style={[styles.emptyText, !isDark && { color: colors.textSecondary }]}>No expenses yet</ThemedText>
+              <View style={[styles.emptyIconWrapper, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.1)' : 'rgba(34, 197, 94, 0.1)' }]}>
+                <IconSymbol size={32} name="dollarsign.circle" color={isDark ? '#2DD4BF' : colors.tint} />
+              </View>
+              <ThemedText style={[styles.emptyTitle, !isDark && { color: colors.text }]}>No expenses yet</ThemedText>
+              <ThemedText style={[styles.emptyText, !isDark && { color: colors.textSecondary }]}>
+                Add an expense to start splitting costs
+              </ThemedText>
             </View>
           ) : (
-            expenses.map(expense => (
-              <View key={expense.id}>{renderExpense({ item: expense })}</View>
+            expenses.map((expense, index) => (
+              <Animated.View 
+                key={expense.id}
+                style={{
+                  opacity: fadeAnim,
+                  transform: [{ translateY: Animated.multiply(slideAnim, new Animated.Value((index + 1) * 0.1)) }],
+                }}>
+                {renderExpense({ item: expense })}
+              </Animated.View>
             ))
           )}
         </View>
@@ -366,7 +513,7 @@ export default function GroupDetailScreen() {
         setSettleAmount={setSettleAmount}
         onSubmit={settleUp}
       />
-    </LinearGradient>
+    </View>
   );
 }
 
@@ -374,17 +521,50 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  orbContainer: {
+    ...StyleSheet.absoluteFillObject,
+    overflow: 'hidden',
+  },
+  orb: {
+    position: 'absolute',
+    borderRadius: 999,
+  },
+  orb1: {
+    width: 300,
+    height: 300,
+    backgroundColor: 'rgba(45, 212, 191, 0.15)',
+    top: -100,
+    right: -100,
+  },
+  orb2: {
+    width: 200,
+    height: 200,
+    backgroundColor: 'rgba(139, 92, 246, 0.1)',
+    bottom: 200,
+    left: -50,
+  },
+  orb3: {
+    width: 150,
+    height: 150,
+    backgroundColor: 'rgba(45, 212, 191, 0.08)',
+    bottom: 50,
+    right: -30,
+  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
-    paddingTop: 60,
+    paddingHorizontal: 16,
+    paddingTop: Platform.OS === 'ios' ? 60 : 40,
+    paddingBottom: 8,
   },
-  backButton: {
+  backButtonRect: {
     width: 40,
     height: 40,
+    borderRadius: 12,
+    borderWidth: 1,
     justifyContent: 'center',
+    alignItems: 'center',
   },
   headerSpacer: {
     width: 40,
@@ -394,59 +574,149 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  loadingSpinner: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: 'rgba(45, 212, 191, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  loadingText: {
+    fontSize: 16,
+    opacity: 0.7,
+  },
   content: {
     flex: 1,
   },
-  balanceCard: {
-    margin: 16,
-    paddingHorizontal: 24,
-    paddingVertical: 24,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 120,
+  scrollContent: {
+    paddingBottom: 100,
   },
-  balanceTitle: {
-    fontSize: 12,
+  heroSection: {
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 20,
+  },
+  groupIconWrapper: {
+    position: 'relative',
+    marginBottom: 16,
+  },
+  groupIconGlow: {
+    position: 'absolute',
+    width: 88,
+    height: 88,
+    borderRadius: 20,
+    opacity: 0.3,
+    top: -4,
+    left: -4,
+  },
+  groupIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
+  },
+  groupIconInner: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  groupName: {
+    fontSize: 24,
     color: '#fff',
+    marginBottom: 4,
+  },
+  memberCount: {
+    fontSize: 14,
     opacity: 0.6,
+  },
+  balanceCardWrapper: {
+    marginHorizontal: 16,
+    marginBottom: 16,
+  },
+  balanceCard: {
+    borderRadius: 20,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  balanceGradientOverlay: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  balanceContent: {
+    padding: 24,
+    alignItems: 'center',
+  },
+  balanceHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginBottom: 8,
   },
-  totalBalance: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginBottom: 6,
-    color: '#fff',
-    lineHeight: 36,
+  balanceIndicator: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 8,
   },
-  balanceSubtitle: {
-    fontSize: 12,
-    color: '#fff',
-    opacity: 0.6,
+  balanceLabel: {
+    fontSize: 14,
+    opacity: 0.8,
   },
-  actionButtons: {
+  balanceAmount: {
+    fontSize: 40,
+    fontWeight: '700',
+    lineHeight: 48,
+  },
+  memberBalanceAmount: {
+    fontSize: 24,
+    fontWeight: '700',
+    lineHeight: 32,
+  },
+  settledContainer: {
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  settledIconWrapper: {
+    marginBottom: 12,
+  },
+  settledIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  settledText: {
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  quickActions: {
     flexDirection: 'row',
     paddingHorizontal: 16,
     gap: 12,
-    marginBottom: 24,
+    marginBottom: 20,
   },
-  actionButton: {
+  quickActionButton: {
     flex: 1,
     borderRadius: 12,
     overflow: 'hidden',
   },
-  actionButtonGradient: {
+  quickActionGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 12,
-    borderRadius: 10,
-    gap: 6,
+    paddingVertical: 14,
+    gap: 8,
   },
-  actionButtonText: {
+  quickActionText: {
     color: '#fff',
     fontWeight: '600',
-    fontSize: 13,
+    fontSize: 14,
   },
   section: {
     paddingHorizontal: 16,
@@ -459,45 +729,53 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   sectionTitle: {
-    marginBottom: 12,
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  addButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  expenseCount: {
+    fontSize: 13,
+    opacity: 0.6,
   },
   memberCard: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 12,
+    paddingHorizontal: 12,
+    marginBottom: 8,
+    borderRadius: 12,
+    backgroundColor: 'rgba(20, 35, 38, 0.4)',
   },
   memberAvatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: 'rgba(45, 212, 191, 0.15)',
+    width: 40,
+    height: 40,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 10,
+    marginRight: 12,
   },
   avatarText: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '600',
-    color: '#2DD4BF',
-    textAlign: 'center',
   },
   memberInfo: {
     flex: 1,
   },
   roleLabel: {
-    fontSize: 10,
+    fontSize: 11,
     opacity: 0.6,
+    marginTop: 2,
   },
   balanceInfo: {
     alignItems: 'flex-end',
-  },
-  balanceAmount: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  balanceLabel: {
-    fontSize: 11,
-    opacity: 0.6,
   },
   settledLabel: {
     fontSize: 12,
@@ -505,70 +783,52 @@ const styles = StyleSheet.create({
   },
   expenseCard: {
     flexDirection: 'row',
-    padding: 12,
-    borderRadius: 12,
-    marginBottom: 8,
+    alignItems: 'center',
+    padding: 14,
+    borderRadius: 14,
+    marginBottom: 10,
     backgroundColor: 'rgba(20, 35, 38, 0.6)',
   },
   expenseIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    backgroundColor: 'rgba(45, 212, 191, 0.15)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 10,
-  },
-  expenseInfo: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  expenseDate: {
-    fontSize: 11,
-    opacity: 0.6,
-    marginTop: 2,
-  },
-  expenseAmount: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  emptyText: {
-    textAlign: 'center',
-    opacity: 0.6,
-    paddingVertical: 16,
-  },
-  backButtonRect: {
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: 'rgba(45, 212, 191, 0.15)',
-    borderWidth: 1,
-    borderColor: 'rgba(45, 212, 191, 0.3)',
     justifyContent: 'center',
     alignItems: 'center',
+    marginRight: 12,
   },
-  headerTitle: {
-    color: '#fff',
+  expenseInfo: {
+    flex: 1,
   },
-  scrollContent: {
-    paddingBottom: 100,
+  expenseDate: {
+    fontSize: 12,
+    opacity: 0.5,
+    marginTop: 2,
   },
-  sectionTitleText: {
-    color: '#fff',
-  },
-  addButtonRect: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: 'rgba(45, 212, 191, 0.15)',
-    borderWidth: 1,
-    borderColor: 'rgba(45, 212, 191, 0.3)',
-    justifyContent: 'center',
-    alignItems: 'center',
+  expenseAmount: {
+    fontSize: 16,
+    fontWeight: '600',
   },
   emptySection: {
     alignItems: 'center',
-    paddingVertical: 32,
-    gap: 12,
+    paddingVertical: 40,
+  },
+  emptyIconWrapper: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  emptyText: {
+    fontSize: 14,
+    opacity: 0.6,
+    textAlign: 'center',
   },
 });

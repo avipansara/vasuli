@@ -5,8 +5,8 @@ import { useThemeColors } from '@/hooks/use-theme-colors';
 import { expenseService, groupService, initDatabase, settlementService, userService } from '@/services/api';
 import type { Group, User } from '@/types/database';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useEffect, useState } from 'react';
-import { Platform, SectionList, StyleSheet, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Animated, Platform, SectionList, StyleSheet, View } from 'react-native';
 
 type ActivityItem = {
   id: string;
@@ -23,9 +23,30 @@ export default function ActivityScreen() {
   const [activities, setActivities] = useState<ActivityItem[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Animations
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(30)).current;
+
   useEffect(() => {
     loadActivities();
   }, []);
+
+  useEffect(() => {
+    if (!loading) {
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 400,
+          useNativeDriver: true,
+        }),
+        Animated.timing(slideAnim, {
+          toValue: 0,
+          duration: 400,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [loading]);
 
   async function loadActivities() {
     try {
@@ -106,11 +127,17 @@ export default function ActivityScreen() {
       </View>
 
       {loading ? (
-        <View style={styles.emptyContainer}>
-          <ThemedText>Loading...</ThemedText>
+        <View style={styles.loadingContainer}>
+          <View style={styles.loadingSpinner}>
+            <IconSymbol size={32} name="arrow.trianglehead.2.clockwise" color={isDark ? '#2DD4BF' : colors.tint} />
+          </View>
+          <ThemedText style={styles.loadingText}>Loading...</ThemedText>
         </View>
       ) : activities.length === 0 ? (
-        <View style={styles.emptyContainer}>
+        <Animated.View style={[
+          styles.emptyContainer,
+          { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }
+        ]}>
           <View style={[styles.emptyIconContainer, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.1)' : 'rgba(34, 197, 94, 0.1)' }]}>
             <IconSymbol size={48} name="clock" color={isDark ? '#2DD4BF' : colors.tint} />
           </View>
@@ -120,7 +147,7 @@ export default function ActivityScreen() {
           <ThemedText style={[styles.emptyText, !isDark && { color: colors.textSecondary }]}>
             Your expense and payment history will appear here
           </ThemedText>
-        </View>
+        </Animated.View>
       ) : (
         <SectionList
           sections={groupedActivities}
@@ -155,6 +182,24 @@ export default function ActivityScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingSpinner: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: 'rgba(45, 212, 191, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  loadingText: {
+    fontSize: 16,
+    opacity: 0.7,
   },
   header: {
     flexDirection: 'column',

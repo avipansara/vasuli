@@ -1,5 +1,4 @@
 import { ThemedText } from '@/components/themed-text';
-import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import type { User } from '@/types/database';
 import React from 'react';
@@ -73,12 +72,6 @@ export function FriendCard({ friend, onPress }: FriendCardProps) {
           </ThemedText>
         )}
       </View>
-      <IconSymbol 
-        size={16} 
-        name="chevron.right" 
-        color={isDark ? 'rgba(255,255,255,0.3)' : colors.textSecondary} 
-        style={styles.chevron}
-      />
     </TouchableOpacity>
   );
 }

@@ -5,10 +5,11 @@ import { useThemeColors } from '@/hooks/use-theme-colors';
 import { calculateFriendBalance, expenseService, initDatabase, settlementService, userService } from '@/services/api';
 import type { Expense, ExpenseSplit, User } from '@/types/database';
 import { useFocusEffect } from '@react-navigation/native';
+import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useCallback, useState } from 'react';
-import { Alert, FlatList, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Alert, Animated, FlatList, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 interface UserWithBalance extends User {
   balance: number;
@@ -28,6 +29,53 @@ export default function FriendDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [settleModalVisible, setSettleModalVisible] = useState(false);
   const currentUserId = 'current-user';
+
+  // Animations
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(30)).current;
+  const scaleAnim = useRef(new Animated.Value(0.9)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    if (!loading && friend) {
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 400,
+          useNativeDriver: true,
+        }),
+        Animated.timing(slideAnim, {
+          toValue: 0,
+          duration: 400,
+          useNativeDriver: true,
+        }),
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          friction: 8,
+          tension: 40,
+          useNativeDriver: true,
+        }),
+      ]).start();
+
+      // Pulse animation for balance
+      if (friend.balance !== 0) {
+        Animated.loop(
+          Animated.sequence([
+            Animated.timing(pulseAnim, {
+              toValue: 1.05,
+              duration: 1500,
+              useNativeDriver: true,
+            }),
+            Animated.timing(pulseAnim, {
+              toValue: 1,
+              duration: 1500,
+              useNativeDriver: true,
+            }),
+          ])
+        ).start();
+      }
+    }
+  }, [loading, friend]);
 
   useFocusEffect(
     useCallback(() => {
@@ -135,8 +183,16 @@ export default function FriendDetailScreen() {
   if (loading || !friend) {
     return (
       <LinearGradient colors={gradients.screenBackground} style={styles.container}>
+        {/* Animated background orbs */}
+        <View style={styles.orbContainer}>
+          <View style={[styles.orb, styles.orb1]} />
+          <View style={[styles.orb, styles.orb2]} />
+        </View>
         <View style={styles.loadingContainer}>
-          <ThemedText>Loading...</ThemedText>
+          <View style={styles.loadingSpinner}>
+            <IconSymbol size={32} name="arrow.trianglehead.2.clockwise" color={isDark ? '#2DD4BF' : colors.tint} />
+          </View>
+          <ThemedText style={styles.loadingText}>Loading...</ThemedText>
         </View>
       </LinearGradient>
     );
@@ -144,123 +200,225 @@ export default function FriendDetailScreen() {
 
   const balance = friend.balance;
   const balanceColor = balance > 0 ? '#10b981' : balance < 0 ? '#ef4444' : '#2DD4BF';
+  const balanceGradient = balance > 0 
+    ? ['rgba(16, 185, 129, 0.2)', 'rgba(16, 185, 129, 0.05)']
+    : balance < 0 
+    ? ['rgba(239, 68, 68, 0.2)', 'rgba(239, 68, 68, 0.05)']
+    : ['rgba(45, 212, 191, 0.2)', 'rgba(45, 212, 191, 0.05)'];
 
   return (
-    <LinearGradient colors={gradients.screenBackground} style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <IconSymbol size={24} name="chevron.left" color={isDark ? '#fff' : colors.text} />
-        </TouchableOpacity>
-        <ThemedText type="title" style={[styles.headerTitle, !isDark && { color: colors.text }]}>
-          {friend.name}
-        </ThemedText>
-        <View style={styles.headerSpacer} />
+    <View style={styles.container}>
+      <LinearGradient colors={gradients.screenBackground} style={StyleSheet.absoluteFill} />
+      
+      {/* Animated background orbs */}
+      <View style={styles.orbContainer}>
+        <Animated.View style={[styles.orb, styles.orb1, { transform: [{ scale: pulseAnim }] }]} />
+        <Animated.View style={[styles.orb, styles.orb2]} />
+        <View style={[styles.orb, styles.orb3]} />
       </View>
 
-      {/* Friend Summary Card */}
-      <View style={[styles.summaryCard, !isDark && { backgroundColor: colors.card }]}>
-        <View
-          style={[
-            styles.avatar,
-            { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)' },
-          ]}>
-          <ThemedText style={[styles.avatarText, { color: isDark ? '#2DD4BF' : colors.tint }]}>
-            {friend.name.charAt(0).toUpperCase()}
-          </ThemedText>
-        </View>
-        
-        <View style={styles.summaryInfo}>
-          <ThemedText type="subtitle" style={[styles.friendName, !isDark && { color: colors.text }]}>
-            {friend.name}
-          </ThemedText>
-          {friend.email && (
-            <ThemedText style={[styles.friendEmail, !isDark && { color: colors.textSecondary }]}>
-              {friend.email}
-            </ThemedText>
-          )}
-        </View>
-
-        <View style={styles.balanceSection}>
-          {balance !== 0 ? (
-            <>
-              <ThemedText style={[styles.balanceAmount, { color: balanceColor }]}>
-                ${Math.abs(balance).toFixed(2)}
-              </ThemedText>
-              <ThemedText style={[styles.balanceLabel, !isDark && { color: colors.textSecondary }]}>
-                {balance > 0 ? 'owes you' : 'you owe'}
-              </ThemedText>
-            </>
-          ) : (
-            <ThemedText style={[styles.settledText, !isDark && { color: colors.textSecondary }]}>
-              All settled up!
-            </ThemedText>
-          )}
-        </View>
-
-        {balance !== 0 && (
-          <TouchableOpacity
-            onPress={() => setSettleModalVisible(true)}
-            activeOpacity={0.8}
-            style={styles.settleButtonContainer}>
-            <LinearGradient
-              colors={isDark ? ['#2DD4BF', '#14B8A6'] : ['#22c55e', '#16a34a']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.settleButton}>
-              <ThemedText style={styles.settleButtonText}>Settle Up</ThemedText>
-            </LinearGradient>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity 
+          onPress={() => router.back()} 
+          style={[styles.backButtonRect, { 
+            backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)', 
+            borderColor: isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(34, 197, 94, 0.3)' 
+          }]}>
+          <IconSymbol size={20} name="chevron.left" color={isDark ? '#2DD4BF' : colors.tint} />
+        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <TouchableOpacity 
+            style={[styles.headerActionButton, { 
+              backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)', 
+              borderColor: isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(34, 197, 94, 0.3)' 
+            }]}>
+            <IconSymbol size={18} name="ellipsis" color={isDark ? '#2DD4BF' : colors.tint} />
           </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Profile Hero Section */}
+      <Animated.View style={[
+        styles.heroSection,
+        {
+          opacity: fadeAnim,
+          transform: [{ translateY: slideAnim }, { scale: scaleAnim }],
+        }
+      ]}>
+        {/* Large Avatar with glow effect */}
+        <View style={styles.avatarWrapper}>
+          <LinearGradient
+            colors={isDark ? ['#2DD4BF', '#14B8A6'] : ['#22c55e', '#16a34a']}
+            style={styles.avatarGlow}
+          />
+          <View style={[styles.avatar, { backgroundColor: isDark ? '#0A0A0F' : '#fff' }]}>
+            <LinearGradient
+              colors={isDark ? ['rgba(45, 212, 191, 0.3)', 'rgba(45, 212, 191, 0.1)'] : ['rgba(34, 197, 94, 0.3)', 'rgba(34, 197, 94, 0.1)']}
+              style={styles.avatarInner}>
+              <ThemedText style={[styles.avatarText, { color: isDark ? '#2DD4BF' : colors.tint }]}>
+                {friend.name.charAt(0).toUpperCase()}
+              </ThemedText>
+            </LinearGradient>
+          </View>
+        </View>
+
+        {/* Name and email */}
+        <ThemedText type="title" style={[styles.friendName, !isDark && { color: colors.text }]}>
+          {friend.name}
+        </ThemedText>
+        {friend.email && (
+          <ThemedText style={[styles.friendEmail, !isDark && { color: colors.textSecondary }]}>
+            {friend.email}
+          </ThemedText>
         )}
+      </Animated.View>
+
+      {/* Balance Card with glassmorphism */}
+      <Animated.View style={[
+        styles.balanceCardWrapper,
+        {
+          opacity: fadeAnim,
+          transform: [{ translateY: slideAnim }],
+        }
+      ]}>
+        <BlurView intensity={isDark ? 40 : 80} tint={isDark ? 'dark' : 'light'} style={styles.balanceCard}>
+          <LinearGradient
+            colors={balanceGradient as [string, string]}
+            style={styles.balanceGradientOverlay}
+          />
+          <View style={styles.balanceContent}>
+            {balance !== 0 ? (
+              <>
+                <View style={styles.balanceHeader}>
+                  <View style={[styles.balanceIndicator, { backgroundColor: balanceColor }]} />
+                  <ThemedText style={[styles.balanceLabel, !isDark && { color: colors.textSecondary }]}>
+                    {balance > 0 ? `${friend.name.split(' ')[0]} owes you` : `You owe ${friend.name.split(' ')[0]}`}
+                  </ThemedText>
+                </View>
+                <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
+                  <ThemedText style={[styles.balanceAmount, { color: balanceColor }]}>
+                    ${Math.abs(balance).toFixed(2)}
+                  </ThemedText>
+                </Animated.View>
+                <TouchableOpacity
+                  onPress={() => setSettleModalVisible(true)}
+                  activeOpacity={0.8}
+                  style={styles.settleButtonContainer}>
+                  <LinearGradient
+                    colors={balance > 0 ? ['#10b981', '#059669'] : ['#ef4444', '#dc2626']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.settleButton}>
+                    <IconSymbol size={18} name="checkmark.circle.fill" color="#fff" style={{ marginRight: 8 }} />
+                    <ThemedText style={styles.settleButtonText}>Settle Up</ThemedText>
+                  </LinearGradient>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <View style={styles.settledContainer}>
+                <View style={styles.settledIconWrapper}>
+                  <LinearGradient
+                    colors={isDark ? ['#2DD4BF', '#14B8A6'] : ['#22c55e', '#16a34a']}
+                    style={styles.settledIcon}>
+                    <IconSymbol size={28} name="checkmark" color="#fff" />
+                  </LinearGradient>
+                </View>
+                <ThemedText style={[styles.settledText, !isDark && { color: colors.text }]}>
+                  All settled up!
+                </ThemedText>
+                <ThemedText style={[styles.settledSubtext, !isDark && { color: colors.textSecondary }]}>
+                  No outstanding balance with {friend.name.split(' ')[0]}
+                </ThemedText>
+              </View>
+            )}
+          </View>
+        </BlurView>
+      </Animated.View>
+
+      {/* Quick Actions */}
+      <View style={styles.quickActions}>
+        <TouchableOpacity style={[styles.quickActionButton, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.1)' : 'rgba(34, 197, 94, 0.1)' }]}>
+          <IconSymbol size={20} name="plus.circle.fill" color={isDark ? '#2DD4BF' : colors.tint} />
+          <ThemedText style={[styles.quickActionText, { color: isDark ? '#2DD4BF' : colors.tint }]}>Add Expense</ThemedText>
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.quickActionButton, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.1)' : 'rgba(34, 197, 94, 0.1)' }]}>
+          <IconSymbol size={20} name="bell.fill" color={isDark ? '#2DD4BF' : colors.tint} />
+          <ThemedText style={[styles.quickActionText, { color: isDark ? '#2DD4BF' : colors.tint }]}>Remind</ThemedText>
+        </TouchableOpacity>
       </View>
 
       {/* Expense History */}
       <View style={styles.historySection}>
-        <ThemedText type="subtitle" style={[styles.sectionTitle, !isDark && { color: colors.text }]}>
-          Expense History
-        </ThemedText>
+        <View style={styles.sectionHeader}>
+          <ThemedText type="subtitle" style={[styles.sectionTitle, !isDark && { color: colors.text }]}>
+            Activity
+          </ThemedText>
+          <ThemedText style={[styles.expenseCount, !isDark && { color: colors.textSecondary }]}>
+            {expenses.length} {expenses.length === 1 ? 'expense' : 'expenses'}
+          </ThemedText>
+        </View>
 
         {expenses.length === 0 ? (
           <View style={styles.emptyHistory}>
-            <IconSymbol size={48} name="doc.text" color={isDark ? 'rgba(255,255,255,0.3)' : colors.textSecondary} />
+            <View style={[styles.emptyIconWrapper, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.1)' : 'rgba(34, 197, 94, 0.1)' }]}>
+              <IconSymbol size={32} name="doc.text" color={isDark ? '#2DD4BF' : colors.tint} />
+            </View>
+            <ThemedText style={[styles.emptyTitle, !isDark && { color: colors.text }]}>
+              No expenses yet
+            </ThemedText>
             <ThemedText style={[styles.emptyText, !isDark && { color: colors.textSecondary }]}>
-              No expenses with {friend.name} yet
+              Add an expense to start tracking with {friend.name.split(' ')[0]}
             </ThemedText>
           </View>
         ) : (
           <FlatList
             data={expenses}
             keyExtractor={(item) => item.id}
-            renderItem={({ item }) => (
-              <View style={[styles.expenseCard, !isDark && { backgroundColor: colors.card }]}>
-                <View style={styles.expenseLeft}>
+            showsVerticalScrollIndicator={false}
+            renderItem={({ item, index }) => (
+              <Animated.View
+                style={[
+                  styles.expenseCard,
+                  !isDark && { backgroundColor: colors.card },
+                  {
+                    opacity: fadeAnim,
+                    transform: [{ translateY: Animated.multiply(slideAnim, new Animated.Value((index + 1) * 0.2)) }],
+                  }
+                ]}>
+                <View style={[
+                  styles.expenseIcon,
+                  { backgroundColor: item.paidBy === currentUserId ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)' }
+                ]}>
+                  <IconSymbol 
+                    size={18} 
+                    name={item.paidBy === currentUserId ? 'arrow.up.right' : 'arrow.down.left'} 
+                    color={item.paidBy === currentUserId ? '#10b981' : '#ef4444'} 
+                  />
+                </View>
+                <View style={styles.expenseInfo}>
                   <ThemedText style={[styles.expenseDescription, !isDark && { color: colors.text }]}>
                     {item.description}
                   </ThemedText>
                   <ThemedText style={[styles.expenseDate, !isDark && { color: colors.textSecondary }]}>
-                    {formatDate(item.date)} • Paid by {item.paidByName}
+                    {formatDate(item.date)} • {item.paidByName} paid
                   </ThemedText>
                 </View>
-                <View style={styles.expenseRight}>
-                  <ThemedText style={[styles.expenseTotal, !isDark && { color: colors.text }]}>
+                <View style={styles.expenseAmounts}>
+                  <ThemedText style={[styles.expenseTotal, !isDark && { color: colors.textSecondary }]}>
                     ${item.amount.toFixed(2)}
                   </ThemedText>
                   <ThemedText
                     style={[
                       styles.expenseShare,
-                      {
-                        color:
-                          item.paidBy === currentUserId
-                            ? '#10b981'
-                            : '#ef4444',
-                      },
+                      { color: item.paidBy === currentUserId ? '#10b981' : '#ef4444' },
                     ]}>
                     {item.paidBy === currentUserId
                       ? `+$${item.friendShare.toFixed(2)}`
                       : `-$${item.yourShare.toFixed(2)}`}
                   </ThemedText>
                 </View>
-              </View>
+              </Animated.View>
             )}
             contentContainerStyle={styles.expenseList}
           />
@@ -273,7 +431,7 @@ export default function FriendDetailScreen() {
         friend={friend}
         onConfirm={handleSettleUp}
       />
-    </LinearGradient>
+    </View>
   );
 }
 
@@ -281,10 +439,52 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  orbContainer: {
+    ...StyleSheet.absoluteFillObject,
+    overflow: 'hidden',
+  },
+  orb: {
+    position: 'absolute',
+    borderRadius: 999,
+  },
+  orb1: {
+    width: 300,
+    height: 300,
+    backgroundColor: 'rgba(45, 212, 191, 0.15)',
+    top: -100,
+    right: -100,
+  },
+  orb2: {
+    width: 200,
+    height: 200,
+    backgroundColor: 'rgba(139, 92, 246, 0.1)',
+    bottom: 200,
+    left: -50,
+  },
+  orb3: {
+    width: 150,
+    height: 150,
+    backgroundColor: 'rgba(45, 212, 191, 0.08)',
+    bottom: 50,
+    right: -30,
+  },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  loadingSpinner: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: 'rgba(45, 212, 191, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  loadingText: {
+    fontSize: 16,
+    opacity: 0.7,
   },
   header: {
     flexDirection: 'row',
@@ -292,137 +492,255 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingTop: Platform.OS === 'ios' ? 60 : 40,
     paddingHorizontal: 16,
-    paddingBottom: 16,
+    paddingBottom: 8,
   },
-  backButton: {
+  backButtonRect: {
     width: 40,
     height: 40,
+    borderRadius: 12,
+    borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  headerTitle: {
-    fontSize: 18,
-    color: '#fff',
+  headerActions: {
+    flexDirection: 'row',
+    gap: 8,
   },
-  headerSpacer: {
+  headerActionButton: {
     width: 40,
-  },
-  summaryCard: {
-    marginHorizontal: 16,
-    padding: 20,
-    borderRadius: 16,
-    backgroundColor: 'rgba(20, 35, 38, 0.6)',
-    alignItems: 'center',
-  },
-  avatar: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    height: 40,
+    borderRadius: 12,
+    borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 12,
   },
-  avatarText: {
-    fontSize: 28,
-    fontWeight: '600',
-  },
-  summaryInfo: {
+  heroSection: {
     alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 20,
+  },
+  avatarWrapper: {
+    position: 'relative',
     marginBottom: 16,
   },
+  avatarGlow: {
+    position: 'absolute',
+    width: 100,
+    height: 100,
+    borderRadius: 20,
+    opacity: 0.3,
+    top: -4,
+    left: -4,
+  },
+  avatar: {
+    width: 92,
+    height: 92,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
+  },
+  avatarInner: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarText: {
+    fontSize: 36,
+    fontWeight: '700',
+    lineHeight: 42,
+  },
   friendName: {
-    fontSize: 20,
+    fontSize: 24,
     color: '#fff',
+    marginBottom: 4,
   },
   friendEmail: {
     fontSize: 14,
-    marginTop: 4,
-    opacity: 0.7,
+    opacity: 0.6,
   },
-  balanceSection: {
-    alignItems: 'center',
+  balanceCardWrapper: {
+    marginHorizontal: 16,
     marginBottom: 16,
   },
-  balanceAmount: {
-    fontSize: 32,
-    fontWeight: '700',
+  balanceCard: {
+    borderRadius: 20,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  balanceGradientOverlay: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  balanceContent: {
+    padding: 24,
+    alignItems: 'center',
+  },
+  balanceHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  balanceIndicator: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 8,
   },
   balanceLabel: {
     fontSize: 14,
-    marginTop: 4,
-    opacity: 0.7,
+    opacity: 0.8,
   },
-  settledText: {
-    fontSize: 16,
-    opacity: 0.7,
+  balanceAmount: {
+    fontSize: 48,
+    fontWeight: '700',
+    lineHeight: 56,
+    marginBottom: 20,
   },
   settleButtonContainer: {
     width: '100%',
   },
   settleButton: {
-    paddingVertical: 14,
-    borderRadius: 12,
+    flexDirection: 'row',
+    paddingVertical: 16,
+    borderRadius: 14,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   settleButtonText: {
     fontSize: 16,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  settledContainer: {
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  settledIconWrapper: {
+    marginBottom: 12,
+  },
+  settledIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  settledText: {
+    fontSize: 20,
     fontWeight: '600',
-    color: '#0A0A0F',
+    marginBottom: 4,
+  },
+  settledSubtext: {
+    fontSize: 14,
+    opacity: 0.6,
+  },
+  quickActions: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    gap: 12,
+    marginBottom: 20,
+  },
+  quickActionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: 12,
+    gap: 8,
+  },
+  quickActionText: {
+    fontSize: 14,
+    fontWeight: '600',
   },
   historySection: {
     flex: 1,
-    marginTop: 24,
     paddingHorizontal: 16,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
   },
   sectionTitle: {
     fontSize: 18,
-    marginBottom: 16,
+    fontWeight: '600',
     color: '#fff',
+  },
+  expenseCount: {
+    fontSize: 13,
+    opacity: 0.6,
   },
   emptyHistory: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingBottom: 100,
+    paddingBottom: 60,
+  },
+  emptyIconWrapper: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 8,
   },
   emptyText: {
-    marginTop: 12,
+    fontSize: 14,
     opacity: 0.6,
+    textAlign: 'center',
   },
   expenseList: {
     paddingBottom: 100,
   },
   expenseCard: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
-    marginBottom: 8,
-    borderRadius: 12,
+    padding: 14,
+    marginBottom: 10,
+    borderRadius: 14,
     backgroundColor: 'rgba(20, 35, 38, 0.6)',
   },
-  expenseLeft: {
+  expenseIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  expenseInfo: {
     flex: 1,
   },
   expenseDescription: {
-    fontSize: 16,
+    fontSize: 15,
+    fontWeight: '500',
     color: '#fff',
-    marginBottom: 4,
+    marginBottom: 3,
   },
   expenseDate: {
     fontSize: 12,
-    opacity: 0.6,
+    opacity: 0.5,
   },
-  expenseRight: {
+  expenseAmounts: {
     alignItems: 'flex-end',
   },
   expenseTotal: {
-    fontSize: 14,
-    color: '#fff',
+    fontSize: 12,
+    opacity: 0.5,
     marginBottom: 2,
   },
   expenseShare: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 16,
+    fontWeight: '700',
   },
 });
