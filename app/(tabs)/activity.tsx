@@ -53,42 +53,58 @@ export default function ActivityScreen() {
     try {
       await initDatabase();
       const allActivities: ActivityItem[] = [];
+      
+      // Load all expenses (including friend-only expenses without groups)
+      const allExpenses = await expenseService.getAll();
+      console.log('[Activity] Loaded all expenses:', allExpenses.length);
+      
       const groups = await groupService.getAll();
+      console.log('[Activity] Loaded groups:', groups.length);
 
+      // Add all expenses to activities
+      for (const expense of allExpenses) {
+        const user = await userService.getById(expense.paidBy);
+        const group = expense.groupId ? groups.find((g: Group) => g.id === expense.groupId) : undefined;
+        
+        allActivities.push({
+          id: expense.id,
+          type: 'expense',
+          date: expense.date,
+          description: expense.description,
+          amount: expense.amount,
+          group,
+          user: user || undefined,
+        });
+      }
+
+      // Load settlements from groups
       for (const group of groups) {
-        const expenses = await expenseService.getByGroup(group.id);
-        for (const expense of expenses) {
-          const user = await userService.getById(expense.paidBy);
-          allActivities.push({
-            id: expense.id,
-            type: 'expense',
-            date: expense.date,
-            description: expense.description,
-            amount: expense.amount,
-            group,
-            user: user || undefined,
-          });
-        }
-
-        const settlements = await settlementService.getByGroup(group.id);
-        for (const settlement of settlements) {
-          const fromUser = await userService.getById(settlement.fromUserId);
-          const toUser = await userService.getById(settlement.toUserId);
-          allActivities.push({
-            id: settlement.id,
-            type: 'settlement',
-            date: settlement.date,
-            description: `${fromUser?.name || 'Someone'} paid ${toUser?.name || 'someone'}`,
-            amount: settlement.amount,
-            group,
-          });
+        try {
+          const settlements = await settlementService.getByGroup(group.id);
+          console.log(`[Activity] Group ${group.name}: ${settlements.length} settlements`);
+          
+          for (const settlement of settlements) {
+            const fromUser = await userService.getById(settlement.fromUserId);
+            const toUser = await userService.getById(settlement.toUserId);
+            allActivities.push({
+              id: settlement.id,
+              type: 'settlement',
+              date: settlement.date,
+              description: `${fromUser?.name || 'Someone'} paid ${toUser?.name || 'someone'}`,
+              amount: settlement.amount,
+              group,
+            });
+          }
+        } catch (groupError) {
+          console.error(`[Activity] Error loading settlements for group ${group.name}:`, groupError);
         }
       }
 
       allActivities.sort((a, b) => b.date - a.date);
+      console.log('[Activity] Total activities:', allActivities.length);
       setActivities(allActivities);
     } catch (error) {
-      console.error('Error loading activities:', error);
+      console.error('[Activity] Error loading activities:', error);
     } finally {
       setLoading(false);
     }

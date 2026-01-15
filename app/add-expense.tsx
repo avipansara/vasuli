@@ -120,7 +120,12 @@ export default function AddExpenseScreen() {
 
       if (splitType === SplitType.GROUP) {
         const members = await groupService.getMembers(selectedGroupId);
-        const splitAmount = amountNum / members.length;
+        const splits = calculateSplits(members.map((m: { userId: string }) => m.userId), amountNum);
+        
+        if (!splits) {
+          setLoading(false);
+          return;
+        }
 
         await expenseService.create(
           {
@@ -131,15 +136,16 @@ export default function AddExpenseScreen() {
             paidBy: currentUserId,
             date: Date.now(),
           },
-          members.map((member: { userId: string }) => ({
-            userId: member.userId,
-            amount: splitAmount,
-            splitType: 'equal' as const,
-          }))
+          splits
         );
       } else {
         const allParticipants = [currentUserId, ...selectedFriendIds];
-        const splitAmount = amountNum / allParticipants.length;
+        const splits = calculateSplits(allParticipants, amountNum);
+        
+        if (!splits) {
+          setLoading(false);
+          return;
+        }
 
         await expenseService.create(
           {
@@ -149,11 +155,7 @@ export default function AddExpenseScreen() {
             paidBy: currentUserId,
             date: Date.now(),
           },
-          allParticipants.map(userId => ({
-            userId,
-            amount: splitAmount,
-            splitType: 'equal' as const,
-          }))
+          splits
         );
       }
 
@@ -164,6 +166,66 @@ export default function AddExpenseScreen() {
     } finally {
       setLoading(false);
     }
+  }
+
+  function calculateSplits(userIds: string[], totalAmount: number): { userId: string; amount: number; splitType: 'equal' | 'unequal' | 'percentage' | 'shares' }[] | null {
+    if (splitMethod === SplitMethod.EQUAL) {
+      const splitAmount = totalAmount / userIds.length;
+      return userIds.map(userId => ({
+        userId,
+        amount: splitAmount,
+        splitType: 'equal' as const,
+      }));
+    }
+
+    if (splitMethod === SplitMethod.UNEQUAL) {
+      const splits = userIds.map(userId => {
+        const customAmount = parseFloat(customAmounts[userId] || '0');
+        return { userId, amount: customAmount, splitType: 'unequal' as const };
+      });
+
+      const total = splits.reduce((sum, s) => sum + s.amount, 0);
+      if (Math.abs(total - totalAmount) > 0.01) {
+        Alert.alert('Invalid Split', `Amounts must add up to $${totalAmount.toFixed(2)}. Current total: $${total.toFixed(2)}`);
+        return null;
+      }
+
+      return splits;
+    }
+
+    if (splitMethod === SplitMethod.PERCENTAGE) {
+      const percentages = userIds.map(userId => parseFloat(customPercentages[userId] || '0'));
+      const totalPercentage = percentages.reduce((sum, p) => sum + p, 0);
+
+      if (Math.abs(totalPercentage - 100) > 0.01) {
+        Alert.alert('Invalid Split', `Percentages must add up to 100%. Current total: ${totalPercentage.toFixed(1)}%`);
+        return null;
+      }
+
+      return userIds.map((userId, index) => ({
+        userId,
+        amount: (totalAmount * percentages[index]) / 100,
+        splitType: 'percentage' as const,
+      }));
+    }
+
+    if (splitMethod === SplitMethod.SHARES) {
+      const shares = userIds.map(userId => parseFloat(customShares[userId] || '0'));
+      const totalShares = shares.reduce((sum, s) => sum + s, 0);
+
+      if (totalShares === 0) {
+        Alert.alert('Invalid Split', 'Please enter at least one share');
+        return null;
+      }
+
+      return userIds.map((userId, index) => ({
+        userId,
+        amount: (totalAmount * shares[index]) / totalShares,
+        splitType: 'shares' as const,
+      }));
+    }
+
+    return null;
   }
 
   return (

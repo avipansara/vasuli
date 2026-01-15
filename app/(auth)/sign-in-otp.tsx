@@ -166,6 +166,16 @@ export default function SignInOTPScreen() {
   }
 
   function handleOtpChange(index: number, value: string) {
+    // Handle paste of full 6-digit code
+    if (value.length === 6 && /^\d{6}$/.test(value)) {
+      const digits = value.split('');
+      setOtp(digits);
+      otpInputs.current[5]?.focus();
+      setTimeout(() => handleVerifyCode(), 300);
+      return;
+    }
+
+    // Handle single digit input
     if (value.length > 1) {
       value = value[value.length - 1];
     }

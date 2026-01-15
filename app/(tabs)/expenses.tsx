@@ -41,14 +41,17 @@ export default function ExpensesScreen() {
     try {
       await initDatabase();
       const allGroups = await groupService.getAll();
+      console.log('[Expenses] Loaded groups:', allGroups.length);
       setGroups(allGroups);
       
       const allUsers = await userService.getAll();
+      console.log('[Expenses] Loaded users:', allUsers.length);
       // Filter out current user from friends list
       setFriends(allUsers.filter((u: User) => u.id !== currentUserId));
 
       // Fetch ALL expenses (including friend-only expenses without groupId)
       const allExpensesRaw = await expenseService.getAll();
+      console.log('[Expenses] Raw expenses loaded:', allExpensesRaw.length);
       
       // Map expenses to include group info where applicable
       const allExpenses: (Expense & { group?: Group })[] = allExpensesRaw.map((e: Expense) => {
@@ -57,9 +60,10 @@ export default function ExpensesScreen() {
       });
 
       allExpenses.sort((a, b) => b.date - a.date);
+      console.log('[Expenses] Final expenses to display:', allExpenses.length);
       setExpenses(allExpenses);
     } catch (error) {
-      console.error('Error loading expenses:', error);
+      console.error('[Expenses] Error loading expenses:', error);
     } finally {
       setLoading(false);
     }
