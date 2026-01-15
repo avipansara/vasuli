@@ -6,8 +6,9 @@ import { useThemeColors } from '@/hooks/use-theme-colors';
 import { activityService } from '@/services/activity-service';
 import { initDatabase } from '@/services/api';
 import type { Activity } from '@/types/database';
+import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Animated, Platform, SectionList, StyleSheet, View } from 'react-native';
 
 export default function ActivityScreen() {
@@ -19,9 +20,11 @@ export default function ActivityScreen() {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
 
-  useEffect(() => {
-    loadActivities();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      loadActivities();
+    }, [])
+  );
 
   useEffect(() => {
     if (!loading) {

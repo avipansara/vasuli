@@ -190,7 +190,7 @@ export default function AddExpenseScreen() {
     }
   }
 
-  function calculateSplits(userIds: string[], totalAmount: number): { userId: string; amount: number; splitType: 'equal' | 'unequal' | 'percentage' | 'shares' }[] | null {
+  function calculateSplits(userIds: string[], totalAmount: number): { userId: string; amount: number; splitType: 'equal' | 'exact' | 'percentage' }[] | null {
     if (splitMethod === SplitMethod.EQUAL) {
       const splitAmount = totalAmount / userIds.length;
       return userIds.map(userId => ({
@@ -203,7 +203,7 @@ export default function AddExpenseScreen() {
     if (splitMethod === SplitMethod.UNEQUAL) {
       const splits = userIds.map(userId => {
         const customAmount = parseFloat(customAmounts[userId] || '0');
-        return { userId, amount: customAmount, splitType: 'unequal' as const };
+        return { userId, amount: customAmount, splitType: 'exact' as const };
       });
 
       const total = splits.reduce((sum, s) => sum + s.amount, 0);
@@ -243,7 +243,7 @@ export default function AddExpenseScreen() {
       return userIds.map((userId, index) => ({
         userId,
         amount: (totalAmount * shares[index]) / totalShares,
-        splitType: 'shares' as const,
+        splitType: 'exact' as const,
       }));
     }
 

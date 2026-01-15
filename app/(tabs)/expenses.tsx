@@ -6,9 +6,10 @@ import { useAuth } from '@/contexts/auth-context-otp';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { expenseService, groupService, initDatabase, userService } from '@/services/api';
 import type { Expense, Group, User } from '@/types/database';
+import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Alert, Platform, SectionList, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 export default function ExpensesScreen() {
@@ -27,9 +28,11 @@ export default function ExpensesScreen() {
   const { user } = useAuth();
   const currentUserId = user?.id || '';
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+    }, [])
+  );
 
   useEffect(() => {
     if (openModal === 'true') {
