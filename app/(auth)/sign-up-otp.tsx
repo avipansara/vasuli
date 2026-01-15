@@ -6,18 +6,18 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Link, router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import {
-    Alert,
-    Animated,
-    Dimensions,
-    Keyboard,
-    KeyboardAvoidingView,
-    Platform,
-    Pressable,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableWithoutFeedback,
-    View,
+  Alert,
+  Animated,
+  Dimensions,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableWithoutFeedback,
+  View,
 } from 'react-native';
 
 const { width, height } = Dimensions.get('window');
@@ -170,13 +170,42 @@ export default function SignUpOTPScreen() {
   }
 
   function handleOtpChange(index: number, value: string) {
-    // Handle paste of full 6-digit code
-    if (value.length === 6 && /^\d{6}$/.test(value)) {
-      const digits = value.split('');
-      setOtp(digits);
-      otpInputs.current[5]?.focus();
-      setTimeout(() => handleVerifyCode(), 300);
-      return;
+    // Handle paste or autofill of full 6-digit code
+    if (value.length >= 6) {
+      const digits = value.replace(/\D/g, '').slice(0, 6).split('');
+      if (digits.length === 6) {
+        // Set all digits in state
+        const newOtp = [...otp];
+        digits.forEach((digit, i) => {
+          newOtp[i] = digit;
+        });
+        setOtp(newOtp);
+        // Focus last input
+        setTimeout(() => {
+          otpInputs.current[5]?.focus();
+          handleVerifyCode();
+        }, 100);
+        return;
+      }
+    }
+
+    // Handle multi-digit paste into first field
+    if (index === 0 && value.length > 1) {
+      const digits = value.replace(/\D/g, '').slice(0, 6).split('');
+      if (digits.length === 6) {
+        // Set all digits in state
+        const newOtp = [...otp];
+        digits.forEach((digit, i) => {
+          newOtp[i] = digit;
+        });
+        setOtp(newOtp);
+        // Focus last input
+        setTimeout(() => {
+          otpInputs.current[5]?.focus();
+          handleVerifyCode();
+        }, 100);
+        return;
+      }
     }
 
     // Handle single digit input
@@ -257,11 +286,11 @@ export default function SignUpOTPScreen() {
         <View style={[
           styles.inputContainer,
           { 
-            backgroundColor: isDark ? '#1E293B' : '#F8FAFC',
-            borderColor: isDark ? '#374151' : '#E2E8F0',
+            backgroundColor: isDark ? 'rgba(139, 92, 246, 0.1)' : 'rgba(99, 102, 241, 0.08)',
+            borderColor: isDark ? 'rgba(139, 92, 246, 0.3)' : 'rgba(99, 102, 241, 0.3)',
           },
         ]}>
-          <IconSymbol name="person.fill" size={20} color={isDark ? '#6B7280' : '#9CA3AF'} />
+          <IconSymbol name="person.fill" size={20} color={isDark ? '#8B5CF6' : '#6366F1'} />
           <TextInput
             style={[styles.input, { color: isDark ? '#fff' : colors.text }]}
             placeholder="John Doe"
@@ -275,43 +304,53 @@ export default function SignUpOTPScreen() {
       </View>
 
       {/* Method Toggle */}
-      <View style={[styles.toggleContainer, { backgroundColor: isDark ? '#1E293B' : '#F1F5F9' }]}>
+      <View style={styles.toggleContainer}>
         <Pressable
           onPress={() => setContactMethod('email')}
-          style={[
-            styles.toggleButton,
-            contactMethod === 'email' && [styles.toggleButtonActive, { backgroundColor: isDark ? '#374151' : '#fff' }],
-          ]}>
-          <IconSymbol
-            name="envelope.fill"
-            size={18}
-            color={contactMethod === 'email' ? (isDark ? '#8B5CF6' : '#6366F1') : (isDark ? '#9CA3AF' : '#6B7280')}
-          />
-          <Text style={[
-            styles.toggleText,
-            { color: contactMethod === 'email' ? (isDark ? '#fff' : colors.text) : (isDark ? '#9CA3AF' : '#6B7280') },
-          ]}>
-            Email
-          </Text>
+          style={styles.toggleButton}>
+          {contactMethod === 'email' ? (
+            <LinearGradient
+              colors={isDark ? ['#8B5CF6', '#7C3AED'] : ['#6366F1', '#4F46E5']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.toggleButtonGradient}>
+              <IconSymbol name="envelope.fill" size={18} color="#fff" />
+              <Text style={[styles.toggleText, { color: '#fff' }]}>Email</Text>
+            </LinearGradient>
+          ) : (
+            <View style={[styles.toggleButtonInactive, { 
+              backgroundColor: isDark ? 'rgba(139, 92, 246, 0.15)' : 'rgba(99, 102, 241, 0.1)',
+              borderWidth: 1,
+              borderColor: isDark ? 'rgba(139, 92, 246, 0.25)' : 'rgba(99, 102, 241, 0.2)',
+            }]}>
+              <IconSymbol name="envelope.fill" size={18} color={isDark ? 'rgba(139, 92, 246, 0.6)' : 'rgba(99, 102, 241, 0.6)'} />
+              <Text style={[styles.toggleText, { color: isDark ? 'rgba(139, 92, 246, 0.7)' : 'rgba(99, 102, 241, 0.7)' }]}>Email</Text>
+            </View>
+          )}
         </Pressable>
 
         <Pressable
           onPress={() => setContactMethod('phone')}
-          style={[
-            styles.toggleButton,
-            contactMethod === 'phone' && [styles.toggleButtonActive, { backgroundColor: isDark ? '#374151' : '#fff' }],
-          ]}>
-          <IconSymbol
-            name="phone.fill"
-            size={18}
-            color={contactMethod === 'phone' ? (isDark ? '#8B5CF6' : '#6366F1') : (isDark ? '#9CA3AF' : '#6B7280')}
-          />
-          <Text style={[
-            styles.toggleText,
-            { color: contactMethod === 'phone' ? (isDark ? '#fff' : colors.text) : (isDark ? '#9CA3AF' : '#6B7280') },
-          ]}>
-            Phone
-          </Text>
+          style={styles.toggleButton}>
+          {contactMethod === 'phone' ? (
+            <LinearGradient
+              colors={isDark ? ['#8B5CF6', '#7C3AED'] : ['#6366F1', '#4F46E5']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.toggleButtonGradient}>
+              <IconSymbol name="phone.fill" size={18} color="#fff" />
+              <Text style={[styles.toggleText, { color: '#fff' }]}>Phone</Text>
+            </LinearGradient>
+          ) : (
+            <View style={[styles.toggleButtonInactive, { 
+              backgroundColor: isDark ? 'rgba(139, 92, 246, 0.15)' : 'rgba(99, 102, 241, 0.1)',
+              borderWidth: 1,
+              borderColor: isDark ? 'rgba(139, 92, 246, 0.25)' : 'rgba(99, 102, 241, 0.2)',
+            }]}>
+              <IconSymbol name="phone.fill" size={18} color={isDark ? 'rgba(139, 92, 246, 0.6)' : 'rgba(99, 102, 241, 0.6)'} />
+              <Text style={[styles.toggleText, { color: isDark ? 'rgba(139, 92, 246, 0.7)' : 'rgba(99, 102, 241, 0.7)' }]}>Phone</Text>
+            </View>
+          )}
         </Pressable>
       </View>
 
@@ -323,14 +362,14 @@ export default function SignUpOTPScreen() {
         <View style={[
           styles.inputContainer,
           { 
-            backgroundColor: isDark ? '#1E293B' : '#F8FAFC',
-            borderColor: isDark ? '#374151' : '#E2E8F0',
+            backgroundColor: isDark ? 'rgba(139, 92, 246, 0.1)' : 'rgba(99, 102, 241, 0.08)',
+            borderColor: isDark ? 'rgba(139, 92, 246, 0.3)' : 'rgba(99, 102, 241, 0.3)',
           },
         ]}>
           <IconSymbol
             name={contactMethod === 'email' ? 'envelope.fill' : 'phone.fill'}
             size={20}
-            color={isDark ? '#6B7280' : '#9CA3AF'}
+            color={isDark ? '#8B5CF6' : '#6366F1'}
           />
           <TextInput
             style={[styles.input, { color: isDark ? '#fff' : colors.text }]}
@@ -387,13 +426,20 @@ export default function SignUpOTPScreen() {
   );
 
   const renderOTPStep = () => (
-    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-      <View style={styles.stepContainer}>
-        {/* Back Button */}
-        <Pressable onPress={() => setStep('contact')} style={styles.backButton}>
-          <IconSymbol name="chevron.left" size={20} color={isDark ? '#8B5CF6' : '#6366F1'} />
-          <Text style={[styles.backText, { color: isDark ? '#8B5CF6' : '#6366F1' }]}>Back</Text>
-        </Pressable>
+    <View style={styles.otpContainer}>
+      {/* Fixed Back Button */}
+      <Pressable 
+        onPress={() => setStep('contact')} 
+        style={[styles.backButton, { 
+          backgroundColor: isDark ? 'rgba(139, 92, 246, 0.15)' : 'rgba(99, 102, 241, 0.1)',
+          borderColor: isDark ? 'rgba(139, 92, 246, 0.4)' : 'rgba(99, 102, 241, 0.3)',
+        }]}>
+        <IconSymbol name="chevron.left" size={20} color={isDark ? '#8B5CF6' : '#6366F1'} />
+        <Text style={[styles.backText, { color: isDark ? '#8B5CF6' : '#6366F1' }]}>Back</Text>
+      </Pressable>
+
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <View style={styles.stepContainer}>
 
         {/* Header */}
         <View style={styles.otpHeader}>
@@ -438,8 +484,10 @@ export default function SignUpOTPScreen() {
                 onChangeText={(value) => handleOtpChange(index, value)}
                 onKeyPress={({ nativeEvent }) => handleOtpKeyPress(index, nativeEvent.key)}
                 keyboardType="number-pad"
-                maxLength={1}
+                maxLength={index === 0 ? 6 : 1}
                 selectTextOnFocus
+                textContentType="oneTimeCode"
+                autoComplete="sms-otp"
               />
             ))}
           </View>
@@ -484,8 +532,9 @@ export default function SignUpOTPScreen() {
             )}
           </LinearGradient>
         </Pressable>
-      </View>
-    </TouchableWithoutFeedback>
+        </View>
+      </TouchableWithoutFeedback>
+    </View>
   );
 
   return (
@@ -582,6 +631,7 @@ const styles = StyleSheet.create({
   },
   stepContainer: {
     width: '100%',
+    paddingTop: 80,
   },
   header: {
     alignItems: 'center',
@@ -615,25 +665,30 @@ const styles = StyleSheet.create({
   },
   toggleContainer: {
     flexDirection: 'row',
-    borderRadius: 12,
-    padding: 4,
+    gap: 12,
     marginBottom: 16,
   },
   toggleButton: {
     flex: 1,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  toggleButtonGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
     paddingVertical: 12,
-    borderRadius: 10,
+    paddingHorizontal: 16,
   },
-  toggleButtonActive: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+  toggleButtonInactive: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
   },
   toggleText: {
     fontSize: 15,
@@ -652,7 +707,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 16,
+    paddingVertical: Platform.OS === 'ios' ? 16 : 14,
     borderRadius: 14,
     borderWidth: 1.5,
     gap: 12,
@@ -661,6 +716,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     fontWeight: '500',
+    paddingVertical: 0,
   },
   primaryButton: {
     borderRadius: 14,
@@ -701,15 +757,25 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
   },
+  otpContainer: {
+    flex: 1,
+  },
   backButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    marginBottom: 24,
-    alignSelf: 'flex-start',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 60 : 54,
+    left: 0,
+    zIndex: 10,
   },
   backText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
   },
   otpHeader: {
