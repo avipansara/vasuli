@@ -47,6 +47,8 @@ CREATE TABLE public.verification_codes (
   expires_at TIMESTAMPTZ NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   used_at TIMESTAMPTZ,
+  verified BOOLEAN DEFAULT false,
+  attempts INTEGER DEFAULT 0,
   CHECK (email IS NOT NULL OR phone IS NOT NULL)
 );
 
@@ -58,7 +60,10 @@ CREATE TABLE public.users (
   email TEXT UNIQUE,
   phone TEXT,
   avatar TEXT,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+  email_verified BOOLEAN DEFAULT false,
+  phone_verified BOOLEAN DEFAULT false,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- GROUPS TABLE
@@ -269,6 +274,12 @@ BEGIN
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
+
+-- Trigger for users table
+CREATE TRIGGER update_users_updated_at
+  BEFORE UPDATE ON public.users
+  FOR EACH ROW
+  EXECUTE FUNCTION public.update_updated_at();
 
 -- Trigger for groups table
 CREATE TRIGGER update_groups_updated_at
