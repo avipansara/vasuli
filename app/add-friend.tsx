@@ -80,6 +80,7 @@ export default function AddFriendScreen() {
         inviteeEmail: friendEmail,
         inviteePhone: friendPhone,
         inviteeName: friendName,
+        inviterName: user?.name || 'A friend',
       });
 
       Alert.alert(
@@ -87,9 +88,19 @@ export default function AddFriendScreen() {
         `An invitation has been sent to ${friendName}. They'll appear in your friends list once they accept.`,
         [{ text: 'OK', onPress: () => router.back() }]
       );
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error adding friend:', error);
-      Alert.alert('Error', 'Failed to send invite');
+      
+      // Handle specific error cases
+      let errorMessage = 'Failed to send invite';
+      
+      if (error?.code === '23505' || error?.message?.includes('duplicate key')) {
+        errorMessage = 'You have already sent an invitation to this email address.';
+      } else if (error?.message) {
+        errorMessage = error.message;
+      }
+      
+      Alert.alert('Error', errorMessage);
     } finally {
       setLoading(false);
     }

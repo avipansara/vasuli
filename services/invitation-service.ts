@@ -7,6 +7,7 @@ export const invitationService = {
     inviteeEmail: string;
     inviteePhone?: string;
     inviteeName?: string;
+    inviterName?: string;
   }): Promise<Invitation> {
     const createdAt = new Date().toISOString();
     const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(); // 30 days
@@ -26,6 +27,26 @@ export const invitationService = {
       .single();
 
     if (error) throw error;
+
+    // Send invitation email via Edge Function
+    try {
+      const { error: emailError } = await supabase.functions.invoke('send-invitation', {
+        body: {
+          inviteeEmail: invitation.inviteeEmail,
+          inviteeName: invitation.inviteeName || invitation.inviteeEmail.split('@')[0],
+          inviterName: invitation.inviterName || 'A friend',
+          inviterId: invitation.inviterId,
+        },
+      });
+
+      if (emailError) {
+        console.error('Failed to send invitation email:', emailError);
+        // Don't throw - invitation was created successfully, email is optional
+      }
+    } catch (emailError) {
+      console.error('Error sending invitation email:', emailError);
+      // Don't throw - invitation was created successfully
+    }
 
     return {
       id: data.id,
