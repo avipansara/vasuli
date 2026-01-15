@@ -36,22 +36,6 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- STEP 3: CREATE ALL TABLES
 -- ============================================
 
--- VERIFICATION CODES TABLE
--- For OTP authentication
-CREATE TABLE public.verification_codes (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  email TEXT,
-  phone TEXT,
-  code TEXT NOT NULL,
-  type TEXT NOT NULL CHECK (type IN ('signup', 'signin')),
-  expires_at TIMESTAMPTZ NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  used_at TIMESTAMPTZ,
-  verified BOOLEAN DEFAULT false,
-  attempts INTEGER DEFAULT 0,
-  CHECK (email IS NOT NULL OR phone IS NOT NULL)
-);
-
 -- USERS TABLE
 -- Note: Using UUID for compatibility with auth.users if needed later
 CREATE TABLE public.users (
@@ -64,6 +48,23 @@ CREATE TABLE public.users (
   phone_verified BOOLEAN DEFAULT false,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- VERIFICATION CODES TABLE
+-- For OTP authentication (created after users table due to foreign key)
+CREATE TABLE public.verification_codes (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
+  email TEXT,
+  phone TEXT,
+  code TEXT NOT NULL,
+  type TEXT NOT NULL CHECK (type IN ('signup', 'signin')),
+  expires_at TIMESTAMPTZ NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  used_at TIMESTAMPTZ,
+  verified BOOLEAN DEFAULT false,
+  attempts INTEGER DEFAULT 0,
+  CHECK (email IS NOT NULL OR phone IS NOT NULL)
 );
 
 -- GROUPS TABLE

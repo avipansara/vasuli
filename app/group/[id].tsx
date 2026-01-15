@@ -16,6 +16,7 @@ import {
     userService
 } from '@/services/api';
 import type { Expense, Group, GroupMember, User } from '@/types/database';
+import { useFocusEffect } from '@react-navigation/native';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -91,11 +92,13 @@ export default function GroupDetailScreen() {
     }
   }, [id]);
 
-  useEffect(() => {
-    if (id) {
-      loadGroupData();
-    }
-  }, [id, loadGroupData]);
+  useFocusEffect(
+    useCallback(() => {
+      if (id) {
+        loadGroupData();
+      }
+    }, [id, loadGroupData])
+  );
 
   async function addExpense() {
     if (!description.trim() || !amount.trim()) {

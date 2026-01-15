@@ -71,18 +71,23 @@ export default function CreateGroupScreen() {
     setLoading(true);
     try {
       await initDatabase();
+      
+      console.log('[CreateGroup] Creating group with user:', currentUserId);
       const newGroup = await groupService.create({
         name: groupName.trim(),
         description: description.trim() || undefined,
       });
+      console.log('[CreateGroup] Group created:', newGroup.id);
 
-      // Add current user as first member
+      // Add current user as first member (admin)
+      console.log('[CreateGroup] Adding creator as admin member');
       await groupService.addMember(newGroup.id, currentUserId, 'admin');
+      console.log('[CreateGroup] Creator added successfully');
 
       router.back();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating group:', error);
-      Alert.alert('Error', 'Failed to create group');
+      Alert.alert('Error', error?.message || 'Failed to create group');
     } finally {
       setLoading(false);
     }

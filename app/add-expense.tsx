@@ -54,6 +54,7 @@ export default function AddExpenseScreen() {
   const [friends, setFriends] = useState<User[]>([]);
   const [selectedGroupId, setSelectedGroupId] = useState(preselectedGroupId || '');
   const [selectedFriendIds, setSelectedFriendIds] = useState<string[]>([]);
+  const [groupMembers, setGroupMembers] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [dataLoading, setDataLoading] = useState(true);
   const [splitMethod, setSplitMethod] = useState<SplitMethod>(SplitMethod.EQUAL);
@@ -84,6 +85,22 @@ export default function AddExpenseScreen() {
       }),
     ]).start();
   }, []);
+
+  useEffect(() => {
+    async function loadGroupMembers() {
+      if (selectedGroupId) {
+        try {
+          const members = await groupService.getMembers(selectedGroupId);
+          setGroupMembers(members.map((m: { userId: string }) => m.userId));
+        } catch (error) {
+          console.error('Error loading group members:', error);
+        }
+      } else {
+        setGroupMembers([]);
+      }
+    }
+    loadGroupMembers();
+  }, [selectedGroupId]);
 
   async function loadData() {
     try {
@@ -626,7 +643,7 @@ export default function AddExpenseScreen() {
                   <IconSymbol name="divide.circle" size={20} color={isDark ? '#2DD4BF' : colors.tint} />
                   <ThemedText style={[styles.previewText, !isDark && { color: colors.textSecondary }]}>
                     {splitMethod === SplitMethod.EQUAL 
-                      ? `Split equally: $${(parseFloat(amount) / (splitType === SplitType.GROUP ? 1 : selectedFriendIds.length + 1)).toFixed(2)} each`
+                      ? `Split equally: $${(parseFloat(amount) / (splitType === SplitType.GROUP ? groupMembers.length : selectedFriendIds.length + 1)).toFixed(2)} each`
                       : splitMethod === SplitMethod.UNEQUAL
                         ? 'Custom amounts per person'
                         : splitMethod === SplitMethod.PERCENTAGE
