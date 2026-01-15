@@ -1,4 +1,4 @@
-import { AuthProvider, useAuth } from '@/contexts/auth-context';
+import { AuthProvider, useAuth } from '@/contexts/auth-context-otp';
 import { ThemeProvider as AppThemeProvider, useTheme } from '@/contexts/theme-context';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
@@ -54,7 +54,7 @@ function useProtectedRoute() {
 
     if (!isAuthenticated && !inAuthGroup) {
       // Redirect to sign-in if not authenticated
-      router.replace('/(auth)/sign-in');
+      router.replace('/(auth)/sign-in-otp');
     } else if (isAuthenticated && inAuthGroup) {
       // Redirect to tabs if authenticated
       router.replace('/(tabs)');

@@ -2,7 +2,7 @@ import { SettleUpModal } from '@/components/friends/settle-up-modal';
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { LoadingState } from '@/components/ui/loading-state';
-import { useAuth } from '@/contexts/auth-context';
+import { useAuth } from '@/contexts/auth-context-otp';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { calculateFriendBalance, expenseService, initDatabase, settlementService, userService } from '@/services/api';
 import type { Expense, ExpenseSplit, User } from '@/types/database';

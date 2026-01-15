@@ -1,19 +1,19 @@
 import {
-  AddExpenseModal,
-  AddMemberModal,
-  SettleUpModal,
+    AddExpenseModal,
+    AddMemberModal,
+    SettleUpModal,
 } from '@/components/group';
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { LoadingState } from '@/components/ui/loading-state';
-import { useAuth } from '@/contexts/auth-context';
+import { useAuth } from '@/contexts/auth-context-otp';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import {
-  calculateBalances,
-  expenseService,
-  groupService,
-  settlementService,
-  userService
+    calculateBalances,
+    expenseService,
+    groupService,
+    settlementService,
+    userService
 } from '@/services/api';
 import type { Expense, Group, GroupMember, User } from '@/types/database';
 import { BlurView } from 'expo-blur';
