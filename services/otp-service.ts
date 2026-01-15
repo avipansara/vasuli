@@ -4,6 +4,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const OTP_EXPIRY_MINUTES = 15;
 const MAX_ATTEMPTS = 3;
 
+// Set to true for development/testing without real Supabase
+const USE_MOCK_DATA = true;
+const MOCK_OTP_CODE = '123456';
+
 export interface VerificationCode {
   id: string;
   userId?: string;
@@ -55,6 +59,14 @@ export async function sendSignUpCode(params: {
 
     if (!email && !phone) {
       return { success: false, error: 'Email or phone is required' };
+    }
+
+    // Mock mode for development
+    if (USE_MOCK_DATA) {
+      console.log(`[MOCK] Sign up code sent to ${email || phone}. Use code: ${MOCK_OTP_CODE}`);
+      // Store pending signup info for verification
+      await AsyncStorage.setItem('pending_signup', JSON.stringify({ name, email, phone }));
+      return { success: true };
     }
 
     // Check if user already exists
@@ -123,6 +135,14 @@ export async function sendSignInCode(params: {
 
     if (!email && !phone) {
       return { success: false, error: 'Email or phone is required' };
+    }
+
+    // Mock mode for development
+    if (USE_MOCK_DATA) {
+      console.log(`[MOCK] Sign in code sent to ${email || phone}. Use code: ${MOCK_OTP_CODE}`);
+      // Store pending signin info for verification
+      await AsyncStorage.setItem('pending_signin', JSON.stringify({ email, phone }));
+      return { success: true };
     }
 
     // Check if user exists
@@ -194,6 +214,33 @@ export async function verifySignUpCode(params: {
 
     if (!email && !phone) {
       return { success: false, error: 'Email or phone is required' };
+    }
+
+    // Mock mode for development
+    if (USE_MOCK_DATA) {
+      if (code !== MOCK_OTP_CODE) {
+        return { success: false, error: 'Invalid verification code. Use 123456 for testing.' };
+      }
+
+      // Create mock user and session
+      const mockUser = {
+        id: 'current-user',
+        name: name,
+        email: email,
+        phone: phone,
+        avatar: undefined,
+        email_verified: !!email,
+        phone_verified: !!phone,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+
+      const session = await createSession(mockUser);
+      await saveSession(session);
+      await AsyncStorage.removeItem('pending_signup');
+
+      console.log('[MOCK] Sign up successful!');
+      return { success: true, session };
     }
 
     // Find verification code
@@ -273,6 +320,33 @@ export async function verifySignInCode(params: {
 
     if (!email && !phone) {
       return { success: false, error: 'Email or phone is required' };
+    }
+
+    // Mock mode for development
+    if (USE_MOCK_DATA) {
+      if (code !== MOCK_OTP_CODE) {
+        return { success: false, error: 'Invalid verification code. Use 123456 for testing.' };
+      }
+
+      // Create mock user and session
+      const mockUser = {
+        id: 'current-user',
+        name: 'You',
+        email: email,
+        phone: phone,
+        avatar: undefined,
+        email_verified: !!email,
+        phone_verified: !!phone,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+
+      const session = await createSession(mockUser);
+      await saveSession(session);
+      await AsyncStorage.removeItem('pending_signin');
+
+      console.log('[MOCK] Sign in successful!');
+      return { success: true, session };
     }
 
     // Find verification code
@@ -360,9 +434,13 @@ async function createSession(user: any): Promise<AuthSession> {
  * Generate a random session token
  */
 function generateSessionToken(): string {
-  const array = new Uint8Array(32);
-  crypto.getRandomValues(array);
-  return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
+  // Simple random token generator for React Native
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let token = '';
+  for (let i = 0; i < 64; i++) {
+    token += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return token;
 }
 
 /**

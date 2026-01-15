@@ -1,4 +1,5 @@
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { useAuth } from '@/contexts/auth-context-otp';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { otpService } from '@/services/otp-service';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -26,6 +27,7 @@ type Step = 'contact' | 'otp';
 
 export default function SignInOTPScreen() {
   const { colors, isDark } = useThemeColors();
+  const { refreshUser } = useAuth();
   const [step, setStep] = useState<Step>('contact');
   const [contactMethod, setContactMethod] = useState<ContactMethod>('email');
   
@@ -149,6 +151,7 @@ export default function SignInOTPScreen() {
       });
 
       if (result.success) {
+        await refreshUser();
         router.replace('/(tabs)');
       } else {
         Alert.alert('Error', result.error || 'Invalid code');
