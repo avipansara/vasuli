@@ -5,15 +5,21 @@ export const groupService = {
   async create(group: Omit<Group, 'id' | 'createdAt' | 'updatedAt'>): Promise<Group> {
     const now = new Date().toISOString();
     
+    const insertData: any = {
+      name: group.name,
+      description: group.description || null,
+      created_at: now,
+      updated_at: now,
+    };
+
+    // Only include image_url if provided (column may not exist yet)
+    if (group.imageUrl) {
+      insertData.image_url = group.imageUrl;
+    }
+    
     const { data, error } = await supabase
       .from('groups')
-      .insert({
-        name: group.name,
-        description: group.description || null,
-        image_url: group.imageUrl || null,
-        created_at: now,
-        updated_at: now,
-      })
+      .insert(insertData)
       .select()
       .single();
     
