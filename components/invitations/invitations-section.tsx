@@ -48,6 +48,14 @@ export function InvitationsSection() {
     setActionLoading(invitation.id);
     try {
       await invitationService.updateStatus(invitation.id, 'accepted');
+      
+      // Create friendship between inviter and current user
+      const { friendshipService } = await import('@/services/friendship-service');
+      const currentUserId = user?.id;
+      if (currentUserId) {
+        await friendshipService.createAccepted(currentUserId, invitation.inviterId);
+      }
+      
       Alert.alert('Success', 'Invitation accepted!');
       loadInvitations();
     } catch (error) {

@@ -98,6 +98,7 @@ export default function ProfileScreen() {
   const [playgroundVisible, setPlaygroundVisible] = useState(false);
 
   const settingsItems = [
+    { icon: 'envelope.badge', title: 'Invitations', onPress: () => router.push('/invitations') },
     { icon: 'person.badge.plus', title: 'Invite a Friend', onPress: () => router.push('/add-friend') },
     { icon: 'figure.skateboarding', title: 'Loading Playground', onPress: () => setPlaygroundVisible(true) },
     { icon: 'bell.fill', title: 'Notifications', hasSwitch: true, value: notificationsEnabled, onToggle: setNotificationsEnabled },

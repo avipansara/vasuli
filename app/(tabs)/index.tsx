@@ -7,6 +7,7 @@ import { LoadingState } from '@/components/ui/loading-state';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { calculateFriendBalance, initDatabase, userService } from '@/services/api';
+import { friendshipService } from '@/services/friendship-service';
 import { invitationService } from '@/services/invitation-service';
 import type { User } from '@/types/database';
 import { useFocusEffect } from '@react-navigation/native';
@@ -42,13 +43,23 @@ export default function FriendsScreen() {
     if (!currentUserId) return;
     try {
       await initDatabase();
-      const allUsers = await userService.getAll();
       
+      // Get only accepted friends, not all users
+      const friendIds = await friendshipService.getFriends(currentUserId);
+      
+      // Fetch user details for each friend
+      const friendsData = await Promise.all(
+        friendIds.map(async (friendId) => {
+          const user = await userService.getById(friendId);
+          return user;
+        })
+      );
+      
+      // Filter out null values and calculate balances
       const friendsWithBalances = await Promise.all(
-        allUsers
-          .filter((user: User) => user.id !== currentUserId)
+        friendsData
+          .filter((user): user is User => user !== null)
           .map(async (user: User) => {
-            // Calculate balance (includes all shared expenses - friend-only and group)
             const balance = await calculateFriendBalance(currentUserId, user.id);
             return { ...user, balance };
           })
