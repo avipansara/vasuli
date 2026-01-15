@@ -1,7 +1,6 @@
 import {
   AddExpenseModal,
   AddMemberModal,
-  SettleUpModal,
 } from '@/components/group';
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -13,7 +12,6 @@ import {
   calculateBalances,
   expenseService,
   groupService,
-  settlementService,
   userService
 } from '@/services/api';
 import type { Expense, Group, GroupMember, User } from '@/types/database';
@@ -41,13 +39,10 @@ export default function GroupDetailScreen() {
   const slideAnim = useRef(new Animated.Value(30)).current;
   const scaleAnim = useRef(new Animated.Value(0.95)).current;
   const [memberModalVisible, setMemberModalVisible] = useState(false);
-  const [settleModalVisible, setSettleModalVisible] = useState(false);
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
   const [availableUsers, setAvailableUsers] = useState<User[]>([]);
   const [selectedUserId, setSelectedUserId] = useState('');
-  const [settleWithUserId, setSettleWithUserId] = useState('');
-  const [settleAmount, setSettleAmount] = useState('');
   const { user } = useAuth();
   const currentUserId = user?.id || '';
 
@@ -198,51 +193,8 @@ export default function GroupDetailScreen() {
     );
   }
 
-  async function settleUp() {
-    if (!settleWithUserId || !settleAmount.trim()) {
-      Alert.alert('Error', 'Please fill in all fields');
-      return;
-    }
-
-    const amountNum = parseFloat(settleAmount);
-    if (isNaN(amountNum) || amountNum <= 0) {
-      Alert.alert('Error', 'Please enter a valid amount');
-      return;
-    }
-
-    try {
-      const settlement = await settlementService.create({
-        groupId: id,
-        fromUserId: currentUserId,
-        toUserId: settleWithUserId,
-        amount: amountNum,
-        currency: 'USD',
-        date: Date.now(),
-      });
-
-      // Log activity
-      const fromUser = members.find(m => m.userId === currentUserId)?.user;
-      const toUser = members.find(m => m.userId === settleWithUserId)?.user;
-      if (fromUser && toUser && group) {
-        await activityService.logSettlementCreated({
-          settlementId: settlement.id,
-          fromUserId: currentUserId,
-          fromUserName: fromUser.name,
-          toUserName: toUser.name,
-          amount: amountNum,
-          groupId: id,
-          groupName: group.name,
-        });
-      }
-
-      setSettleWithUserId('');
-      setSettleAmount('');
-      setSettleModalVisible(false);
-      loadGroupData();
-    } catch (error) {
-      console.error('Error settling up:', error);
-      Alert.alert('Error', 'Failed to record settlement');
-    }
+  function handleSettleUp() {
+    router.push(`/group/settle/${id}`);
   }
 
   function handleEditExpense(expenseId: string) {
@@ -621,7 +573,7 @@ export default function GroupDetailScreen() {
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.quickActionButton}
-            onPress={() => setSettleModalVisible(true)}>
+            onPress={handleSettleUp}>
             <LinearGradient
               colors={['#10b981', '#059669']}
               start={{ x: 0, y: 0 }}
@@ -714,16 +666,6 @@ export default function GroupDetailScreen() {
         onSubmit={addMember}
       />
 
-      <SettleUpModal
-        visible={settleModalVisible}
-        onClose={() => setSettleModalVisible(false)}
-        members={members}
-        settleWithUserId={settleWithUserId}
-        setSettleWithUserId={setSettleWithUserId}
-        settleAmount={settleAmount}
-        setSettleAmount={setSettleAmount}
-        onSubmit={settleUp}
-      />
     </View>
   );
 }
