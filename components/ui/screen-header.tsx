@@ -7,7 +7,7 @@ import {
 } from '@/constants/theme';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import React from 'react';
-import { StyleSheet, TouchableOpacity, View, ViewStyle } from 'react-native';
+import { Platform, StyleSheet, TouchableOpacity, View, ViewStyle } from 'react-native';
 import { ThemedText } from '../themed-text';
 import { IconSymbol, IconSymbolName } from './icon-symbol';
 
@@ -84,6 +84,39 @@ export function BackButton({ onPress }: BackButtonProps) {
   );
 }
 
+interface NavigationHeaderProps {
+  title: string;
+  onBack: () => void;
+  rightAction?: React.ReactNode;
+  style?: ViewStyle;
+}
+
+export function NavigationHeader({ title, onBack, rightAction, style }: NavigationHeaderProps) {
+  const { colors, isDark } = useThemeColors();
+
+  return (
+    <View style={[styles.navigationHeader, style]}>
+      <TouchableOpacity
+        onPress={onBack}
+        style={[
+          styles.navBackButton,
+          {
+            backgroundColor: isDark ? BG_ICON_DARK : BG_ICON_LIGHT,
+            borderColor: isDark ? BORDER_ACCENT_DARK : BORDER_ACCENT_LIGHT,
+          },
+        ]}>
+        <IconSymbol size={20} name="chevron.left" color={isDark ? ACCENT_TEAL : colors.tint} />
+      </TouchableOpacity>
+      <ThemedText type="subtitle" style={[styles.navigationTitle, !isDark && { color: colors.text }]}>
+        {title}
+      </ThemedText>
+      <View style={styles.navRightAction}>
+        {rightAction || <View style={styles.placeholder} />}
+      </View>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
@@ -124,5 +157,32 @@ const styles = StyleSheet.create({
     ...(Platform.OS === 'android' && {
       padding: 4,
     }),
+  },
+  navigationHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: Platform.OS === 'ios' ? 60 : 54,
+    paddingBottom: 16,
+  },
+  navBackButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+  },
+  navigationTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+  },
+  navRightAction: {
+    minWidth: 40,
+    alignItems: 'flex-end',
+  },
+  placeholder: {
+    width: 40,
   },
 });

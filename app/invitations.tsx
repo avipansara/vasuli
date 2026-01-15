@@ -1,6 +1,7 @@
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { LoadingState } from '@/components/ui/loading-state';
+import { NavigationHeader } from '@/components/ui/screen-header';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { friendshipService } from '@/services/friendship-service';
@@ -291,21 +292,7 @@ export default function InvitationsScreen() {
       <View style={styles.container}>
         <LinearGradient colors={gradients.screenBackground} style={StyleSheet.absoluteFill} />
 
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity
-            onPress={() => router.back()}
-            style={[styles.backButton, {
-              backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)',
-              borderColor: isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(34, 197, 94, 0.3)',
-            }]}>
-            <IconSymbol size={20} name="chevron.left" color={isDark ? '#2DD4BF' : colors.tint} />
-          </TouchableOpacity>
-          <ThemedText type="subtitle" style={[styles.headerTitle, !isDark && { color: colors.text }]}>
-            Invitations
-          </ThemedText>
-          <View style={styles.placeholder} />
-        </View>
+        <NavigationHeader title="Invitations" onBack={() => router.back()} />
 
         {/* Tabs */}
         <View style={styles.tabContainer}>
@@ -396,7 +383,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'ios' ? 60 : 20,
+    paddingTop: Platform.OS === 'ios' ? 60 : 54,
     paddingBottom: 16,
   },
   backButton: {

@@ -1,5 +1,6 @@
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { NavigationHeader } from '@/components/ui/screen-header';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { userService } from '@/services/api';
 import { CameraView, useCameraPermissions } from 'expo-camera';
@@ -130,18 +131,7 @@ export default function ScanQRScreen() {
 
       {/* Overlay */}
       <View style={styles.overlay}>
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity
-            onPress={() => router.back()}
-            style={[styles.backButton, { backgroundColor: 'rgba(0, 0, 0, 0.5)' }]}>
-            <IconSymbol size={20} name="chevron.left" color="#fff" />
-          </TouchableOpacity>
-          <ThemedText type="subtitle" style={styles.headerTitleLight}>
-            Scan QR Code
-          </ThemedText>
-          <View style={styles.headerRight} />
-        </View>
+        <NavigationHeader title="Scan QR Code" onBack={() => router.back()} />
 
         {/* Scanner Frame */}
         <View style={styles.scannerContainer}>
@@ -177,7 +167,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'ios' ? 60 : 40,
+    paddingTop: Platform.OS === 'ios' ? 60 : 54,
     paddingBottom: 20,
   },
   backButton: {

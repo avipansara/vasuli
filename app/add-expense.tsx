@@ -1,6 +1,7 @@
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { KeyboardAwareScroll } from '@/components/ui/keyboard-aware-scroll';
+import { NavigationHeader } from '@/components/ui/screen-header';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { activityService } from '@/services/activity-service';
@@ -271,37 +272,29 @@ export default function AddExpenseScreen() {
     <View style={styles.container}>
       <LinearGradient colors={gradients.screenBackground} style={StyleSheet.absoluteFill} />
 
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => router.back()}
-          style={[styles.backButton, {
-            backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)',
-            borderColor: isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(34, 197, 94, 0.3)',
-          }]}>
-          <IconSymbol size={20} name="xmark" color={isDark ? '#2DD4BF' : colors.tint} />
-        </TouchableOpacity>
-        <ThemedText type="subtitle" style={[styles.headerTitle, !isDark && { color: colors.text }]}>
-          Add Expense
-        </ThemedText>
-        <TouchableOpacity
-          onPress={handleSubmit}
-          disabled={!isValid || loading}
-          style={[
-            styles.headerButton,
-            {
-              backgroundColor: isValid && !loading ? (isDark ? '#2DD4BF' : '#22C55E') : (isDark ? '#374151' : '#E5E7EB'),
-            },
-          ]}>
-          {loading ? (
-            <ThemedText style={[styles.headerButtonText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>...</ThemedText>
-          ) : (
-            <ThemedText style={[styles.headerButtonText, { color: isValid && !loading ? '#FFFFFF' : (isDark ? '#9CA3AF' : '#6B7280') }]}>
-              Add
-            </ThemedText>
-          )}
-        </TouchableOpacity>
-      </View>
+      <NavigationHeader 
+        title="Add Expense" 
+        onBack={() => router.back()}
+        rightAction={
+          <TouchableOpacity
+            onPress={handleSubmit}
+            disabled={!isValid || loading}
+            style={[
+              styles.headerButton,
+              {
+                backgroundColor: isValid && !loading ? (isDark ? '#2DD4BF' : '#22C55E') : (isDark ? '#374151' : '#E5E7EB'),
+              },
+            ]}>
+            {loading ? (
+              <ThemedText style={[styles.headerButtonText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>...</ThemedText>
+            ) : (
+              <ThemedText style={[styles.headerButtonText, { color: isValid ? '#0A0A0F' : (isDark ? '#9CA3AF' : '#6B7280') }]}>
+                Add
+              </ThemedText>
+            )}
+          </TouchableOpacity>
+        }
+      />
 
       <KeyboardAwareScroll contentContainerStyle={styles.scrollContent}>
         <Animated.View style={[styles.content, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
