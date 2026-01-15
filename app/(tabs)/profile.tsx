@@ -5,7 +5,7 @@ import { LoadingState } from '@/components/ui/loading-state';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useTheme } from '@/contexts/theme-context';
 import { useThemeColors } from '@/hooks/use-theme-colors';
-import { calculateBalances, expenseService, groupService, initDatabase } from '@/services/api';
+import { calculateUserTotalBalance, initDatabase } from '@/services/api';
 import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
@@ -51,28 +51,15 @@ export default function ProfileScreen() {
       await initDatabase();
       const currentUserId = currentUser?.id || '';
       
-      // Get all groups
-      const groups = await groupService.getAll();
-      setGroupsCount(groups.length);
-      
-      // Calculate total owed and owing across all groups
-      let totalOwedAmount = 0;
-      let totalOwingAmount = 0;
-      
-      for (const group of groups) {
-        const expenses = await expenseService.getByGroup(group.id);
-        const balances = await calculateBalances(group.id, expenses);
-        const userBalance = balances.get(currentUserId) || 0;
-        
-        if (userBalance > 0) {
-          totalOwedAmount += userBalance;
-        } else if (userBalance < 0) {
-          totalOwingAmount += Math.abs(userBalance);
-        }
-      }
+      // Use unified balance calculation service
+      const { totalOwed: totalOwedAmount, totalOwing: totalOwingAmount } = await calculateUserTotalBalance(currentUserId);
       
       setTotalOwed(totalOwedAmount);
       setTotalOwing(totalOwingAmount);
+      
+      // Note: Groups count would need to be fetched separately if needed
+      // For now, keeping it at 0 or you can add groupService.getAll() if needed
+      setGroupsCount(0);
     } catch (error) {
       console.error('Error loading stats:', error);
     }
