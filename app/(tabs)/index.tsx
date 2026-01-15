@@ -8,7 +8,7 @@ import { useAuth } from '@/contexts/auth-context-otp';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { calculateFriendBalance, initDatabase, userService } from '@/services/api';
 import { invitationService } from '@/services/invitation-service';
-import type { Invitation, User } from '@/types/database';
+import type { User } from '@/types/database';
 import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
@@ -22,7 +22,6 @@ interface UserWithBalance extends User {
 export default function FriendsScreen() {
   const { gradients, colors, isDark } = useThemeColors();
   const [friends, setFriends] = useState<UserWithBalance[]>([]);
-  const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
   const [newFriendName, setNewFriendName] = useState('');
@@ -56,10 +55,6 @@ export default function FriendsScreen() {
       );
 
       setFriends(friendsWithBalances);
-      
-      // Load pending invitations
-      const pendingInvites = await invitationService.getByInviter(currentUserId);
-      setInvitations(pendingInvites.filter(inv => inv.status === 'pending'));
     } catch (error) {
       console.error('Error loading friends:', error);
     } finally {
@@ -134,7 +129,7 @@ export default function FriendsScreen() {
 
       {loading ? (
         <LoadingState message="Loading friends..." />
-      ) : friends.length === 0 && invitations.length === 0 ? (
+      ) : friends.length === 0 ? (
         <View style={styles.emptyContainer}>
           <View style={[styles.emptyIconContainer, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.1)' : 'rgba(34, 197, 94, 0.1)' }]}>
             <IconSymbol size={64} name="person.2" color={isDark ? '#2DD4BF' : colors.tint} />
@@ -163,35 +158,7 @@ export default function FriendsScreen() {
           renderItem={({ item }) => <FriendCard friend={item} onPress={handleFriendPress} />}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
-          ListHeaderComponent={
-            invitations.length > 0 ? (
-              <View style={styles.invitationsSection}>
-                <ThemedText style={[styles.sectionTitle, !isDark && { color: colors.textSecondary }]}>
-                  Pending Invitations ({invitations.length})
-                </ThemedText>
-                {invitations.map(inv => (
-                  <View key={inv.id} style={[styles.invitationCard, {
-                    backgroundColor: isDark ? 'rgba(30, 41, 59, 0.6)' : 'rgba(241, 245, 249, 0.9)',
-                    borderColor: isDark ? 'rgba(251, 191, 36, 0.3)' : 'rgba(251, 191, 36, 0.5)',
-                  }]}>
-                    <View style={[styles.invitationAvatar, {
-                      backgroundColor: isDark ? 'rgba(251, 191, 36, 0.15)' : 'rgba(251, 191, 36, 0.1)',
-                    }]}>
-                      <IconSymbol name="clock" size={20} color={isDark ? '#fbbf24' : '#f59e0b'} />
-                    </View>
-                    <View style={styles.invitationInfo}>
-                      <ThemedText style={[styles.invitationName, !isDark && { color: colors.text }]}>
-                        {inv.inviteeName || inv.inviteeEmail}
-                      </ThemedText>
-                      <ThemedText style={[styles.invitationStatus, !isDark && { color: colors.textSecondary }]}>
-                        Invitation sent
-                      </ThemedText>
-                    </View>
-                  </View>
-                ))}
-              </View>
-            ) : null
-          }
+          showsVerticalScrollIndicator={false}
         />
       )}
 
@@ -520,42 +487,5 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(45, 212, 191, 0.3)',
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  invitationsSection: {
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    fontSize: 12,
-    fontWeight: '600',
-    marginBottom: 12,
-    opacity: 0.7,
-  },
-  invitationCard: {
-    flexDirection: 'row',
-    padding: 14,
-    borderRadius: 12,
-    marginBottom: 10,
-    borderWidth: 1,
-  },
-  invitationAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  invitationInfo: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  invitationName: {
-    fontSize: 14,
-    marginBottom: 2,
-    fontWeight: '500',
-  },
-  invitationStatus: {
-    fontSize: 11,
-    opacity: 0.6,
   },
 });
