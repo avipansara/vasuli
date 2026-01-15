@@ -152,7 +152,10 @@ export default function SignInOTPScreen() {
 
       if (result.success) {
         await refreshUser();
-        router.replace('/(tabs)');
+        // Small delay to ensure auth state is updated
+        setTimeout(() => {
+          router.replace('/(tabs)');
+        }, 100);
       } else {
         Alert.alert('Error', result.error || 'Invalid code');
         setOtp(['', '', '', '', '', '']);

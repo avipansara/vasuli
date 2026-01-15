@@ -37,7 +37,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function refreshUser() {
     try {
-      if (!user) return;
+      // If user doesn't exist yet (after sign-in/sign-up), load the session
+      if (!user) {
+        await loadSession();
+        return;
+      }
       
       // Fetch fresh user data from database
       const freshUser = await userService.getById(user.id);
