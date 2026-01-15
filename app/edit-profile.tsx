@@ -21,9 +21,8 @@ import {
 
 export default function EditProfileScreen() {
   const { gradients, colors, isDark } = useThemeColors();
-  const { user } = useAuth();
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
+  const { user, refreshUser } = useAuth();
+  const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
 
   // Animations
@@ -31,14 +30,10 @@ export default function EditProfileScreen() {
   const slideAnim = useRef(new Animated.Value(30)).current;
 
   // Input refs
-  const firstNameInputRef = useRef<any>(null);
-  const lastNameInputRef = useRef<any>(null);
+  const nameInputRef = useRef<any>(null);
 
   useEffect(() => {
-    // Split current name into first and last
-    const nameParts = (user?.name || '').split(' ');
-    setFirstName(nameParts[0] || '');
-    setLastName(nameParts.slice(1).join(' ') || '');
+    setName(user?.name || '');
 
     Animated.parallel([
       Animated.timing(fadeAnim, {
@@ -52,9 +47,9 @@ export default function EditProfileScreen() {
         useNativeDriver: true,
       }),
     ]).start();
-  }, []);
+  }, [fadeAnim, slideAnim, user?.name]);
 
-  const isValid = firstName.trim().length > 0;
+  const isValid = name.trim().length > 0;
 
   async function handleSubmit() {
     if (!isValid || !user) return;
@@ -62,8 +57,12 @@ export default function EditProfileScreen() {
     setLoading(true);
     try {
       await initDatabase();
-      const fullName = `${firstName.trim()} ${lastName.trim()}`.trim();
-      await userService.update(user.id, { name: fullName });
+      await userService.update(user.id, { name: name.trim() });
+      
+      // Refresh user data in auth context
+      await refreshUser();
+      
+      Alert.alert('Success', 'Profile updated successfully');
       router.back();
     } catch (error) {
       console.error('Error updating profile:', error);
@@ -103,43 +102,29 @@ export default function EditProfileScreen() {
 
       <KeyboardAwareScroll contentContainerStyle={styles.scrollContent}>
         <Animated.View style={[styles.content, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-            {/* Avatar Preview */}
+            {/* Avatar Preview - Rectangular */}
             <View style={styles.avatarSection}>
-              <View style={[styles.avatarLarge, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)' }]}>
+              <View style={[styles.avatarLarge, { 
+                backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)',
+                borderColor: isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(34, 197, 94, 0.3)',
+              }]}>
                 <ThemedText style={[styles.avatarText, { color: isDark ? '#2DD4BF' : colors.tint }]}>
-                  {firstName.charAt(0).toUpperCase() || 'U'}
+                  {name.charAt(0).toUpperCase() || 'U'}
                 </ThemedText>
               </View>
             </View>
 
-            {/* First Name Input */}
+            {/* Name Input */}
             <View style={styles.inputSection}>
               <ThemedText style={[styles.inputLabel, !isDark && { color: colors.textSecondary }]}>
-                First Name *
+                Name *
               </ThemedText>
               <ThemedInput
-                ref={firstNameInputRef}
+                ref={nameInputRef}
                 icon="person.fill"
-                value={firstName}
-                onChangeText={setFirstName}
-                placeholder="John"
-                returnKeyType="next"
-                onSubmitEditing={() => lastNameInputRef.current?.focus()}
-                autoCapitalize="words"
-              />
-            </View>
-
-            {/* Last Name Input */}
-            <View style={styles.inputSection}>
-              <ThemedText style={[styles.inputLabel, !isDark && { color: colors.textSecondary }]}>
-                Last Name (Optional)
-              </ThemedText>
-              <ThemedInput
-                ref={lastNameInputRef}
-                icon="person.fill"
-                value={lastName}
-                onChangeText={setLastName}
-                placeholder="Doe"
+                value={name}
+                onChangeText={setName}
+                placeholder="John Doe"
                 returnKeyType="done"
                 onSubmitEditing={() => Keyboard.dismiss()}
                 autoCapitalize="words"
@@ -212,13 +197,15 @@ const styles = StyleSheet.create({
   avatarLarge: {
     width: 100,
     height: 100,
-    borderRadius: 50,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 2,
   },
   avatarText: {
-    fontSize: 40,
+    fontSize: 36,
     fontWeight: '700',
+    lineHeight: 40,
   },
   inputSection: {
     gap: 8,
