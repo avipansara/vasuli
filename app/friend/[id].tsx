@@ -4,6 +4,7 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { LoadingState } from '@/components/ui/loading-state';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useThemeColors } from '@/hooks/use-theme-colors';
+import { activityService } from '@/services/activity-service';
 import { calculateFriendBalance, expenseService, initDatabase, settlementService, userService } from '@/services/api';
 import type { Expense, ExpenseSplit, User } from '@/types/database';
 import { useFocusEffect } from '@react-navigation/native';
@@ -146,25 +147,44 @@ export default function FriendDetailScreen() {
 
   async function handleSettleUp(friendId: string, amount: number) {
     try {
-      if (!friend) return;
+      if (!friend || !user) return;
 
+      let settlement;
       if (friend.balance > 0) {
         // Friend owes current user
-        await settlementService.create({
+        settlement = await settlementService.create({
           fromUserId: friendId,
           toUserId: currentUserId,
           amount,
           currency: 'USD',
           date: Date.now(),
         });
+        
+        // Log activity
+        await activityService.logSettlementCreated({
+          settlementId: settlement.id,
+          fromUserId: friendId,
+          fromUserName: friend.name || 'Someone',
+          toUserName: user.name || 'Someone',
+          amount,
+        });
       } else {
         // Current user owes friend
-        await settlementService.create({
+        settlement = await settlementService.create({
           fromUserId: currentUserId,
           toUserId: friendId,
           amount,
           currency: 'USD',
           date: Date.now(),
+        });
+        
+        // Log activity
+        await activityService.logSettlementCreated({
+          settlementId: settlement.id,
+          fromUserId: currentUserId,
+          fromUserName: user.name || 'Someone',
+          toUserName: friend.name || 'Someone',
+          amount,
         });
       }
 

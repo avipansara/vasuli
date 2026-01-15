@@ -228,6 +228,26 @@ export const activityService = {
     });
   },
 
+  async logSettlementUpdated(params: {
+    settlementId: string;
+    userId: string;
+    userName: string;
+    amount: number;
+    groupId?: string;
+    groupName?: string;
+  }): Promise<Activity> {
+    return this.create({
+      type: ActivityType.SETTLEMENT_UPDATED,
+      userId: params.userId,
+      userName: params.userName,
+      targetId: params.settlementId,
+      groupId: params.groupId,
+      groupName: params.groupName,
+      description: `Updated settlement`,
+      amount: params.amount,
+    });
+  },
+
   async logGroupCreated(params: {
     groupId: string;
     userId: string;
@@ -242,6 +262,42 @@ export const activityService = {
       groupId: params.groupId,
       groupName: params.groupName,
       description: `Created group "${params.groupName}"`,
+    });
+  },
+
+  async logMemberAdded(params: {
+    groupId: string;
+    userId: string;
+    userName: string;
+    memberName: string;
+    groupName: string;
+  }): Promise<Activity> {
+    return this.create({
+      type: ActivityType.MEMBER_ADDED,
+      userId: params.userId,
+      userName: params.userName,
+      targetId: params.groupId,
+      groupId: params.groupId,
+      groupName: params.groupName,
+      description: `Added ${params.memberName} to ${params.groupName}`,
+    });
+  },
+
+  async logMemberRemoved(params: {
+    groupId: string;
+    userId: string;
+    userName: string;
+    memberName: string;
+    groupName: string;
+  }): Promise<Activity> {
+    return this.create({
+      type: ActivityType.MEMBER_REMOVED,
+      userId: params.userId,
+      userName: params.userName,
+      targetId: params.groupId,
+      groupId: params.groupId,
+      groupName: params.groupName,
+      description: `Removed ${params.memberName} from ${params.groupName}`,
     });
   },
 };

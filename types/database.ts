@@ -96,6 +96,7 @@ export enum ActivityType {
   EXPENSE_UPDATED = 'expense_updated',
   EXPENSE_DELETED = 'expense_deleted',
   SETTLEMENT_CREATED = 'settlement_created',
+  SETTLEMENT_UPDATED = 'settlement_updated',
   SETTLEMENT_DELETED = 'settlement_deleted',
   GROUP_CREATED = 'group_created',
   GROUP_UPDATED = 'group_updated',

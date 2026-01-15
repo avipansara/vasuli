@@ -1,19 +1,20 @@
 import {
-    AddExpenseModal,
-    AddMemberModal,
-    SettleUpModal,
+  AddExpenseModal,
+  AddMemberModal,
+  SettleUpModal,
 } from '@/components/group';
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { LoadingState } from '@/components/ui/loading-state';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useThemeColors } from '@/hooks/use-theme-colors';
+import { activityService } from '@/services/activity-service';
 import {
-    calculateBalances,
-    expenseService,
-    groupService,
-    settlementService,
-    userService
+  calculateBalances,
+  expenseService,
+  groupService,
+  settlementService,
+  userService
 } from '@/services/api';
 import type { Expense, Group, GroupMember, User } from '@/types/database';
 import { useFocusEffect } from '@react-navigation/native';
@@ -149,6 +150,19 @@ export default function GroupDetailScreen() {
 
     try {
       await groupService.addMember(id, selectedUserId, 'member');
+      
+      // Log activity
+      const addedUser = availableUsers.find(u => u.id === selectedUserId);
+      if (addedUser && group && user) {
+        await activityService.logMemberAdded({
+          groupId: id,
+          userId: currentUserId,
+          userName: user.name,
+          memberName: addedUser.name,
+          groupName: group.name,
+        });
+      }
+      
       setSelectedUserId('');
       setMemberModalVisible(false);
       loadGroupData();
@@ -197,7 +211,7 @@ export default function GroupDetailScreen() {
     }
 
     try {
-      await settlementService.create({
+      const settlement = await settlementService.create({
         groupId: id,
         fromUserId: currentUserId,
         toUserId: settleWithUserId,
@@ -205,6 +219,21 @@ export default function GroupDetailScreen() {
         currency: 'USD',
         date: Date.now(),
       });
+
+      // Log activity
+      const fromUser = members.find(m => m.userId === currentUserId)?.user;
+      const toUser = members.find(m => m.userId === settleWithUserId)?.user;
+      if (fromUser && toUser && group) {
+        await activityService.logSettlementCreated({
+          settlementId: settlement.id,
+          fromUserId: currentUserId,
+          fromUserName: fromUser.name,
+          toUserName: toUser.name,
+          amount: amountNum,
+          groupId: id,
+          groupName: group.name,
+        });
+      }
 
       setSettleWithUserId('');
       setSettleAmount('');
@@ -340,6 +369,18 @@ export default function GroupDetailScreen() {
           onPress: async () => {
             try {
               await groupService.removeMember(id, member.userId);
+              
+              // Log activity
+              if (group && user) {
+                await activityService.logMemberRemoved({
+                  groupId: id,
+                  userId: currentUserId,
+                  userName: user.name,
+                  memberName: member.user?.name || 'Someone',
+                  groupName: group.name,
+                });
+              }
+              
               loadGroupData();
             } catch (error) {
               console.error('Error removing member:', error);
