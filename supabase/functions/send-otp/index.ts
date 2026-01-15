@@ -103,7 +103,7 @@ async function sendEmailOTP(params: {
         'Authorization': `Bearer ${RESEND_API_KEY}`,
       },
       body: JSON.stringify({
-        from: 'Vasuli <onboarding@resend.dev>',
+        from: 'Vasuli <support@split-space.com>',
         to: [email],
         subject,
         html: `

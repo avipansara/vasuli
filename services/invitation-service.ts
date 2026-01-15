@@ -2,7 +2,7 @@ import { supabase } from '@/lib/supabase';
 import type { Invitation } from '@/types/database';
 
 // Set to true for development/testing without real Supabase
-const USE_MOCK_DATA = true;
+const USE_MOCK_DATA = false;
 
 export const invitationService = {
   async create(invitation: {

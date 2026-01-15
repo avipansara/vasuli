@@ -5,7 +5,7 @@ const OTP_EXPIRY_MINUTES = 15;
 const MAX_ATTEMPTS = 3;
 
 // Set to true for development/testing without real Supabase
-const USE_MOCK_DATA = true;
+const USE_MOCK_DATA = false;
 const MOCK_OTP_CODE = '123456';
 
 export interface VerificationCode {
