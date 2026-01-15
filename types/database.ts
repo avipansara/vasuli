@@ -90,3 +90,29 @@ export interface Invitation {
   createdAt: number;
   expiresAt: number;
 }
+
+export enum ActivityType {
+  EXPENSE_CREATED = 'expense_created',
+  EXPENSE_UPDATED = 'expense_updated',
+  EXPENSE_DELETED = 'expense_deleted',
+  SETTLEMENT_CREATED = 'settlement_created',
+  SETTLEMENT_DELETED = 'settlement_deleted',
+  GROUP_CREATED = 'group_created',
+  GROUP_UPDATED = 'group_updated',
+  MEMBER_ADDED = 'member_added',
+  MEMBER_REMOVED = 'member_removed',
+}
+
+export interface Activity {
+  id: string;
+  type: ActivityType;
+  userId: string;           // Who performed the action
+  userName?: string;        // Cached user name for display
+  targetId: string;         // ID of the expense/settlement/group
+  groupId?: string;         // Associated group (if applicable)
+  groupName?: string;       // Cached group name for display
+  description: string;      // Human-readable description
+  amount?: number;          // For expense/settlement amounts
+  metadata?: string;        // Additional data (JSON string)
+  createdAt: number;        // Timestamp
+}

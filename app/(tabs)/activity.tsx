@@ -3,25 +3,16 @@ import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { LoadingState } from '@/components/ui/loading-state';
 import { useThemeColors } from '@/hooks/use-theme-colors';
-import { expenseService, groupService, initDatabase, settlementService, userService } from '@/services/api';
-import type { Group, User } from '@/types/database';
+import { activityService } from '@/services/activity-service';
+import { initDatabase } from '@/services/api';
+import type { Activity } from '@/types/database';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useRef, useState } from 'react';
 import { Animated, Platform, SectionList, StyleSheet, View } from 'react-native';
 
-type ActivityItem = {
-  id: string;
-  type: 'expense' | 'settlement';
-  date: number;
-  description: string;
-  amount: number;
-  group?: Group;
-  user?: User;
-};
-
 export default function ActivityScreen() {
   const { gradients, colors, isDark } = useThemeColors();
-  const [activities, setActivities] = useState<ActivityItem[]>([]);
+  const [activities, setActivities] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Animations
@@ -52,56 +43,8 @@ export default function ActivityScreen() {
   async function loadActivities() {
     try {
       await initDatabase();
-      const allActivities: ActivityItem[] = [];
-      
-      // Load all expenses (including friend-only expenses without groups)
-      const allExpenses = await expenseService.getAll();
-      console.log('[Activity] Loaded all expenses:', allExpenses.length);
-      
-      const groups = await groupService.getAll();
-      console.log('[Activity] Loaded groups:', groups.length);
-
-      // Add all expenses to activities
-      for (const expense of allExpenses) {
-        const user = await userService.getById(expense.paidBy);
-        const group = expense.groupId ? groups.find((g: Group) => g.id === expense.groupId) : undefined;
-        
-        allActivities.push({
-          id: expense.id,
-          type: 'expense',
-          date: expense.date,
-          description: expense.description,
-          amount: expense.amount,
-          group,
-          user: user || undefined,
-        });
-      }
-
-      // Load settlements from groups
-      for (const group of groups) {
-        try {
-          const settlements = await settlementService.getByGroup(group.id);
-          console.log(`[Activity] Group ${group.name}: ${settlements.length} settlements`);
-          
-          for (const settlement of settlements) {
-            const fromUser = await userService.getById(settlement.fromUserId);
-            const toUser = await userService.getById(settlement.toUserId);
-            allActivities.push({
-              id: settlement.id,
-              type: 'settlement',
-              date: settlement.date,
-              description: `${fromUser?.name || 'Someone'} paid ${toUser?.name || 'someone'}`,
-              amount: settlement.amount,
-              group,
-            });
-          }
-        } catch (groupError) {
-          console.error(`[Activity] Error loading settlements for group ${group.name}:`, groupError);
-        }
-      }
-
-      allActivities.sort((a, b) => b.date - a.date);
-      console.log('[Activity] Total activities:', allActivities.length);
+      const allActivities = await activityService.getAll();
+      console.log('[Activity] Loaded activities:', allActivities.length);
       setActivities(allActivities);
     } catch (error) {
       console.error('[Activity] Error loading activities:', error);
@@ -124,15 +67,15 @@ export default function ActivityScreen() {
   }
 
   const groupedActivities = activities.reduce((acc, activity) => {
-    const period = getTimePeriod(activity.date);
-    const existing = acc.find(g => g.title === period);
+    const period = getTimePeriod(activity.createdAt);
+    const existing = acc.find((g: { title: string }) => g.title === period);
     if (existing) {
       existing.data.push(activity);
     } else {
       acc.push({ title: period, data: [activity] });
     }
     return acc;
-  }, [] as { title: string; data: ActivityItem[] }[]);
+  }, [] as { title: string; data: Activity[] }[]);
 
   return (
     <LinearGradient
@@ -167,11 +110,11 @@ export default function ActivityScreen() {
             <ActivityCard
               activity={{
                 id: item.id,
-                type: item.type,
+                type: item.type.includes('expense') ? 'expense' : item.type.includes('settlement') ? 'settlement' : 'group_join',
                 description: item.description,
-                amount: item.amount,
-                date: item.date,
-                groupName: item.group?.name,
+                amount: item.amount || 0,
+                date: item.createdAt,
+                groupName: item.groupName,
               }}
             />
           )}

@@ -3,6 +3,7 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { KeyboardAwareScroll } from '@/components/ui/keyboard-aware-scroll';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useThemeColors } from '@/hooks/use-theme-colors';
+import { activityService } from '@/services/activity-service';
 import { expenseService, groupService, initDatabase, userService } from '@/services/api';
 import type { Group, User } from '@/types/database';
 import { BlurView } from 'expo-blur';
@@ -127,7 +128,7 @@ export default function AddExpenseScreen() {
           return;
         }
 
-        await expenseService.create(
+        const expense = await expenseService.create(
           {
             groupId: selectedGroupId,
             description: description.trim(),
@@ -138,6 +139,18 @@ export default function AddExpenseScreen() {
           },
           splits
         );
+
+        // Log activity
+        const group = groups.find(g => g.id === selectedGroupId);
+        await activityService.logExpenseCreated({
+          expenseId: expense.id,
+          userId: currentUserId,
+          userName: user?.name || 'Someone',
+          description: description.trim(),
+          amount: amountNum,
+          groupId: selectedGroupId,
+          groupName: group?.name,
+        });
       } else {
         const allParticipants = [currentUserId, ...selectedFriendIds];
         const splits = calculateSplits(allParticipants, amountNum);
@@ -147,7 +160,7 @@ export default function AddExpenseScreen() {
           return;
         }
 
-        await expenseService.create(
+        const expense = await expenseService.create(
           {
             description: description.trim(),
             amount: amountNum,
@@ -157,6 +170,15 @@ export default function AddExpenseScreen() {
           },
           splits
         );
+
+        // Log activity
+        await activityService.logExpenseCreated({
+          expenseId: expense.id,
+          userId: currentUserId,
+          userName: user?.name || 'Someone',
+          description: description.trim(),
+          amount: amountNum,
+        });
       }
 
       router.back();

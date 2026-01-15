@@ -5,6 +5,7 @@
 -- ============================================
 -- STEP 1: DROP ALL EXISTING TABLES
 -- ============================================
+DROP TABLE IF EXISTS public.activities CASCADE;
 DROP TABLE IF EXISTS public.invitations CASCADE;
 DROP TABLE IF EXISTS public.friendships CASCADE;
 DROP TABLE IF EXISTS public.settlements CASCADE;
@@ -130,6 +131,26 @@ CREATE TABLE public.invitations (
   UNIQUE(inviter_id, invitee_email)
 );
 
+-- ACTIVITIES TABLE
+-- Event log for all activities (expenses, settlements, groups, etc.)
+CREATE TABLE public.activities (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  type TEXT NOT NULL CHECK (type IN (
+    'expense_created', 'expense_updated', 'expense_deleted',
+    'settlement_created', 'settlement_deleted',
+    'group_created', 'group_updated', 'member_added', 'member_removed'
+  )),
+  user_id UUID NOT NULL REFERENCES public.users(id),
+  user_name TEXT,
+  target_id UUID NOT NULL,
+  group_id UUID REFERENCES public.groups(id),
+  group_name TEXT,
+  description TEXT NOT NULL,
+  amount DECIMAL(10, 2),
+  metadata JSONB,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 -- ============================================
 -- STEP 4: ENABLE ROW LEVEL SECURITY
 -- ============================================
@@ -142,6 +163,7 @@ ALTER TABLE public.expense_splits ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.settlements ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.friendships ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.invitations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.activities ENABLE ROW LEVEL SECURITY;
 
 -- ============================================
 -- STEP 5: CREATE RLS POLICIES
@@ -293,6 +315,14 @@ CREATE POLICY "Users can update received invitations" ON public.invitations
     invitee_email = (SELECT email FROM public.users WHERE id = auth.uid())
   );
 
+-- ACTIVITIES POLICIES
+-- Permissive policies since we use custom OTP auth, not Supabase auth.uid()
+CREATE POLICY "Allow all reads from activities" ON public.activities
+  FOR SELECT USING (true);
+
+CREATE POLICY "Allow all inserts to activities" ON public.activities
+  FOR INSERT WITH CHECK (true);
+
 -- ============================================
 -- STEP 6: CREATE INDEXES FOR PERFORMANCE
 -- ============================================
@@ -311,6 +341,9 @@ CREATE INDEX idx_friendships_friend_id ON public.friendships(friend_id);
 CREATE INDEX idx_invitations_inviter ON public.invitations(inviter_id);
 CREATE INDEX idx_invitations_email ON public.invitations(invitee_email);
 CREATE INDEX idx_invitations_status ON public.invitations(status);
+CREATE INDEX idx_activities_created_at ON public.activities(created_at DESC);
+CREATE INDEX idx_activities_user_id ON public.activities(user_id);
+CREATE INDEX idx_activities_group_id ON public.activities(group_id);
 
 -- ============================================
 -- STEP 7: CREATE FUNCTIONS AND TRIGGERS

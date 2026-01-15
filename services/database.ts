@@ -86,12 +86,34 @@ export async function initDatabase() {
       FOREIGN KEY (to_user_id) REFERENCES users(id)
     );
 
+    CREATE TABLE IF NOT EXISTS activities (
+      id TEXT PRIMARY KEY,
+      type TEXT NOT NULL CHECK(type IN (
+        'expense_created', 'expense_updated', 'expense_deleted',
+        'settlement_created', 'settlement_deleted',
+        'group_created', 'group_updated', 'member_added', 'member_removed'
+      )),
+      user_id TEXT NOT NULL,
+      user_name TEXT,
+      target_id TEXT NOT NULL,
+      group_id TEXT,
+      group_name TEXT,
+      description TEXT NOT NULL,
+      amount REAL,
+      metadata TEXT,
+      created_at INTEGER NOT NULL,
+      FOREIGN KEY (user_id) REFERENCES users(id)
+    );
+
     CREATE INDEX IF NOT EXISTS idx_group_members_group ON group_members(group_id);
     CREATE INDEX IF NOT EXISTS idx_group_members_user ON group_members(user_id);
     CREATE INDEX IF NOT EXISTS idx_expenses_group ON expenses(group_id);
     CREATE INDEX IF NOT EXISTS idx_expenses_date ON expenses(date);
     CREATE INDEX IF NOT EXISTS idx_expense_splits_expense ON expense_splits(expense_id);
     CREATE INDEX IF NOT EXISTS idx_settlements_group ON settlements(group_id);
+    CREATE INDEX IF NOT EXISTS idx_activities_created_at ON activities(created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_activities_user_id ON activities(user_id);
+    CREATE INDEX IF NOT EXISTS idx_activities_group_id ON activities(group_id);
   `);
 
   return db;
