@@ -566,7 +566,7 @@ export default function SignUpOTPScreen() {
             <Text style={[styles.footerText, { color: isDark ? 'rgba(255,255,255,0.5)' : colors.textSecondary }]}>
               {"Already have an account? "}
             </Text>
-            <Link href="/sign-in" asChild>
+            <Link href="/sign-in-otp" asChild>
               <Pressable>
                 <Text style={[styles.linkText, { color: isDark ? '#8B5CF6' : '#6366F1' }]}>
                   Sign in
