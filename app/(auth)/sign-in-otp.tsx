@@ -261,7 +261,7 @@ export default function SignInOTPScreen() {
       <View style={styles.header}>
         <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
           <LinearGradient
-            colors={isDark ? ['#8B5CF6', '#EC4899'] : ['#6366F1', '#8B5CF6']}
+            colors={isDark ? ['#2DD4BF', '#14B8A6'] : ['#22C55E', '#10B981']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.iconGradient}>
@@ -283,7 +283,7 @@ export default function SignInOTPScreen() {
           style={styles.toggleButton}>
           {contactMethod === 'email' ? (
             <LinearGradient
-              colors={isDark ? ['#8B5CF6', '#7C3AED'] : ['#6366F1', '#4F46E5']}
+              colors={isDark ? ['#2DD4BF', '#14B8A6'] : ['#22C55E', '#10B981']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={styles.toggleButtonGradient}>
@@ -292,12 +292,12 @@ export default function SignInOTPScreen() {
             </LinearGradient>
           ) : (
             <View style={[styles.toggleButtonInactive, { 
-              backgroundColor: isDark ? 'rgba(139, 92, 246, 0.15)' : 'rgba(99, 102, 241, 0.1)',
+              backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)',
               borderWidth: 1,
-              borderColor: isDark ? 'rgba(139, 92, 246, 0.25)' : 'rgba(99, 102, 241, 0.2)',
+              borderColor: isDark ? 'rgba(45, 212, 191, 0.25)' : 'rgba(34, 197, 94, 0.2)',
             }]}>
-              <IconSymbol name="envelope.fill" size={18} color={isDark ? 'rgba(139, 92, 246, 0.6)' : 'rgba(99, 102, 241, 0.6)'} />
-              <Text style={[styles.toggleText, { color: isDark ? 'rgba(139, 92, 246, 0.7)' : 'rgba(99, 102, 241, 0.7)' }]}>Email</Text>
+              <IconSymbol name="envelope.fill" size={18} color={isDark ? 'rgba(45, 212, 191, 0.6)' : 'rgba(34, 197, 94, 0.6)'} />
+              <Text style={[styles.toggleText, { color: isDark ? 'rgba(45, 212, 191, 0.7)' : 'rgba(34, 197, 94, 0.7)' }]}>Email</Text>
             </View>
           )}
         </Pressable>
@@ -307,7 +307,7 @@ export default function SignInOTPScreen() {
           style={styles.toggleButton}>
           {contactMethod === 'phone' ? (
             <LinearGradient
-              colors={isDark ? ['#8B5CF6', '#7C3AED'] : ['#6366F1', '#4F46E5']}
+              colors={isDark ? ['#2DD4BF', '#14B8A6'] : ['#22C55E', '#10B981']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={styles.toggleButtonGradient}>
@@ -316,12 +316,12 @@ export default function SignInOTPScreen() {
             </LinearGradient>
           ) : (
             <View style={[styles.toggleButtonInactive, { 
-              backgroundColor: isDark ? 'rgba(139, 92, 246, 0.15)' : 'rgba(99, 102, 241, 0.1)',
+              backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)',
               borderWidth: 1,
-              borderColor: isDark ? 'rgba(139, 92, 246, 0.25)' : 'rgba(99, 102, 241, 0.2)',
+              borderColor: isDark ? 'rgba(45, 212, 191, 0.25)' : 'rgba(34, 197, 94, 0.2)',
             }]}>
-              <IconSymbol name="phone.fill" size={18} color={isDark ? 'rgba(139, 92, 246, 0.6)' : 'rgba(99, 102, 241, 0.6)'} />
-              <Text style={[styles.toggleText, { color: isDark ? 'rgba(139, 92, 246, 0.7)' : 'rgba(99, 102, 241, 0.7)' }]}>Phone</Text>
+              <IconSymbol name="phone.fill" size={18} color={isDark ? 'rgba(45, 212, 191, 0.6)' : 'rgba(34, 197, 94, 0.6)'} />
+              <Text style={[styles.toggleText, { color: isDark ? 'rgba(45, 212, 191, 0.7)' : 'rgba(34, 197, 94, 0.7)' }]}>Phone</Text>
             </View>
           )}
         </Pressable>
@@ -332,17 +332,15 @@ export default function SignInOTPScreen() {
         <Text style={[styles.inputLabel, { color: isDark ? 'rgba(255,255,255,0.7)' : colors.textSecondary }]}>
           {contactMethod === 'email' ? 'Email address' : 'Phone number'}
         </Text>
-        <View style={[
-          styles.inputContainer,
-          { 
-            backgroundColor: isDark ? 'rgba(139, 92, 246, 0.1)' : 'rgba(99, 102, 241, 0.08)',
-            borderColor: isDark ? 'rgba(139, 92, 246, 0.3)' : 'rgba(99, 102, 241, 0.3)',
-          },
-        ]}>
-          <IconSymbol
+        <View
+          style={[styles.inputContainer, { 
+            backgroundColor: isDark ? 'rgba(45, 212, 191, 0.1)' : 'rgba(34, 197, 94, 0.08)',
+            borderColor: isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(34, 197, 94, 0.3)',
+            paddingVertical: Platform.OS === 'android' ? 12 : 16,
+          }]}><IconSymbol
             name={contactMethod === 'email' ? 'envelope.fill' : 'phone.fill'}
             size={20}
-            color={isDark ? '#8B5CF6' : '#6366F1'}
+            color={isDark ? '#2DD4BF' : '#22C55E'}
           />
           <TextInput
             style={[styles.input, { color: isDark ? '#fff' : colors.text }]}
@@ -367,7 +365,7 @@ export default function SignInOTPScreen() {
           (loading || !isContactValid()) && styles.buttonDisabled,
         ]}>
         <LinearGradient
-          colors={isDark ? ['#8B5CF6', '#7C3AED'] : ['#6366F1', '#4F46E5']}
+          colors={isDark ? ['#2DD4BF', '#14B8A6'] : ['#22C55E', '#10B981']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
           style={styles.buttonGradient}>
@@ -389,7 +387,7 @@ export default function SignInOTPScreen() {
         </Text>
         <Link href="/sign-up-otp" asChild>
           <Pressable>
-            <Text style={[styles.footerLink, { color: isDark ? '#8B5CF6' : '#6366F1' }]}>
+            <Text style={[styles.footerLink, { color: isDark ? '#2DD4BF' : '#22C55E' }]}>
               Sign up
             </Text>
           </Pressable>
@@ -404,11 +402,10 @@ export default function SignInOTPScreen() {
       <Pressable 
         onPress={() => setStep('contact')} 
         style={[styles.backButton, { 
-          backgroundColor: isDark ? 'rgba(139, 92, 246, 0.15)' : 'rgba(99, 102, 241, 0.1)',
-          borderColor: isDark ? 'rgba(139, 92, 246, 0.4)' : 'rgba(99, 102, 241, 0.3)',
+          backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)',
+          borderColor: isDark ? 'rgba(45, 212, 191, 0.4)' : 'rgba(34, 197, 94, 0.3)',
         }]}>
-        <IconSymbol name="chevron.left" size={20} color={isDark ? '#8B5CF6' : '#6366F1'} />
-        <Text style={[styles.backText, { color: isDark ? '#8B5CF6' : '#6366F1' }]}>Back</Text>
+        <IconSymbol name="chevron.left" size={20} color={isDark ? '#2DD4BF' : '#22C55E'} />
       </Pressable>
 
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
@@ -418,7 +415,7 @@ export default function SignInOTPScreen() {
         <View style={styles.otpHeader}>
           <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
             <LinearGradient
-              colors={isDark ? ['#8B5CF6', '#EC4899'] : ['#6366F1', '#8B5CF6']}
+              colors={isDark ? ['#2DD4BF', '#14B8A6'] : ['#22C55E', '#10B981']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.iconGradient}>
@@ -448,7 +445,7 @@ export default function SignInOTPScreen() {
                   {
                     backgroundColor: isDark ? '#1E293B' : '#F8FAFC',
                     borderColor: digit
-                      ? (isDark ? '#8B5CF6' : '#6366F1')
+                      ? (isDark ? '#2DD4BF' : '#22C55E')
                       : (isDark ? '#374151' : '#E2E8F0'),
                     color: isDark ? '#fff' : colors.text,
                   },
@@ -473,7 +470,7 @@ export default function SignInOTPScreen() {
               </Text>
             ) : (
               <Pressable onPress={handleResendCode} disabled={loading}>
-                <Text style={[styles.resendLink, { color: isDark ? '#8B5CF6' : '#6366F1' }]}>
+                <Text style={[styles.resendLink, { color: isDark ? '#2DD4BF' : '#22C55E' }]}>
                   Resend code
                 </Text>
               </Pressable>
@@ -491,7 +488,7 @@ export default function SignInOTPScreen() {
             (loading || otp.join('').length !== 6) && styles.buttonDisabled,
           ]}>
           <LinearGradient
-            colors={isDark ? ['#8B5CF6', '#7C3AED'] : ['#6366F1', '#4F46E5']}
+            colors={isDark ? ['#2DD4BF', '#14B8A6'] : ['#22C55E', '#10B981']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={styles.buttonGradient}>
@@ -737,8 +734,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
+    padding: 12,
     borderRadius: 12,
     borderWidth: 1.5,
     position: 'absolute',
