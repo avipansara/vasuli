@@ -23,6 +23,7 @@
     "preview": {
       "distribution": "internal",
       "channel": "main",
+      "autoIncrement": true,
       "android": {
         "image": "latest"
       },

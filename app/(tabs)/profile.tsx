@@ -1,4 +1,3 @@
-import { InvitationsSection } from '@/components/invitations';
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { LoadingState } from '@/components/ui/loading-state';
@@ -131,8 +130,6 @@ export default function ProfileScreen() {
             <ThemedText style={[styles.statLabel, !isDark && { color: colors.textSecondary }]}>Groups</ThemedText>
           </View>
         </View>
-
-        <InvitationsSection />
 
         <View style={styles.settingsSection}>
           <ThemedText style={[styles.sectionTitle, !isDark && { color: colors.textSecondary }]}>Settings</ThemedText>

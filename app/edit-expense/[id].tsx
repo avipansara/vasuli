@@ -26,13 +26,6 @@ enum SplitType {
   FRIENDS = 'friends',
 }
 
-enum SplitMethod {
-  EQUAL = 'equal',
-  UNEQUAL = 'unequal',
-  PERCENTAGE = 'percentage',
-  SHARES = 'shares',
-}
-
 export default function EditExpenseScreen() {
   const { gradients, colors, isDark } = useThemeColors();
   const { user } = useAuth();
@@ -48,7 +41,6 @@ export default function EditExpenseScreen() {
   const [selectedFriendIds, setSelectedFriendIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [dataLoading, setDataLoading] = useState(true);
-  const [splitMethod, setSplitMethod] = useState<SplitMethod>(SplitMethod.EQUAL);
 
   // Animations
   const fadeAnim = useRef(new Animated.Value(0)).current;

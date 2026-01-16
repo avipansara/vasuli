@@ -1,32 +1,19 @@
-import { AddExpenseModal } from '@/components/expenses/add-expense-modal';
 import { ExpenseListCard } from '@/components/expenses/expense-list-card';
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { useAuth } from '@/contexts/auth-context-otp';
 import { useThemeColors } from '@/hooks/use-theme-colors';
-import { expenseService, groupService, initDatabase, userService } from '@/services/api';
-import type { Expense, Group, User } from '@/types/database';
+import { expenseService, groupService, initDatabase } from '@/services/api';
+import type { Expense, Group } from '@/types/database';
 import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router, useLocalSearchParams } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
-import { Alert, Platform, SectionList, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { router } from 'expo-router';
+import { useCallback, useState } from 'react';
+import { Platform, SectionList, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 export default function ExpensesScreen() {
   const { gradients, colors, isDark } = useThemeColors();
-  const { openModal } = useLocalSearchParams<{ openModal?: string }>();
   const [expenses, setExpenses] = useState<(Expense & { group?: Group })[]>([]);
   const [loading, setLoading] = useState(true);
-  const [modalVisible, setModalVisible] = useState(false);
-  const [groups, setGroups] = useState<Group[]>([]);
-  const [friends, setFriends] = useState<User[]>([]);
-  const [selectedGroupId, setSelectedGroupId] = useState<string>('');
-  const [selectedFriendIds, setSelectedFriendIds] = useState<string[]>([]);
-  const [splitType, setSplitType] = useState<'group' | 'friends'>('group');
-  const [description, setDescription] = useState('');
-  const [amount, setAmount] = useState('');
-  const { user } = useAuth();
-  const currentUserId = user?.id || '';
 
   useFocusEffect(
     useCallback(() => {
@@ -34,23 +21,10 @@ export default function ExpensesScreen() {
     }, [])
   );
 
-  useEffect(() => {
-    if (openModal === 'true') {
-      setModalVisible(true);
-    }
-  }, [openModal]);
-
   async function loadData() {
     try {
       await initDatabase();
       const allGroups = await groupService.getAll();
-      console.log('[Expenses] Loaded groups:', allGroups.length);
-      setGroups(allGroups);
-      
-      const allUsers = await userService.getAll();
-      console.log('[Expenses] Loaded users:', allUsers.length);
-      // Filter out current user from friends list
-      setFriends(allUsers.filter((u: User) => u.id !== currentUserId));
 
       // Fetch ALL expenses (including friend-only expenses without groupId)
       const allExpensesRaw = await expenseService.getAll();
@@ -69,79 +43,6 @@ export default function ExpensesScreen() {
       console.error('[Expenses] Error loading expenses:', error);
     } finally {
       setLoading(false);
-    }
-  }
-
-  async function createExpense() {
-    const hasValidSelection = splitType === 'group' ? selectedGroupId : selectedFriendIds.length > 0;
-    if (!description.trim() || !amount.trim() || !hasValidSelection) {
-      Alert.alert('Error', 'Please fill in all fields');
-      return;
-    }
-
-    const amountNum = parseFloat(amount);
-    if (isNaN(amountNum) || amountNum <= 0) {
-      Alert.alert('Error', 'Please enter a valid amount');
-      return;
-    }
-
-    try {
-      const currentUser = await userService.getById(currentUserId);
-      if (!currentUser) {
-        await userService.create({ name: user?.name, email: user?.email });
-      }
-
-      if (splitType === 'group') {
-        // Split with group members
-        const members = await groupService.getMembers(selectedGroupId);
-        const splitAmount = amountNum / members.length;
-
-        await expenseService.create(
-          {
-            groupId: selectedGroupId,
-            description: description.trim(),
-            amount: amountNum,
-            currency: 'USD',
-            paidBy: currentUserId,
-            date: Date.now(),
-          },
-          members.map(member => ({
-            userId: member.userId,
-            amount: splitAmount,
-            splitType: 'equal' as const,
-          }))
-        );
-      } else {
-        // Split with friends (including current user)
-        const splitUsers = [currentUserId, ...selectedFriendIds];
-        const splitAmount = amountNum / splitUsers.length;
-
-        await expenseService.create(
-          {
-            description: description.trim(),
-            amount: amountNum,
-            currency: 'USD',
-            paidBy: currentUserId,
-            date: Date.now(),
-          },
-          splitUsers.map(userId => ({
-            userId,
-            amount: splitAmount,
-            splitType: 'equal' as const,
-          }))
-        );
-      }
-
-      setDescription('');
-      setAmount('');
-      setSelectedGroupId('');
-      setSelectedFriendIds([]);
-      setSplitType('group');
-      setModalVisible(false);
-      loadData();
-    } catch (error) {
-      console.error('Error creating expense:', error);
-      Alert.alert('Error', 'Failed to create expense');
     }
   }
 
@@ -208,14 +109,7 @@ export default function ExpensesScreen() {
           </ThemedText>
           <TouchableOpacity
             activeOpacity={0.8}
-            onPress={() => {
-              setDescription('');
-              setAmount('');
-              setSelectedGroupId('');
-              setSelectedFriendIds([]);
-              setSplitType('group');
-              setModalVisible(true);
-            }}>
+            onPress={() => router.push('/add-expense')}>
             <LinearGradient
               colors={gradients.buttonPrimary}
               start={{ x: 0, y: 0 }}
@@ -239,26 +133,6 @@ export default function ExpensesScreen() {
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
           stickySectionHeadersEnabled={false}
-        />
-      )}
-
-      {modalVisible && (
-        <AddExpenseModal
-          visible={modalVisible}
-          onClose={() => setModalVisible(false)}
-          description={description}
-          setDescription={setDescription}
-          amount={amount}
-          setAmount={setAmount}
-          groups={groups}
-          friends={friends}
-          selectedGroupId={selectedGroupId}
-          setSelectedGroupId={setSelectedGroupId}
-          selectedFriendIds={selectedFriendIds}
-          setSelectedFriendIds={setSelectedFriendIds}
-          splitType={splitType}
-          setSplitType={setSplitType}
-          onSubmit={createExpense}
         />
       )}
     </LinearGradient>
