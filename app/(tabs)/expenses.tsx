@@ -1,6 +1,7 @@
 import { ExpenseListCard } from '@/components/expenses/expense-list-card';
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { LoadingState } from '@/components/ui/loading-state';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { expenseService, groupService, initDatabase } from '@/services/api';
@@ -97,9 +98,7 @@ export default function ExpensesScreen() {
       </View>
 
       {loading ? (
-        <View style={styles.emptyContainer}>
-          <ThemedText>Loading...</ThemedText>
-        </View>
+        <LoadingState />
       ) : expenses.length === 0 ? (
         <View style={styles.emptyContainer}>
           <View style={[styles.emptyIconContainer, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.1)' : 'rgba(34, 197, 94, 0.1)' }]}>

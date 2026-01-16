@@ -32,7 +32,7 @@ serve(async (req) => {
     }
 
     // Send invitation email via Resend
-    const emailSent = await sendInvitationEmail(inviteeEmail, inviteeName, inviterName)
+    const emailSent = await sendInvitationEmail(inviteeEmail, inviteeName, inviterName, inviterId)
 
     if (!emailSent) {
       throw new Error('Failed to send invitation email')
@@ -54,7 +54,8 @@ serve(async (req) => {
 async function sendInvitationEmail(
   inviteeEmail: string,
   inviteeName: string,
-  inviterName: string
+  inviterName: string,
+  inviterId: string
 ): Promise<boolean> {
   try {
     const res = await fetch('https://api.resend.com/emails', {
@@ -114,7 +115,7 @@ async function sendInvitationEmail(
                           <table width="100%" cellpadding="0" cellspacing="0" style="margin: 30px 0;">
                             <tr>
                               <td align="center">
-                                <a href="https://vasuli.app/signup" style="display: inline-block; background: linear-gradient(135deg, #2DD4BF 0%, #22C55E 100%); color: #ffffff; text-decoration: none; padding: 16px 40px; border-radius: 12px; font-size: 16px; font-weight: 600; box-shadow: 0 4px 6px rgba(45, 212, 191, 0.3);">
+                                <a href="https://split-space.com/invite/${inviterId}" style="display: inline-block; background: linear-gradient(135deg, #2DD4BF 0%, #22C55E 100%); color: #ffffff; text-decoration: none; padding: 16px 40px; border-radius: 12px; font-size: 16px; font-weight: 600; box-shadow: 0 4px 6px rgba(45, 212, 191, 0.3);">
                                   Join Vasuli
                                 </a>
                               </td>

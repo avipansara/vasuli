@@ -2,11 +2,12 @@ import { AuthProvider, useAuth } from '@/contexts/auth-context-otp';
 import { ThemeProvider as AppThemeProvider, useTheme } from '@/contexts/theme-context';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
+import * as Linking from 'expo-linking';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, Alert, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
 
@@ -67,6 +68,44 @@ function useProtectedRoute() {
 function RootLayoutNav() {
   const { isDark } = useTheme();
   const isLoading = useProtectedRoute();
+  const router = useRouter();
+
+  // Handle deep links for invitations
+  useEffect(() => {
+    const handleDeepLink = (event: { url: string }) => {
+      const { path, queryParams } = Linking.parse(event.url);
+      
+      // Handle invitation deep links: https://split-space.com/invite/[inviterId]
+      if (path?.startsWith('invite/')) {
+        const inviterId = path.split('/')[1];
+        if (inviterId) {
+          Alert.alert(
+            'Invitation Received',
+            'You have been invited to join Vasuli! Sign up to connect with your friend.',
+            [
+              { text: 'Cancel', style: 'cancel' },
+              { 
+                text: 'Sign Up', 
+                onPress: () => router.push('/(auth)/sign-up-otp')
+              }
+            ]
+          );
+        }
+      }
+    };
+
+    // Get initial URL if app was opened from a link
+    Linking.getInitialURL().then((url) => {
+      if (url) {
+        handleDeepLink({ url });
+      }
+    });
+
+    // Listen for deep links while app is running
+    const subscription = Linking.addEventListener('url', handleDeepLink);
+
+    return () => subscription.remove();
+  }, [router]);
 
   if (isLoading) {
     return (
