@@ -83,8 +83,15 @@ export const activityService = {
     let query = supabase
       .from('activities')
       .select('*')
-      .or(`user_id.eq.${userId},group_id.in.(${groupIds.length > 0 ? groupIds.join(',') : 'null'})`)
       .order('created_at', { ascending: false });
+
+    // If user has groups, include activities from those groups OR user's own activities
+    // If no groups, only get user's own activities
+    if (groupIds.length > 0) {
+      query = query.or(`user_id.eq.${userId},group_id.in.(${groupIds.join(',')})`);
+    } else {
+      query = query.eq('user_id', userId);
+    }
 
     if (limit) {
       query = query.limit(limit);
