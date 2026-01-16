@@ -77,16 +77,16 @@ export default function GroupDetailScreen() {
       const groupBalances = await calculateBalances(id);
       setBalances(groupBalances);
 
-      const allUsers = await userService.getAll();
+      const userFriends = await userService.getUserFriends(currentUserId);
       const memberIds = new Set(groupMembers.map(m => m.userId));
-      const available = allUsers.filter(u => !memberIds.has(u.id));
+      const available = userFriends.filter(u => !memberIds.has(u.id));
       setAvailableUsers(available);
     } catch (error) {
       console.error('Error loading group data:', error);
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [id, currentUserId]);
 
   useFocusEffect(
     useCallback(() => {

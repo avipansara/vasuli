@@ -75,13 +75,13 @@ export default function EditExpenseScreen() {
         setSplitType(SplitType.FRIENDS);
       }
 
-      const [groupsData, usersData] = await Promise.all([
+      const [groupsData, userFriends] = await Promise.all([
         groupService.getUserGroups(user?.id || ''),
-        userService.getAll(),
+        userService.getUserFriends(currentUserId),
       ]);
 
       setGroups(groupsData);
-      setFriends(usersData.filter(u => u.id !== currentUserId));
+      setFriends(userFriends);
       setDataLoading(false);
 
       Animated.parallel([

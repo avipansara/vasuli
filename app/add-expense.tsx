@@ -107,12 +107,12 @@ export default function AddExpenseScreen() {
     if (!currentUserId) return;
     try {
       await initDatabase();
-      const [allGroups, allUsers] = await Promise.all([
+      const [allGroups, userFriends] = await Promise.all([
         groupService.getUserGroups(currentUserId),
-        userService.getAll(),
+        userService.getUserFriends(currentUserId),
       ]);
       setGroups(allGroups);
-      setFriends(allUsers.filter((u: User) => u.id !== currentUserId));
+      setFriends(userFriends);
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {

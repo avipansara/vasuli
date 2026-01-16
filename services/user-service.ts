@@ -75,6 +75,44 @@ export const userService = {
     }));
   },
 
+  async getUserFriends(userId: string): Promise<User[]> {
+    // Get friend IDs from friendships table
+    const { data: friendships, error: friendshipsError } = await supabase
+      .from('friendships')
+      .select('user_id, friend_id')
+      .eq('status', 'accepted')
+      .or(`user_id.eq.${userId},friend_id.eq.${userId}`);
+    
+    if (friendshipsError) throw friendshipsError;
+    
+    // Extract friend IDs (the other person in each friendship)
+    const friendIds = (friendships || []).map(f => 
+      f.user_id === userId ? f.friend_id : f.user_id
+    );
+    
+    if (friendIds.length === 0) {
+      return [];
+    }
+    
+    // Get user details for all friends
+    const { data, error } = await supabase
+      .from('users')
+      .select('*')
+      .in('id', friendIds)
+      .order('name');
+    
+    if (error) throw error;
+    
+    return (data || []).map(r => ({
+      id: r.id,
+      name: r.name,
+      email: r.email || undefined,
+      phone: r.phone || undefined,
+      avatar: r.avatar || undefined,
+      createdAt: new Date(r.created_at).getTime(),
+    }));
+  },
+
   async update(id: string, updates: Partial<Omit<User, 'id' | 'createdAt'>>): Promise<void> {
     const { error } = await supabase
       .from('users')
