@@ -17,7 +17,13 @@ const TEST_ACCOUNT_OTP = process.env.EXPO_PUBLIC_TEST_ACCOUNT_OTP || '';
  * Check if the email/phone is a test account
  */
 function isTestAccount(email?: string, phone?: string): boolean {
-  return email === TEST_ACCOUNT_EMAIL || phone === TEST_ACCOUNT_PHONE;
+  // Only check if test account credentials are configured
+  if (!TEST_ACCOUNT_EMAIL && !TEST_ACCOUNT_PHONE) {
+    return false;
+  }
+  const emailMatches = !!(TEST_ACCOUNT_EMAIL && email === TEST_ACCOUNT_EMAIL);
+  const phoneMatches = !!(TEST_ACCOUNT_PHONE && phone === TEST_ACCOUNT_PHONE);
+  return emailMatches || phoneMatches;
 }
 
 export interface VerificationCode {
