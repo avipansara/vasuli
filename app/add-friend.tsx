@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/auth-context-otp';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { initDatabase } from '@/services/api';
 import { invitationService } from '@/services/invitation-service';
+import { isEmailValid } from '@/utils/validation';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
@@ -65,7 +66,26 @@ export default function AddFriendScreen() {
       : false;
 
   async function handleSubmit() {
-    if (!isValid) return;
+    if (!name.trim()) {
+      Alert.alert('Error', 'Please enter a name');
+      return;
+    }
+    
+    if (inviteMethod === 'email') {
+      if (!email.trim()) {
+        Alert.alert('Error', 'Please enter an email address');
+        return;
+      }
+      if (!isEmailValid(email)) {
+        Alert.alert('Invalid Email', 'Please enter a valid email address');
+        return;
+      }
+    }
+    
+    if (inviteMethod === 'phone' && !phone.trim()) {
+      Alert.alert('Error', 'Please enter a phone number');
+      return;
+    }
 
     setLoading(true);
     try {
@@ -158,7 +178,7 @@ export default function AddFriendScreen() {
             </View>
 
             {/* Method Selection */}
-            <View style={styles.methodSection}>
+            {/* <View style={styles.methodSection}>
               <View style={styles.methodToggle}>
                 <TouchableOpacity
                   style={[
@@ -216,7 +236,7 @@ export default function AddFriendScreen() {
                   </ThemedText>
                 </TouchableOpacity>
               </View>
-            </View>
+            </View> */}
 
             {/* Name Input */}
             <View style={styles.inputSection}>
@@ -269,6 +289,7 @@ export default function AddFriendScreen() {
                     keyboardType="email-address"
                     autoCapitalize="none"
                     returnKeyType="done"
+                    autoCorrect={false}
                     onSubmitEditing={() => Keyboard.dismiss()}
                   />
                 </View>

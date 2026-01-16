@@ -18,7 +18,6 @@ export default function ProfileScreen() {
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [totalOwed, setTotalOwed] = useState(0);
   const [totalOwing, setTotalOwing] = useState(0);
-  const [groupsCount, setGroupsCount] = useState(0);
 
   // Animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -56,9 +55,6 @@ export default function ProfileScreen() {
       setTotalOwed(totalOwedAmount);
       setTotalOwing(totalOwingAmount);
       
-      // Note: Groups count would need to be fetched separately if needed
-      // For now, keeping it at 0 or you can add groupService.getAll() if needed
-      setGroupsCount(0);
     } catch (error) {
       console.error('Error loading stats:', error);
     }
@@ -69,7 +65,15 @@ export default function ProfileScreen() {
   }
 
   function handleSettingPress(setting: string) {
-    Alert.alert(setting, `${setting} settings coming soon!`);
+    if (setting === 'Help & Support') {
+      Alert.alert(
+        'Help & Support',
+        'Need help? Have questions?\n\nReach out to us at:\nsupport@split-space.com\n\nWe\'re here to help!',
+        [{ text: 'OK' }]
+      );
+    } else {
+      Alert.alert(setting, `${setting} settings coming soon!`);
+    }
   }
 
   async function handleLogout() {
@@ -124,11 +128,6 @@ export default function ProfileScreen() {
           <View style={styles.statItem}>
             <ThemedText style={[styles.statValue, !isDark && { color: colors.text }]}>${totalOwing.toFixed(2)}</ThemedText>
             <ThemedText style={[styles.statLabel, !isDark && { color: colors.textSecondary }]}>Total Owing</ThemedText>
-          </View>
-          <View style={[styles.statDivider, !isDark && { backgroundColor: colors.border }]} />
-          <View style={styles.statItem}>
-            <ThemedText style={[styles.statValue, !isDark && { color: colors.text }]}>{groupsCount}</ThemedText>
-            <ThemedText style={[styles.statLabel, !isDark && { color: colors.textSecondary }]}>Groups</ThemedText>
           </View>
         </View>
 

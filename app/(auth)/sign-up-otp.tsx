@@ -2,6 +2,7 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { otpService } from '@/services/otp-service';
+import { isEmailValid } from '@/utils/validation';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Link, router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
@@ -108,14 +109,24 @@ export default function SignUpOTPScreen() {
   const isContactValid = () => {
     if (!name.trim()) return false;
     if (contactMethod === 'email') {
-      return email.trim().includes('@');
+      return isEmailValid(email);
     }
     return phone.trim().length >= 10;
   };
 
   async function handleSendCode() {
-    if (!isContactValid()) {
-      Alert.alert('Error', 'Please fill in all fields correctly');
+    if (!name.trim()) {
+      Alert.alert('Error', 'Please enter your name');
+      return;
+    }
+    
+    if (contactMethod === 'email' && !isEmailValid(email)) {
+      Alert.alert('Invalid Email', 'Please enter a valid email address');
+      return;
+    }
+    
+    if (contactMethod === 'phone' && phone.trim().length < 10) {
+      Alert.alert('Invalid Phone', 'Please enter a valid phone number');
       return;
     }
 
@@ -307,7 +318,7 @@ export default function SignUpOTPScreen() {
       </View>
 
       {/* Method Toggle */}
-      <View style={styles.toggleContainer}>
+      {/* <View style={styles.toggleContainer}>
         <Pressable
           onPress={() => setContactMethod('email')}
           style={styles.toggleButton}>
@@ -355,7 +366,7 @@ export default function SignUpOTPScreen() {
             </View>
           )}
         </Pressable>
-      </View>
+      </View> */}
 
       {/* Email/Phone Input */}
       <View style={styles.inputSection}>
