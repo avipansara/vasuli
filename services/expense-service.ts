@@ -186,30 +186,6 @@ export const expenseService = {
     }));
   },
 
-  async getAll(): Promise<Expense[]> {
-    const { data, error } = await supabase
-      .from('expenses')
-      .select('*')
-      .order('date', { ascending: false });
-    
-    if (error) throw error;
-    
-    return (data || []).map(r => ({
-      id: r.id,
-      groupId: r.group_id || undefined,
-      description: r.description,
-      amount: r.amount,
-      currency: r.currency,
-      paidBy: r.paid_by,
-      category: r.category || undefined,
-      date: new Date(r.date).getTime(),
-      imageUrl: r.image_url || undefined,
-      notes: r.notes || undefined,
-      createdAt: new Date(r.created_at).getTime(),
-      updatedAt: new Date(r.updated_at).getTime(),
-    }));
-  },
-
   async getUserExpenses(userId: string): Promise<Expense[]> {
     // Get expense IDs where user is involved (either paid or split with them)
     const { data: splitData, error: splitError } = await supabase

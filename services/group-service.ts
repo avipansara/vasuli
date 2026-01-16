@@ -57,24 +57,6 @@ export const groupService = {
     };
   },
 
-  async getAll(): Promise<Group[]> {
-    const { data, error } = await supabase
-      .from('groups')
-      .select('*')
-      .order('updated_at', { ascending: false });
-    
-    if (error) throw error;
-    
-    return (data || []).map(r => ({
-      id: r.id,
-      name: r.name,
-      description: r.description || undefined,
-      imageUrl: r.image_url || undefined,
-      createdAt: new Date(r.created_at).getTime(),
-      updatedAt: new Date(r.updated_at).getTime(),
-    }));
-  },
-
   async getUserGroups(userId: string): Promise<Group[]> {
     // Get groups where user is a member
     const { data: memberData, error: memberError } = await supabase

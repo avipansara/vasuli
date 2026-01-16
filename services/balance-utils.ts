@@ -116,8 +116,8 @@ export async function calculateFriendBalance(currentUserId: string, friendId: st
   }
   
   // 2. Account for settlements between these two users
-  const allSettlements = await settlementService.getAll();
-  const friendSettlements = allSettlements.filter(s => 
+  const allSettlements = await settlementService.getUserSettlements(currentUserId);
+  const friendSettlements = allSettlements.filter((s: { fromUserId: string; toUserId: string }) => 
     (s.fromUserId === currentUserId && s.toUserId === friendId) ||
     (s.fromUserId === friendId && s.toUserId === currentUserId));
   

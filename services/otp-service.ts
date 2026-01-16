@@ -8,22 +8,28 @@ const MAX_ATTEMPTS = 3;
 const USE_MOCK_DATA = process.env.EXPO_PUBLIC_USE_MOCK_DATA === 'true';
 const MOCK_OTP_CODE = '123456';
 
-// Apple App Store test account (from environment variables)
-const TEST_ACCOUNT_EMAIL = process.env.EXPO_PUBLIC_TEST_ACCOUNT_EMAIL || '';
-const TEST_ACCOUNT_PHONE = process.env.EXPO_PUBLIC_TEST_ACCOUNT_PHONE || '';
+// Apple App Store test accounts (from environment variables)
+const TEST_ACCOUNT_1_EMAIL = process.env.EXPO_PUBLIC_TEST_ACCOUNT_EMAIL || '';
+const TEST_ACCOUNT_1_PHONE = process.env.EXPO_PUBLIC_TEST_ACCOUNT_PHONE || '';
+const TEST_ACCOUNT_2_EMAIL = process.env.EXPO_PUBLIC_TEST_ACCOUNT_2_EMAIL || '';
+const TEST_ACCOUNT_2_PHONE = process.env.EXPO_PUBLIC_TEST_ACCOUNT_2_PHONE || '';
 const TEST_ACCOUNT_OTP = process.env.EXPO_PUBLIC_TEST_ACCOUNT_OTP || '';
+
+// Test accounts list for easy iteration
+const TEST_ACCOUNTS = [
+  { email: TEST_ACCOUNT_1_EMAIL, phone: TEST_ACCOUNT_1_PHONE },
+  { email: TEST_ACCOUNT_2_EMAIL, phone: TEST_ACCOUNT_2_PHONE },
+];
 
 /**
  * Check if the email/phone is a test account
  */
 function isTestAccount(email?: string, phone?: string): boolean {
-  // Only check if test account credentials are configured
-  if (!TEST_ACCOUNT_EMAIL && !TEST_ACCOUNT_PHONE) {
-    return false;
-  }
-  const emailMatches = !!(TEST_ACCOUNT_EMAIL && email === TEST_ACCOUNT_EMAIL);
-  const phoneMatches = !!(TEST_ACCOUNT_PHONE && phone === TEST_ACCOUNT_PHONE);
-  return emailMatches || phoneMatches;
+  return TEST_ACCOUNTS.some(account => {
+    const emailMatches = !!(account.email && email === account.email);
+    const phoneMatches = !!(account.phone && phone === account.phone);
+    return emailMatches || phoneMatches;
+  });
 }
 
 export interface VerificationCode {

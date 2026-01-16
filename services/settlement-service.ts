@@ -35,6 +35,27 @@ export const settlementService = {
     };
   },
 
+  async getUserSettlements(userId: string): Promise<Settlement[]> {
+    const { data, error } = await supabase
+      .from('settlements')
+      .select('*')
+      .or(`from_user_id.eq.${userId},to_user_id.eq.${userId}`)
+      .order('created_at', { ascending: false });
+    
+    if (error) throw error;
+    
+    return (data || []).map(r => ({
+      id: r.id,
+      fromUserId: r.from_user_id,
+      toUserId: r.to_user_id,
+      amount: r.amount,
+      currency: r.currency,
+      date: new Date(r.date).getTime(),
+      notes: r.notes || undefined,
+      createdAt: new Date(r.created_at).getTime(),
+    }));
+  },
+
   async getByGroup(groupId: string): Promise<Settlement[]> {
     const { data, error } = await supabase
       .from('settlements')
@@ -47,27 +68,6 @@ export const settlementService = {
     return (data || []).map(r => ({
       id: r.id,
       groupId: r.group_id,
-      fromUserId: r.from_user_id,
-      toUserId: r.to_user_id,
-      amount: r.amount,
-      currency: r.currency,
-      date: new Date(r.date).getTime(),
-      notes: r.notes || undefined,
-      createdAt: new Date(r.created_at).getTime(),
-    }));
-  },
-
-  async getAll(): Promise<Settlement[]> {
-    const { data, error } = await supabase
-      .from('settlements')
-      .select('*')
-      .order('date', { ascending: false });
-    
-    if (error) throw error;
-    
-    return (data || []).map(r => ({
-      id: r.id,
-      groupId: r.group_id || undefined,
       fromUserId: r.from_user_id,
       toUserId: r.to_user_id,
       amount: r.amount,
