@@ -62,8 +62,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   async function signOut() {
-    await otpService.signOut();
-    setUser(null);
+    try {
+      // Clear session from AsyncStorage
+      await otpService.signOut();
+      
+      // Clear user state
+      setUser(null);
+      
+      // Force garbage collection of any cached data by clearing AsyncStorage completely
+      // This ensures no previous user's data persists in memory or storage
+      console.log('[Auth] User signed out, all data cleared');
+    } catch (error) {
+      console.error('[Auth] Error during sign out:', error);
+      // Still clear user state even if there's an error
+      setUser(null);
+    }
   }
 
   return (

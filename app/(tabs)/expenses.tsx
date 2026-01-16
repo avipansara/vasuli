@@ -1,6 +1,7 @@
 import { ExpenseListCard } from '@/components/expenses/expense-list-card';
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { useAuth } from '@/contexts/auth-context-otp';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { expenseService, groupService, initDatabase } from '@/services/api';
 import type { Expense, Group } from '@/types/database';
@@ -14,6 +15,8 @@ export default function ExpensesScreen() {
   const { gradients, colors, isDark } = useThemeColors();
   const [expenses, setExpenses] = useState<(Expense & { group?: Group })[]>([]);
   const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
+  const currentUserId = user?.id || '';
 
   useFocusEffect(
     useCallback(() => {
@@ -22,12 +25,13 @@ export default function ExpensesScreen() {
   );
 
   async function loadData() {
+    if (!currentUserId) return;
     try {
       await initDatabase();
-      const allGroups = await groupService.getAll();
+      const allGroups = await groupService.getUserGroups(currentUserId);
 
-      // Fetch ALL expenses (including friend-only expenses without groupId)
-      const allExpensesRaw = await expenseService.getAll();
+      // Fetch only expenses involving the current user
+      const allExpensesRaw = await expenseService.getUserExpenses(currentUserId);
       console.log('[Expenses] Raw expenses loaded:', allExpensesRaw.length);
       
       // Map expenses to include group info where applicable

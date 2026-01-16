@@ -210,6 +210,55 @@ export const expenseService = {
     }));
   },
 
+  async getUserExpenses(userId: string): Promise<Expense[]> {
+    // Get expense IDs where user is involved (either paid or split with them)
+    const { data: splitData, error: splitError } = await supabase
+      .from('expense_splits')
+      .select('expense_id')
+      .eq('user_id', userId);
+    
+    if (splitError) throw splitError;
+    
+    // Also get expenses paid by the user
+    const { data: paidData, error: paidError } = await supabase
+      .from('expenses')
+      .select('id')
+      .eq('paid_by', userId);
+    
+    if (paidError) throw paidError;
+    
+    // Combine both sets of expense IDs
+    const splitExpenseIds = (splitData || []).map(s => s.expense_id);
+    const paidExpenseIds = (paidData || []).map(e => e.id);
+    const allExpenseIds = [...new Set([...splitExpenseIds, ...paidExpenseIds])];
+    
+    if (allExpenseIds.length === 0) return [];
+    
+    // Fetch full expense details
+    const { data, error } = await supabase
+      .from('expenses')
+      .select('*')
+      .in('id', allExpenseIds)
+      .order('date', { ascending: false });
+    
+    if (error) throw error;
+    
+    return (data || []).map(r => ({
+      id: r.id,
+      groupId: r.group_id || undefined,
+      description: r.description,
+      amount: r.amount,
+      currency: r.currency,
+      paidBy: r.paid_by,
+      category: r.category || undefined,
+      date: new Date(r.date).getTime(),
+      imageUrl: r.image_url || undefined,
+      notes: r.notes || undefined,
+      createdAt: new Date(r.created_at).getTime(),
+      updatedAt: new Date(r.updated_at).getTime(),
+    }));
+  },
+
   async delete(id: string): Promise<void> {
     const { error } = await supabase
       .from('expenses')

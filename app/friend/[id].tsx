@@ -109,8 +109,8 @@ export default function FriendDetailScreen() {
       const balance = await calculateFriendBalance(currentUserId, id);
       setFriend({ ...friendData, balance });
 
-      // Get all expenses and filter for ones involving both users
-      const allExpenses = await expenseService.getAll();
+      // Get expenses involving the current user and filter for ones involving both users
+      const allExpenses = await expenseService.getUserExpenses(currentUserId);
       const allSplits = await Promise.all(
         allExpenses.map(async (expense: Expense) => {
           const splits = await expenseService.getSplits(expense.id);

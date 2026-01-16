@@ -2,6 +2,7 @@ import { ActivityCard } from '@/components/activity/activity-card';
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { LoadingState } from '@/components/ui/loading-state';
+import { useAuth } from '@/contexts/auth-context-otp';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { activityService } from '@/services/activity-service';
 import { initDatabase } from '@/services/api';
@@ -19,6 +20,9 @@ export default function ActivityScreen() {
   // Animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
+
+  const { user } = useAuth();
+  const currentUserId = user?.id || '';
 
   useFocusEffect(
     useCallback(() => {
@@ -44,9 +48,10 @@ export default function ActivityScreen() {
   }, [loading]);
 
   async function loadActivities() {
+    if (!currentUserId) return;
     try {
       await initDatabase();
-      const allActivities = await activityService.getAll();
+      const allActivities = await activityService.getUserActivities(currentUserId);
       console.log('[Activity] Loaded activities:', allActivities.length);
       setActivities(allActivities);
     } catch (error) {

@@ -52,7 +52,7 @@ export default function EditExpenseScreen() {
 
   useEffect(() => {
     loadExpenseData();
-  }, [id]);
+  }, [id, loadExpenseData]);
 
   async function loadExpenseData() {
     try {
@@ -76,7 +76,7 @@ export default function EditExpenseScreen() {
       }
 
       const [groupsData, usersData] = await Promise.all([
-        groupService.getAll(),
+        groupService.getUserGroups(user?.id || ''),
         userService.getAll(),
       ]);
 

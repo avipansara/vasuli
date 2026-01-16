@@ -97,6 +97,47 @@ export const activityService = {
     }));
   },
 
+  async getUserActivities(userId: string, limit?: number): Promise<Activity[]> {
+    // Get activities from groups the user is a member of
+    const { data: memberData, error: memberError } = await supabase
+      .from('group_members')
+      .select('group_id')
+      .eq('user_id', userId);
+    
+    if (memberError) throw memberError;
+    
+    const groupIds = (memberData || []).map(m => m.group_id);
+    
+    // Build query for activities: user's own activities OR activities in their groups
+    let query = supabase
+      .from('activities')
+      .select('*')
+      .or(`user_id.eq.${userId},group_id.in.(${groupIds.length > 0 ? groupIds.join(',') : 'null'})`)
+      .order('created_at', { ascending: false });
+
+    if (limit) {
+      query = query.limit(limit);
+    }
+
+    const { data, error } = await query;
+
+    if (error) throw error;
+
+    return (data || []).map(r => ({
+      id: r.id,
+      type: r.type as ActivityType,
+      userId: r.user_id,
+      userName: r.user_name || undefined,
+      targetId: r.target_id,
+      groupId: r.group_id || undefined,
+      groupName: r.group_name || undefined,
+      description: r.description,
+      amount: r.amount || undefined,
+      metadata: r.metadata || undefined,
+      createdAt: new Date(r.created_at).getTime(),
+    }));
+  },
+
   async getByGroup(groupId: string, limit?: number): Promise<Activity[]> {
     let query = supabase
       .from('activities')

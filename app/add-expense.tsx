@@ -104,10 +104,11 @@ export default function AddExpenseScreen() {
   }, [selectedGroupId]);
 
   async function loadData() {
+    if (!currentUserId) return;
     try {
       await initDatabase();
       const [allGroups, allUsers] = await Promise.all([
-        groupService.getAll(),
+        groupService.getUserGroups(currentUserId),
         userService.getAll(),
       ]);
       setGroups(allGroups);

@@ -50,9 +50,10 @@ export default function GroupsScreen() {
   }, [loading]);
 
   async function loadGroups() {
+    if (!currentUserId) return;
     try {
       await initDatabase();
-      const allGroups = await groupService.getAll();
+      const allGroups = await groupService.getUserGroups(currentUserId);
       
       const groupsWithData = await Promise.all(
         allGroups.map(async (group) => {

@@ -42,8 +42,8 @@ export async function calculateUserTotalBalance(userId: string): Promise<{ total
   let totalOwedAmount = 0;
   let totalOwingAmount = 0;
   
-  // 1. Calculate balances from group expenses
-  const groups = await groupService.getAll();
+  // 1. Calculate balances from group expenses (only groups user is a member of)
+  const groups = await groupService.getUserGroups(userId);
   for (const group of groups) {
     const balances = await calculateBalances(group.id);
     const userBalance = balances.get(userId) || 0;
@@ -55,8 +55,8 @@ export async function calculateUserTotalBalance(userId: string): Promise<{ total
     }
   }
   
-  // 2. Calculate balances from individual friend expenses (non-group)
-  const allExpenses = await expenseService.getAll();
+  // 2. Calculate balances from individual friend expenses (non-group, only expenses involving this user)
+  const allExpenses = await expenseService.getUserExpenses(userId);
   const individualExpenses = allExpenses.filter(e => !e.groupId);
   
   const individualBalances = new Map<string, number>();
@@ -94,8 +94,8 @@ export async function calculateUserTotalBalance(userId: string): Promise<{ total
 export async function calculateFriendBalance(currentUserId: string, friendId: string): Promise<number> {
   let balance = 0;
   
-  // 1. Calculate from ALL expenses (both group and individual)
-  const allExpenses = await expenseService.getAll();
+  // 1. Calculate from expenses involving the current user (both group and individual)
+  const allExpenses = await expenseService.getUserExpenses(currentUserId);
   
   for (const expense of allExpenses) {
     const splits = await expenseService.getSplits(expense.id);

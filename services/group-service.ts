@@ -75,6 +75,37 @@ export const groupService = {
     }));
   },
 
+  async getUserGroups(userId: string): Promise<Group[]> {
+    // Get groups where user is a member
+    const { data: memberData, error: memberError } = await supabase
+      .from('group_members')
+      .select('group_id')
+      .eq('user_id', userId);
+    
+    if (memberError) throw memberError;
+    if (!memberData || memberData.length === 0) return [];
+    
+    const groupIds = memberData.map(m => m.group_id);
+    
+    // Fetch full group details
+    const { data, error } = await supabase
+      .from('groups')
+      .select('*')
+      .in('id', groupIds)
+      .order('updated_at', { ascending: false });
+    
+    if (error) throw error;
+    
+    return (data || []).map(r => ({
+      id: r.id,
+      name: r.name,
+      description: r.description || undefined,
+      imageUrl: r.image_url || undefined,
+      createdAt: new Date(r.created_at).getTime(),
+      updatedAt: new Date(r.updated_at).getTime(),
+    }));
+  },
+
   async update(id: string, updates: Partial<Omit<Group, 'id' | 'createdAt' | 'updatedAt'>>): Promise<void> {
     const { error } = await supabase
       .from('groups')
