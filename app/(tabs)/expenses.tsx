@@ -125,7 +125,7 @@ export default function ExpensesScreen() {
       ) : (
         <SectionList
           sections={groupedExpenses}
-          renderItem={({ item }) => <ExpenseListCard expense={item} />}
+          renderItem={({ item }) => <ExpenseListCard expense={item} onDelete={loadData} />}
           renderSectionHeader={({ section: { title } }) => (
             <View style={styles.sectionHeader}>
               <ThemedText style={[styles.sectionTitle, !isDark && { color: colors.textSecondary }]}>

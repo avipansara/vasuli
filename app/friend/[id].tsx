@@ -379,7 +379,9 @@ export default function FriendDetailScreen() {
 
       {/* Quick Actions */}
       <View style={styles.quickActions}>
-        <TouchableOpacity style={[styles.quickActionButton, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.1)' : 'rgba(34, 197, 94, 0.1)' }]}>
+        <TouchableOpacity 
+          style={[styles.quickActionButton, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.1)' : 'rgba(34, 197, 94, 0.1)' }]}
+          onPress={() => router.push({ pathname: '/add-expense', params: { friendId: id } })}>
           <IconSymbol size={20} name="plus.circle.fill" color={isDark ? '#2DD4BF' : colors.tint} />
           <ThemedText style={[styles.quickActionText, { color: isDark ? '#2DD4BF' : colors.tint }]}>Add Expense</ThemedText>
         </TouchableOpacity>

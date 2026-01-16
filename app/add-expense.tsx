@@ -45,16 +45,16 @@ const SPLIT_METHODS = [
 export default function AddExpenseScreen() {
   const { gradients, colors, isDark } = useThemeColors();
   const { user } = useAuth();
-  const { groupId: preselectedGroupId } = useLocalSearchParams<{ groupId?: string }>();
+  const { groupId: preselectedGroupId, friendId: preselectedFriendId } = useLocalSearchParams<{ groupId?: string; friendId?: string }>();
   const currentUserId = user?.id || '';
 
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
-  const [splitType, setSplitType] = useState<SplitType>(preselectedGroupId ? SplitType.GROUP : SplitType.GROUP);
+  const [splitType, setSplitType] = useState<SplitType>(preselectedFriendId ? SplitType.FRIENDS : (preselectedGroupId ? SplitType.GROUP : SplitType.GROUP));
   const [groups, setGroups] = useState<Group[]>([]);
   const [friends, setFriends] = useState<User[]>([]);
   const [selectedGroupId, setSelectedGroupId] = useState(preselectedGroupId || '');
-  const [selectedFriendIds, setSelectedFriendIds] = useState<string[]>([]);
+  const [selectedFriendIds, setSelectedFriendIds] = useState<string[]>(preselectedFriendId ? [preselectedFriendId] : []);
   const [groupMembers, setGroupMembers] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [dataLoading, setDataLoading] = useState(true);

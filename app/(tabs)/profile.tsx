@@ -64,18 +64,6 @@ export default function ProfileScreen() {
     router.push('/edit-profile');
   }
 
-  function handleSettingPress(setting: string) {
-    if (setting === 'Help & Support') {
-      Alert.alert(
-        'Help & Support',
-        'Need help? Have questions?\n\nReach out to us at:\nsupport@split-space.com\n\nWe\'re here to help!',
-        [{ text: 'OK' }]
-      );
-    } else {
-      Alert.alert(setting, `${setting} settings coming soon!`);
-    }
-  }
-
   async function handleLogout() {
     Alert.alert('Logout', 'Are you sure you want to logout?', [
       { text: 'Cancel', style: 'cancel' },
@@ -95,7 +83,7 @@ export default function ProfileScreen() {
     { icon: 'moon.fill', title: 'Dark Mode', hasSwitch: true, value: isDark, onToggle: toggleTheme },
     { icon: 'lock.shield.fill', title: 'Privacy Policy', onPress: () => router.push('/privacy-policy') },
     { icon: 'doc.text.fill', title: 'Terms & Conditions', onPress: () => router.push('/terms-conditions') },
-    { icon: 'questionmark.circle.fill', title: 'Help & Support', onPress: () => handleSettingPress('Help & Support') },
+    { icon: 'questionmark.circle.fill', title: 'Help & Support', onPress: () => router.push('/help-support') },
   ];
 
   return (

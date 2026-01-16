@@ -6,11 +6,12 @@ import { StyleSheet, View } from 'react-native';
 
 interface ActivityItem {
   id: string;
-  type: 'expense' | 'settlement' | 'group_join';
+  type: 'expense' | 'settlement' | 'group_join' | 'deleted';
   description: string;
   amount?: number;
   date: number;
   groupName?: string;
+  isDeleted?: boolean;
 }
 
 interface ActivityCardProps {
@@ -27,22 +28,30 @@ export function ActivityCard({ activity }: ActivityCardProps) {
     minute: '2-digit',
   });
 
+  const isDeleted = activity.isDeleted || activity.description.startsWith('Deleted:');
+
   const iconName: IconSymbolName =
-    activity.type === 'expense'
+    isDeleted
+      ? 'trash.fill'
+      : activity.type === 'expense'
       ? 'dollarsign.circle.fill'
       : activity.type === 'settlement'
       ? 'checkmark.circle.fill'
       : 'person.badge.plus';
 
   const iconColor =
-    activity.type === 'expense'
+    isDeleted
+      ? '#ef4444'
+      : activity.type === 'expense'
       ? isDark ? '#2DD4BF' : colors.tint
       : activity.type === 'settlement'
       ? isDark ? '#10b981' : colors.success
       : isDark ? '#A78BFA' : '#8B5CF6';
 
   const iconBgColor =
-    activity.type === 'expense'
+    isDeleted
+      ? 'rgba(239, 68, 68, 0.15)'
+      : activity.type === 'expense'
       ? isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)'
       : activity.type === 'settlement'
       ? 'rgba(16, 185, 129, 0.15)'
@@ -60,7 +69,11 @@ export function ActivityCard({ activity }: ActivityCardProps) {
       <View style={styles.info}>
         <ThemedText
           type="defaultSemiBold"
-          style={[styles.description, !isDark && { color: colors.text }]}>
+          style={[
+            styles.description,
+            !isDark && { color: colors.text },
+            isDeleted && styles.deletedText,
+          ]}>
           {activity.description}
         </ThemedText>
         <View style={styles.details}>
@@ -115,6 +128,10 @@ const styles = StyleSheet.create({
   description: {
     fontSize: 14,
     color: '#fff',
+  },
+  deletedText: {
+    color: '#ef4444',
+    textDecorationLine: 'line-through',
   },
   details: {
     flexDirection: 'row',
