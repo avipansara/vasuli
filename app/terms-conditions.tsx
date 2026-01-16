@@ -17,7 +17,7 @@ export default function TermsConditionsScreen() {
         showsVerticalScrollIndicator={false}>
         
         <ThemedText style={[styles.lastUpdated, { color: colors.textSecondary }]}>
-          Last updated: January 16, 2025
+          Last updated: January 16, 2026
         </ThemedText>
 
         <Section title="Agreement to Terms">
@@ -103,7 +103,7 @@ export default function TermsConditionsScreen() {
             If you have any questions about these Terms and Conditions, please contact us at:
           </ThemedText>
           <ThemedText style={[styles.contactInfo, { color: colors.accent }]}>
-            support@vasuli.app
+            support@split-space.com
           </ThemedText>
         </Section>
 
