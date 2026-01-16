@@ -268,7 +268,7 @@ export default function FriendDetailScreen() {
           }]}>
           <IconSymbol size={20} name="chevron.left" color={isDark ? '#2DD4BF' : colors.tint} />
         </TouchableOpacity>
-        <View style={styles.headerActions}>
+        {/* <View style={styles.headerActions}>
           <TouchableOpacity 
             style={[styles.headerActionButton, { 
               backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)', 
@@ -276,7 +276,7 @@ export default function FriendDetailScreen() {
             }]}>
             <IconSymbol size={18} name="ellipsis" color={isDark ? '#2DD4BF' : colors.tint} />
           </TouchableOpacity>
-        </View>
+        </View> */}
       </View>
 
       {/* Profile Hero Section */}

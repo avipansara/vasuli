@@ -1,3 +1,4 @@
+import { AnimatedSplash } from '@/components/ui/animated-splash';
 import { AuthProvider, useAuth } from '@/contexts/auth-context-otp';
 import { ThemeProvider as AppThemeProvider, useTheme } from '@/contexts/theme-context';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
@@ -7,7 +8,7 @@ import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
-import { ActivityIndicator, Alert, View } from 'react-native';
+import { Alert } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
 
@@ -108,11 +109,7 @@ function RootLayoutNav() {
   }, [router]);
 
   if (isLoading) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: isDark ? '#0A0A0F' : '#F5F5F5' }}>
-        <ActivityIndicator size="large" color={isDark ? '#2DD4BF' : '#22C55E'} />
-      </View>
-    );
+    return <AnimatedSplash />;
   }
 
   return (

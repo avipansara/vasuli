@@ -49,12 +49,15 @@ const MAPPING: IconMapping = {
   'person.3': 'groups',
   'person.3.fill': 'groups',
   'person.badge.plus': 'person-add',
+  'person.circle': 'account-circle',
+  'person.circle.fill': 'account-circle',
   'person.crop.circle': 'account-circle',
   'person.crop.circle.fill': 'account-circle',
   
   // Communication
   'envelope': 'mail-outline',
   'envelope.fill': 'mail',
+  'envelope.badge': 'markunread-mailbox',
   'phone': 'phone',
   'phone.fill': 'phone',
   'message': 'chat-bubble-outline',
@@ -89,6 +92,7 @@ const MAPPING: IconMapping = {
   'lock': 'lock-outline',
   'lock.fill': 'lock',
   'lock.shield': 'security',
+  'lock.shield.fill': 'security',
   'shield': 'shield',
   'shield.fill': 'shield',
   'info.circle': 'info-outline',
@@ -139,6 +143,7 @@ const MAPPING: IconMapping = {
   'sun.max.fill': 'light-mode',
   'paintbrush': 'brush',
   'paintbrush.fill': 'brush',
+  'figure.skateboarding': 'skateboarding',
   
   // Arrows & Indicators
   'arrow.up': 'arrow-upward',
