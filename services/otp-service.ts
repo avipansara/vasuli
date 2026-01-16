@@ -5,8 +5,20 @@ const OTP_EXPIRY_MINUTES = 15;
 const MAX_ATTEMPTS = 3;
 
 // Set to true for development/testing without real Supabase
-const USE_MOCK_DATA = false;
+const USE_MOCK_DATA = process.env.EXPO_PUBLIC_USE_MOCK_DATA === 'true';
 const MOCK_OTP_CODE = '123456';
+
+// Apple App Store test account (from environment variables)
+const TEST_ACCOUNT_EMAIL = process.env.EXPO_PUBLIC_TEST_ACCOUNT_EMAIL || '';
+const TEST_ACCOUNT_PHONE = process.env.EXPO_PUBLIC_TEST_ACCOUNT_PHONE || '';
+const TEST_ACCOUNT_OTP = process.env.EXPO_PUBLIC_TEST_ACCOUNT_OTP || '';
+
+/**
+ * Check if the email/phone is a test account
+ */
+function isTestAccount(email?: string, phone?: string): boolean {
+  return email === TEST_ACCOUNT_EMAIL || phone === TEST_ACCOUNT_PHONE;
+}
 
 export interface VerificationCode {
   id: string;
@@ -69,6 +81,14 @@ export async function sendSignUpCode(params: {
       return { success: true };
     }
 
+    // Test account mode - skip email sending
+    if (isTestAccount(email, phone)) {
+      console.log(`[TEST ACCOUNT] Sign up code for ${email || phone}. Use code: ${TEST_ACCOUNT_OTP}`);
+      // Store pending signup info for verification
+      await AsyncStorage.setItem('pending_signup', JSON.stringify({ name, email, phone }));
+      return { success: true };
+    }
+
     // Check if user already exists
     const { data: existingUser } = await supabase
       .from('users')
@@ -100,20 +120,24 @@ export async function sendSignUpCode(params: {
       return { success: false, error: 'Failed to create verification code' };
     }
 
-    // Send OTP via edge function
-    const { error: sendError } = await supabase.functions.invoke('send-otp', {
-      body: {
-        email,
-        phone,
-        code,
-        name,
-        type: 'signup',
-      },
-    });
+    // Send OTP via edge function (skip for test accounts)
+    if (!isTestAccount(email, phone)) {
+      const { error: sendError } = await supabase.functions.invoke('send-otp', {
+        body: {
+          email,
+          phone,
+          code,
+          name,
+          type: 'signup',
+        },
+      });
 
-    if (sendError) {
-      console.error('Error sending OTP:', sendError);
-      // Don't fail - code was created, just email/SMS failed
+      if (sendError) {
+        console.error('Error sending OTP:', sendError);
+        // Don't fail - code was created, just email/SMS failed
+      }
+    } else {
+      console.log(`[TEST ACCOUNT] Skipped sending email to ${email || phone}`);
     }
 
     return { success: true };
@@ -142,6 +166,12 @@ export async function sendSignInCode(params: {
       console.log(`[MOCK] Sign in code sent to ${email || phone}. Use code: ${MOCK_OTP_CODE}`);
       // Store pending signin info for verification
       await AsyncStorage.setItem('pending_signin', JSON.stringify({ email, phone }));
+      return { success: true };
+    }
+
+    // Test account mode - skip email sending
+    if (isTestAccount(email, phone)) {
+      console.log(`[TEST ACCOUNT] Sign in code for ${email || phone}. Use code: ${TEST_ACCOUNT_OTP}`);
       return { success: true };
     }
 
@@ -177,20 +207,24 @@ export async function sendSignInCode(params: {
       return { success: false, error: 'Failed to create verification code' };
     }
 
-    // Send OTP via edge function
-    const { error: sendError } = await supabase.functions.invoke('send-otp', {
-      body: {
-        email: email || user.email,
-        phone: phone || user.phone,
-        code,
-        name: user.name,
-        type: 'signin',
-      },
-    });
+    // Send OTP via edge function (skip for test accounts)
+    if (!isTestAccount(email || user.email, phone || user.phone)) {
+      const { error: sendError } = await supabase.functions.invoke('send-otp', {
+        body: {
+          email: email || user.email,
+          phone: phone || user.phone,
+          code,
+          name: user.name,
+          type: 'signin',
+        },
+      });
 
-    if (sendError) {
-      console.error('Error sending OTP:', sendError);
-      // Don't fail - code was created, just email/SMS failed
+      if (sendError) {
+        console.error('Error sending OTP:', sendError);
+        // Don't fail - code was created, just email/SMS failed
+      }
+    } else {
+      console.log(`[TEST ACCOUNT] Skipped sending email to ${email || user.email || phone || user.phone}`);
     }
 
     return { success: true };
@@ -219,7 +253,7 @@ export async function verifySignUpCode(params: {
     // Mock mode for development
     if (USE_MOCK_DATA) {
       if (code !== MOCK_OTP_CODE) {
-        return { success: false, error: 'Invalid verification code. Use 123456 for testing.' };
+        return { success: false, error: 'Invalid verification code. Use code for testing.' };
       }
 
       // Create mock user and session
@@ -240,6 +274,51 @@ export async function verifySignUpCode(params: {
       await AsyncStorage.removeItem('pending_signup');
 
       console.log('[MOCK] Sign up successful!');
+      return { success: true, session };
+    }
+
+    // Test account mode - auto-verify with code 
+    if (isTestAccount(email, phone)) {
+      if (code !== TEST_ACCOUNT_OTP) {
+        return { success: false, error: 'Invalid verification code. Use code for test account.' };
+      }
+
+      // Check if test user already exists
+      const { data: existingUser } = await supabase
+        .from('users')
+        .select('*')
+        .or(email ? `email.eq.${email}` : `phone.eq.${phone}`)
+        .single();
+
+      if (existingUser) {
+        // User exists, create session
+        const session = await createSession(existingUser);
+        await saveSession(session);
+        console.log('[TEST ACCOUNT] Sign up successful (existing user)!');
+        return { success: true, session };
+      }
+
+      // Create new test user
+      const { data: newUser, error: userError } = await supabase
+        .from('users')
+        .insert({
+          name,
+          email,
+          phone,
+          email_verified: !!email,
+          phone_verified: !!phone,
+        })
+        .select()
+        .single();
+
+      if (userError) {
+        console.error('[TEST ACCOUNT] Error creating user:', userError);
+        return { success: false, error: 'Failed to create test user account' };
+      }
+
+      const session = await createSession(newUser);
+      await saveSession(session);
+      console.log('[TEST ACCOUNT] Sign up successful (new user)!');
       return { success: true, session };
     }
 
@@ -325,7 +404,7 @@ export async function verifySignInCode(params: {
     // Mock mode for development
     if (USE_MOCK_DATA) {
       if (code !== MOCK_OTP_CODE) {
-        return { success: false, error: 'Invalid verification code. Use 123456 for testing.' };
+        return { success: false, error: 'Invalid verification code. Use code for testing.' };
       }
 
       // Create mock user and session
@@ -346,6 +425,29 @@ export async function verifySignInCode(params: {
       await AsyncStorage.removeItem('pending_signin');
 
       console.log('[MOCK] Sign in successful!');
+      return { success: true, session };
+    }
+
+    // Test account mode - auto-verify with code
+    if (isTestAccount(email, phone)) {
+      if (code !== TEST_ACCOUNT_OTP) {
+        return { success: false, error: 'Invalid verification code. Use test account credentials.' };
+      }
+
+      // Find test user
+      const { data: user, error: userError } = await supabase
+        .from('users')
+        .select('*')
+        .or(email ? `email.eq.${email}` : `phone.eq.${phone}`)
+        .single();
+
+      if (userError || !user) {
+        return { success: false, error: 'Test account not found. Please sign up first.' };
+      }
+
+      const session = await createSession(user);
+      await saveSession(session);
+      console.log('[TEST ACCOUNT] Sign in successful!');
       return { success: true, session };
     }
 
