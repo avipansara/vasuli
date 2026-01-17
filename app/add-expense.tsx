@@ -251,19 +251,26 @@ export default function AddExpenseScreen() {
     }
 
     if (splitMethod === SplitMethod.SHARES) {
-      const shares = userIds.map(userId => parseFloat(customShares[userId] || '0'));
-      const totalShares = shares.reduce((sum, s) => sum + s, 0);
+      const sharesData = userIds.map(userId => ({
+        userId,
+        shares: parseFloat(customShares[userId] || '0'),
+      }));
+      
+      const totalShares = sharesData.reduce((sum, item) => sum + item.shares, 0);
 
       if (totalShares === 0) {
         Alert.alert('Invalid Split', 'Please enter at least one share');
         return null;
       }
 
-      return userIds.map((userId, index) => ({
-        userId,
-        amount: (totalAmount * shares[index]) / totalShares,
-        splitType: 'exact' as const,
-      }));
+      // Only include users with shares > 0
+      return sharesData
+        .filter(item => item.shares > 0)
+        .map(item => ({
+          userId: item.userId,
+          amount: (totalAmount * item.shares) / totalShares,
+          splitType: 'exact' as const,
+        }));
     }
 
     return null;
@@ -401,39 +408,47 @@ export default function AddExpenseScreen() {
                 How to split?
               </ThemedText>
               <View style={styles.splitMethodContainer}>
-                {SPLIT_METHODS.map(method => {
-                  const isActive = splitMethod === method.id;
-                  return (
-                    <TouchableOpacity
-                      key={method.id}
-                      style={[
-                        styles.splitMethodButton,
-                        isActive && styles.splitMethodButtonActive,
-                        {
-                          backgroundColor: isActive
-                            ? (isDark ? '#2DD4BF' : colors.tint)
-                            : (isDark ? 'rgba(30, 41, 59, 0.6)' : 'rgba(241, 245, 249, 0.9)'),
-                          borderColor: isActive
-                            ? (isDark ? '#2DD4BF' : colors.tint)
-                            : (isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(34, 197, 94, 0.2)'),
-                        },
-                      ]}
-                      onPress={() => setSplitMethod(method.id)}>
-                      <IconSymbol
-                        name={method.icon}
-                        size={18}
-                        color={isActive ? '#0A0A0F' : (isDark ? '#2DD4BF' : colors.tint)}
-                      />
-                      <ThemedText style={[
-                        styles.splitMethodText,
-                        isActive && styles.splitMethodTextActive,
-                        !isDark && !isActive && { color: colors.text },
-                      ]}>
-                        {method.label}
-                      </ThemedText>
-                    </TouchableOpacity>
-                  );
-                })}
+                {SPLIT_METHODS
+                  .filter(method => {
+                    // Hide shares option for friends
+                    if (splitType === SplitType.FRIENDS && method.id === SplitMethod.SHARES) {
+                      return false;
+                    }
+                    return true;
+                  })
+                  .map(method => {
+                    const isActive = splitMethod === method.id;
+                    return (
+                      <TouchableOpacity
+                        key={method.id}
+                        style={[
+                          styles.splitMethodButton,
+                          isActive && styles.splitMethodButtonActive,
+                          {
+                            backgroundColor: isActive
+                              ? (isDark ? '#2DD4BF' : colors.tint)
+                              : (isDark ? 'rgba(30, 41, 59, 0.6)' : 'rgba(241, 245, 249, 0.9)'),
+                            borderColor: isActive
+                              ? (isDark ? '#2DD4BF' : colors.tint)
+                              : (isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(34, 197, 94, 0.2)'),
+                          },
+                        ]}
+                        onPress={() => setSplitMethod(method.id)}>
+                        <IconSymbol
+                          name={method.icon}
+                          size={18}
+                          color={isActive ? '#0A0A0F' : (isDark ? '#2DD4BF' : colors.tint)}
+                        />
+                        <ThemedText style={[
+                          styles.splitMethodText,
+                          isActive && styles.splitMethodTextActive,
+                          !isDark && !isActive && { color: colors.text },
+                        ]}>
+                          {method.label}
+                        </ThemedText>
+                      </TouchableOpacity>
+                    );
+                  })}
               </View>
             </View>
 
@@ -627,6 +642,22 @@ export default function AddExpenseScreen() {
                   <ThemedText style={[styles.customSplitSuffix, !isDark && { color: colors.textSecondary }]}>
                     {splitMethod === SplitMethod.UNEQUAL ? '$' : splitMethod === SplitMethod.PERCENTAGE ? '%' : 'x'}
                   </ThemedText>
+                  {(splitMethod === SplitMethod.PERCENTAGE || splitMethod === SplitMethod.SHARES) && (() => {
+                    let calculatedAmount = 0;
+                    if (splitMethod === SplitMethod.PERCENTAGE) {
+                      const percentage = parseFloat(customPercentages[currentUserId] || '0');
+                      calculatedAmount = (totalAmount * percentage) / 100;
+                    } else {
+                      const shares = parseFloat(customShares[currentUserId] || '0');
+                      const totalShares = userIds.reduce((sum, uid) => sum + parseFloat(customShares[uid] || '0'), 0);
+                      calculatedAmount = totalShares > 0 ? (totalAmount * shares) / totalShares : 0;
+                    }
+                    return (
+                      <ThemedText style={[styles.calculatedAmount, !isDark && { color: colors.textSecondary }]}>
+                        ${calculatedAmount.toFixed(2)}
+                      </ThemedText>
+                    );
+                  })()}
                 </View>
 
                 {/* Selected Friends */}
@@ -668,6 +699,22 @@ export default function AddExpenseScreen() {
                       <ThemedText style={[styles.customSplitSuffix, !isDark && { color: colors.textSecondary }]}>
                         {splitMethod === SplitMethod.UNEQUAL ? '$' : splitMethod === SplitMethod.PERCENTAGE ? '%' : 'x'}
                       </ThemedText>
+                      {(splitMethod === SplitMethod.PERCENTAGE || splitMethod === SplitMethod.SHARES) && (() => {
+                        let calculatedAmount = 0;
+                        if (splitMethod === SplitMethod.PERCENTAGE) {
+                          const percentage = parseFloat(customPercentages[friendId] || '0');
+                          calculatedAmount = (totalAmount * percentage) / 100;
+                        } else {
+                          const shares = parseFloat(customShares[friendId] || '0');
+                          const totalShares = userIds.reduce((sum, uid) => sum + parseFloat(customShares[uid] || '0'), 0);
+                          calculatedAmount = totalShares > 0 ? (totalAmount * shares) / totalShares : 0;
+                        }
+                        return (
+                          <ThemedText style={[styles.calculatedAmount, !isDark && { color: colors.textSecondary }]}>
+                            ${calculatedAmount.toFixed(2)}
+                          </ThemedText>
+                        );
+                      })()}
                     </View>
                   );
                 })}
@@ -711,6 +758,22 @@ export default function AddExpenseScreen() {
                       <ThemedText style={[styles.customSplitSuffix, !isDark && { color: colors.textSecondary }]}>
                         {splitMethod === SplitMethod.UNEQUAL ? '$' : splitMethod === SplitMethod.PERCENTAGE ? '%' : 'x'}
                       </ThemedText>
+                      {(splitMethod === SplitMethod.PERCENTAGE || splitMethod === SplitMethod.SHARES) && (() => {
+                        let calculatedAmount = 0;
+                        if (splitMethod === SplitMethod.PERCENTAGE) {
+                          const percentage = parseFloat(customPercentages[memberId] || '0');
+                          calculatedAmount = (totalAmount * percentage) / 100;
+                        } else {
+                          const shares = parseFloat(customShares[memberId] || '0');
+                          const totalShares = userIds.reduce((sum, uid) => sum + parseFloat(customShares[uid] || '0'), 0);
+                          calculatedAmount = totalShares > 0 ? (totalAmount * shares) / totalShares : 0;
+                        }
+                        return (
+                          <ThemedText style={[styles.calculatedAmount, !isDark && { color: colors.textSecondary }]}>
+                            ${calculatedAmount.toFixed(2)}
+                          </ThemedText>
+                        );
+                      })()}
                     </View>
                   );
                 })}
@@ -947,6 +1010,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
     marginLeft: 4,
+  },
+  calculatedAmount: {
+    fontSize: 13,
+    fontWeight: '600',
+    marginLeft: 8,
+    opacity: 0.7,
   },
   selectionSection: {
     marginBottom: 24,

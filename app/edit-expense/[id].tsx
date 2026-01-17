@@ -195,19 +195,26 @@ export default function EditExpenseScreen() {
     }
 
     if (splitMethod === SplitMethod.SHARES) {
-      const shares = userIds.map(userId => parseFloat(customShares[userId] || '0'));
-      const totalShares = shares.reduce((sum, s) => sum + s, 0);
+      const sharesData = userIds.map(userId => ({
+        userId,
+        shares: parseFloat(customShares[userId] || '0'),
+      }));
+      
+      const totalShares = sharesData.reduce((sum, item) => sum + item.shares, 0);
 
       if (totalShares === 0) {
         Alert.alert('Invalid Split', 'Please enter at least one share');
         return null;
       }
 
-      return userIds.map((userId, index) => ({
-        userId,
-        amount: (totalAmount * shares[index]) / totalShares,
-        splitType: 'exact' as const,
-      }));
+      // Only include users with shares > 0
+      return sharesData
+        .filter(item => item.shares > 0)
+        .map(item => ({
+          userId: item.userId,
+          amount: (totalAmount * item.shares) / totalShares,
+          splitType: 'exact' as const,
+        }));
     }
 
     return null;
@@ -357,9 +364,17 @@ export default function EditExpenseScreen() {
                 How to split?
               </ThemedText>
               <View style={styles.splitMethodContainer}>
-                {SPLIT_METHODS.map(method => {
-                  const isActive = splitMethod === method.id;
-                  return (
+                {SPLIT_METHODS
+                  .filter(method => {
+                    // Hide shares option for friends
+                    if (splitType === SplitType.FRIENDS && method.id === SplitMethod.SHARES) {
+                      return false;
+                    }
+                    return true;
+                  })
+                  .map(method => {
+                    const isActive = splitMethod === method.id;
+                    return (
                     <TouchableOpacity
                       key={method.id}
                       style={[
@@ -565,6 +580,24 @@ export default function EditExpenseScreen() {
                   <ThemedText style={[styles.customSplitSuffix, !isDark && { color: colors.textSecondary }]}>
                     {splitMethod === SplitMethod.UNEQUAL ? '$' : splitMethod === SplitMethod.PERCENTAGE ? '%' : 'x'}
                   </ThemedText>
+                  {(splitMethod === SplitMethod.PERCENTAGE || splitMethod === SplitMethod.SHARES) && (() => {
+                    const totalAmount = parseFloat(amount);
+                    const userIds = splitType === SplitType.GROUP ? groupMembers : [currentUserId, ...selectedFriendIds];
+                    let calculatedAmount = 0;
+                    if (splitMethod === SplitMethod.PERCENTAGE) {
+                      const percentage = parseFloat(customPercentages[currentUserId] || '0');
+                      calculatedAmount = (totalAmount * percentage) / 100;
+                    } else {
+                      const shares = parseFloat(customShares[currentUserId] || '0');
+                      const totalShares = userIds.reduce((sum, uid) => sum + parseFloat(customShares[uid] || '0'), 0);
+                      calculatedAmount = totalShares > 0 ? (totalAmount * shares) / totalShares : 0;
+                    }
+                    return (
+                      <ThemedText style={[styles.calculatedAmount, !isDark && { color: colors.textSecondary }]}>
+                        ${calculatedAmount.toFixed(2)}
+                      </ThemedText>
+                    );
+                  })()}
                 </View>
 
                 {/* Other participants */}
@@ -606,6 +639,24 @@ export default function EditExpenseScreen() {
                       <ThemedText style={[styles.customSplitSuffix, !isDark && { color: colors.textSecondary }]}>
                         {splitMethod === SplitMethod.UNEQUAL ? '$' : splitMethod === SplitMethod.PERCENTAGE ? '%' : 'x'}
                       </ThemedText>
+                      {(splitMethod === SplitMethod.PERCENTAGE || splitMethod === SplitMethod.SHARES) && (() => {
+                        const totalAmount = parseFloat(amount);
+                        const userIds = splitType === SplitType.GROUP ? groupMembers : [currentUserId, ...selectedFriendIds];
+                        let calculatedAmount = 0;
+                        if (splitMethod === SplitMethod.PERCENTAGE) {
+                          const percentage = parseFloat(customPercentages[userId] || '0');
+                          calculatedAmount = (totalAmount * percentage) / 100;
+                        } else {
+                          const shares = parseFloat(customShares[userId] || '0');
+                          const totalShares = userIds.reduce((sum, uid) => sum + parseFloat(customShares[uid] || '0'), 0);
+                          calculatedAmount = totalShares > 0 ? (totalAmount * shares) / totalShares : 0;
+                        }
+                        return (
+                          <ThemedText style={[styles.calculatedAmount, !isDark && { color: colors.textSecondary }]}>
+                            ${calculatedAmount.toFixed(2)}
+                          </ThemedText>
+                        );
+                      })()}
                     </View>
                   );
                 })}
@@ -837,5 +888,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
     marginLeft: 4,
+  },
+  calculatedAmount: {
+    fontSize: 13,
+    fontWeight: '600',
+    marginLeft: 8,
+    opacity: 0.7,
   },
 });
