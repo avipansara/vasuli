@@ -104,7 +104,9 @@ export function ExpenseListCard({ expense, onDelete }: ExpenseListCardProps) {
       overshootRight={false}
       friction={2}
     >
-    <View
+    <TouchableOpacity
+      activeOpacity={0.7}
+      onPress={() => router.push(`/expense-detail/${expense.id}` as any)}
       style={[
         styles.card,
         !isDark && { backgroundColor: colors.card, borderColor: colors.border },
@@ -144,7 +146,7 @@ export function ExpenseListCard({ expense, onDelete }: ExpenseListCardProps) {
       <ThemedText style={[styles.amount, !isDark && { color: colors.text }]}>
         ${expense.amount.toFixed(2)}
       </ThemedText>
-    </View>
+    </TouchableOpacity>
     </Swipeable>
   );
 }
