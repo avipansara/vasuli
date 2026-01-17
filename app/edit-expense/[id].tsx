@@ -27,6 +27,20 @@ enum SplitType {
   FRIENDS = 'friends',
 }
 
+enum SplitMethod {
+  EQUAL = 'equal',
+  UNEQUAL = 'unequal',
+  PERCENTAGE = 'percentage',
+  SHARES = 'shares',
+}
+
+const SPLIT_METHODS = [
+  { id: SplitMethod.EQUAL, label: 'Equal', icon: 'divide.circle' as const, description: 'Split evenly' },
+  { id: SplitMethod.UNEQUAL, label: 'Unequal', icon: 'plusminus' as const, description: 'Enter amounts' },
+  { id: SplitMethod.PERCENTAGE, label: 'Percentage', icon: 'percent' as const, description: 'By percent' },
+  { id: SplitMethod.SHARES, label: 'Shares', icon: 'chart.pie' as const, description: 'By shares' },
+];
+
 export default function EditExpenseScreen() {
   const { gradients, colors, isDark } = useThemeColors();
   const { user } = useAuth();
@@ -40,8 +54,13 @@ export default function EditExpenseScreen() {
   const [friends, setFriends] = useState<User[]>([]);
   const [selectedGroupId, setSelectedGroupId] = useState<string>('');
   const [selectedFriendIds, setSelectedFriendIds] = useState<string[]>([]);
+  const [groupMembers, setGroupMembers] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [dataLoading, setDataLoading] = useState(true);
+  const [splitMethod, setSplitMethod] = useState<SplitMethod>(SplitMethod.EQUAL);
+  const [customAmounts, setCustomAmounts] = useState<Record<string, string>>({});
+  const [customPercentages, setCustomPercentages] = useState<Record<string, string>>({});
+  const [customShares, setCustomShares] = useState<Record<string, string>>({});
 
   // Animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -50,6 +69,22 @@ export default function EditExpenseScreen() {
   // Input refs
   const amountInputRef = useRef<TextInput>(null);
   const descriptionInputRef = useRef<TextInput>(null);
+
+  useEffect(() => {
+    async function loadGroupMembers() {
+      if (selectedGroupId) {
+        try {
+          const members = await groupService.getMembers(selectedGroupId);
+          setGroupMembers(members.map((m: { userId: string }) => m.userId));
+        } catch (error) {
+          console.error('Error loading group members:', error);
+        }
+      } else {
+        setGroupMembers([]);
+      }
+    }
+    loadGroupMembers();
+  }, [selectedGroupId]);
 
   useEffect(() => {
     async function loadExpenseData() {
@@ -118,6 +153,66 @@ export default function EditExpenseScreen() {
     parseFloat(amount) > 0 &&
     (splitType === SplitType.GROUP ? selectedGroupId !== '' : selectedFriendIds.length > 0);
 
+  function calculateSplits(userIds: string[], totalAmount: number): { userId: string; amount: number; splitType: 'equal' | 'exact' | 'percentage' }[] | null {
+    if (splitMethod === SplitMethod.EQUAL) {
+      const splitAmount = totalAmount / userIds.length;
+      return userIds.map(userId => ({
+        userId,
+        amount: splitAmount,
+        splitType: 'equal' as const,
+      }));
+    }
+
+    if (splitMethod === SplitMethod.UNEQUAL) {
+      const splits = userIds.map(userId => {
+        const customAmount = parseFloat(customAmounts[userId] || '0');
+        return { userId, amount: customAmount, splitType: 'exact' as const };
+      });
+
+      const total = splits.reduce((sum, s) => sum + s.amount, 0);
+      if (Math.abs(total - totalAmount) > 0.01) {
+        Alert.alert('Invalid Split', `Amounts must add up to $${totalAmount.toFixed(2)}. Current total: $${total.toFixed(2)}`);
+        return null;
+      }
+
+      return splits;
+    }
+
+    if (splitMethod === SplitMethod.PERCENTAGE) {
+      const percentages = userIds.map(userId => parseFloat(customPercentages[userId] || '0'));
+      const totalPercentage = percentages.reduce((sum, p) => sum + p, 0);
+
+      if (Math.abs(totalPercentage - 100) > 0.01) {
+        Alert.alert('Invalid Split', `Percentages must add up to 100%. Current total: ${totalPercentage.toFixed(1)}%`);
+        return null;
+      }
+
+      return userIds.map((userId, index) => ({
+        userId,
+        amount: (totalAmount * percentages[index]) / 100,
+        splitType: 'percentage' as const,
+      }));
+    }
+
+    if (splitMethod === SplitMethod.SHARES) {
+      const shares = userIds.map(userId => parseFloat(customShares[userId] || '0'));
+      const totalShares = shares.reduce((sum, s) => sum + s, 0);
+
+      if (totalShares === 0) {
+        Alert.alert('Invalid Split', 'Please enter at least one share');
+        return null;
+      }
+
+      return userIds.map((userId, index) => ({
+        userId,
+        amount: (totalAmount * shares[index]) / totalShares,
+        splitType: 'exact' as const,
+      }));
+    }
+
+    return null;
+  }
+
   async function handleSubmit() {
     if (!isValid) return;
 
@@ -127,29 +222,20 @@ export default function EditExpenseScreen() {
       
       const newAmount = parseFloat(amount);
       
-      // Calculate splits based on split type
-      let splits: { userId: string; amount: number; splitType: 'equal' | 'exact' | 'percentage' }[] = [];
+      // Calculate splits based on split type and method
+      let splits: { userId: string; amount: number; splitType: 'equal' | 'exact' | 'percentage' }[] | null = null;
       
       if (splitType === SplitType.FRIENDS) {
-        // Split between current user and selected friends
         const allParticipants = [currentUserId, ...selectedFriendIds];
-        const splitAmount = newAmount / allParticipants.length;
-        splits = allParticipants.map(userId => ({
-          userId,
-          amount: splitAmount,
-          splitType: 'equal' as const,
-        }));
+        splits = calculateSplits(allParticipants, newAmount);
       } else {
-        // For group expenses, get group members and split equally
-        const groupMembers = await groupService.getMembers(selectedGroupId);
-        if (groupMembers.length > 0) {
-          const splitAmount = newAmount / groupMembers.length;
-          splits = groupMembers.map(member => ({
-            userId: member.userId,
-            amount: splitAmount,
-            splitType: 'equal' as const,
-          }));
-        }
+        const members = await groupService.getMembers(selectedGroupId);
+        splits = calculateSplits(members.map((m: { userId: string }) => m.userId), newAmount);
+      }
+      
+      if (!splits) {
+        setLoading(false);
+        return;
       }
       
       await expenseService.update(id, {
@@ -265,6 +351,48 @@ export default function EditExpenseScreen() {
               </View>
             </View>
 
+            {/* Split Method Selection */}
+            <View style={styles.inputSection}>
+              <ThemedText style={[styles.inputLabel, !isDark && { color: colors.textSecondary }]}>
+                How to split?
+              </ThemedText>
+              <View style={styles.splitMethodContainer}>
+                {SPLIT_METHODS.map(method => {
+                  const isActive = splitMethod === method.id;
+                  return (
+                    <TouchableOpacity
+                      key={method.id}
+                      style={[
+                        styles.splitMethodButton,
+                        isActive && styles.splitMethodButtonActive,
+                        {
+                          backgroundColor: isActive
+                            ? (isDark ? '#2DD4BF' : colors.tint)
+                            : (isDark ? 'rgba(30, 41, 59, 0.6)' : 'rgba(241, 245, 249, 0.9)'),
+                          borderColor: isActive
+                            ? (isDark ? '#2DD4BF' : colors.tint)
+                            : (isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(34, 197, 94, 0.2)'),
+                        },
+                      ]}
+                      onPress={() => setSplitMethod(method.id)}>
+                      <IconSymbol
+                        name={method.icon}
+                        size={18}
+                        color={isActive ? '#0A0A0F' : (isDark ? '#2DD4BF' : colors.tint)}
+                      />
+                      <ThemedText style={[
+                        styles.splitMethodText,
+                        isActive && styles.splitMethodTextActive,
+                        !isDark && !isActive && { color: colors.text },
+                      ]}>
+                        {method.label}
+                      </ThemedText>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+
             {/* Group/Friend Selection - locked to original type */}
             {splitType === SplitType.GROUP ? (
               <View style={styles.selectionSection}>
@@ -363,6 +491,127 @@ export default function EditExpenseScreen() {
                 )}
               </View>
             )}
+
+            {/* Custom Split Inputs - Show when non-equal split is selected */}
+            {splitMethod !== SplitMethod.EQUAL && (splitType === SplitType.FRIENDS ? selectedFriendIds.length > 0 : selectedGroupId) && amount && parseFloat(amount) > 0 && (() => {
+              const totalAmount = parseFloat(amount);
+              const userIds = splitType === SplitType.GROUP ? groupMembers : [currentUserId, ...selectedFriendIds];
+              const allocatedAmount = userIds.reduce((sum, userId) => {
+                const userAmount = parseFloat(customAmounts[userId] || '0');
+                return sum + userAmount;
+              }, 0);
+              const remaining = totalAmount - allocatedAmount;
+              const isBalanced = Math.abs(remaining) < 0.01;
+
+              return (
+              <View style={styles.customSplitSection}>
+                <View style={styles.customSplitHeader}>
+                  <ThemedText style={[styles.inputLabel, !isDark && { color: colors.textSecondary }]}>
+                    {splitMethod === SplitMethod.UNEQUAL ? 'Enter amounts' : splitMethod === SplitMethod.PERCENTAGE ? 'Enter percentages' : 'Enter shares'}
+                  </ThemedText>
+                  {splitMethod === SplitMethod.UNEQUAL && (
+                    <View style={[styles.remainingBadge, {
+                      backgroundColor: isBalanced 
+                        ? (isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(34, 197, 94, 0.2)')
+                        : remaining > 0
+                          ? (isDark ? 'rgba(251, 191, 36, 0.2)' : 'rgba(251, 191, 36, 0.2)')
+                          : (isDark ? 'rgba(239, 68, 68, 0.2)' : 'rgba(239, 68, 68, 0.2)'),
+                    }]}>
+                      <ThemedText style={[styles.remainingText, {
+                        color: isBalanced
+                          ? (isDark ? '#2DD4BF' : '#22c55e')
+                          : remaining > 0
+                            ? (isDark ? '#fbbf24' : '#f59e0b')
+                            : (isDark ? '#ef4444' : '#dc2626'),
+                      }]}>
+                        {isBalanced ? '✓ Balanced' : `${remaining > 0 ? 'Remaining' : 'Over'}: $${Math.abs(remaining).toFixed(2)}`}
+                      </ThemedText>
+                    </View>
+                  )}
+                </View>
+                
+                {/* Current User */}
+                <View style={[styles.customSplitCard, {
+                  backgroundColor: isDark ? 'rgba(30, 41, 59, 0.6)' : 'rgba(241, 245, 249, 0.9)',
+                  borderColor: isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(34, 197, 94, 0.2)',
+                }]}>
+                  <View style={[styles.customSplitAvatar, {
+                    backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)',
+                  }]}>
+                    <ThemedText style={{ color: isDark ? '#2DD4BF' : colors.tint, fontWeight: '600' }}>
+                      You
+                    </ThemedText>
+                  </View>
+                  <ThemedText style={[styles.customSplitName, !isDark && { color: colors.text }]}>
+                    You (payer)
+                  </ThemedText>
+                  <TextInput
+                    style={[styles.customSplitInput, {
+                      backgroundColor: isDark ? 'rgba(20, 35, 38, 0.8)' : 'rgba(255,255,255,0.9)',
+                      color: isDark ? '#fff' : colors.text,
+                      borderWidth: 1,
+                      borderColor: isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(34, 197, 94, 0.3)',
+                    }]}
+                    value={splitMethod === SplitMethod.UNEQUAL ? customAmounts[currentUserId] : splitMethod === SplitMethod.PERCENTAGE ? customPercentages[currentUserId] : customShares[currentUserId]}
+                    onChangeText={(text) => {
+                      if (splitMethod === SplitMethod.UNEQUAL) setCustomAmounts(prev => ({ ...prev, [currentUserId]: text }));
+                      else if (splitMethod === SplitMethod.PERCENTAGE) setCustomPercentages(prev => ({ ...prev, [currentUserId]: text }));
+                      else setCustomShares(prev => ({ ...prev, [currentUserId]: text }));
+                    }}
+                    placeholder="0"
+                    placeholderTextColor={isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)'}
+                    keyboardType="decimal-pad"
+                  />
+                  <ThemedText style={[styles.customSplitSuffix, !isDark && { color: colors.textSecondary }]}>
+                    {splitMethod === SplitMethod.UNEQUAL ? '$' : splitMethod === SplitMethod.PERCENTAGE ? '%' : 'x'}
+                  </ThemedText>
+                </View>
+
+                {/* Other participants */}
+                {(splitType === SplitType.FRIENDS ? selectedFriendIds : groupMembers.filter(m => m !== currentUserId)).map(userId => {
+                  const participant = friends.find(f => f.id === userId);
+                  if (!participant) return null;
+                  return (
+                    <View key={userId} style={[styles.customSplitCard, {
+                      backgroundColor: isDark ? 'rgba(30, 41, 59, 0.6)' : 'rgba(241, 245, 249, 0.9)',
+                      borderColor: isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(34, 197, 94, 0.2)',
+                    }]}>
+                      <View style={[styles.customSplitAvatar, {
+                        backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)',
+                      }]}>
+                        <ThemedText style={{ color: isDark ? '#2DD4BF' : colors.tint, fontWeight: '600' }}>
+                          {participant.name.charAt(0).toUpperCase()}
+                        </ThemedText>
+                      </View>
+                      <ThemedText style={[styles.customSplitName, !isDark && { color: colors.text }]}>
+                        {participant.name}
+                      </ThemedText>
+                      <TextInput
+                        style={[styles.customSplitInput, {
+                          backgroundColor: isDark ? 'rgba(20, 35, 38, 0.8)' : 'rgba(255,255,255,0.9)',
+                          color: isDark ? '#fff' : colors.text,
+                          borderWidth: 1,
+                          borderColor: isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(34, 197, 94, 0.3)',
+                        }]}
+                        value={splitMethod === SplitMethod.UNEQUAL ? customAmounts[userId] : splitMethod === SplitMethod.PERCENTAGE ? customPercentages[userId] : customShares[userId]}
+                        onChangeText={(text) => {
+                          if (splitMethod === SplitMethod.UNEQUAL) setCustomAmounts(prev => ({ ...prev, [userId]: text }));
+                          else if (splitMethod === SplitMethod.PERCENTAGE) setCustomPercentages(prev => ({ ...prev, [userId]: text }));
+                          else setCustomShares(prev => ({ ...prev, [userId]: text }));
+                        }}
+                        placeholder="0"
+                        placeholderTextColor={isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)'}
+                        keyboardType="decimal-pad"
+                      />
+                      <ThemedText style={[styles.customSplitSuffix, !isDark && { color: colors.textSecondary }]}>
+                        {splitMethod === SplitMethod.UNEQUAL ? '$' : splitMethod === SplitMethod.PERCENTAGE ? '%' : 'x'}
+                      </ThemedText>
+                    </View>
+                  );
+                })}
+              </View>
+              );
+            })()}
         </Animated.View>
       </KeyboardAwareScroll>
     </View>
@@ -511,5 +760,82 @@ const styles = StyleSheet.create({
   emptyStateText: {
     fontSize: 14,
     opacity: 0.6,
+  },
+  splitMethodContainer: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  splitMethodButton: {
+    flex: 1,
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  splitMethodButtonActive: {},
+  splitMethodText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  splitMethodTextActive: {
+    color: '#0A0A0F',
+  },
+  customSplitSection: {
+    marginBottom: 16,
+  },
+  customSplitHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  remainingBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  remainingText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  customSplitCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 12,
+    marginBottom: 8,
+  },
+  customSplitAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  customSplitName: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  customSplitInput: {
+    width: 80,
+    height: 36,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'right',
+  },
+  customSplitSuffix: {
+    fontSize: 14,
+    fontWeight: '500',
+    marginLeft: 4,
   },
 });
