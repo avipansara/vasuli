@@ -344,54 +344,56 @@ export default function AddExpenseScreen() {
               </View>
             </View>
 
-            {/* Split Type Toggle */}
-            <View style={styles.inputSection}>
-              <ThemedText style={[styles.inputLabel, !isDark && { color: colors.textSecondary }]}>
-                Split with
-              </ThemedText>
-              <View style={styles.toggleContainer}>
-                <TouchableOpacity
-                  style={[
-                    styles.toggleButton,
-                    splitType === SplitType.GROUP && styles.toggleButtonActive,
-                    !isDark && splitType !== SplitType.GROUP && { backgroundColor: colors.card, borderColor: colors.border },
-                  ]}
-                  onPress={() => setSplitType(SplitType.GROUP)}>
-                  <IconSymbol
-                    name="person.3.fill"
-                    size={18}
-                    color={splitType === SplitType.GROUP ? '#0A0A0F' : (isDark ? '#2DD4BF' : colors.tint)}
-                  />
-                  <ThemedText style={[
-                    styles.toggleText,
-                    splitType === SplitType.GROUP && styles.toggleTextActive,
-                    !isDark && splitType !== SplitType.GROUP && { color: colors.text },
-                  ]}>
-                    Group
-                  </ThemedText>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[
-                    styles.toggleButton,
-                    splitType === SplitType.FRIENDS && styles.toggleButtonActive,
-                    !isDark && splitType !== SplitType.FRIENDS && { backgroundColor: colors.card, borderColor: colors.border },
-                  ]}
-                  onPress={() => setSplitType(SplitType.FRIENDS)}>
-                  <IconSymbol
-                    name="person.2.fill"
-                    size={18}
-                    color={splitType === SplitType.FRIENDS ? '#0A0A0F' : (isDark ? '#2DD4BF' : colors.tint)}
-                  />
-                  <ThemedText style={[
-                    styles.toggleText,
-                    splitType === SplitType.FRIENDS && styles.toggleTextActive,
-                    !isDark && splitType !== SplitType.FRIENDS && { color: colors.text },
-                  ]}>
-                    Friends
-                  </ThemedText>
-                </TouchableOpacity>
+            {/* Split Type Toggle - only show if not pre-selected from friend/group screen */}
+            {!preselectedGroupId && !preselectedFriendId && (
+              <View style={styles.inputSection}>
+                <ThemedText style={[styles.inputLabel, !isDark && { color: colors.textSecondary }]}>
+                  Split with
+                </ThemedText>
+                <View style={styles.toggleContainer}>
+                  <TouchableOpacity
+                    style={[
+                      styles.toggleButton,
+                      splitType === SplitType.GROUP && styles.toggleButtonActive,
+                      !isDark && splitType !== SplitType.GROUP && { backgroundColor: colors.card, borderColor: colors.border },
+                    ]}
+                    onPress={() => setSplitType(SplitType.GROUP)}>
+                    <IconSymbol
+                      name="person.3.fill"
+                      size={18}
+                      color={splitType === SplitType.GROUP ? '#0A0A0F' : (isDark ? '#2DD4BF' : colors.tint)}
+                    />
+                    <ThemedText style={[
+                      styles.toggleText,
+                      splitType === SplitType.GROUP && styles.toggleTextActive,
+                      !isDark && splitType !== SplitType.GROUP && { color: colors.text },
+                    ]}>
+                      Group
+                    </ThemedText>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.toggleButton,
+                      splitType === SplitType.FRIENDS && styles.toggleButtonActive,
+                      !isDark && splitType !== SplitType.FRIENDS && { backgroundColor: colors.card, borderColor: colors.border },
+                    ]}
+                    onPress={() => setSplitType(SplitType.FRIENDS)}>
+                    <IconSymbol
+                      name="person.2.fill"
+                      size={18}
+                      color={splitType === SplitType.FRIENDS ? '#0A0A0F' : (isDark ? '#2DD4BF' : colors.tint)}
+                    />
+                    <ThemedText style={[
+                      styles.toggleText,
+                      splitType === SplitType.FRIENDS && styles.toggleTextActive,
+                      !isDark && splitType !== SplitType.FRIENDS && { color: colors.text },
+                    ]}>
+                      Friends
+                    </ThemedText>
+                  </TouchableOpacity>
+                </View>
               </View>
-            </View>
+            )}
 
             {/* Split Method Selection */}
             <View style={styles.inputSection}>
@@ -455,7 +457,11 @@ export default function AddExpenseScreen() {
                       </ThemedText>
                     </View>
                   ) : (
-                    groups.map(group => (
+                    groups.map(group => {
+                      // If preselected from group screen, only show that group and make it non-interactive
+                      if (preselectedGroupId && group.id !== preselectedGroupId) return null;
+                      
+                      return (
                       <TouchableOpacity
                         key={group.id}
                         style={[
@@ -468,7 +474,8 @@ export default function AddExpenseScreen() {
                               : (isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(34, 197, 94, 0.2)'),
                           },
                         ]}
-                        onPress={() => setSelectedGroupId(group.id)}>
+                        onPress={() => !preselectedGroupId && setSelectedGroupId(group.id)}
+                        disabled={!!preselectedGroupId}>
                         <View style={[styles.optionIcon, {
                           backgroundColor: selectedGroupId === group.id
                             ? (isDark ? '#2DD4BF' : colors.tint)
@@ -487,7 +494,8 @@ export default function AddExpenseScreen() {
                           <IconSymbol name="checkmark.circle.fill" size={22} color={isDark ? '#2DD4BF' : colors.tint} />
                         )}
                       </TouchableOpacity>
-                    ))
+                      );
+                    })
                   )}
                 </View>
               ) : (
@@ -501,6 +509,9 @@ export default function AddExpenseScreen() {
                     </View>
                   ) : (
                     friends.map(friend => {
+                      // If preselected from friend screen, only show that friend and make it non-interactive
+                      if (preselectedFriendId && friend.id !== preselectedFriendId) return null;
+                      
                       const isSelected = selectedFriendIds.includes(friend.id);
                       return (
                         <TouchableOpacity
@@ -515,7 +526,8 @@ export default function AddExpenseScreen() {
                                 : (isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(34, 197, 94, 0.2)'),
                             },
                           ]}
-                          onPress={() => toggleFriend(friend.id)}>
+                          onPress={() => !preselectedFriendId && toggleFriend(friend.id)}
+                          disabled={!!preselectedFriendId}>
                           <View style={[styles.optionAvatar, {
                             backgroundColor: isSelected
                               ? (isDark ? '#2DD4BF' : colors.tint)

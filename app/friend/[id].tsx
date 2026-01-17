@@ -35,6 +35,7 @@ export default function FriendDetailScreen() {
   const [settleModalVisible, setSettleModalVisible] = useState(false);
   const { user } = useAuth();
   const currentUserId = user?.id || '';
+  const swipeableRefs = useRef<Map<string, Swipeable>>(new Map());
 
   // Animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -197,6 +198,7 @@ export default function FriendDetailScreen() {
   }
 
   function handleEditExpense(expenseId: string) {
+    swipeableRefs.current.get(expenseId)?.close();
     router.push(`/edit-expense/${expenseId}` as any);
   }
 
@@ -421,6 +423,13 @@ export default function FriendDetailScreen() {
             showsVerticalScrollIndicator={false}
             renderItem={({ item, index }) => (
               <Swipeable
+                ref={(ref) => {
+                  if (ref) {
+                    swipeableRefs.current.set(item.id, ref);
+                  } else {
+                    swipeableRefs.current.delete(item.id);
+                  }
+                }}
                 renderLeftActions={(progress, dragX) => (
                   <Animated.View style={[styles.swipeActionLeft, { opacity: dragX.interpolate({ inputRange: [0, 80], outputRange: [0, 1], extrapolate: 'clamp' }) }]}>
                     <TouchableOpacity onPress={() => handleEditExpense(item.id)} style={styles.swipeActionButton}>

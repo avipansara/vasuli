@@ -4,7 +4,7 @@ import { useThemeColors } from '@/hooks/use-theme-colors';
 import { groupService } from '@/services/api';
 import type { GroupWithMembers } from '@/types/database';
 import { router } from 'expo-router';
-import React from 'react';
+import React, { useRef } from 'react';
 import { Alert, Animated as RNAnimated, StyleSheet, TouchableOpacity, View } from 'react-native';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
 import Animated, { FadeInDown } from 'react-native-reanimated';
@@ -17,11 +17,13 @@ interface GroupCardProps {
 
 export function GroupCard({ group, index, onRefresh }: GroupCardProps) {
   const { colors, isDark } = useThemeColors();
+  const swipeableRef = useRef<Swipeable>(null);
   const balance = group.yourBalance || 0;
   const isPositive = balance > 0;
   const isSettled = balance === 0;
 
   function handleEditGroup() {
+    swipeableRef.current?.close();
     router.push(`/edit-group/${group.id}` as any);
   }
 
@@ -90,6 +92,7 @@ export function GroupCard({ group, index, onRefresh }: GroupCardProps) {
       entering={FadeInDown.delay(index * 100).springify()}
       style={styles.wrapper}>
       <Swipeable
+        ref={swipeableRef}
         renderLeftActions={renderLeftActions}
         renderRightActions={renderRightActions}
         overshootLeft={false}

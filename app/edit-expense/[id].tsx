@@ -4,6 +4,7 @@ import { KeyboardAwareScroll } from '@/components/ui/keyboard-aware-scroll';
 import { NavigationHeader } from '@/components/ui/screen-header';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useThemeColors } from '@/hooks/use-theme-colors';
+import { activityService } from '@/services/activity-service';
 import { expenseService, groupService, initDatabase, userService } from '@/services/api';
 import type { Group, User } from '@/types/database';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -51,57 +52,64 @@ export default function EditExpenseScreen() {
   const descriptionInputRef = useRef<TextInput>(null);
 
   useEffect(() => {
-    loadExpenseData();
-  }, [id, loadExpenseData]);
+    async function loadExpenseData() {
+      try {
+        await initDatabase();
+        
+        const expense = await expenseService.getById(id);
+        if (!expense) {
+          Alert.alert('Error', 'Expense not found');
+          router.back();
+          return;
+        }
 
-  async function loadExpenseData() {
-    try {
-      await initDatabase();
-      
-      const expense = await expenseService.getById(id);
-      if (!expense) {
-        Alert.alert('Error', 'Expense not found');
+        setDescription(expense.description);
+        setAmount(expense.amount.toString());
+        
+        if (expense.groupId) {
+          setSplitType(SplitType.GROUP);
+          setSelectedGroupId(expense.groupId);
+        } else {
+          setSplitType(SplitType.FRIENDS);
+        }
+
+        const [groupsData, userFriends, existingSplits] = await Promise.all([
+          groupService.getUserGroups(user?.id || ''),
+          userService.getUserFriends(currentUserId),
+          expenseService.getSplits(id),
+        ]);
+
+        // Pre-select friends from existing splits (exclude current user)
+        const splitFriendIds = existingSplits
+          .map(split => split.userId)
+          .filter(userId => userId !== currentUserId);
+        setSelectedFriendIds(splitFriendIds);
+
+        setGroups(groupsData);
+        setFriends(userFriends);
+        setDataLoading(false);
+
+        Animated.parallel([
+          Animated.timing(fadeAnim, {
+            toValue: 1,
+            duration: 400,
+            useNativeDriver: true,
+          }),
+          Animated.timing(slideAnim, {
+            toValue: 0,
+            duration: 400,
+            useNativeDriver: true,
+          }),
+        ]).start();
+      } catch (error) {
+        console.error('Error loading expense:', error);
+        Alert.alert('Error', 'Failed to load expense');
         router.back();
-        return;
       }
-
-      setDescription(expense.description);
-      setAmount(expense.amount.toString());
-      
-      if (expense.groupId) {
-        setSplitType(SplitType.GROUP);
-        setSelectedGroupId(expense.groupId);
-      } else {
-        setSplitType(SplitType.FRIENDS);
-      }
-
-      const [groupsData, userFriends] = await Promise.all([
-        groupService.getUserGroups(user?.id || ''),
-        userService.getUserFriends(currentUserId),
-      ]);
-
-      setGroups(groupsData);
-      setFriends(userFriends);
-      setDataLoading(false);
-
-      Animated.parallel([
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 400,
-          useNativeDriver: true,
-        }),
-        Animated.timing(slideAnim, {
-          toValue: 0,
-          duration: 400,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    } catch (error) {
-      console.error('Error loading expense:', error);
-      Alert.alert('Error', 'Failed to load expense');
-      router.back();
     }
-  }
+    
+    loadExpenseData();
+  }, [id]);
 
   const isValid = 
     description.trim().length > 0 &&
@@ -117,10 +125,49 @@ export default function EditExpenseScreen() {
     try {
       await initDatabase();
       
+      const newAmount = parseFloat(amount);
+      
+      // Calculate splits based on split type
+      let splits: { userId: string; amount: number; splitType: 'equal' | 'exact' | 'percentage' }[] = [];
+      
+      if (splitType === SplitType.FRIENDS) {
+        // Split between current user and selected friends
+        const allParticipants = [currentUserId, ...selectedFriendIds];
+        const splitAmount = newAmount / allParticipants.length;
+        splits = allParticipants.map(userId => ({
+          userId,
+          amount: splitAmount,
+          splitType: 'equal' as const,
+        }));
+      } else {
+        // For group expenses, get group members and split equally
+        const groupMembers = await groupService.getMembers(selectedGroupId);
+        if (groupMembers.length > 0) {
+          const splitAmount = newAmount / groupMembers.length;
+          splits = groupMembers.map(member => ({
+            userId: member.userId,
+            amount: splitAmount,
+            splitType: 'equal' as const,
+          }));
+        }
+      }
+      
       await expenseService.update(id, {
         description: description.trim(),
-        amount: parseFloat(amount),
+        amount: newAmount,
         groupId: splitType === SplitType.GROUP ? selectedGroupId : undefined,
+      }, splits);
+
+      // Log the activity
+      const group = splitType === SplitType.GROUP ? groups.find(g => g.id === selectedGroupId) : undefined;
+      await activityService.logExpenseUpdated({
+        expenseId: id,
+        userId: currentUserId,
+        userName: user?.name || 'Someone',
+        description: description.trim(),
+        amount: newAmount,
+        groupId: group?.id,
+        groupName: group?.name,
       });
 
       router.back();
@@ -218,71 +265,7 @@ export default function EditExpenseScreen() {
               </View>
             </View>
 
-            {/* Split Type Toggle */}
-            <View style={styles.toggleSection}>
-              <ThemedText style={[styles.inputLabel, !isDark && { color: colors.textSecondary }]}>
-                Split with
-              </ThemedText>
-              <View style={styles.toggleContainer}>
-                <TouchableOpacity
-                  onPress={() => setSplitType(SplitType.GROUP)}
-                  style={[
-                    styles.toggleButton,
-                    splitType === SplitType.GROUP && styles.toggleButtonActive,
-                    {
-                      backgroundColor: splitType === SplitType.GROUP
-                        ? (isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.15)')
-                        : (isDark ? 'rgba(30, 41, 59, 0.6)' : 'rgba(241, 245, 249, 0.9)'),
-                      borderColor: splitType === SplitType.GROUP
-                        ? (isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(34, 197, 94, 0.3)')
-                        : (isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(34, 197, 94, 0.2)'),
-                    },
-                  ]}>
-                  <IconSymbol 
-                    name="person.3.fill" 
-                    size={20} 
-                    color={splitType === SplitType.GROUP ? (isDark ? '#2DD4BF' : colors.tint) : (isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)')} 
-                  />
-                  <ThemedText 
-                    style={[
-                      styles.toggleButtonText,
-                      { color: splitType === SplitType.GROUP ? (isDark ? '#2DD4BF' : colors.tint) : (isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)') }
-                    ]}>
-                    Group
-                  </ThemedText>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  onPress={() => setSplitType(SplitType.FRIENDS)}
-                  style={[
-                    styles.toggleButton,
-                    splitType === SplitType.FRIENDS && styles.toggleButtonActive,
-                    {
-                      backgroundColor: splitType === SplitType.FRIENDS
-                        ? (isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.15)')
-                        : (isDark ? 'rgba(30, 41, 59, 0.6)' : 'rgba(241, 245, 249, 0.9)'),
-                      borderColor: splitType === SplitType.FRIENDS
-                        ? (isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(34, 197, 94, 0.3)')
-                        : (isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(34, 197, 94, 0.2)'),
-                    },
-                  ]}>
-                  <IconSymbol 
-                    name="person.2.fill" 
-                    size={20} 
-                    color={splitType === SplitType.FRIENDS ? (isDark ? '#2DD4BF' : colors.tint) : (isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)')} 
-                  />
-                  <ThemedText 
-                    style={[
-                      styles.toggleButtonText,
-                      { color: splitType === SplitType.FRIENDS ? (isDark ? '#2DD4BF' : colors.tint) : (isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)') }
-                    ]}>
-                    Friends
-                  </ThemedText>
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            {/* Group/Friend Selection */}
+            {/* Group/Friend Selection - locked to original type */}
             {splitType === SplitType.GROUP ? (
               <View style={styles.selectionSection}>
                 <ThemedText style={[styles.inputLabel, !isDark && { color: colors.textSecondary }]}>

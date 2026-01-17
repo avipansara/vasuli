@@ -33,6 +33,8 @@ export default function GroupDetailScreen() {
   const [balances, setBalances] = useState<Map<string, number>>(new Map());
   const [loading, setLoading] = useState(true);
   const [expenseModalVisible, setExpenseModalVisible] = useState(false);
+  const expenseSwipeableRefs = useRef<Map<string, Swipeable>>(new Map());
+  const memberSwipeableRefs = useRef<Map<string, Swipeable>>(new Map());
 
   // Animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -198,6 +200,7 @@ export default function GroupDetailScreen() {
   }
 
   function handleEditExpense(expenseId: string) {
+    expenseSwipeableRefs.current.get(expenseId)?.close();
     router.push(`/edit-expense/${expenseId}` as any);
   }
 
@@ -271,6 +274,13 @@ export default function GroupDetailScreen() {
 
     return (
       <Swipeable
+        ref={(ref) => {
+          if (ref) {
+            expenseSwipeableRefs.current.set(item.id, ref);
+          } else {
+            expenseSwipeableRefs.current.delete(item.id);
+          }
+        }}
         renderLeftActions={(progress, dragX) => renderLeftActions(progress, dragX, item.id)}
         renderRightActions={(progress, dragX) => renderRightActions(progress, dragX, item.id)}
         overshootLeft={false}
@@ -376,6 +386,13 @@ export default function GroupDetailScreen() {
 
     return (
       <Swipeable
+        ref={(ref) => {
+          if (ref) {
+            memberSwipeableRefs.current.set(item.userId, ref);
+          } else {
+            memberSwipeableRefs.current.delete(item.userId);
+          }
+        }}
         renderRightActions={canRemove ? (progress, dragX) => renderMemberRightActions(progress, dragX, item) : undefined}
         overshootLeft={false}
         overshootRight={false}

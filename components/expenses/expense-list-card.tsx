@@ -6,7 +6,7 @@ import { activityService } from '@/services/activity-service';
 import { expenseService } from '@/services/api';
 import type { Expense, Group } from '@/types/database';
 import { router } from 'expo-router';
-import React from 'react';
+import React, { useRef } from 'react';
 import { Alert, Animated, StyleSheet, TouchableOpacity, View } from 'react-native';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
 
@@ -18,6 +18,7 @@ interface ExpenseListCardProps {
 export function ExpenseListCard({ expense, onDelete }: ExpenseListCardProps) {
   const { user } = useAuth();
   const { colors, isDark } = useThemeColors();
+  const swipeableRef = useRef<Swipeable>(null);
   const date = new Date(expense.date);
   const dateStr = date.toLocaleDateString('en-US', {
     month: 'short',
@@ -27,6 +28,7 @@ export function ExpenseListCard({ expense, onDelete }: ExpenseListCardProps) {
   });
 
   const handleEdit = () => {
+    swipeableRef.current?.close();
     router.push(`/edit-expense/${expense.id}` as any);
   };
 
@@ -95,6 +97,7 @@ export function ExpenseListCard({ expense, onDelete }: ExpenseListCardProps) {
 
   return (
     <Swipeable
+      ref={swipeableRef}
       renderLeftActions={renderLeftActions}
       renderRightActions={renderRightActions}
       overshootLeft={false}
