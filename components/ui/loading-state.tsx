@@ -1,9 +1,8 @@
 import { ThemedText } from '@/components/themed-text';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { Animated, Easing, StyleSheet, View } from 'react-native';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 
 interface LoadingStateProps {
   message?: string;
@@ -22,137 +21,10 @@ export function LoadingState({ message = 'Loading...' }: LoadingStateProps) {
   const orb2Anim = useRef(new Animated.Value(0)).current;
   const orb3Anim = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  
-  const [isAutoPlaying, setIsAutoPlaying] = useState(true);
-  const autoPlayRef = useRef<any>(null);
-  const isInteracting = useRef(false);
-
-  // Gesture handlers
-  const panGesture = Gesture.Pan()
-    .onBegin(() => {
-      isInteracting.current = true;
-      if (autoPlayRef.current) {
-        autoPlayRef.current.stop();
-      }
-      setIsAutoPlaying(false);
-    })
-    .onUpdate((e) => {
-      const newX = Math.max(-50, Math.min(50, e.translationX / 3));
-      skateX.setValue(newX);
-      
-      if (e.translationX < -10) {
-        bodyRotate.setValue(-8);
-        boardRotate.setValue(-15);
-      } else if (e.translationX > 10) {
-        bodyRotate.setValue(34);
-        boardRotate.setValue(3);
-      } else {
-        bodyRotate.setValue(12);
-        boardRotate.setValue(0);
-      }
-    })
-    .onEnd(() => {
-      isInteracting.current = false;
-      Animated.parallel([
-        Animated.spring(skateX, {
-          toValue: 0,
-          useNativeDriver: true,
-          friction: 8,
-        }),
-        Animated.spring(bodyRotate, {
-          toValue: 12,
-          useNativeDriver: true,
-          friction: 8,
-        }),
-        Animated.spring(boardRotate, {
-          toValue: 0,
-          useNativeDriver: true,
-          friction: 8,
-        }),
-      ]).start(() => {
-        setTimeout(() => {
-          if (!isInteracting.current) {
-            setIsAutoPlaying(true);
-          }
-        }, 500);
-      });
-    });
-
-  const tapGesture = Gesture.Tap()
-    .numberOfTaps(2)
-    .onStart(() => {
-      isInteracting.current = true;
-      if (autoPlayRef.current) {
-        autoPlayRef.current.stop();
-      }
-      setIsAutoPlaying(false);
-      
-      Animated.parallel([
-        Animated.sequence([
-          Animated.timing(bounceY, {
-            toValue: -32,
-            duration: 600,
-            easing: Easing.out(Easing.quad),
-            useNativeDriver: true,
-          }),
-          Animated.timing(bounceY, {
-            toValue: 0,
-            duration: 400,
-            easing: Easing.in(Easing.quad),
-            useNativeDriver: true,
-          }),
-        ]),
-        Animated.sequence([
-          Animated.timing(bodyRotate, {
-            toValue: 7,
-            duration: 300,
-            useNativeDriver: true,
-          }),
-          Animated.timing(bodyRotate, {
-            toValue: 34,
-            duration: 300,
-            useNativeDriver: true,
-          }),
-          Animated.timing(bodyRotate, {
-            toValue: 12,
-            duration: 400,
-            useNativeDriver: true,
-          }),
-        ]),
-        Animated.sequence([
-          Animated.timing(boardRotate, {
-            toValue: -40,
-            duration: 300,
-            useNativeDriver: true,
-          }),
-          Animated.timing(boardRotate, {
-            toValue: 3,
-            duration: 300,
-            useNativeDriver: true,
-          }),
-          Animated.timing(boardRotate, {
-            toValue: 0,
-            duration: 400,
-            useNativeDriver: true,
-          }),
-        ]),
-      ]).start(() => {
-        isInteracting.current = false;
-        setTimeout(() => {
-          if (!isInteracting.current) {
-            setIsAutoPlaying(true);
-          }
-        }, 500);
-      });
-    });
-
-  const composedGesture = Gesture.Race(panGesture, tapGesture);
 
   useEffect(() => {
-    if (!isAutoPlaying || isInteracting.current) return;
-    
     // Skateboard trick animation sequence
-    autoPlayRef.current = Animated.loop(
+    Animated.loop(
       Animated.sequence([
         // Normal riding
         Animated.parallel([
@@ -333,6 +205,19 @@ export function LoadingState({ message = 'Loading...' }: LoadingStateProps) {
       duration: 400,
       useNativeDriver: true,
     }).start();
+
+    // Cleanup function to stop all animations when component unmounts
+    return () => {
+      skateX.stopAnimation();
+      bounceY.stopAnimation();
+      bodyRotate.stopAnimation();
+      boardRotate.stopAnimation();
+      lineAnim.stopAnimation();
+      orb1Anim.stopAnimation();
+      orb2Anim.stopAnimation();
+      orb3Anim.stopAnimation();
+      fadeAnim.stopAnimation();
+    };
   }, []);
 
   const lineX = lineAnim.interpolate({
@@ -411,7 +296,6 @@ export function LoadingState({ message = 'Loading...' }: LoadingStateProps) {
       </View>
 
       {/* Main loading content */}
-      <GestureDetector gesture={composedGesture}>
       <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
         {/* Skateboard character */}
         <View style={styles.skateContainer}>
@@ -491,11 +375,7 @@ export function LoadingState({ message = 'Loading...' }: LoadingStateProps) {
         <ThemedText style={[styles.loadingText, !isDark && { color: colors.text }]}>
           {message}
         </ThemedText>
-        <ThemedText style={[styles.hintText, !isDark && { color: colors.textSecondary }]}>
-          {isAutoPlaying ? 'Swipe or double tap to control!' : 'Release to auto-play'}
-        </ThemedText>
       </Animated.View>
-      </GestureDetector>
     </LinearGradient>
   );
 }
