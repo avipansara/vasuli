@@ -90,7 +90,7 @@ export default function FriendDetailScreen() {
     }, [id])
   );
 
-  async function loadFriendData() {
+  const loadFriendData = async () => {
     if (!id) return;
     
     try {
@@ -146,7 +146,7 @@ export default function FriendDetailScreen() {
     }
   }
 
-  async function handleSettleUp(friendId: string, amount: number) {
+  const handleSettleUp = async (friendId: string, amount: number) => {
     try {
       if (!friend || !user) return;
 

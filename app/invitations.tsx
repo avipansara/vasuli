@@ -13,12 +13,12 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router, Stack } from 'expo-router';
 import { useCallback, useState } from 'react';
 import {
-    Alert,
-    FlatList,
-    Platform,
-    StyleSheet,
-    TouchableOpacity,
-    View,
+  Alert,
+  FlatList,
+  Platform,
+  StyleSheet,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 
 type InvitationWithDetails = Invitation & { inviterName?: string; inviteeName?: string };
@@ -31,7 +31,7 @@ export default function InvitationsScreen() {
   const [activeTab, setActiveTab] = useState<TabType>('received');
   const [receivedInvitations, setReceivedInvitations] = useState<InvitationWithDetails[]>([]);
   const [sentInvitations, setSentInvitations] = useState<InvitationWithDetails[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   useFocusEffect(
@@ -40,11 +40,14 @@ export default function InvitationsScreen() {
     }, [])
   );
 
-  async function loadInvitations() {
+  const loadInvitations = async () => {
     if (!user?.email) return;
     
     try {
-      setLoading(true);
+      // Only show loader if we don't have data yet
+      if (receivedInvitations.length === 0 && sentInvitations.length === 0) {
+        setLoading(true);
+      }
       
       // Load received invitations
       const received = await invitationService.getReceivedInvitations(user.email);
@@ -61,7 +64,7 @@ export default function InvitationsScreen() {
     }
   }
 
-  async function handleAccept(invitation: InvitationWithDetails) {
+  const handleAccept = async (invitation: InvitationWithDetails) => {
     setActionLoading(invitation.id);
     try {
       await invitationService.updateStatus(invitation.id, 'accepted');
@@ -81,7 +84,7 @@ export default function InvitationsScreen() {
     }
   }
 
-  async function handleDecline(invitation: InvitationWithDetails) {
+  const handleDecline = async (invitation: InvitationWithDetails) => {
     Alert.alert(
       'Decline Invitation',
       'Are you sure you want to decline this invitation?',
@@ -108,7 +111,7 @@ export default function InvitationsScreen() {
     );
   }
 
-  async function handleResend(invitation: InvitationWithDetails) {
+  const handleResend = async (invitation: InvitationWithDetails) => {
     setActionLoading(invitation.id);
     try {
       await invitationService.resend(invitation.id, user?.name);

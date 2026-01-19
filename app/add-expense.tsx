@@ -103,7 +103,7 @@ export default function AddExpenseScreen() {
     loadGroupMembers();
   }, [selectedGroupId]);
 
-  async function loadData() {
+  const loadData = async () => {
     if (!currentUserId) return;
     try {
       await initDatabase();
@@ -131,7 +131,7 @@ export default function AddExpenseScreen() {
   const isValid = description.trim() && amount.trim() && parseFloat(amount) > 0 &&
     (splitType === SplitType.GROUP ? selectedGroupId : selectedFriendIds.length > 0);
 
-  async function handleSubmit() {
+  const handleSubmit = async () => {
     if (!isValid) return;
 
     setLoading(true);
@@ -209,7 +209,7 @@ export default function AddExpenseScreen() {
     }
   }
 
-  function calculateSplits(userIds: string[], totalAmount: number): { userId: string; amount: number; splitType: 'equal' | 'exact' | 'percentage' }[] | null {
+  const calculateSplits = (userIds: string[], totalAmount: number): { userId: string; amount: number; splitType: 'equal' | 'exact' | 'percentage' }[] | null => {
     if (splitMethod === SplitMethod.EQUAL) {
       const splitAmount = totalAmount / userIds.length;
       return userIds.map(userId => ({

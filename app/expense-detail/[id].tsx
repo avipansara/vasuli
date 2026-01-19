@@ -49,7 +49,7 @@ export default function ExpenseDetailScreen() {
     }, [id])
   );
 
-  async function loadExpenseDetails() {
+  const loadExpenseDetails = async () => {
     try {
       const expenseData = await expenseService.getById(id);
       if (!expenseData) {

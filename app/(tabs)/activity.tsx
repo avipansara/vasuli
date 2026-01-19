@@ -15,7 +15,7 @@ import { Animated, Platform, SectionList, StyleSheet, View } from 'react-native'
 export default function ActivityScreen() {
   const { gradients, colors, isDark } = useThemeColors();
   const [activities, setActivities] = useState<Activity[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   // Animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -47,9 +47,13 @@ export default function ActivityScreen() {
     }
   }, [loading]);
 
-  async function loadActivities() {
+  const loadActivities = async () => {
     if (!currentUserId) return;
     try {
+      // Only show loader if we don't have data yet
+      if (activities.length === 0) {
+        setLoading(true);
+      }
       await initDatabase();
       const allActivities = await activityService.getUserActivities(currentUserId);
       console.log('[Activity] Loaded activities:', allActivities.length);
@@ -62,7 +66,7 @@ export default function ActivityScreen() {
   }
 
   // Group activities by time period
-  function getTimePeriod(timestamp: number): string {
+  const getTimePeriod = (timestamp: number): string => {
     const now = new Date();
     const date = new Date(timestamp);
     const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));

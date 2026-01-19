@@ -98,7 +98,7 @@ export default function GroupDetailScreen() {
     }, [id, loadGroupData])
   );
 
-  async function addExpense() {
+  const addExpense = async () => {
     if (!description.trim() || !amount.trim()) {
       Alert.alert('Error', 'Please fill in all fields');
       return;
@@ -139,7 +139,7 @@ export default function GroupDetailScreen() {
     }
   }
 
-  async function addMember() {
+  const addMember = async () => {
     if (!selectedUserId) {
       Alert.alert('Error', 'Please select a user');
       return;

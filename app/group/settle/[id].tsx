@@ -13,16 +13,16 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
-    Alert,
-    FlatList,
-    Keyboard,
-    Platform,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    TouchableWithoutFeedback,
-    View,
+  Alert,
+  FlatList,
+  Keyboard,
+  Platform,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  View,
 } from 'react-native';
 
 interface MemberWithBalance extends GroupMember {
@@ -47,7 +47,7 @@ export default function GroupSettleScreen() {
     loadData();
   }, [id]);
 
-  async function loadData() {
+  const loadData = async () => {
     try {
       setLoading(true);
 
@@ -92,7 +92,7 @@ export default function GroupSettleScreen() {
     }
   }
 
-  async function handleSettle() {
+  const handleSettle = async () => {
     if (!selectedMember) {
       Alert.alert('Error', 'Please select a member to settle with');
       return;

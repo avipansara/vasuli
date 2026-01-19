@@ -23,7 +23,7 @@ interface UserWithBalance extends User {
 export default function FriendsScreen() {
   const { gradients, colors, isDark } = useThemeColors();
   const [friends, setFriends] = useState<UserWithBalance[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [newFriendName, setNewFriendName] = useState('');
   const [newFriendEmail, setNewFriendEmail] = useState('');
@@ -39,9 +39,13 @@ export default function FriendsScreen() {
     }, [])
   );
 
-  async function loadFriends() {
+  const loadFriends = async () => {
     if (!currentUserId) return;
     try {
+      // Only show loader if we don't have data yet
+      if (friends.length === 0) {
+        setLoading(true);
+      }
       await initDatabase();
       
       // Get only accepted friends, not all users
@@ -73,7 +77,7 @@ export default function FriendsScreen() {
     }
   }
 
-  async function sendInvite() {
+  const sendInvite = async () => {
     const contact = inviteMethod === 'email' ? newFriendEmail.trim() : newFriendPhone.trim();
     
     if (!contact) {

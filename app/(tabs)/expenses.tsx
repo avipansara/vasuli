@@ -15,7 +15,7 @@ import { Platform, SectionList, StyleSheet, TouchableOpacity, View } from 'react
 export default function ExpensesScreen() {
   const { gradients, colors, isDark } = useThemeColors();
   const [expenses, setExpenses] = useState<(Expense & { group?: Group })[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const { user } = useAuth();
   const currentUserId = user?.id || '';
 
@@ -25,9 +25,13 @@ export default function ExpensesScreen() {
     }, [])
   );
 
-  async function loadData() {
+  const loadData = async () => {
     if (!currentUserId) return;
     try {
+      // Only show loader if we don't have data yet
+      if (expenses.length === 0) {
+        setLoading(true);
+      }
       await initDatabase();
       const allGroups = await groupService.getUserGroups(currentUserId);
 

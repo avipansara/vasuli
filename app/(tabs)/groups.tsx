@@ -15,7 +15,7 @@ import { Alert, Animated, FlatList, Platform, StyleSheet, TouchableOpacity, View
 export default function GroupsScreen() {
   const { colors, gradients, isDark } = useThemeColors();
   const [groups, setGroups] = useState<GroupWithMembers[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
   const [newGroupDescription, setNewGroupDescription] = useState('');
@@ -49,9 +49,13 @@ export default function GroupsScreen() {
     }
   }, [loading]);
 
-  async function loadGroups() {
+  const loadGroups = async () => {
     if (!currentUserId) return;
     try {
+      // Only show loader if we don't have data yet
+      if (groups.length === 0) {
+        setLoading(true);
+      }
       await initDatabase();
       const allGroups = await groupService.getUserGroups(currentUserId);
       
@@ -66,7 +70,6 @@ export default function GroupsScreen() {
           };
         })
       );
-      
       setGroups(groupsWithData);
     } catch (error) {
       console.error('Error loading groups:', error);
@@ -75,7 +78,7 @@ export default function GroupsScreen() {
     }
   }
 
-  async function createGroup() {
+  const createGroup = async () => {
     if (!newGroupName.trim()) {
       Alert.alert('Error', 'Please enter a group name');
       return;

@@ -220,7 +220,7 @@ export default function EditExpenseScreen() {
     return null;
   }
 
-  async function handleSubmit() {
+  const handleSubmit = async () => {
     if (!isValid) return;
 
     setLoading(true);
