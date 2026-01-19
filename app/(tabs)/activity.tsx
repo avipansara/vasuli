@@ -16,6 +16,7 @@ export default function ActivityScreen() {
   const { gradients, colors, isDark } = useThemeColors();
   const [activities, setActivities] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(false);
+  const hasLoadedOnce = useRef(false);
 
   // Animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -50,9 +51,10 @@ export default function ActivityScreen() {
   const loadActivities = async () => {
     if (!currentUserId) return;
     try {
-      // Only show loader if we don't have data yet
-      if (activities.length === 0) {
+      // Only show loader on first load
+      if (!hasLoadedOnce.current) {
         setLoading(true);
+        hasLoadedOnce.current = true;
       }
       await initDatabase();
       const allActivities = await activityService.getUserActivities(currentUserId);

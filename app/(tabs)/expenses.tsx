@@ -9,7 +9,7 @@ import type { Expense, Group } from '@/types/database';
 import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { Platform, SectionList, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 export default function ExpensesScreen() {
@@ -18,6 +18,7 @@ export default function ExpensesScreen() {
   const [loading, setLoading] = useState(false);
   const { user } = useAuth();
   const currentUserId = user?.id || '';
+  const hasLoadedOnce = useRef(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -28,9 +29,10 @@ export default function ExpensesScreen() {
   const loadData = async () => {
     if (!currentUserId) return;
     try {
-      // Only show loader if we don't have data yet
-      if (expenses.length === 0) {
+      // Only show loader on first load
+      if (!hasLoadedOnce.current) {
         setLoading(true);
+        hasLoadedOnce.current = true;
       }
       await initDatabase();
       const allGroups = await groupService.getUserGroups(currentUserId);

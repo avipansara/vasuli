@@ -13,7 +13,7 @@ import type { User } from '@/types/database';
 import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { Alert, FlatList, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 interface UserWithBalance extends User {
@@ -32,6 +32,7 @@ export default function FriendsScreen() {
   const [qrModalVisible, setQrModalVisible] = useState(false);
   const { user } = useAuth();
   const currentUserId = user?.id || '';
+  const hasLoadedOnce = useRef(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -42,9 +43,10 @@ export default function FriendsScreen() {
   const loadFriends = async () => {
     if (!currentUserId) return;
     try {
-      // Only show loader if we don't have data yet
-      if (friends.length === 0) {
+      // Only show loader on first load
+      if (!hasLoadedOnce.current) {
         setLoading(true);
+        hasLoadedOnce.current = true;
       }
       await initDatabase();
       

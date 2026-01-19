@@ -21,6 +21,7 @@ export default function GroupsScreen() {
   const [newGroupDescription, setNewGroupDescription] = useState('');
   const { user } = useAuth();
   const currentUserId = user?.id || '';
+  const hasLoadedOnce = useRef(false);
 
   // Animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -53,8 +54,9 @@ export default function GroupsScreen() {
     if (!currentUserId) return;
     try {
       // Only show loader if we don't have data yet
-      if (groups.length === 0) {
+      if (!hasLoadedOnce.current) {
         setLoading(true);
+        hasLoadedOnce.current = true;
       }
       await initDatabase();
       const allGroups = await groupService.getUserGroups(currentUserId);

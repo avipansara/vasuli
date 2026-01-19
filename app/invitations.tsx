@@ -11,7 +11,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, Stack } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import {
   Alert,
   FlatList,
@@ -33,6 +33,7 @@ export default function InvitationsScreen() {
   const [sentInvitations, setSentInvitations] = useState<InvitationWithDetails[]>([]);
   const [loading, setLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const hasLoadedOnce = useRef(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -44,9 +45,10 @@ export default function InvitationsScreen() {
     if (!user?.email) return;
     
     try {
-      // Only show loader if we don't have data yet
-      if (receivedInvitations.length === 0 && sentInvitations.length === 0) {
+      // Only show loader on first load
+      if (!hasLoadedOnce.current) {
         setLoading(true);
+        hasLoadedOnce.current = true;
       }
       
       // Load received invitations
