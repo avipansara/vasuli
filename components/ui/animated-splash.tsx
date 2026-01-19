@@ -15,14 +15,20 @@ export function AnimatedSplash() {
   const circleScale = useRef(new Animated.Value(0)).current;
   const textOpacity = useRef(new Animated.Value(0)).current;
   const textSlide = useRef(new Animated.Value(30)).current;
+  const glowPulse = useRef(new Animated.Value(0)).current;
+  const shimmer = useRef(new Animated.Value(0)).current;
   
-  // Floating particles
+  // Floating particles (more particles for richer effect)
   const particle1Y = useRef(new Animated.Value(0)).current;
   const particle2Y = useRef(new Animated.Value(0)).current;
   const particle3Y = useRef(new Animated.Value(0)).current;
+  const particle4Y = useRef(new Animated.Value(0)).current;
+  const particle5Y = useRef(new Animated.Value(0)).current;
   const particle1Opacity = useRef(new Animated.Value(0)).current;
   const particle2Opacity = useRef(new Animated.Value(0)).current;
   const particle3Opacity = useRef(new Animated.Value(0)).current;
+  const particle4Opacity = useRef(new Animated.Value(0)).current;
+  const particle5Opacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     // Sequence of animations
@@ -69,6 +75,34 @@ export function AnimatedSplash() {
         }),
       ]),
     ]).start();
+
+    // Pulsing glow effect (loop)
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(glowPulse, {
+          toValue: 1,
+          duration: 2000,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(glowPulse, {
+          toValue: 0,
+          duration: 2000,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+
+    // Shimmer effect (loop)
+    Animated.loop(
+      Animated.timing(shimmer, {
+        toValue: 1,
+        duration: 2500,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      })
+    ).start();
 
     // Floating particles animation (loop)
     Animated.loop(
@@ -156,6 +190,63 @@ export function AnimatedSplash() {
             useNativeDriver: true,
           }),
         ]),
+        // Additional particles
+        Animated.sequence([
+          Animated.delay(1500),
+          Animated.parallel([
+            Animated.timing(particle4Y, {
+              toValue: -110,
+              duration: 3200,
+              easing: Easing.inOut(Easing.ease),
+              useNativeDriver: true,
+            }),
+            Animated.sequence([
+              Animated.timing(particle4Opacity, {
+                toValue: 0.5,
+                duration: 500,
+                useNativeDriver: true,
+              }),
+              Animated.timing(particle4Opacity, {
+                toValue: 0,
+                duration: 2700,
+                useNativeDriver: true,
+              }),
+            ]),
+          ]),
+          Animated.timing(particle4Y, {
+            toValue: 0,
+            duration: 0,
+            useNativeDriver: true,
+          }),
+        ]),
+        Animated.sequence([
+          Animated.delay(700),
+          Animated.parallel([
+            Animated.timing(particle5Y, {
+              toValue: -95,
+              duration: 2900,
+              easing: Easing.inOut(Easing.ease),
+              useNativeDriver: true,
+            }),
+            Animated.sequence([
+              Animated.timing(particle5Opacity, {
+                toValue: 0.45,
+                duration: 500,
+                useNativeDriver: true,
+              }),
+              Animated.timing(particle5Opacity, {
+                toValue: 0,
+                duration: 2400,
+                useNativeDriver: true,
+              }),
+            ]),
+          ]),
+          Animated.timing(particle5Y, {
+            toValue: 0,
+            duration: 0,
+            useNativeDriver: true,
+          }),
+        ]),
       ])
     ).start();
   }, []);
@@ -163,6 +254,21 @@ export function AnimatedSplash() {
   const rotation = logoRotate.interpolate({
     inputRange: [0, 1],
     outputRange: ['0deg', '360deg'],
+  });
+
+  const glowScale = glowPulse.interpolate({
+    inputRange: [0, 1],
+    outputRange: [1, 1.15],
+  });
+
+  const glowOpacity = glowPulse.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.3, 0.6],
+  });
+
+  const shimmerTranslate = shimmer.interpolate({
+    inputRange: [0, 1],
+    outputRange: [-width, width],
   });
 
   return (
@@ -213,6 +319,32 @@ export function AnimatedSplash() {
         <View style={[styles.particleCircle, { backgroundColor: isDark ? '#2DD4BF' : '#22C55E' }]} />
       </Animated.View>
 
+      <Animated.View
+        style={[
+          styles.particle,
+          {
+            left: width * 0.15,
+            bottom: height * 0.5,
+            opacity: particle4Opacity,
+            transform: [{ translateY: particle4Y }],
+          },
+        ]}>
+        <View style={[styles.particleLarge, { backgroundColor: isDark ? '#8B5CF6' : '#059669' }]} />
+      </Animated.View>
+
+      <Animated.View
+        style={[
+          styles.particle,
+          {
+            right: width * 0.15,
+            bottom: height * 0.35,
+            opacity: particle5Opacity,
+            transform: [{ translateY: particle5Y }],
+          },
+        ]}>
+        <View style={[styles.particleSmall, { backgroundColor: isDark ? '#22D3EE' : '#10B981' }]} />
+      </Animated.View>
+
       {/* Main Content */}
       <View style={styles.content}>
         {/* Expanding Circle Background */}
@@ -229,6 +361,21 @@ export function AnimatedSplash() {
           />
         </Animated.View>
 
+        {/* Pulsing Glow Effect */}
+        <Animated.View
+          style={[
+            styles.glowContainer,
+            {
+              opacity: glowOpacity,
+              transform: [{ scale: glowScale }],
+            },
+          ]}>
+          <LinearGradient
+            colors={isDark ? ['rgba(45, 212, 191, 0.4)', 'transparent'] : ['rgba(34, 197, 94, 0.4)', 'transparent']}
+            style={styles.glow}
+          />
+        </Animated.View>
+
         {/* Logo Container */}
         <Animated.View
           style={[
@@ -241,6 +388,22 @@ export function AnimatedSplash() {
               ],
             },
           ]}>
+          {/* Shimmer overlay */}
+          <Animated.View
+            style={[
+              styles.shimmerContainer,
+              {
+                transform: [{ translateX: shimmerTranslate }],
+              },
+            ]}>
+            <LinearGradient
+              colors={['transparent', 'rgba(255,255,255,0.3)', 'transparent']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.shimmer}
+            />
+          </Animated.View>
+
           <LinearGradient
             colors={isDark ? ['#2DD4BF', '#22D3EE'] : ['#22C55E', '#10B981']}
             start={{ x: 0, y: 0 }}
@@ -377,5 +540,37 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
+  },
+  particleLarge: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+  },
+  particleSmall: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  glowContainer: {
+    position: 'absolute',
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+  },
+  glow: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 90,
+  },
+  shimmerContainer: {
+    position: 'absolute',
+    width: 120,
+    height: 120,
+    borderRadius: 30,
+    overflow: 'hidden',
+  },
+  shimmer: {
+    width: 60,
+    height: 120,
   },
 });
