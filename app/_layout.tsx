@@ -1,6 +1,7 @@
 import { AnimatedSplash } from '@/components/ui/animated-splash';
 import { AuthProvider, useAuth } from '@/contexts/auth-context-otp';
 import { ThemeProvider as AppThemeProvider, useTheme } from '@/contexts/theme-context';
+import { useNotifications } from '@/hooks/use-notifications';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
 import * as Linking from 'expo-linking';
@@ -139,6 +140,7 @@ function RootLayoutNav() {
 }
 
 export default function RootLayout() {
+  useNotifications();
   const [fontsLoaded] = useFonts({
     'Nunito_400Regular': require('@expo-google-fonts/nunito/400Regular/Nunito_400Regular.ttf'),
     'Nunito_500Medium': require('@expo-google-fonts/nunito/500Medium/Nunito_500Medium.ttf'),
