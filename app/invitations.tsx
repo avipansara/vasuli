@@ -162,7 +162,7 @@ export default function InvitationsScreen() {
       <BlurView
         intensity={isDark ? 20 : 40}
         tint={isDark ? 'dark' : 'light'}
-        style={[styles.invitationCard, isExpired && styles.expiredCard]}>
+        style={[styles.invitationCard, isExpired ? styles.expiredCard : '']}>
         <View style={[styles.cardContent, !isDark && { backgroundColor: 'rgba(255,255,255,0.8)' }]}>
           <View style={styles.invitationHeader}>
             <View style={[styles.iconContainer, {
