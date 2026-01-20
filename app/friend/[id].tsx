@@ -34,6 +34,9 @@ export default function FriendDetailScreen() {
   const [expenses, setExpenses] = useState<ExpenseWithSplit[]>([]);
   const [loading, setLoading] = useState(true);
   const [settleModalVisible, setSettleModalVisible] = useState(false);
+  const [isRemovingFriend, setIsRemovingFriend] = useState(false);
+  const [isSettlingUp, setIsSettlingUp] = useState(false);
+  const [deletingExpenseId, setDeletingExpenseId] = useState<string | null>(null);
   const { user } = useAuth();
   const currentUserId = user?.id || '';
   const swipeableRefs = useRef<Map<string, Swipeable>>(new Map());
@@ -165,38 +168,18 @@ export default function FriendDetailScreen() {
         // Log activity
         await activityService.logSettlementCreated({
           settlementId: settlement.id,
-          fromUserId: friendId,
-          fromUserName: friend.name || 'Someone',
-          toUserName: user.name || 'Someone',
-          amount,
-        });
-      } else {
-        // Current user owes friend
-        settlement = await settlementService.create({
-          fromUserId: currentUserId,
-          toUserId: friendId,
-          amount,
-          currency: 'USD',
-          date: Date.now(),
-        });
-        
-        // Log activity
-        await activityService.logSettlementCreated({
-          settlementId: settlement.id,
-          fromUserId: currentUserId,
-          fromUserName: user.name || 'Someone',
-          toUserName: friend.name || 'Someone',
-          amount,
         });
       }
 
-      Alert.alert('Settled!', `Successfully settled up with ${friend.name}`);
+      setSettleModalVisible(false);
       loadFriendData();
     } catch (error) {
       console.error('Error settling up:', error);
       Alert.alert('Error', 'Failed to settle up');
+    } finally {
+      setIsSettlingUp(false);
     }
-  }
+  };
 
   function handleEditExpense(expenseId: string) {
     swipeableRefs.current.get(expenseId)?.close();
@@ -204,6 +187,8 @@ export default function FriendDetailScreen() {
   }
 
   async function handleDeleteExpense(expenseId: string) {
+    if (deletingExpenseId) return;
+    
     Alert.alert(
       'Delete Expense',
       'Are you sure you want to delete this expense?',
@@ -217,11 +202,14 @@ export default function FriendDetailScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
+              setDeletingExpenseId(expenseId);
               await expenseService.delete(expenseId, currentUserId, user?.name || 'Unknown');
               loadFriendData();
             } catch (error) {
               console.error('Error deleting expense:', error);
               Alert.alert('Error', 'Failed to delete expense');
+            } finally {
+              setDeletingExpenseId(null);
             }
           },
         },
@@ -230,6 +218,8 @@ export default function FriendDetailScreen() {
   }
 
   const handleRemoveFriend = () => {
+    if (isRemovingFriend) return;
+    
     Alert.alert(
       'Remove Friend',
       `Are you sure you want to remove ${friend?.name} from your friends?`,
@@ -240,12 +230,14 @@ export default function FriendDetailScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
+              setIsRemovingFriend(true);
               await friendshipService.remove(currentUserId, id);
               router.back();
               Alert.alert('Success', `${friend?.name} has been removed from your friends`);
             } catch (error) {
               console.error('Error removing friend:', error);
               Alert.alert('Error', 'Failed to remove friend');
+              setIsRemovingFriend(false);
             }
           },
         },

@@ -33,6 +33,11 @@ export default function GroupDetailScreen() {
   const [balances, setBalances] = useState<Map<string, number>>(new Map());
   const [loading, setLoading] = useState(true);
   const [expenseModalVisible, setExpenseModalVisible] = useState(false);
+  const [isAddingExpense, setIsAddingExpense] = useState(false);
+  const [isAddingMember, setIsAddingMember] = useState(false);
+  const [isDeletingGroup, setIsDeletingGroup] = useState(false);
+  const [deletingExpenseId, setDeletingExpenseId] = useState<string | null>(null);
+  const [removingMemberId, setRemovingMemberId] = useState<string | null>(null);
   const expenseSwipeableRefs = useRef<Map<string, Swipeable>>(new Map());
   const memberSwipeableRefs = useRef<Map<string, Swipeable>>(new Map());
 
@@ -99,6 +104,8 @@ export default function GroupDetailScreen() {
   );
 
   const addExpense = async () => {
+    if (isAddingExpense) return;
+    
     if (!description.trim() || !amount.trim()) {
       Alert.alert('Error', 'Please fill in all fields');
       return;
@@ -111,6 +118,7 @@ export default function GroupDetailScreen() {
     }
 
     try {
+      setIsAddingExpense(true);
       const splitAmount = amountNum / members.length;
 
       await expenseService.create(
@@ -129,6 +137,18 @@ export default function GroupDetailScreen() {
         }))
       );
 
+      if (group && user) {
+        await activityService.logExpenseCreated({
+          expenseId: '',
+          userId: currentUserId,
+          userName: user.name,
+          description: description.trim(),
+          amount: amountNum,
+          groupId: id,
+          groupName: group.name,
+        });
+      }
+
       setDescription('');
       setAmount('');
       setExpenseModalVisible(false);
@@ -136,26 +156,30 @@ export default function GroupDetailScreen() {
     } catch (error) {
       console.error('Error adding expense:', error);
       Alert.alert('Error', 'Failed to add expense');
+    } finally {
+      setIsAddingExpense(false);
     }
-  }
+  };
 
   const addMember = async () => {
+    if (isAddingMember) return;
+    
     if (!selectedUserId) {
-      Alert.alert('Error', 'Please select a user');
+      Alert.alert('Error', 'Please select a friend');
       return;
     }
 
     try {
-      await groupService.addMember(id, selectedUserId, 'member');
+      setIsAddingMember(true);
+      await groupService.addMember(id, selectedUserId);
       
-      // Log activity
-      const addedUser = availableUsers.find(u => u.id === selectedUserId);
-      if (addedUser && group && user) {
+      if (group && user) {
+        const newMember = availableUsers.find(u => u.id === selectedUserId);
         await activityService.logMemberAdded({
           groupId: id,
           userId: currentUserId,
           userName: user.name,
-          memberName: addedUser.name,
+          memberName: newMember?.name || 'Someone',
           groupName: group.name,
         });
       }
@@ -166,10 +190,14 @@ export default function GroupDetailScreen() {
     } catch (error) {
       console.error('Error adding member:', error);
       Alert.alert('Error', 'Failed to add member');
+    } finally {
+      setIsAddingMember(false);
     }
   }
 
   async function handleDeleteGroup() {
+    if (isDeletingGroup) return;
+    
     Alert.alert(
       'Delete Group',
       'Are you sure you want to delete this group? This action cannot be undone.',
@@ -183,11 +211,13 @@ export default function GroupDetailScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
+              setIsDeletingGroup(true);
               await groupService.delete(id);
               router.back();
             } catch (error) {
               console.error('Error deleting group:', error);
               Alert.alert('Error', 'Failed to delete group');
+              setIsDeletingGroup(false);
             }
           },
         },
@@ -205,6 +235,8 @@ export default function GroupDetailScreen() {
   }
 
   async function handleDeleteExpense(expenseId: string) {
+    if (deletingExpenseId) return;
+    
     Alert.alert(
       'Delete Expense',
       'Are you sure you want to delete this expense?',
@@ -218,11 +250,14 @@ export default function GroupDetailScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
+              setDeletingExpenseId(expenseId);
               await expenseService.delete(expenseId, currentUserId, user?.name || 'Unknown');
               loadGroupData();
             } catch (error) {
               console.error('Error deleting expense:', error);
               Alert.alert('Error', 'Failed to delete expense');
+            } finally {
+              setDeletingExpenseId(null);
             }
           },
         },
@@ -306,6 +341,8 @@ export default function GroupDetailScreen() {
   }
 
   function handleRemoveMember(member: GroupMember & { user?: User }) {
+    if (removingMemberId) return;
+    
     // Don't allow removing yourself or if you're not an admin
     const currentMember = members.find(m => m.userId === currentUserId);
     if (member.userId === currentUserId) {
@@ -330,6 +367,7 @@ export default function GroupDetailScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
+              setRemovingMemberId(member.userId);
               await groupService.removeMember(id, member.userId);
               
               // Log activity
@@ -347,6 +385,8 @@ export default function GroupDetailScreen() {
             } catch (error) {
               console.error('Error removing member:', error);
               Alert.alert('Error', 'Failed to remove member');
+            } finally {
+              setRemovingMemberId(null);
             }
           },
         },

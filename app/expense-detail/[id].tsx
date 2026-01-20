@@ -1,5 +1,6 @@
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { NavigationHeader } from '@/components/ui/screen-header';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { expenseService, groupService, userService } from '@/services/api';
@@ -34,6 +35,7 @@ export default function ExpenseDetailScreen() {
   const [payer, setPayer] = useState<User | null>(null);
   const [group, setGroup] = useState<Group | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
@@ -118,6 +120,8 @@ export default function ExpenseDetailScreen() {
   }
 
   const handleDelete = () => {
+    if (isDeleting) return;
+    
     Alert.alert(
       'Delete Expense',
       `Are you sure you want to delete "${expense?.description}"?`,
@@ -128,11 +132,13 @@ export default function ExpenseDetailScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
+              setIsDeleting(true);
               await expenseService.delete(id, currentUserId, user?.name || 'Unknown');
               router.back();
             } catch (error) {
               console.error('Error deleting expense:', error);
               Alert.alert('Error', 'Failed to delete expense');
+              setIsDeleting(false);
             }
           },
         },
@@ -188,34 +194,36 @@ export default function ExpenseDetailScreen() {
         <View style={[styles.orb, styles.orb3]} />
       </View>
 
-      {/* Custom Header */}
-      <View style={[styles.header, { paddingTop: Platform.OS === 'ios' ? 60 : 54 }]}>
-        <TouchableOpacity
-          onPress={() => router.back()}
-          style={[styles.backButton, {
-            backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)',
-            borderColor: isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(34, 197, 94, 0.3)',
-          }]}>
-          <IconSymbol name="chevron.left" size={20} color={isDark ? '#2DD4BF' : colors.tint} />
-        </TouchableOpacity>
-        <ThemedText style={styles.headerTitle}>Expense Details</ThemedText>
-        <View style={styles.headerActions}>
-          <TouchableOpacity
-            onPress={() => router.push(`/edit-expense/${id}` as any)}
-            style={[styles.actionButton, {
-              backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)',
-            }]}>
-            <IconSymbol name="pencil" size={18} color={isDark ? '#2DD4BF' : colors.tint} />
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={handleDelete}
-            style={[styles.actionButton, {
-              backgroundColor: 'rgba(239, 68, 68, 0.15)',
-            }]}>
-            <IconSymbol name="trash" size={18} color="#ef4444" />
-          </TouchableOpacity>
-        </View>
-      </View>
+      <NavigationHeader 
+        title="Expense Details" 
+        onBack={() => router.back()}
+        rightAction={
+          <View style={styles.headerActions}>
+            <TouchableOpacity
+              onPress={() => router.push(`/edit-expense/${id}` as any)}
+              disabled={isDeleting}
+              style={[styles.actionButton, {
+                backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)',
+                opacity: isDeleting ? 0.5 : 1,
+              }]}>
+              <IconSymbol name="pencil" size={18} color={isDark ? '#2DD4BF' : colors.tint} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={handleDelete}
+              disabled={isDeleting}
+              style={[styles.actionButton, {
+                backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                opacity: isDeleting ? 0.5 : 1,
+              }]}>
+              {isDeleting ? (
+                <ThemedText style={{ fontSize: 18 }}>⏳</ThemedText>
+              ) : (
+                <IconSymbol name="trash" size={18} color="#ef4444" />
+              )}
+            </TouchableOpacity>
+          </View>
+        }
+      />
 
       <ScrollView 
         style={styles.content}
