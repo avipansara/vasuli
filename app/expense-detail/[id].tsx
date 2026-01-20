@@ -1,5 +1,6 @@
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { LoadingState } from '@/components/ui/loading-state';
 import { NavigationHeader } from '@/components/ui/screen-header';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useThemeColors } from '@/hooks/use-theme-colors';
@@ -13,11 +14,10 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Alert,
   Animated,
-  Platform,
   ScrollView,
   StyleSheet,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
 
 interface ExpenseSplitWithUser extends ExpenseSplit {
@@ -151,24 +151,11 @@ export default function ExpenseDetailScreen() {
       <View style={styles.container}>
         <Stack.Screen options={{ headerShown: false }} />
         <LinearGradient colors={gradients.screenBackground} style={StyleSheet.absoluteFill} />
-        <View style={[styles.header, { paddingTop: Platform.OS === 'ios' ? 60 : 54 }]}>
-          <TouchableOpacity
-            onPress={() => router.back()}
-            style={[styles.backButton, {
-              backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)',
-              borderColor: isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(34, 197, 94, 0.3)',
-            }]}>
-            <IconSymbol name="chevron.left" size={20} color={isDark ? '#2DD4BF' : colors.tint} />
-          </TouchableOpacity>
-          <ThemedText style={styles.headerTitle}>Expense Details</ThemedText>
-          <View style={styles.editButton} />
-        </View>
-        <View style={styles.loadingContainer}>
-          <ThemedText>Loading...</ThemedText>
-        </View>
+        <LoadingState message="Loading expense details..." />
       </View>
     );
   }
+  
 
   const date = new Date(expense.date);
   const dateStr = date.toLocaleDateString('en-US', {
