@@ -14,7 +14,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Animated, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
-import { FlatList } from 'react-native-gesture-handler';
+import { ScrollView } from 'react-native-gesture-handler';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
 
 interface UserWithBalance extends User {
@@ -299,6 +299,11 @@ export default function FriendDetailScreen() {
         </View>
       </View>
 
+      <ScrollView 
+        style={styles.content}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}>
+
       {/* Profile Hero Section */}
       <Animated.View style={[
         styles.heroSection,
@@ -435,89 +440,86 @@ export default function FriendDetailScreen() {
             </ThemedText>
           </View>
         ) : (
-          <FlatList
-            data={expenses}
-            keyExtractor={(item) => item.id}
-            showsVerticalScrollIndicator={false}
-            renderItem={({ item, index }) => (
-              <Swipeable
-                ref={(ref) => {
-                  if (ref) {
-                    swipeableRefs.current.set(item.id, ref);
-                  } else {
-                    swipeableRefs.current.delete(item.id);
+          expenses.map((item, index) => (
+            <Swipeable
+              key={item.id}
+              ref={(ref) => {
+                if (ref) {
+                  swipeableRefs.current.set(item.id, ref);
+                } else {
+                  swipeableRefs.current.delete(item.id);
+                }
+              }}
+              renderLeftActions={(progress, dragX) => (
+                <Animated.View style={[styles.swipeActionLeft, { opacity: dragX.interpolate({ inputRange: [0, 80], outputRange: [0, 1], extrapolate: 'clamp' }) }]}>
+                  <TouchableOpacity onPress={() => handleEditExpense(item.id)} style={styles.swipeActionButton}>
+                    <IconSymbol name="pencil" size={20} color="#fff" />
+                    <ThemedText style={styles.swipeActionText}>Edit</ThemedText>
+                  </TouchableOpacity>
+                </Animated.View>
+              )}
+              renderRightActions={(progress, dragX) => (
+                <Animated.View style={[styles.swipeActionRight, { opacity: dragX.interpolate({ inputRange: [-80, 0], outputRange: [1, 0], extrapolate: 'clamp' }) }]}>
+                  <TouchableOpacity onPress={() => handleDeleteExpense(item.id)} style={styles.swipeActionButton}>
+                    <IconSymbol name="trash" size={20} color="#fff" />
+                    <ThemedText style={styles.swipeActionText}>Delete</ThemedText>
+                  </TouchableOpacity>
+                </Animated.View>
+              )}
+              overshootLeft={false}
+              overshootRight={false}
+              friction={2}
+              overshootFriction={8}
+              enableTrackpadTwoFingerGesture
+              containerStyle={{ overflow: 'visible' }}>
+              <Animated.View
+                style={[
+                  styles.expenseCard,
+                  !isDark && { backgroundColor: colors.card },
+                  {
+                    opacity: fadeAnim,
+                    transform: [{ translateY: Animated.multiply(slideAnim, new Animated.Value((index + 1) * 0.2)) }],
                   }
-                }}
-                renderLeftActions={(progress, dragX) => (
-                  <Animated.View style={[styles.swipeActionLeft, { opacity: dragX.interpolate({ inputRange: [0, 80], outputRange: [0, 1], extrapolate: 'clamp' }) }]}>
-                    <TouchableOpacity onPress={() => handleEditExpense(item.id)} style={styles.swipeActionButton}>
-                      <IconSymbol name="pencil" size={20} color="#fff" />
-                      <ThemedText style={styles.swipeActionText}>Edit</ThemedText>
-                    </TouchableOpacity>
-                  </Animated.View>
-                )}
-                renderRightActions={(progress, dragX) => (
-                  <Animated.View style={[styles.swipeActionRight, { opacity: dragX.interpolate({ inputRange: [-80, 0], outputRange: [1, 0], extrapolate: 'clamp' }) }]}>
-                    <TouchableOpacity onPress={() => handleDeleteExpense(item.id)} style={styles.swipeActionButton}>
-                      <IconSymbol name="trash" size={20} color="#fff" />
-                      <ThemedText style={styles.swipeActionText}>Delete</ThemedText>
-                    </TouchableOpacity>
-                  </Animated.View>
-                )}
-                overshootLeft={false}
-                overshootRight={false}
-                friction={2}
-                overshootFriction={8}
-                enableTrackpadTwoFingerGesture
-                containerStyle={{ overflow: 'visible' }}>
-                <Animated.View
-                  style={[
-                    styles.expenseCard,
-                    !isDark && { backgroundColor: colors.card },
-                    {
-                      opacity: fadeAnim,
-                      transform: [{ translateY: Animated.multiply(slideAnim, new Animated.Value((index + 1) * 0.2)) }],
-                    }
-                  ]}>
-                <View style={[
-                  styles.expenseIcon,
-                  { backgroundColor: item.paidBy === currentUserId ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)' }
                 ]}>
-                  <IconSymbol 
-                    size={18} 
-                    name={item.paidBy === currentUserId ? 'arrow.up.right' : 'arrow.down.left'} 
-                    color={item.paidBy === currentUserId ? '#10b981' : '#ef4444'} 
-                  />
-                </View>
-                <View style={styles.expenseInfo}>
-                  <ThemedText style={[styles.expenseDescription, !isDark && { color: colors.text }]}>
-                    {item.description}
-                  </ThemedText>
-                  <ThemedText style={[styles.expenseDate, !isDark && { color: colors.textSecondary }]}>
-                    {formatDate(item.date)} • {item.paidByName} paid
-                  </ThemedText>
-                </View>
-                <View style={styles.expenseAmounts}>
-                  <ThemedText style={[styles.expenseTotal, !isDark && { color: colors.textSecondary }]}>
-                    ${item.amount.toFixed(2)}
-                  </ThemedText>
-                  <ThemedText
-                    style={[
-                      styles.expenseShare,
-                      { color: item.paidBy === currentUserId ? '#10b981' : '#ef4444' },
-                    ]}>
-                    {item.paidBy === currentUserId
-                      ? `+$${item.friendShare.toFixed(2)}`
-                      : `-$${item.yourShare.toFixed(2)}`}
-                  </ThemedText>
-                </View>
-              </Animated.View>
-              </Swipeable>
-            )}
-            contentContainerStyle={styles.expenseList}
-          />
+              <View style={[
+                styles.expenseIcon,
+                { backgroundColor: item.paidBy === currentUserId ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)' }
+              ]}>
+                <IconSymbol 
+                  size={18} 
+                  name={item.paidBy === currentUserId ? 'arrow.up.right' : 'arrow.down.left'} 
+                  color={item.paidBy === currentUserId ? '#10b981' : '#ef4444'} 
+                />
+              </View>
+              <View style={styles.expenseInfo}>
+                <ThemedText style={[styles.expenseDescription, !isDark && { color: colors.text }]}>
+                  {item.description}
+                </ThemedText>
+                <ThemedText style={[styles.expenseDate, !isDark && { color: colors.textSecondary }]}>
+                  {formatDate(item.date)} • {item.paidByName} paid
+                </ThemedText>
+              </View>
+              <View style={styles.expenseAmounts}>
+                <ThemedText style={[styles.expenseTotal, !isDark && { color: colors.textSecondary }]}>
+                  ${item.amount.toFixed(2)}
+                </ThemedText>
+                <ThemedText
+                  style={[
+                    styles.expenseShare,
+                    { color: item.paidBy === currentUserId ? '#10b981' : '#ef4444' },
+                  ]}>
+                  {item.paidBy === currentUserId
+                    ? `+$${item.friendShare.toFixed(2)}`
+                    : `-$${item.yourShare.toFixed(2)}`}
+                </ThemedText>
+              </View>
+            </Animated.View>
+            </Swipeable>
+          ))
         )}
       </View>
+
+      </ScrollView>
 
       <SettleUpModal
         visible={settleModalVisible}
@@ -750,9 +752,15 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
-  historySection: {
+  content: {
     flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 100,
+  },
+  historySection: {
     paddingHorizontal: 16,
+    marginBottom: 20,
   },
   sectionHeader: {
     flexDirection: 'row',
