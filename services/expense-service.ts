@@ -260,6 +260,7 @@ export const expenseService = {
       userId,
       userName,
       description: expense.description,
+      amount: expense.amount,
       groupId: expense.group_id || undefined,
       groupName: expense.groups?.name || undefined,
     });

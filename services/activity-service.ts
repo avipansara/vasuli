@@ -212,6 +212,7 @@ export const activityService = {
     userId: string;
     userName: string;
     description: string;
+    amount: number;
     groupId?: string;
     groupName?: string;
   }): Promise<Activity> {
@@ -223,6 +224,7 @@ export const activityService = {
       groupId: params.groupId,
       groupName: params.groupName,
       description: `Deleted: ${params.description}`,
+      amount: params.amount,
     });
   },
 
