@@ -1,8 +1,10 @@
 import { ThemedText } from '@/components/themed-text';
+import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import type { User } from '@/types/database';
 import React from 'react';
-import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Animated, StyleSheet, TouchableOpacity, View } from 'react-native';
+import Swipeable from 'react-native-gesture-handler/Swipeable';
 
 interface UserWithBalance extends User {
   balance: number;
@@ -11,9 +13,10 @@ interface UserWithBalance extends User {
 interface FriendCardProps {
   friend: UserWithBalance;
   onPress?: (friend: UserWithBalance) => void;
+  onDelete?: (friend: UserWithBalance) => void;
 }
 
-export function FriendCard({ friend, onPress }: FriendCardProps) {
+export function FriendCard({ friend, onPress, onDelete }: FriendCardProps) {
   const { colors, isDark } = useThemeColors();
   const balance = friend.balance;
   const balanceColor =
@@ -23,14 +26,37 @@ export function FriendCard({ friend, onPress }: FriendCardProps) {
       ? isDark ? '#ef4444' : colors.error
       : isDark ? '#2DD4BF' : colors.tint;
 
+  const renderRightActions = (progress: Animated.AnimatedInterpolation<number>, dragX: Animated.AnimatedInterpolation<number>) => {
+    const opacity = dragX.interpolate({
+      inputRange: [-80, 0],
+      outputRange: [1, 0],
+      extrapolate: 'clamp',
+    });
+
+    return (
+      <Animated.View style={[styles.swipeActionRight, { opacity }]}>
+        <TouchableOpacity
+          onPress={() => onDelete?.(friend)}
+          style={styles.swipeActionButton}>
+          <IconSymbol name="trash" size={20} color="#fff" />
+          <ThemedText style={styles.swipeActionText}>Delete</ThemedText>
+        </TouchableOpacity>
+      </Animated.View>
+    );
+  };
+
   return (
-    <TouchableOpacity
-      style={[
-        styles.card,
-        !isDark && { backgroundColor: colors.card },
-      ]}
-      onPress={() => onPress?.(friend)}
-      activeOpacity={0.7}>
+    <Swipeable
+      renderRightActions={onDelete ? renderRightActions : undefined}
+      overshootRight={false}
+      friction={2}>
+      <TouchableOpacity
+        style={[
+          styles.card,
+          !isDark && { backgroundColor: colors.card },
+        ]}
+        onPress={() => onPress?.(friend)}
+        activeOpacity={0.7}>
       <View
         style={[
           styles.avatar,
@@ -73,6 +99,7 @@ export function FriendCard({ friend, onPress }: FriendCardProps) {
         )}
       </View>
     </TouchableOpacity>
+    </Swipeable>
   );
 }
 
@@ -126,5 +153,26 @@ const styles = StyleSheet.create({
   },
   chevron: {
     marginLeft: 8,
+  },
+  swipeActionRight: {
+    backgroundColor: '#ef4444',
+    justifyContent: 'center',
+    alignItems: 'flex-end',
+    paddingRight: 20,
+    marginBottom: 8,
+    borderTopRightRadius: 12,
+    borderBottomRightRadius: 12,
+  },
+  swipeActionButton: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 80,
+    height: '100%',
+  },
+  swipeActionText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: 4,
   },
 });

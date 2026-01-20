@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/auth-context-otp';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { activityService } from '@/services/activity-service';
 import { calculateFriendBalance, expenseService, initDatabase, settlementService, userService } from '@/services/api';
+import { friendshipService } from '@/services/friendship-service';
 import type { Expense, ExpenseSplit, User } from '@/types/database';
 import { useFocusEffect } from '@react-navigation/native';
 import { BlurView } from 'expo-blur';
@@ -216,7 +217,7 @@ export default function FriendDetailScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              await expenseService.delete(expenseId);
+              await expenseService.delete(expenseId, currentUserId, user?.name || 'Unknown');
               loadFriendData();
             } catch (error) {
               console.error('Error deleting expense:', error);
@@ -227,6 +228,30 @@ export default function FriendDetailScreen() {
       ]
     );
   }
+
+  const handleRemoveFriend = () => {
+    Alert.alert(
+      'Remove Friend',
+      `Are you sure you want to remove ${friend?.name} from your friends?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await friendshipService.remove(currentUserId, id);
+              router.back();
+              Alert.alert('Success', `${friend?.name} has been removed from your friends`);
+            } catch (error) {
+              console.error('Error removing friend:', error);
+              Alert.alert('Error', 'Failed to remove friend');
+            }
+          },
+        },
+      ]
+    );
+  };
 
   const formatDate = (timestamp: number) => {
     const date = new Date(timestamp);
@@ -270,15 +295,16 @@ export default function FriendDetailScreen() {
           }]}>
           <IconSymbol size={20} name="chevron.left" color={isDark ? '#2DD4BF' : colors.tint} />
         </TouchableOpacity>
-        {/* <View style={styles.headerActions}>
+        <View style={styles.headerActions}>
           <TouchableOpacity 
+            onPress={handleRemoveFriend}
             style={[styles.headerActionButton, { 
-              backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)', 
-              borderColor: isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(34, 197, 94, 0.3)' 
+              backgroundColor: 'rgba(239, 68, 68, 0.15)', 
+              borderColor: 'rgba(239, 68, 68, 0.3)' 
             }]}>
-            <IconSymbol size={18} name="ellipsis" color={isDark ? '#2DD4BF' : colors.tint} />
+            <IconSymbol size={18} name="trash" color="#ef4444" />
           </TouchableOpacity>
-        </View> */}
+        </View>
       </View>
 
       {/* Profile Hero Section */}

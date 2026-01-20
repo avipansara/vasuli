@@ -111,6 +111,30 @@ export default function FriendsScreen() {
     router.push(`/friend/${friend.id}` as any);
   }
 
+  function handleDeleteFriend(friend: UserWithBalance) {
+    Alert.alert(
+      'Remove Friend',
+      `Are you sure you want to remove ${friend.name} from your friends?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await friendshipService.remove(currentUserId, friend.id);
+              loadFriends();
+              Alert.alert('Success', `${friend.name} has been removed from your friends`);
+            } catch (error) {
+              console.error('Error removing friend:', error);
+              Alert.alert('Error', 'Failed to remove friend');
+            }
+          },
+        },
+      ]
+    );
+  }
+
   // Calculate net balance (positive = you are owed, negative = you owe)
   const netBalance = friends.reduce((sum, f) => sum + f.balance, 0);
   const balanceLabel = netBalance > 0 ? 'You are owed' : netBalance < 0 ? 'You owe' : 'All settled';
@@ -172,7 +196,7 @@ export default function FriendsScreen() {
       ) : (
         <FlatList
           data={friends}
-          renderItem={({ item }) => <FriendCard friend={item} onPress={handleFriendPress} />}
+          renderItem={({ item }) => <FriendCard friend={item} onPress={handleFriendPress} onDelete={handleDeleteFriend} />}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}

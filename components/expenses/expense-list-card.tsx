@@ -2,7 +2,6 @@ import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useThemeColors } from '@/hooks/use-theme-colors';
-import { activityService } from '@/services/activity-service';
 import { expenseService } from '@/services/api';
 import type { Expense, Group } from '@/types/database';
 import { router } from 'expo-router';
@@ -43,15 +42,7 @@ export function ExpenseListCard({ expense, onDelete }: ExpenseListCardProps) {
           style: 'destructive',
           onPress: async () => {
             try {
-              // Log activity before deleting
-              await activityService.logExpenseDeleted({
-                expenseId: expense.id,
-                userId: user?.id || '',
-                userName: user?.name || 'Someone',
-                description: expense.description,
-                groupId: expense.groupId,
-              });
-              await expenseService.delete(expense.id);
+              await expenseService.delete(expense.id, user?.id || '', user?.name || 'Unknown');
               onDelete?.();
             } catch (error) {
               console.error('Error deleting expense:', error);

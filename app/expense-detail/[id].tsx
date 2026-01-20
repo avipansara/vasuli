@@ -117,6 +117,29 @@ export default function ExpenseDetailScreen() {
     }
   }
 
+  const handleDelete = () => {
+    Alert.alert(
+      'Delete Expense',
+      `Are you sure you want to delete "${expense?.description}"?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await expenseService.delete(id, currentUserId, user?.name || 'Unknown');
+              router.back();
+            } catch (error) {
+              console.error('Error deleting expense:', error);
+              Alert.alert('Error', 'Failed to delete expense');
+            }
+          },
+        },
+      ]
+    );
+  };
+
   if (loading || !expense) {
     return (
       <View style={styles.container}>
@@ -176,13 +199,22 @@ export default function ExpenseDetailScreen() {
           <IconSymbol name="chevron.left" size={20} color={isDark ? '#2DD4BF' : colors.tint} />
         </TouchableOpacity>
         <ThemedText style={styles.headerTitle}>Expense Details</ThemedText>
-        <TouchableOpacity
-          onPress={() => router.push(`/edit-expense/${id}` as any)}
-          style={[styles.editButton, {
-            backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)',
-          }]}>
-          <IconSymbol name="pencil" size={18} color={isDark ? '#2DD4BF' : colors.tint} />
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <TouchableOpacity
+            onPress={() => router.push(`/edit-expense/${id}` as any)}
+            style={[styles.actionButton, {
+              backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)',
+            }]}>
+            <IconSymbol name="pencil" size={18} color={isDark ? '#2DD4BF' : colors.tint} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={handleDelete}
+            style={[styles.actionButton, {
+              backgroundColor: 'rgba(239, 68, 68, 0.15)',
+            }]}>
+            <IconSymbol name="trash" size={18} color="#ef4444" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView 
@@ -375,6 +407,17 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  actionButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   editButton: {
     width: 40,

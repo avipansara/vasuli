@@ -218,7 +218,7 @@ export default function GroupDetailScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              await expenseService.delete(expenseId);
+              await expenseService.delete(expenseId, currentUserId, user?.name || 'Unknown');
               loadGroupData();
             } catch (error) {
               console.error('Error deleting expense:', error);

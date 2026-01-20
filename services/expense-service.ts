@@ -235,12 +235,33 @@ export const expenseService = {
     }));
   },
 
-  async delete(id: string): Promise<void> {
+  async delete(id: string, userId: string, userName: string): Promise<void> {
+    // First, get the expense details before deleting
+    const { data: expense, error: fetchError } = await supabase
+      .from('expenses')
+      .select('*, groups(name)')
+      .eq('id', id)
+      .single();
+    
+    if (fetchError) throw fetchError;
+    
+    // Delete the expense
     const { error } = await supabase
       .from('expenses')
       .delete()
       .eq('id', id);
     
     if (error) throw error;
+    
+    // Log the activity
+    const { activityService } = await import('./activity-service');
+    await activityService.logExpenseDeleted({
+      expenseId: id,
+      userId,
+      userName,
+      description: expense.description,
+      groupId: expense.group_id || undefined,
+      groupName: expense.groups?.name || undefined,
+    });
   },
 };
