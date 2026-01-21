@@ -4,8 +4,9 @@ import { LoadingState } from '@/components/ui/loading-state';
 import { NavigationHeader } from '@/components/ui/screen-header';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useThemeColors } from '@/hooks/use-theme-colors';
+import { activityService } from '@/services/activity-service';
 import { expenseService, groupService, userService } from '@/services/api';
-import type { Expense, ExpenseSplit, Group, User } from '@/types/database';
+import type { Activity, Expense, ExpenseSplit, Group, User } from '@/types/database';
 import { useFocusEffect } from '@react-navigation/native';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -34,6 +35,7 @@ export default function ExpenseDetailScreen() {
   const [splits, setSplits] = useState<ExpenseSplitWithUser[]>([]);
   const [payer, setPayer] = useState<User | null>(null);
   const [group, setGroup] = useState<Group | null>(null);
+  const [activities, setActivities] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -81,6 +83,10 @@ export default function ExpenseDetailScreen() {
         const groupData = await groupService.getById(expenseData.groupId);
         setGroup(groupData);
       }
+
+      // Load activity history for this expense
+      const activitiesData = await activityService.getByTarget(id);
+      setActivities(activitiesData);
 
       setLoading(false);
 
@@ -369,6 +375,91 @@ export default function ExpenseDetailScreen() {
               </View>
             </BlurView>
           )}
+
+          {/* Activity History */}
+          {activities.length > 0 && (
+            <View style={styles.activitySection}>
+              <ThemedText style={[styles.sectionTitle, !isDark && { color: colors.text }]}>
+                Activity History
+              </ThemedText>
+              
+              {activities.map((activity) => {
+                const activityDate = new Date(activity.createdAt);
+                const timeStr = activityDate.toLocaleString('en-US', {
+                  month: 'short',
+                  day: 'numeric',
+                  hour: 'numeric',
+                  minute: '2-digit',
+                });
+
+                const getActivityIcon = () => {
+                  switch (activity.type) {
+                    case 'expense_created':
+                      return 'plus.circle.fill';
+                    case 'expense_updated':
+                      return 'pencil.circle.fill';
+                    case 'expense_deleted':
+                      return 'trash.circle.fill';
+                    default:
+                      return 'circle.fill';
+                  }
+                };
+
+                const getActivityColor = () => {
+                  switch (activity.type) {
+                    case 'expense_created':
+                      return isDark ? '#2DD4BF' : colors.tint;
+                    case 'expense_updated':
+                      return '#f59e0b';
+                    case 'expense_deleted':
+                      return '#ef4444';
+                    default:
+                      return isDark ? '#9CA3AF' : colors.textSecondary;
+                  }
+                };
+
+                return (
+                  <View 
+                    key={activity.id}
+                    style={[styles.activityCard, {
+                      backgroundColor: isDark ? 'rgba(30, 41, 59, 0.6)' : 'rgba(241, 245, 249, 0.9)',
+                      borderColor: isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(34, 197, 94, 0.2)',
+                    }]}>
+                    <View style={[styles.activityIcon, {
+                      backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)',
+                    }]}>
+                      <IconSymbol 
+                        name={getActivityIcon()} 
+                        size={20} 
+                        color={getActivityColor()} 
+                      />
+                    </View>
+                    <View style={styles.activityContent}>
+                      <ThemedText style={[styles.activityDescription, !isDark && { color: colors.text }]}>
+                        {activity.description}
+                      </ThemedText>
+                      <View style={styles.activityMeta}>
+                        <ThemedText style={[styles.activityUser, !isDark && { color: colors.textSecondary }]}>
+                          {activity.userName || 'Unknown'}
+                        </ThemedText>
+                        <ThemedText style={[styles.activityDot, !isDark && { color: colors.textSecondary }]}>
+                          •
+                        </ThemedText>
+                        <ThemedText style={[styles.activityTime, !isDark && { color: colors.textSecondary }]}>
+                          {timeStr}
+                        </ThemedText>
+                      </View>
+                    </View>
+                    {activity.amount && (
+                      <ThemedText style={[styles.activityAmount, !isDark && { color: colors.text }]}>
+                        ${activity.amount.toFixed(2)}
+                      </ThemedText>
+                    )}
+                  </View>
+                );
+              })}
+            </View>
+          )}
         </Animated.View>
       </ScrollView>
     </View>
@@ -585,5 +676,53 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(45, 212, 191, 0.08)',
     bottom: -50,
     right: 50,
+  },
+  activitySection: {
+    gap: 12,
+    marginTop: 8,
+  },
+  activityCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 12,
+  },
+  activityIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  activityContent: {
+    flex: 1,
+    gap: 4,
+  },
+  activityDescription: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  activityMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  activityUser: {
+    fontSize: 13,
+    opacity: 0.7,
+  },
+  activityDot: {
+    fontSize: 13,
+    opacity: 0.5,
+  },
+  activityTime: {
+    fontSize: 13,
+    opacity: 0.7,
+  },
+  activityAmount: {
+    fontSize: 15,
+    fontWeight: '600',
   },
 });

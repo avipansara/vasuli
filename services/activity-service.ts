@@ -164,6 +164,30 @@ export const activityService = {
     if (error) throw error;
   },
 
+  async getByTarget(targetId: string): Promise<Activity[]> {
+    const { data, error } = await supabase
+      .from('activities')
+      .select('*')
+      .eq('target_id', targetId)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    return (data || []).map(r => ({
+      id: r.id,
+      type: r.type as ActivityType,
+      userId: r.user_id,
+      userName: r.user_name || undefined,
+      targetId: r.target_id,
+      groupId: r.group_id || undefined,
+      groupName: r.group_name || undefined,
+      description: r.description,
+      amount: r.amount || undefined,
+      metadata: r.metadata || undefined,
+      createdAt: new Date(r.created_at).getTime(),
+    }));
+  },
+
   // Helper to log expense activities
   async logExpenseCreated(params: {
     expenseId: string;
