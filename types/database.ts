@@ -4,6 +4,7 @@ export interface User {
   email?: string;
   phone?: string;
   avatar?: string;
+  pushToken?: string;
   createdAt: number;
 }
 

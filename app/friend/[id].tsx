@@ -7,6 +7,7 @@ import { useThemeColors } from '@/hooks/use-theme-colors';
 import { activityService } from '@/services/activity-service';
 import { calculateFriendBalance, expenseService, initDatabase, settlementService, userService } from '@/services/api';
 import { friendshipService } from '@/services/friendship-service';
+import { notificationService } from '@/services/notification-service';
 import type { Expense, ExpenseSplit, User } from '@/types/database';
 import { useFocusEffect } from '@react-navigation/native';
 import { BlurView } from 'expo-blur';
@@ -168,6 +169,28 @@ export default function FriendDetailScreen() {
         // Log activity
         await activityService.logSettlementCreated({
           settlementId: settlement.id,
+          fromUserId: friendId,
+          fromUserName: friend.name,
+          toUserName: user.name,
+          amount,
+        });
+      } else {
+        // Current user owes friend
+        settlement = await settlementService.create({
+          fromUserId: currentUserId,
+          toUserId: friendId,
+          amount: Math.abs(amount),
+          currency: 'USD',
+          date: Date.now(),
+        });
+        
+        // Log activity
+        await activityService.logSettlementCreated({
+          settlementId: settlement.id,
+          fromUserId: currentUserId,
+          fromUserName: user.name,
+          toUserName: friend.name,
+          amount: Math.abs(amount),
         });
       }
 
@@ -246,6 +269,33 @@ export default function FriendDetailScreen() {
     );
   };
 
+  const handleRemind = async () => {
+    try {
+      if (!friend || balance === 0) {
+        Alert.alert('Info', 'No outstanding balance to remind about');
+        return;
+      }
+
+      Alert.alert('Info', 'Reminder notifications will be sent when push token storage is implemented');
+      
+      if (friend.pushToken) {
+        await notificationService.sendPushNotification(
+          friend.pushToken,
+          {
+            type: 'expense_reminder',
+            title: 'Payment Reminder',
+            body: `${user?.name || 'Someone'} is reminding you about the outstanding balance of $${Math.abs(balance).toFixed(2)}`,
+            data: { friendId: id }
+          }
+        );
+        Alert.alert('Success', 'Reminder sent!');
+      }
+    } catch (error) {
+      console.error('Error sending reminder:', error);
+      Alert.alert('Error', 'Failed to send reminder');
+    }
+  };
+
   const formatDate = (timestamp: number) => {
     const date = new Date(timestamp);
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -289,6 +339,14 @@ export default function FriendDetailScreen() {
           <IconSymbol size={20} name="chevron.left" color={isDark ? '#2DD4BF' : colors.tint} />
         </TouchableOpacity>
         <View style={styles.headerActions}>
+          <TouchableOpacity 
+            onPress={handleRemind}
+            style={[styles.headerActionButton, { 
+              backgroundColor: isDark ? 'rgba(245, 158, 11, 0.15)' : 'rgba(251, 191, 36, 0.15)', 
+              borderColor: isDark ? 'rgba(245, 158, 11, 0.3)' : 'rgba(251, 191, 36, 0.3)' 
+            }]}>
+            <IconSymbol size={18} name="bell.fill" color="#f59e0b" />
+          </TouchableOpacity>
           <TouchableOpacity 
             onPress={handleRemoveFriend}
             style={[styles.headerActionButton, { 
@@ -368,19 +426,6 @@ export default function FriendDetailScreen() {
                     ${Math.abs(balance).toFixed(2)}
                   </ThemedText>
                 </Animated.View>
-                <TouchableOpacity
-                  onPress={() => setSettleModalVisible(true)}
-                  activeOpacity={0.8}
-                  style={styles.settleButtonContainer}>
-                  <LinearGradient
-                    colors={balance > 0 ? ['#10b981', '#059669'] : ['#ef4444', '#dc2626']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={styles.settleButton}>
-                    <IconSymbol size={18} name="checkmark.circle.fill" color="#fff" style={{ marginRight: 8 }} />
-                    <ThemedText style={styles.settleButtonText}>Settle Up</ThemedText>
-                  </LinearGradient>
-                </TouchableOpacity>
               </>
             ) : (
               <View style={styles.settledContainer}>
@@ -406,15 +451,31 @@ export default function FriendDetailScreen() {
       {/* Quick Actions */}
       <View style={styles.quickActions}>
         <TouchableOpacity 
-          style={[styles.quickActionButton, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.1)' : 'rgba(34, 197, 94, 0.1)' }]}
+          style={styles.quickActionButton}
           onPress={() => router.push({ pathname: '/add-expense', params: { friendId: id } })}>
-          <IconSymbol size={20} name="plus.circle.fill" color={isDark ? '#2DD4BF' : colors.tint} />
-          <ThemedText style={[styles.quickActionText, { color: isDark ? '#2DD4BF' : colors.tint }]}>Add Expense</ThemedText>
+          <LinearGradient
+            colors={gradients.buttonPrimary}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.quickActionGradient}>
+            <IconSymbol size={20} name="plus.circle.fill" color="#0A0A0F" />
+            <ThemedText style={[styles.quickActionTextDark, { color: '#0A0A0F' }]}>Add Expense</ThemedText>
+          </LinearGradient>
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.quickActionButton, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.1)' : 'rgba(34, 197, 94, 0.1)' }]}>
-          <IconSymbol size={20} name="bell.fill" color={isDark ? '#2DD4BF' : colors.tint} />
-          <ThemedText style={[styles.quickActionText, { color: isDark ? '#2DD4BF' : colors.tint }]}>Remind</ThemedText>
-        </TouchableOpacity>
+        {balance !== 0 && (
+          <TouchableOpacity 
+            style={styles.quickActionButton}
+            onPress={() => setSettleModalVisible(true)}>
+            <LinearGradient
+              colors={['#10b981', '#059669']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.quickActionGradient}>
+              <IconSymbol size={20} name="checkmark.circle.fill" color="#fff" />
+              <ThemedText style={styles.quickActionTextDark}>Settle Up</ThemedText>
+            </LinearGradient>
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Expense History */}
@@ -742,16 +803,24 @@ const styles = StyleSheet.create({
   },
   quickActionButton: {
     flex: 1,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  quickActionGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12,
-    borderRadius: 12,
+    paddingVertical: 14,
     gap: 8,
   },
   quickActionText: {
     fontSize: 14,
     fontWeight: '600',
+  },
+  quickActionTextDark: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 14,
   },
   content: {
     flex: 1,

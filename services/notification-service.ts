@@ -3,7 +3,7 @@ import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 
 export interface PushNotificationData {
-  type: 'expense_added' | 'group_created' | 'member_added' | 'invitation_sent' | 'invitation_accepted' | 'settlement_created';
+  type: 'expense_added' | 'expense_reminder' | 'group_created' | 'member_added' | 'invitation_sent' | 'invitation_accepted' | 'settlement_created';
   title: string;
   body: string;
   data?: Record<string, any>;

@@ -1,3 +1,5 @@
+import { useAuth } from '@/contexts/auth-context-otp';
+import { userService } from '@/services/api';
 import { notificationService } from '@/services/notification-service';
 import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
@@ -5,6 +7,8 @@ import { useCallback, useEffect, useRef } from 'react';
 
 export function useNotifications() {
   const router = useRouter();
+  const { user } = useAuth();
+  const userId = user?.id;
   const notificationListener = useRef<Notifications.EventSubscription>();
   const responseListener = useRef<Notifications.EventSubscription>();
 
@@ -45,11 +49,14 @@ export function useNotifications() {
     // Register for push notifications and get token
     const registerForPushNotifications = async () => {
       const token = await notificationService.registerForPushNotificationsAsync();
-      if (token) {
+      if (token && userId) {
         console.log('Push token registered:', token);
-        // TODO: Store token in user profile via user service
-        // You can access user from auth context and update their push token
-        // await userService.updatePushToken(userId, token);
+        // Store token in user profile
+        try {
+          await userService.updatePushToken(userId, token);
+        } catch (error) {
+          console.error('Error storing push token:', error);
+        }
       }
     };
 
