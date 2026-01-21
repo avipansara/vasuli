@@ -4,7 +4,7 @@ import type { User } from '@/types/database';
 export const userService = {
   async create(user: Omit<User, 'id' | 'createdAt'> & { id?: string }): Promise<User> {
     const createdAt = new Date().toISOString();
-    
+
     const insertData: any = {
       name: user.name,
       email: user.email || null,
@@ -12,19 +12,19 @@ export const userService = {
       avatar: user.avatar || null,
       created_at: createdAt,
     };
-    
+
     if (user.id) {
       insertData.id = user.id;
     }
-    
+
     const { data, error } = await supabase
       .from('users')
       .insert(insertData)
       .select()
       .single();
-    
+
     if (error) throw error;
-    
+
     return {
       id: data.id,
       name: data.name,
@@ -41,12 +41,12 @@ export const userService = {
       .select('*')
       .eq('id', id)
       .single();
-    
+
     if (error) {
       if (error.code === 'PGRST116') return null;
       throw error;
     }
-    
+
     return {
       id: data.id,
       name: data.name,
@@ -62,9 +62,9 @@ export const userService = {
       .from('users')
       .select('*')
       .order('name');
-    
+
     if (error) throw error;
-    
+
     return (data || []).map(r => ({
       id: r.id,
       name: r.name,
@@ -82,27 +82,27 @@ export const userService = {
       .select('user_id, friend_id')
       .eq('status', 'accepted')
       .or(`user_id.eq.${userId},friend_id.eq.${userId}`);
-    
+
     if (friendshipsError) throw friendshipsError;
-    
+
     // Extract friend IDs (the other person in each friendship)
-    const friendIds = (friendships || []).map(f => 
+    const friendIds = (friendships || []).map(f =>
       f.user_id === userId ? f.friend_id : f.user_id
     );
-    
+
     if (friendIds.length === 0) {
       return [];
     }
-    
+
     // Get user details for all friends
     const { data, error } = await supabase
       .from('users')
       .select('*')
       .in('id', friendIds)
       .order('name');
-    
+
     if (error) throw error;
-    
+
     return (data || []).map(r => ({
       id: r.id,
       name: r.name,
@@ -123,17 +123,71 @@ export const userService = {
         avatar: updates.avatar,
       })
       .eq('id', id);
-    
+
     if (error) throw error;
   },
 
+  /**
+   * Delete user account with data anonymization.
+   * - Anonymizes user record (keeps ID so expense/settlement references still work)
+   * - Deletes friendships, group memberships, invitations, and activities
+   * - The user ID remains in the database with name "Deleted User" for reference integrity
+   */
   async delete(id: string): Promise<void> {
-    const { error } = await supabase
-      .from('users')
+    // 1. Delete activities created by the user (these are just logs)
+    const { error: activityDeleteError } = await supabase
+      .from('activities')
       .delete()
+      .eq('user_id', id);
+
+    if (activityDeleteError) console.error('Error deleting activities:', activityDeleteError);
+
+    // 2. Delete all friendships involving this user
+    const { error: friendshipError } = await supabase
+      .from('friendships')
+      .delete()
+      .or(`user_id.eq.${id},friend_id.eq.${id}`);
+
+    if (friendshipError) console.error('Error deleting friendships:', friendshipError);
+
+    // 3. Delete all group memberships (remove from all groups)
+    const { error: membershipError } = await supabase
+      .from('group_members')
+      .delete()
+      .eq('user_id', id);
+
+    if (membershipError) console.error('Error deleting group memberships:', membershipError);
+
+    // 4. Delete invitations sent by or to this user
+    const { error: invitationError } = await supabase
+      .from('invitations')
+      .delete()
+      .or(`inviter_id.eq.${id},invitee_email.eq.${id}`);
+
+    if (invitationError) console.error('Error deleting invitations:', invitationError);
+
+    // 5. Anonymize the user record instead of deleting it
+    // This keeps the user ID in the database so expense/settlement references still work
+    // When displaying expenses, the app will show "Deleted User" as the name
+    const { error: anonymizeError } = await supabase
+      .from('users')
+      .update({
+        name: 'Deleted User',
+        email: null,
+        phone: null,
+        avatar: null,
+        push_token: null,
+      })
       .eq('id', id);
-    
-    if (error) throw error;
+
+    if (anonymizeError) {
+      console.error('Error anonymizing user:', anonymizeError);
+      throw anonymizeError;
+    }
+
+    // NOTE: We do NOT delete the user record - we keep it anonymized
+    // so that expense.paid_by and expense_splits.user_id references still work
+    // and display "Deleted User" instead of breaking the app
   },
 
   async updatePushToken(userId: string, pushToken: string): Promise<void> {
