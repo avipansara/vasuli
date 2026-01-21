@@ -53,6 +53,8 @@ export interface User {
   avatar?: string;
   emailVerified: boolean;
   phoneVerified: boolean;
+  pushToken?: string;
+  isActive: boolean;
   createdAt: number;
   updatedAt: number;
 }
@@ -104,11 +106,11 @@ export async function sendSignUpCode(params: {
     // Check if user already exists
     const { data: existingUser } = await supabase
       .from('users')
-      .select('id')
+      .select('id, name, is_active')
       .or(email ? `email.eq.${email}` : `phone.eq.${phone}`)
       .single();
 
-    if (existingUser) {
+    if (existingUser && existingUser.is_active !== false) {
       return { success: false, error: 'User already exists. Please sign in instead.' };
     }
 
@@ -190,12 +192,16 @@ export async function sendSignInCode(params: {
     // Check if user exists
     const { data: user, error: userError } = await supabase
       .from('users')
-      .select('id, name, email, phone')
+      .select('id, name, email, phone, is_active')
       .or(email ? `email.eq.${email}` : `phone.eq.${phone}`)
       .single();
 
     if (userError || !user) {
       return { success: false, error: 'User not found. Please sign up first.' };
+    }
+
+    if (user.is_active === false) {
+      return { success: false, error: 'Account deleted. Please sign up to create a new account.' };
     }
 
     // Generate OTP code
@@ -369,18 +375,51 @@ export async function verifySignUpCode(params: {
       return { success: false, error: 'Failed to verify code' };
     }
 
-    // Create user account
-    const { data: newUser, error: userError } = await supabase
+    // Check if user exists (deleted user scenario)
+    const { data: existingUser } = await supabase
       .from('users')
-      .insert({
-        name,
-        email,
-        phone,
-        email_verified: !!email,
-        phone_verified: !!phone,
-      })
-      .select()
+      .select('id, name, is_active')
+      .or(email ? `email.eq.${email}` : `phone.eq.${phone}`)
       .single();
+
+    let newUser;
+    let userError;
+
+    if (existingUser && existingUser.is_active === false) {
+      // Reactivate: Update existing user
+      const { data, error } = await supabase
+        .from('users')
+        .update({
+          name,
+          email,
+          phone,
+          email_verified: !!email,
+          phone_verified: !!phone,
+          avatar: null,
+          push_token: null,
+          is_active: true,
+        })
+        .eq('id', existingUser.id)
+        .select()
+        .single();
+      newUser = data;
+      userError = error;
+    } else {
+      // Create user account
+      const { data, error } = await supabase
+        .from('users')
+        .insert({
+          name,
+          email,
+          phone,
+          email_verified: !!email,
+          phone_verified: !!phone,
+        })
+        .select()
+        .single();
+      newUser = data;
+      userError = error;
+    }
 
     if (userError) {
       console.error('Error creating user:', userError);
@@ -536,6 +575,8 @@ async function createSession(user: any): Promise<AuthSession> {
       avatar: user.avatar,
       emailVerified: user.email_verified,
       phoneVerified: user.phone_verified,
+      pushToken: user.push_token || undefined,
+      isActive: user.is_active ?? true,
       createdAt: new Date(user.created_at).getTime(),
       updatedAt: new Date(user.updated_at).getTime(),
     },

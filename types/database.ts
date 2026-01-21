@@ -5,6 +5,7 @@ export interface User {
   phone?: string;
   avatar?: string;
   pushToken?: string;
+  isActive: boolean;
   createdAt: number;
 }
 

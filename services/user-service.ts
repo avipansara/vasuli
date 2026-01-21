@@ -11,6 +11,7 @@ export const userService = {
       phone: user.phone || null,
       avatar: user.avatar || null,
       created_at: createdAt,
+      is_active: true,
     };
 
     if (user.id) {
@@ -31,6 +32,8 @@ export const userService = {
       email: data.email || undefined,
       phone: data.phone || undefined,
       avatar: data.avatar || undefined,
+      pushToken: data.push_token || undefined,
+      isActive: data.is_active ?? true,
       createdAt: new Date(data.created_at).getTime(),
     };
   },
@@ -53,6 +56,8 @@ export const userService = {
       email: data.email || undefined,
       phone: data.phone || undefined,
       avatar: data.avatar || undefined,
+      pushToken: data.push_token || undefined,
+      isActive: data.is_active ?? true,
       createdAt: new Date(data.created_at).getTime(),
     };
   },
@@ -71,6 +76,8 @@ export const userService = {
       email: r.email || undefined,
       phone: r.phone || undefined,
       avatar: r.avatar || undefined,
+      pushToken: r.push_token || undefined,
+      isActive: r.is_active ?? true,
       createdAt: new Date(r.created_at).getTime(),
     }));
   },
@@ -109,6 +116,8 @@ export const userService = {
       email: r.email || undefined,
       phone: r.phone || undefined,
       avatar: r.avatar || undefined,
+      pushToken: r.push_token || undefined,
+      isActive: r.is_active ?? true,
       createdAt: new Date(r.created_at).getTime(),
     }));
   },
@@ -177,6 +186,7 @@ export const userService = {
         phone: null,
         avatar: null,
         push_token: null,
+        is_active: false,
       })
       .eq('id', id);
 
