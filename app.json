@@ -45,7 +45,10 @@
               "pathPrefix": "/invite"
             }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ]
     },
@@ -75,6 +78,12 @@
           "color": "#2DD4BF",
           "sounds": [],
           "mode": "production"
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Vasuli uses your camera to scan QR codes when adding friends. For example, you can scan a friend's QR code to quickly connect and start splitting expenses together."
         }
       ]
     ],

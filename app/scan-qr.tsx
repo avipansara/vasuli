@@ -8,11 +8,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import {
-    Alert,
-    Platform,
-    StyleSheet,
-    TouchableOpacity,
-    View,
+  Alert,
+  Platform,
+  StyleSheet,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 
 export default function ScanQRScreen() {
@@ -26,14 +26,14 @@ export default function ScanQRScreen() {
 
     // Parse the invite link: vasuli://invite/USER_ID
     const match = data.match(/vasuli:\/\/invite\/(.+)/);
-    
+
     if (match && match[1]) {
       const friendId = match[1];
-      
+
       try {
         // Check if user exists
         const friend = await userService.getById(friendId);
-        
+
         if (friend) {
           Alert.alert(
             'Friend Found!',
@@ -111,7 +111,7 @@ export default function ScanQRScreen() {
             <LinearGradient
               colors={isDark ? ['#2DD4BF', '#14B8A6'] : ['#22c55e', '#16a34a']}
               style={styles.permissionButton}>
-              <ThemedText style={styles.permissionButtonText}>Grant Permission</ThemedText>
+              <ThemedText style={styles.permissionButtonText}>Continue</ThemedText>
             </LinearGradient>
           </TouchableOpacity>
         </View>

@@ -4,7 +4,7 @@ import { LoadingState } from '@/components/ui/loading-state';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useTheme } from '@/contexts/theme-context';
 import { useThemeColors } from '@/hooks/use-theme-colors';
-import { calculateUserTotalBalance, initDatabase } from '@/services/api';
+import { calculateUserTotalBalance, initDatabase, userService } from '@/services/api';
 import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
@@ -48,13 +48,13 @@ export default function ProfileScreen() {
     try {
       await initDatabase();
       const currentUserId = currentUser?.id || '';
-      
+
       // Use unified balance calculation service
       const { totalOwed: totalOwedAmount, totalOwing: totalOwingAmount } = await calculateUserTotalBalance(currentUserId);
-      
+
       setTotalOwed(totalOwedAmount);
       setTotalOwing(totalOwingAmount);
-      
+
     } catch (error) {
       console.error('Error loading stats:', error);
     }
@@ -67,10 +67,51 @@ export default function ProfileScreen() {
   async function handleLogout() {
     Alert.alert('Logout', 'Are you sure you want to logout?', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Logout', style: 'destructive', onPress: async () => {
-        await signOut();
-      }},
+      {
+        text: 'Logout', style: 'destructive', onPress: async () => {
+          await signOut();
+        }
+      },
     ]);
+  }
+
+  async function handleDeleteAccount() {
+    Alert.alert(
+      'Delete Account',
+      'Are you sure you want to delete your account? This will permanently remove all your data including expenses, groups, and friendships. This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete Account',
+          style: 'destructive',
+          onPress: () => {
+            // Second confirmation for destructive action
+            Alert.alert(
+              'Confirm Deletion',
+              'Please confirm that you want to permanently delete your account and all associated data.',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Yes, Delete My Account',
+                  style: 'destructive',
+                  onPress: async () => {
+                    try {
+                      if (currentUser?.id) {
+                        await userService.delete(currentUser.id);
+                      }
+                      await signOut();
+                    } catch (error) {
+                      console.error('Error deleting account:', error);
+                      Alert.alert('Error', 'Failed to delete account. Please try again or contact support.');
+                    }
+                  },
+                },
+              ]
+            );
+          },
+        },
+      ]
+    );
   }
 
   const [playgroundVisible, setPlaygroundVisible] = useState(false);
@@ -150,6 +191,11 @@ export default function ProfileScreen() {
         <Pressable style={styles.logoutButton} onPress={handleLogout}>
           <IconSymbol name="rectangle.portrait.and.arrow.right" size={20} color="#EF4444" />
           <ThemedText style={styles.logoutText}>Logout</ThemedText>
+        </Pressable>
+
+        <Pressable style={[styles.logoutButton, styles.deleteButton]} onPress={handleDeleteAccount}>
+          <IconSymbol name="trash.fill" size={20} color="#DC2626" />
+          <ThemedText style={[styles.logoutText, styles.deleteText]}>Delete Account</ThemedText>
         </Pressable>
 
         <ThemedText style={[styles.versionText, !isDark && { color: colors.textSecondary }]}>Version 1.0.0</ThemedText>
@@ -339,6 +385,13 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: '#EF4444',
+  },
+  deleteButton: {
+    marginTop: 8,
+    backgroundColor: 'rgba(220, 38, 38, 0.1)',
+  },
+  deleteText: {
+    color: '#DC2626',
   },
   versionText: {
     textAlign: 'center',
