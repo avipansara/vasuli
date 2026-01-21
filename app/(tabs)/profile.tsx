@@ -15,9 +15,42 @@ export default function ProfileScreen() {
   const { gradients, isDark, colors } = useThemeColors();
   const { toggleTheme } = useTheme();
   const { user: currentUser, signOut } = useAuth();
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(!!currentUser?.pushToken);
+
+  useEffect(() => {
+    setNotificationsEnabled(!!currentUser?.pushToken);
+  }, [currentUser?.pushToken]);
+
+  async function handleToggleNotifications(value: boolean) {
+    setNotificationsEnabled(value); // Optimistic update
+    try {
+      if (value) {
+        // Enable: Register and save token
+        const { notificationService } = await import('@/services/notification-service');
+        const token = await notificationService.registerForPushNotificationsAsync();
+        if (token && currentUser?.id) {
+          await userService.updatePushToken(currentUser.id, token);
+        } else {
+          // If permission denied or no token, revert switch
+          setNotificationsEnabled(false);
+        }
+      } else {
+        // Disable: Clear token from DB
+        if (currentUser?.id) {
+          await userService.updatePushToken(currentUser.id, null);
+        }
+      }
+    } catch (error) {
+      console.error('Error toggling notifications:', error);
+      setNotificationsEnabled(!value); // Revert on error
+      Alert.alert('Error', 'Failed to update notification settings');
+    }
+  }
+
   const [totalOwed, setTotalOwed] = useState(0);
   const [totalOwing, setTotalOwing] = useState(0);
+
+  const [playgroundVisible, setPlaygroundVisible] = useState(false);
 
   // Animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -114,13 +147,11 @@ export default function ProfileScreen() {
     );
   }
 
-  const [playgroundVisible, setPlaygroundVisible] = useState(false);
-
   const settingsItems = [
     { icon: 'envelope.badge', title: 'Invitations', onPress: () => router.push('/invitations') },
     { icon: 'person.badge.plus', title: 'Invite a Friend', onPress: () => router.push('/add-friend') },
     // { icon: 'figure.skateboarding', title: 'Loading Playground', onPress: () => setPlaygroundVisible(true) },
-    { icon: 'bell.fill', title: 'Notifications', hasSwitch: true, value: notificationsEnabled, onToggle: setNotificationsEnabled },
+    { icon: 'bell.fill', title: 'Notifications', hasSwitch: true, value: notificationsEnabled, onToggle: handleToggleNotifications },
     { icon: 'moon.fill', title: 'Dark Mode', hasSwitch: true, value: isDark, onToggle: toggleTheme },
     { icon: 'lock.shield.fill', title: 'Privacy Policy', onPress: () => router.push('/privacy-policy') },
     { icon: 'doc.text.fill', title: 'Terms & Conditions', onPress: () => router.push('/terms-conditions') },

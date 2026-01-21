@@ -190,7 +190,7 @@ export const userService = {
     // and display "Deleted User" instead of breaking the app
   },
 
-  async updatePushToken(userId: string, pushToken: string): Promise<void> {
+  async updatePushToken(userId: string, pushToken: string | null): Promise<void> {
     const { error } = await supabase
       .from('users')
       .update({ push_token: pushToken })
