@@ -111,6 +111,18 @@ export const friendshipService = {
    * Remove a friendship
    */
   async remove(userId: string, friendId: string): Promise<void> {
+    const { calculateFriendBalance } = await import('@/services/api');
+    
+    const balance = await calculateFriendBalance(userId, friendId);
+    
+    if (balance !== 0) {
+      const absBalance = Math.abs(balance);
+      const message = balance > 0 
+        ? `Cannot remove friend. They owe you $${absBalance.toFixed(2)}. Please settle up first.`
+        : `Cannot remove friend. You owe them $${absBalance.toFixed(2)}. Please settle up first.`;
+      throw new Error(message);
+    }
+    
     const { error } = await supabase
       .from('friendships')
       .delete()

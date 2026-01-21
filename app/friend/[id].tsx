@@ -236,7 +236,8 @@ export default function FriendDetailScreen() {
               Alert.alert('Success', `${friend?.name} has been removed from your friends`);
             } catch (error) {
               console.error('Error removing friend:', error);
-              Alert.alert('Error', 'Failed to remove friend');
+              const errorMessage = error instanceof Error ? error.message : 'Failed to remove friend';
+              Alert.alert('Cannot Remove Friend', errorMessage);
               setIsRemovingFriend(false);
             }
           },
