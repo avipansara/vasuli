@@ -121,7 +121,7 @@ export default function GroupDetailScreen() {
       setIsAddingExpense(true);
       const splitAmount = amountNum / members.length;
 
-      await expenseService.create(
+      const expense = await expenseService.create(
         {
           groupId: id,
           description: description.trim(),
@@ -139,7 +139,7 @@ export default function GroupDetailScreen() {
 
       if (group && user) {
         await activityService.logExpenseCreated({
-          expenseId: '',
+          expenseId: expense.id,
           userId: currentUserId,
           userName: user.name,
           description: description.trim(),

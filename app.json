@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "vasuli",
+    "name": "Vasuli",
     "slug": "vasuli",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -21,9 +21,10 @@
       ]
     },
     "android": {
+      "icon": "./assets/images/icon.png",
       "adaptiveIcon": {
         "backgroundColor": "#0E2A1F",
-        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "foregroundImage": "./assets/images/adaptive-icon.png"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
