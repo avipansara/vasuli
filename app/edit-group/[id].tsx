@@ -8,32 +8,22 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import {
-    Alert,
-    Animated,
-    Keyboard,
-    Platform,
-    StyleSheet,
-    TouchableOpacity,
-    View
+  Alert,
+  Animated,
+  Keyboard,
+  Platform,
+  StyleSheet,
+  TouchableOpacity,
+  View
 } from 'react-native';
 
-const GROUP_ICONS = [
-  { icon: 'house.fill', label: 'Home' },
-  { icon: 'airplane', label: 'Trip' },
-  { icon: 'fork.knife', label: 'Food' },
-  { icon: 'cart.fill', label: 'Shopping' },
-  { icon: 'heart.fill', label: 'Couple' },
-  { icon: 'person.3.fill', label: 'Friends' },
-  { icon: 'briefcase.fill', label: 'Work' },
-  { icon: 'gamecontroller.fill', label: 'Fun' },
-];
+
 
 export default function EditGroupScreen() {
   const { gradients, colors, isDark } = useThemeColors();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [groupName, setGroupName] = useState('');
   const [description, setDescription] = useState('');
-  const [selectedIcon, setSelectedIcon] = useState('person.3.fill');
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
 
@@ -117,8 +107,8 @@ export default function EditGroupScreen() {
     <View style={styles.container}>
       <LinearGradient colors={gradients.screenBackground} style={StyleSheet.absoluteFill} />
 
-      <NavigationHeader 
-        title="Edit Group" 
+      <NavigationHeader
+        title="Edit Group"
         onBack={() => router.back()}
         rightAction={
           <TouchableOpacity
@@ -143,42 +133,42 @@ export default function EditGroupScreen() {
 
       <KeyboardAwareScroll contentContainerStyle={styles.scrollContent}>
         <Animated.View style={[styles.content, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-            {/* Group Name Input */}
-            <View style={styles.inputSection}>
-              <ThemedText style={[styles.inputLabel, !isDark && { color: colors.textSecondary }]}>
-                Group Name *
-              </ThemedText>
-              <ThemedInput
-                ref={groupNameInputRef}
-                icon="person.3.fill"
-                value={groupName}
-                onChangeText={setGroupName}
-                placeholder="e.g., Weekend Trip, Roommates"
-                returnKeyType="next"
-                onSubmitEditing={() => descriptionInputRef.current?.focus()}
-                autoCapitalize="words"
-              />
-            </View>
+          {/* Group Name Input */}
+          <View style={styles.inputSection}>
+            <ThemedText style={[styles.inputLabel, !isDark && { color: colors.textSecondary }]}>
+              Group Name *
+            </ThemedText>
+            <ThemedInput
+              ref={groupNameInputRef}
+              icon="person.3.fill"
+              value={groupName}
+              onChangeText={setGroupName}
+              placeholder="e.g., Weekend Trip, Roommates"
+              returnKeyType="next"
+              onSubmitEditing={() => descriptionInputRef.current?.focus()}
+              autoCapitalize="words"
+            />
+          </View>
 
-            {/* Description Input */}
-            <View style={styles.inputSection}>
-              <ThemedText style={[styles.inputLabel, !isDark && { color: colors.textSecondary }]}>
-                Description (Optional)
-              </ThemedText>
-              <ThemedInput
-                ref={descriptionInputRef}
-                icon="text.alignleft"
-                value={description}
-                onChangeText={setDescription}
-                placeholder="Optional description"
-                multiline
-                numberOfLines={3}
-                textAlignVertical="top"
-                returnKeyType="done"
-                onSubmitEditing={Keyboard.dismiss}
-                style={{ minHeight: 80 }}
-              />
-            </View>
+          {/* Description Input */}
+          <View style={styles.inputSection}>
+            <ThemedText style={[styles.inputLabel, !isDark && { color: colors.textSecondary }]}>
+              Description (Optional)
+            </ThemedText>
+            <ThemedInput
+              ref={descriptionInputRef}
+              icon="text.alignleft"
+              value={description}
+              onChangeText={setDescription}
+              placeholder="Optional description"
+              multiline
+              numberOfLines={3}
+              textAlignVertical="top"
+              returnKeyType="done"
+              onSubmitEditing={Keyboard.dismiss}
+              style={{ minHeight: 80 }}
+            />
+          </View>
         </Animated.View>
       </KeyboardAwareScroll>
     </View>

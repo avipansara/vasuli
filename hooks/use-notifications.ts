@@ -9,8 +9,8 @@ export function useNotifications() {
   const router = useRouter();
   const { user } = useAuth();
   const userId = user?.id;
-  const notificationListener = useRef<Notifications.EventSubscription>();
-  const responseListener = useRef<Notifications.EventSubscription>();
+  const notificationListener = useRef<Notifications.EventSubscription>(undefined);
+  const responseListener = useRef<Notifications.EventSubscription>(undefined);
 
   const handleNotificationNavigation = useCallback((data: any) => {
     switch (data.type) {
@@ -89,7 +89,7 @@ export function useNotifications() {
         notificationService.removeNotificationSubscription(responseListener.current);
       }
     };
-  }, [handleNotificationNavigation]);
+  }, [handleNotificationNavigation, userId]);
 
   return {
     clearBadge: notificationService.clearBadge,

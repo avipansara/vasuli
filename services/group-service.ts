@@ -4,7 +4,7 @@ import type { Group, GroupMember } from '@/types/database';
 export const groupService = {
   async create(group: Omit<Group, 'id' | 'createdAt' | 'updatedAt'>): Promise<Group> {
     const now = new Date().toISOString();
-    
+
     const insertData: any = {
       name: group.name,
       description: group.description || null,
@@ -16,15 +16,15 @@ export const groupService = {
     if (group.imageUrl) {
       insertData.image_url = group.imageUrl;
     }
-    
+
     const { data, error } = await supabase
       .from('groups')
       .insert(insertData)
       .select()
       .single();
-    
+
     if (error) throw error;
-    
+
     return {
       id: data.id,
       name: data.name,
@@ -41,12 +41,12 @@ export const groupService = {
       .select('*')
       .eq('id', id)
       .single();
-    
+
     if (error) {
       if (error.code === 'PGRST116') return null;
       throw error;
     }
-    
+
     return {
       id: data.id,
       name: data.name,
@@ -63,21 +63,21 @@ export const groupService = {
       .from('group_members')
       .select('group_id')
       .eq('user_id', userId);
-    
+
     if (memberError) throw memberError;
     if (!memberData || memberData.length === 0) return [];
-    
+
     const groupIds = memberData.map(m => m.group_id);
-    
+
     // Fetch full group details
     const { data, error } = await supabase
       .from('groups')
       .select('*')
       .in('id', groupIds)
       .order('updated_at', { ascending: false });
-    
+
     if (error) throw error;
-    
+
     return (data || []).map(r => ({
       id: r.id,
       name: r.name,
@@ -89,16 +89,19 @@ export const groupService = {
   },
 
   async update(id: string, updates: Partial<Omit<Group, 'id' | 'createdAt' | 'updatedAt'>>): Promise<void> {
+    const updateData: Record<string, unknown> = {
+      updated_at: new Date().toISOString(),
+    };
+
+    if (updates.name !== undefined) updateData.name = updates.name;
+    if (updates.description !== undefined) updateData.description = updates.description;
+    if (updates.imageUrl !== undefined) updateData.image_url = updates.imageUrl;
+
     const { error } = await supabase
       .from('groups')
-      .update({
-        name: updates.name,
-        description: updates.description,
-        image_url: updates.imageUrl,
-        updated_at: new Date().toISOString(),
-      })
+      .update(updateData)
       .eq('id', id);
-    
+
     if (error) throw error;
   },
 
@@ -107,13 +110,13 @@ export const groupService = {
       .from('groups')
       .delete()
       .eq('id', id);
-    
+
     if (error) throw error;
   },
 
   async addMember(groupId: string, userId: string, role: 'admin' | 'member' = 'member'): Promise<GroupMember> {
     const joinedAt = new Date().toISOString();
-    
+
     const { data, error } = await supabase
       .from('group_members')
       .insert({
@@ -124,9 +127,9 @@ export const groupService = {
       })
       .select()
       .single();
-    
+
     if (error) throw error;
-    
+
     return {
       id: data.id,
       groupId: data.group_id,
@@ -141,9 +144,9 @@ export const groupService = {
       .from('group_members')
       .select('*')
       .eq('group_id', groupId);
-    
+
     if (error) throw error;
-    
+
     return (data || []).map(r => ({
       id: r.id,
       groupId: r.group_id,
@@ -159,7 +162,7 @@ export const groupService = {
       .delete()
       .eq('group_id', groupId)
       .eq('user_id', userId);
-    
+
     if (error) throw error;
   },
 };

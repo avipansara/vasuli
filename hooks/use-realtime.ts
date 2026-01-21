@@ -28,11 +28,24 @@ export function useRealtime({
 }: UseRealtimeOptions) {
   const channelRef = useRef<RealtimeChannel | null>(null);
 
+  // Use refs for callbacks to prevent re-subscriptions when callback references change
+  const onChangeRef = useRef(onChange);
+  const onInsertRef = useRef(onInsert);
+  const onUpdateRef = useRef(onUpdate);
+  const onDeleteRef = useRef(onDelete);
+
+  // Keep refs updated with latest callbacks
+  onChangeRef.current = onChange;
+  onInsertRef.current = onInsert;
+  onUpdateRef.current = onUpdate;
+  onDeleteRef.current = onDelete;
+
   useEffect(() => {
     if (!enabled) return;
 
-    const channelName = `${table}-${filter || 'all'}-${Date.now()}`;
-    
+    // Use stable channel name based on table, event, and filter
+    const channelName = `${table}-${event}-${filter || 'all'}`;
+
     let channel = supabase.channel(channelName);
 
     const config: any = {
@@ -46,17 +59,17 @@ export function useRealtime({
     }
 
     channel = channel.on('postgres_changes', config, (payload) => {
-      onChange?.(payload);
-      
+      onChangeRef.current?.(payload);
+
       switch (payload.eventType) {
         case 'INSERT':
-          onInsert?.(payload);
+          onInsertRef.current?.(payload);
           break;
         case 'UPDATE':
-          onUpdate?.(payload);
+          onUpdateRef.current?.(payload);
           break;
         case 'DELETE':
-          onDelete?.(payload);
+          onDeleteRef.current?.(payload);
           break;
       }
     });
@@ -75,7 +88,7 @@ export function useRealtime({
         channelRef.current = null;
       }
     };
-  }, [table, event, filter, enabled, onChange, onInsert, onUpdate, onDelete]);
+  }, [table, event, filter, enabled]);  // Removed callback dependencies - using refs instead
 
   return channelRef.current;
 }

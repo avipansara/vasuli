@@ -4,7 +4,7 @@ import type { Settlement } from '@/types/database';
 export const settlementService = {
   async create(settlement: Omit<Settlement, 'id' | 'createdAt'>): Promise<Settlement> {
     const createdAt = new Date().toISOString();
-    
+
     const { data, error } = await supabase
       .from('settlements')
       .insert({
@@ -19,9 +19,9 @@ export const settlementService = {
       })
       .select()
       .single();
-    
+
     if (error) throw error;
-    
+
     return {
       id: data.id,
       groupId: data.group_id,
@@ -41,11 +41,12 @@ export const settlementService = {
       .select('*')
       .or(`from_user_id.eq.${userId},to_user_id.eq.${userId}`)
       .order('created_at', { ascending: false });
-    
+
     if (error) throw error;
-    
+
     return (data || []).map(r => ({
       id: r.id,
+      groupId: r.group_id || undefined,
       fromUserId: r.from_user_id,
       toUserId: r.to_user_id,
       amount: r.amount,
@@ -62,9 +63,9 @@ export const settlementService = {
       .select('*')
       .eq('group_id', groupId)
       .order('date', { ascending: false });
-    
+
     if (error) throw error;
-    
+
     return (data || []).map(r => ({
       id: r.id,
       groupId: r.group_id,
@@ -83,7 +84,7 @@ export const settlementService = {
       .from('settlements')
       .delete()
       .eq('id', id);
-    
+
     if (error) throw error;
   },
 };

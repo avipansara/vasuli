@@ -72,12 +72,13 @@ function RootLayoutNav() {
   const isLoading = useProtectedRoute();
   const router = useRouter();
 
+  // Initialize notifications - must be inside AuthProvider to access user context
+  useNotifications();
+
   // Handle deep links for invitations
   useEffect(() => {
     const handleDeepLink = (event: { url: string }) => {
-      const { path, queryParams } = Linking.parse(event.url);
-      
-      // Handle invitation deep links: https://split-space.com/invite/[inviterId]
+      const { path } = Linking.parse(event.url);
       if (path?.startsWith('invite/')) {
         const inviterId = path.split('/')[1];
         if (inviterId) {
@@ -86,8 +87,8 @@ function RootLayoutNav() {
             'You have been invited to join Vasuli! Sign up to connect with your friend.',
             [
               { text: 'Cancel', style: 'cancel' },
-              { 
-                text: 'Sign Up', 
+              {
+                text: 'Sign Up',
                 onPress: () => router.push('/(auth)/sign-up-otp')
               }
             ]
@@ -117,21 +118,21 @@ function RootLayoutNav() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ThemeProvider value={isDark ? AmbientDarkTheme : AmbientLightTheme}>
         <Stack>
-        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-        <Stack.Screen name="group/[id]" options={{ headerShown: false }} />
-        <Stack.Screen name="friend/[id]" options={{ headerShown: false }} />
-        <Stack.Screen name="scan-qr" options={{ headerShown: false }} />
-        <Stack.Screen name="add-expense" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
-        <Stack.Screen name="create-group" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
-        <Stack.Screen name="add-friend" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
-        <Stack.Screen name="edit-group/[id]" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
-        <Stack.Screen name="edit-expense/[id]" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
-        <Stack.Screen name="edit-profile" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
-        <Stack.Screen name="privacy-policy" options={{ headerShown: false }} />
-        <Stack.Screen name="terms-conditions" options={{ headerShown: false }} />
-        <Stack.Screen name="help-support" options={{ headerShown: false }} />
+          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+          <Stack.Screen name="group/[id]" options={{ headerShown: false }} />
+          <Stack.Screen name="friend/[id]" options={{ headerShown: false }} />
+          <Stack.Screen name="scan-qr" options={{ headerShown: false }} />
+          <Stack.Screen name="add-expense" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
+          <Stack.Screen name="create-group" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
+          <Stack.Screen name="add-friend" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
+          <Stack.Screen name="edit-group/[id]" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
+          <Stack.Screen name="edit-expense/[id]" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
+          <Stack.Screen name="edit-profile" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
+          <Stack.Screen name="privacy-policy" options={{ headerShown: false }} />
+          <Stack.Screen name="terms-conditions" options={{ headerShown: false }} />
+          <Stack.Screen name="help-support" options={{ headerShown: false }} />
         </Stack>
         <StatusBar style={isDark ? 'light' : 'dark'} />
       </ThemeProvider>
@@ -140,7 +141,6 @@ function RootLayoutNav() {
 }
 
 export default function RootLayout() {
-  useNotifications();
   const [fontsLoaded] = useFonts({
     'Nunito_400Regular': require('@expo-google-fonts/nunito/400Regular/Nunito_400Regular.ttf'),
     'Nunito_500Medium': require('@expo-google-fonts/nunito/500Medium/Nunito_500Medium.ttf'),
