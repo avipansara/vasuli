@@ -104,73 +104,67 @@ export function GroupCard({ group, index, onRefresh }: GroupCardProps) {
         <TouchableOpacity
           activeOpacity={0.7}
           onPress={() => router.push(`/group/${group.id}` as any)}>
-        <View
-          style={[
-            styles.card,
-            isDark ? styles.cardDark : { backgroundColor: colors.card, borderColor: colors.border },
-          ]}>
-          <View style={styles.content}>
-            <View style={styles.header}>
+          <View
+            style={[
+              styles.card,
+              isDark ? styles.cardDark : { backgroundColor: colors.card, borderColor: colors.border },
+            ]}>
+            <View style={styles.content}>
+              <View style={styles.header}>
+                <View
+                  style={[
+                    styles.iconContainer,
+                    {
+                      backgroundColor: isDark
+                        ? 'rgba(45, 212, 191, 0.15)'
+                        : 'rgba(34, 197, 94, 0.1)',
+                    },
+                  ]}>
+                  <IconSymbol
+                    size={28}
+                    name="person.3.fill"
+                    color={isDark ? '#2DD4BF' : colors.tint}
+                  />
+                </View>
+                <View style={styles.info}>
+                  <ThemedText style={[styles.name, !isDark && { color: colors.text }]}>
+                    {group.name}
+                  </ThemedText>
+                  {group.description && (
+                    <ThemedText
+                      style={[styles.description, !isDark && { color: colors.textSecondary }]}>
+                      {group.description}
+                    </ThemedText>
+                  )}
+                </View>
+              </View>
+
               <View
                 style={[
-                  styles.iconContainer,
-                  {
-                    backgroundColor: isDark
-                      ? 'rgba(45, 212, 191, 0.15)'
-                      : 'rgba(34, 197, 94, 0.1)',
-                  },
+                  styles.balanceSection,
+                  { borderTopColor: isDark ? 'rgba(45, 212, 191, 0.2)' : colors.border },
                 ]}>
-                <IconSymbol
-                  size={28}
-                  name="person.3.fill"
-                  color={isDark ? '#2DD4BF' : colors.tint}
-                />
-              </View>
-              <View style={styles.info}>
-                <ThemedText style={[styles.name, !isDark && { color: colors.text }]}>
-                  {group.name}
-                </ThemedText>
-                {group.description && (
+                <View style={styles.balanceContent}>
                   <ThemedText
-                    style={[styles.description, !isDark && { color: colors.textSecondary }]}>
-                    {group.description}
+                    style={[styles.balanceLabel, { color: colors.textSecondary }]}>
+                    {isSettled ? 'All settled up' : isPositive ? 'You are owed' : 'You owe'}
                   </ThemedText>
-                )}
-              </View>
-            </View>
-
-            <View
-              style={[
-                styles.balanceSection,
-                { borderTopColor: isDark ? 'rgba(45, 212, 191, 0.2)' : colors.border },
-              ]}>
-              <View style={styles.balanceContent}>
-                <ThemedText
-                  style={[styles.balanceLabel, !isDark && { color: colors.textSecondary }]}>
-                  {isSettled ? 'All settled up' : isPositive ? 'You are owed' : 'You owe'}
-                </ThemedText>
-                {!isSettled && (
-                  <ThemedText
-                    style={[
-                      styles.balanceAmount,
-                      {
-                        color: isPositive
-                          ? isDark
-                            ? '#10b981'
-                            : colors.success
-                          : isDark
-                          ? '#ef4444'
-                          : colors.error,
-                      },
-                    ]}>
-                    ${Math.abs(balance).toFixed(2)}
-                  </ThemedText>
-                )}
+                  {!isSettled && (
+                    <ThemedText
+                      style={[
+                        styles.balanceAmount,
+                        {
+                          color: isPositive ? colors.success : colors.error,
+                        },
+                      ]}>
+                      ${Math.abs(balance).toFixed(2)}
+                    </ThemedText>
+                  )}
+                </View>
               </View>
             </View>
           </View>
-        </View>
-      </TouchableOpacity>
+        </TouchableOpacity>
       </Swipeable>
     </Animated.View>
   );
@@ -214,8 +208,6 @@ const styles = StyleSheet.create({
   },
   description: {
     fontSize: 12,
-    color: '#fff',
-    opacity: 0.8,
   },
   balanceSection: {
     marginTop: 8,
@@ -227,8 +219,6 @@ const styles = StyleSheet.create({
   },
   balanceLabel: {
     fontSize: 12,
-    color: '#fff',
-    opacity: 0.9,
     fontWeight: '500',
   },
   balanceAmount: {

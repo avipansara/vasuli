@@ -40,7 +40,7 @@ export default function ExpensesScreen() {
       // Fetch only expenses involving the current user
       const allExpensesRaw = await expenseService.getUserExpenses(currentUserId);
       console.log('[Expenses] Raw expenses loaded:', allExpensesRaw.length);
-      
+
       // Map expenses to include group info where applicable
       const allExpenses: (Expense & { group?: Group })[] = allExpensesRaw.map((e: Expense) => {
         const group = e.groupId ? allGroups.find((g: Group) => g.id === e.groupId) : undefined;
@@ -65,7 +65,7 @@ export default function ExpensesScreen() {
     const now = new Date();
     const date = new Date(timestamp);
     const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
-    
+
     if (diffDays === 0 && date.toDateString() === now.toDateString()) return 'Today';
     if (diffDays === 1 || (diffDays === 0 && date.toDateString() !== now.toDateString())) return 'Yesterday';
     if (diffDays < 7) return 'This Week';
@@ -90,8 +90,8 @@ export default function ExpensesScreen() {
       style={styles.container}>
       <View style={styles.header}>
         <View>
-          <ThemedText style={[styles.headerLabel, !isDark && { color: colors.textSecondary }]}>Total spent</ThemedText>
-          <ThemedText type="header" style={[styles.headerAmount, !isDark && { color: colors.text }]}>${totalSpent.toFixed(2)}</ThemedText>
+          <ThemedText style={[styles.headerLabel, { color: colors.textSecondary }]}>Total spent</ThemedText>
+          <ThemedText type="header" style={[styles.headerAmount, { color: colors.text }]}>${totalSpent.toFixed(2)}</ThemedText>
         </View>
         <TouchableOpacity
           activeOpacity={0.7}
@@ -110,10 +110,10 @@ export default function ExpensesScreen() {
           <View style={[styles.emptyIconContainer, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.1)' : 'rgba(34, 197, 94, 0.1)' }]}>
             <IconSymbol size={64} name="dollarsign.circle" color={isDark ? '#2DD4BF' : colors.tint} />
           </View>
-          <ThemedText type="subtitle" style={[styles.emptyTitle, !isDark && { color: colors.text }]}>
+          <ThemedText type="subtitle" style={[styles.emptyTitle, { color: colors.text }]}>
             No expenses yet
           </ThemedText>
-          <ThemedText style={[styles.emptyText, !isDark && { color: colors.textSecondary }]}>
+          <ThemedText style={[styles.emptyText, { color: colors.textSecondary }]}>
             Add an expense to start tracking
           </ThemedText>
           <TouchableOpacity
@@ -134,7 +134,7 @@ export default function ExpensesScreen() {
           renderItem={({ item }) => <ExpenseListCard expense={item} onDelete={loadData} />}
           renderSectionHeader={({ section: { title } }) => (
             <View style={styles.sectionHeader}>
-              <ThemedText style={[styles.sectionTitle, !isDark && { color: colors.textSecondary }]}>
+              <ThemedText style={[styles.sectionTitle, { color: colors.textSecondary }]}>
                 {title}
               </ThemedText>
             </View>
@@ -160,9 +160,8 @@ const styles = StyleSheet.create({
     paddingTop: Platform.OS === 'ios' ? 60 : 54,
   },
   headerLabel: {
-    fontSize: 14,
-    opacity: 0.6,
-    color: '#fff',
+    fontSize: 15,
+    fontWeight: '500',
   },
   headerAmount: {
     color: '#fff',
@@ -191,7 +190,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
-    color: 'rgba(255, 255, 255, 0.5)',
   },
   expenseCard: {
     flexDirection: 'row',
@@ -254,7 +252,8 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     textAlign: 'center',
-    opacity: 0.6,
+    fontSize: 15,
+    lineHeight: 22,
   },
   modalContainer: {
     flex: 1,

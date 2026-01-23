@@ -8,6 +8,7 @@ import Swipeable from 'react-native-gesture-handler/Swipeable';
 
 interface UserWithBalance extends User {
   balance: number;
+  recentExpenses?: import('@/types/database').Expense[];
 }
 
 interface FriendCardProps {
@@ -21,10 +22,10 @@ export function FriendCard({ friend, onPress, onDelete }: FriendCardProps) {
   const balance = friend.balance;
   const balanceColor =
     balance > 0
-      ? isDark ? '#10b981' : colors.success
+      ? colors.success
       : balance < 0
-      ? isDark ? '#ef4444' : colors.error
-      : isDark ? '#2DD4BF' : colors.tint;
+        ? colors.error
+        : colors.tint;
 
   const renderRightActions = (progress: Animated.AnimatedInterpolation<number>, dragX: Animated.AnimatedInterpolation<number>) => {
     const opacity = dragX.interpolate({
@@ -45,60 +46,87 @@ export function FriendCard({ friend, onPress, onDelete }: FriendCardProps) {
     );
   };
 
+  // Card styling for light/dark mode
+  const cardStyle = isDark
+    ? { backgroundColor: 'rgba(20, 35, 38, 0.6)' }
+    : {
+      backgroundColor: colors.card,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.08,
+      elevation: 2,
+      // borderWidth: 1,
+      // borderColor: colors.border,
+    };
+
   return (
     <Swipeable
       renderRightActions={onDelete ? renderRightActions : undefined}
       overshootRight={false}
       friction={2}>
       <TouchableOpacity
-        style={[
-          styles.card,
-          !isDark && { backgroundColor: colors.card },
-        ]}
+        style={[styles.card, cardStyle]}
         onPress={() => onPress?.(friend)}
         activeOpacity={0.7}>
-      <View
-        style={[
-          styles.avatar,
-          {
-            backgroundColor: isDark
-              ? 'rgba(45, 212, 191, 0.15)'
-              : 'rgba(34, 197, 94, 0.1)',
-          },
-        ]}>
-        <ThemedText style={[styles.avatarText, { color: isDark ? '#2DD4BF' : colors.tint }]}>
-          {friend.name.charAt(0).toUpperCase()}
-        </ThemedText>
-      </View>
-      <View style={styles.info}>
-        <ThemedText
-          type="defaultSemiBold"
-          style={[styles.name, !isDark && { color: colors.text }]}>
-          {friend.name}
-        </ThemedText>
-        {friend.email && (
-          <ThemedText style={[styles.email, !isDark && { color: colors.textSecondary }]}>
-            {friend.email}
+        <View
+          style={[
+            styles.avatar,
+            {
+              backgroundColor: isDark
+                ? 'rgba(45, 212, 191, 0.15)'
+                : 'rgba(34, 197, 94, 0.12)',
+            },
+          ]}>
+          <ThemedText style={[styles.avatarText, { color: colors.tint }]}>
+            {friend.name.charAt(0).toUpperCase()}
           </ThemedText>
-        )}
-      </View>
-      <View style={styles.balanceContainer}>
-        {balance !== 0 ? (
-          <>
-            <ThemedText style={[styles.balanceAmount, { color: balanceColor }]}>
-              ${Math.abs(balance).toFixed(2)}
-            </ThemedText>
-            <ThemedText style={[styles.balanceLabel, !isDark && { color: colors.textSecondary }]}>
-              {balance > 0 ? 'owes you' : 'you owe'}
-            </ThemedText>
-          </>
-        ) : (
-          <ThemedText style={[styles.settledText, !isDark && { color: colors.textSecondary }]}>
-            settled up
+        </View>
+        <View style={styles.info}>
+          <ThemedText
+            type="defaultSemiBold"
+            style={[styles.name, { color: colors.text }]}>
+            {friend.name}
           </ThemedText>
-        )}
-      </View>
-    </TouchableOpacity>
+          {balance !== 0 ? (
+            <View style={styles.recentExpenses}>
+              {friend.recentExpenses && friend.recentExpenses.length > 0 ? (
+                friend.recentExpenses.map((expense) => (
+                  <ThemedText
+                    key={expense.id}
+                    numberOfLines={1}
+                    style={[styles.expenseDescription, { color: colors.textSecondary }]}>
+                    • {expense.description}
+                  </ThemedText>
+                ))
+              ) : (
+                <ThemedText style={[styles.noExpenses, { color: colors.textSecondary }]}>
+                  No pending expenses
+                </ThemedText>
+              )}
+            </View>
+          ) : (
+            <ThemedText style={[styles.email, { color: colors.textSecondary }]}>
+              {friend.email}
+            </ThemedText>
+          )}
+        </View>
+        <View style={styles.balanceContainer}>
+          {balance !== 0 ? (
+            <>
+              <ThemedText style={[styles.balanceAmount, { color: balanceColor }]}>
+                ${Math.abs(balance).toFixed(2)}
+              </ThemedText>
+              <ThemedText style={[styles.balanceLabel, { color: colors.textSecondary }]}>
+                {balance > 0 ? 'owes you' : 'you owe'}
+              </ThemedText>
+            </>
+          ) : (
+            <ThemedText style={[styles.settledText, { color: colors.tint }]}>
+              settled up ✓
+            </ThemedText>
+          )}
+        </View>
+      </TouchableOpacity>
     </Swipeable>
   );
 }
@@ -108,48 +136,59 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: 16,
-    marginBottom: 8,
-    borderRadius: 12,
-    backgroundColor: 'rgba(20, 35, 38, 0.6)',
+    marginBottom: 10,
+    borderRadius: 14,
   },
   avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: 14,
   },
   avatarText: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 20,
+    fontWeight: '700',
   },
   info: {
     flex: 1,
   },
   name: {
     fontSize: 16,
-    color: '#fff',
+    fontWeight: '600',
   },
   email: {
+    fontSize: 13,
+    marginTop: 3,
+  },
+  recentExpenses: {
+    marginTop: 4,
+    gap: 2,
+  },
+  expenseDescription: {
     fontSize: 12,
-    opacity: 0.6,
-    marginTop: 2,
+    lineHeight: 16,
+  },
+  noExpenses: {
+    fontSize: 12,
+    marginTop: 3,
+    fontStyle: 'italic',
   },
   balanceContainer: {
     alignItems: 'flex-end',
   },
   balanceAmount: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 17,
+    fontWeight: '700',
   },
   balanceLabel: {
-    fontSize: 11,
-    opacity: 0.6,
+    fontSize: 12,
+    marginTop: 2,
   },
   settledText: {
-    fontSize: 12,
-    opacity: 0.6,
+    fontSize: 13,
+    fontWeight: '500',
   },
   chevron: {
     marginLeft: 8,

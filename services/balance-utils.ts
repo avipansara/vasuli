@@ -184,3 +184,28 @@ export async function calculateUserNetBalance(userId: string, friendIds: string[
 
   return netBalance;
 }
+/**
+ * Get recent expenses between two users across ALL expenses (groups + individual)
+ * Sorted by date DESC
+ */
+export async function getFriendRecentExpenses(currentUserId: string, friendId: string, limit: number = 2): Promise<import('@/types/database').Expense[]> {
+  const allExpenses = await expenseService.getUserExpenses(currentUserId);
+  const friendExpenses: import('@/types/database').Expense[] = [];
+
+  for (const expense of allExpenses) {
+    const splits = await expenseService.getSplits(expense.id);
+
+    const currentUserSplit = splits.find(s => s.userId === currentUserId);
+    const friendSplit = splits.find(s => s.userId === friendId);
+
+    // Only count expenses where both users are involved
+    if (currentUserSplit && friendSplit) {
+      friendExpenses.push(expense);
+    }
+  }
+
+  // Sort by date DESC and limit
+  return friendExpenses
+    .sort((a, b) => b.date - a.date)
+    .slice(0, limit);
+}

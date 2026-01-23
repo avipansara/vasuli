@@ -95,49 +95,49 @@ export function ExpenseListCard({ expense, onDelete }: ExpenseListCardProps) {
       overshootRight={false}
       friction={2}
     >
-    <TouchableOpacity
-      activeOpacity={0.7}
-      onPress={() => router.push(`/expense-detail/${expense.id}` as any)}
-      style={[
-        styles.card,
-        !isDark && { backgroundColor: colors.card, borderColor: colors.border },
-      ]}>
-      <View
+      <TouchableOpacity
+        activeOpacity={0.7}
+        onPress={() => router.push(`/expense-detail/${expense.id}` as any)}
         style={[
-          styles.icon,
-          {
-            backgroundColor: isDark
-              ? 'rgba(45, 212, 191, 0.15)'
-              : 'rgba(34, 197, 94, 0.1)',
-          },
+          styles.card,
+          !isDark && { backgroundColor: colors.card, borderColor: colors.border },
         ]}>
-        <IconSymbol
-          size={20}
-          name="dollarsign.circle.fill"
-          color={isDark ? '#2DD4BF' : colors.tint}
-        />
-      </View>
-      <View style={styles.info}>
-        <ThemedText
-          type="defaultSemiBold"
-          style={[styles.description, !isDark && { color: colors.text }]}>
-          {expense.description}
-        </ThemedText>
-        <View style={styles.details}>
-          {expense.group && (
-            <ThemedText style={[styles.groupName, { color: isDark ? '#2DD4BF' : colors.tint }]}>
-              {expense.group.name}
-            </ThemedText>
-          )}
-          <ThemedText style={[styles.date, !isDark && { color: colors.textSecondary }]}>
-            {dateStr}
-          </ThemedText>
+        <View
+          style={[
+            styles.icon,
+            {
+              backgroundColor: isDark
+                ? 'rgba(45, 212, 191, 0.15)'
+                : 'rgba(34, 197, 94, 0.1)',
+            },
+          ]}>
+          <IconSymbol
+            size={20}
+            name="dollarsign.circle.fill"
+            color={isDark ? '#2DD4BF' : colors.tint}
+          />
         </View>
-      </View>
-      <ThemedText style={[styles.amount, !isDark && { color: colors.text }]}>
-        ${expense.amount.toFixed(2)}
-      </ThemedText>
-    </TouchableOpacity>
+        <View style={styles.info}>
+          <ThemedText
+            type="defaultSemiBold"
+            style={[styles.description, !isDark && { color: colors.text }]}>
+            {expense.description}
+          </ThemedText>
+          <View style={styles.details}>
+            {expense.group && (
+              <ThemedText style={[styles.groupName, { color: isDark ? '#2DD4BF' : colors.tint }]}>
+                {expense.group.name}
+              </ThemedText>
+            )}
+            <ThemedText style={[styles.date, !isDark && { color: colors.textSecondary }]}>
+              {dateStr}
+            </ThemedText>
+          </View>
+        </View>
+        <ThemedText style={[styles.amount, !isDark && { color: colors.text }]}>
+          ${expense.amount.toFixed(2)}
+        </ThemedText>
+      </TouchableOpacity>
     </Swipeable>
   );
 }
@@ -178,7 +178,6 @@ const styles = StyleSheet.create({
   },
   date: {
     fontSize: 11,
-    opacity: 0.6,
   },
   amount: {
     fontSize: 16,

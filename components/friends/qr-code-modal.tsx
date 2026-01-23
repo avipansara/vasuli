@@ -200,7 +200,6 @@ const styles = StyleSheet.create({
   instructions: {
     fontSize: 14,
     textAlign: 'center',
-    opacity: 0.7,
     marginBottom: 20,
   },
   actions: {

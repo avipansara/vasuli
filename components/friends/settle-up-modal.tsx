@@ -72,7 +72,7 @@ export function SettleUpModal({ visible, onClose, friend, onConfirm }: SettleUpM
               ]}>
               <ThemedText
                 type="title"
-                style={[styles.title, !isDark && { color: colors.text }]}>
+                style={[styles.title, { color: colors.text }]}>
                 Settle up with {friend.name}
               </ThemedText>
 
@@ -93,17 +93,17 @@ export function SettleUpModal({ visible, onClose, friend, onConfirm }: SettleUpM
                 </View>
 
                 <View style={styles.summaryText}>
-                  <ThemedText style={[styles.summaryLabel, !isDark && { color: colors.textSecondary }]}>
+                  <ThemedText style={[styles.summaryLabel, { color: colors.textSecondary }]}>
                     {isOwedToYou ? `${friend.name} owes you` : `You owe ${friend.name}`}
                   </ThemedText>
-                  <ThemedText style={[styles.maxAmount, !isDark && { color: colors.textSecondary }]}>
+                  <ThemedText style={[styles.maxAmount, { color: colors.textSecondary }]}>
                     Total: ${maxAmount.toFixed(2)}
                   </ThemedText>
                 </View>
               </View>
 
               <View style={styles.amountInputContainer}>
-                <ThemedText style={[styles.amountLabel, !isDark && { color: colors.textSecondary }]}>
+                <ThemedText style={[styles.amountLabel, { color: colors.textSecondary }]}>
                   Amount to settle
                 </ThemedText>
                 <View style={[styles.amountInputWrapper, { borderColor: isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(34, 197, 94, 0.3)' }]}>
@@ -125,7 +125,7 @@ export function SettleUpModal({ visible, onClose, friend, onConfirm }: SettleUpM
                 )}
               </View>
 
-              <ThemedText style={[styles.description, !isDark && { color: colors.textSecondary }]}>
+              <ThemedText style={[styles.description, { color: colors.textSecondary }]}>
                 {isOwedToYou
                   ? `Record that ${friend.name} paid you $${currentAmount.toFixed(2)} to settle up.`
                   : `Record that you paid ${friend.name} $${currentAmount.toFixed(2)} to settle up.`}
@@ -138,7 +138,7 @@ export function SettleUpModal({ visible, onClose, friend, onConfirm }: SettleUpM
                     !isDark && { backgroundColor: colors.background, borderColor: colors.border },
                   ]}
                   onPress={onClose}>
-                  <ThemedText style={[styles.cancelButtonText, !isDark && { color: colors.text }]}>
+                  <ThemedText style={[styles.cancelButtonText, { color: colors.text }]}>
                     Cancel
                   </ThemedText>
                 </TouchableOpacity>
@@ -193,7 +193,6 @@ const styles = StyleSheet.create({
     fontSize: 20,
     textAlign: 'center',
     marginBottom: 24,
-    color: '#fff',
   },
   summaryContainer: {
     flexDirection: 'row',
@@ -220,20 +219,17 @@ const styles = StyleSheet.create({
   },
   summaryLabel: {
     fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.7)',
     marginBottom: 4,
   },
   maxAmount: {
     fontSize: 16,
     fontWeight: '600',
-    opacity: 0.8,
   },
   amountInputContainer: {
     marginBottom: 16,
   },
   amountLabel: {
     fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.7)',
     marginBottom: 8,
     textAlign: 'center',
   },
@@ -272,7 +268,6 @@ const styles = StyleSheet.create({
   },
   description: {
     fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.6)',
     textAlign: 'center',
     marginBottom: 24,
     lineHeight: 20,
@@ -291,7 +286,6 @@ const styles = StyleSheet.create({
   cancelButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#fff',
   },
   confirmButton: {
     flex: 1,

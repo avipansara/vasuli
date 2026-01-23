@@ -538,7 +538,6 @@ const styles = StyleSheet.create({
   },
   amountLabel: {
     fontSize: 14,
-    opacity: 0.8,
     marginBottom: 8,
   },
   amount: {
@@ -568,7 +567,6 @@ const styles = StyleSheet.create({
   },
   infoLabel: {
     fontSize: 13,
-    opacity: 0.7,
   },
   infoValue: {
     fontSize: 16,
@@ -616,7 +614,6 @@ const styles = StyleSheet.create({
   },
   splitType: {
     fontSize: 13,
-    opacity: 0.7,
   },
   splitAmount: {
     fontSize: 18,
@@ -636,7 +633,6 @@ const styles = StyleSheet.create({
   },
   summaryLabel: {
     fontSize: 14,
-    opacity: 0.8,
     marginBottom: 8,
   },
   summaryAmount: {
@@ -647,7 +643,6 @@ const styles = StyleSheet.create({
   },
   summaryNote: {
     fontSize: 13,
-    opacity: 0.7,
     textAlign: 'center',
   },
   orbContainer: {

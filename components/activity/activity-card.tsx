@@ -34,28 +34,28 @@ export function ActivityCard({ activity }: ActivityCardProps) {
     isDeleted
       ? 'trash.fill'
       : activity.type === 'expense'
-      ? 'dollarsign.circle.fill'
-      : activity.type === 'settlement'
-      ? 'checkmark.circle.fill'
-      : 'person.badge.plus';
+        ? 'dollarsign.circle.fill'
+        : activity.type === 'settlement'
+          ? 'checkmark.circle.fill'
+          : 'person.badge.plus';
 
   const iconColor =
     isDeleted
       ? '#ef4444'
       : activity.type === 'expense'
-      ? isDark ? '#2DD4BF' : colors.tint
-      : activity.type === 'settlement'
-      ? isDark ? '#10b981' : colors.success
-      : isDark ? '#A78BFA' : '#8B5CF6';
+        ? isDark ? '#2DD4BF' : colors.tint
+        : activity.type === 'settlement'
+          ? isDark ? '#10b981' : colors.success
+          : isDark ? '#A78BFA' : '#8B5CF6';
 
   const iconBgColor =
     isDeleted
       ? 'rgba(239, 68, 68, 0.15)'
       : activity.type === 'expense'
-      ? isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)'
-      : activity.type === 'settlement'
-      ? 'rgba(16, 185, 129, 0.15)'
-      : 'rgba(167, 139, 250, 0.15)';
+        ? isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)'
+        : activity.type === 'settlement'
+          ? 'rgba(16, 185, 129, 0.15)'
+          : 'rgba(167, 139, 250, 0.15)';
 
   return (
     <View
@@ -145,7 +145,6 @@ const styles = StyleSheet.create({
   },
   date: {
     fontSize: 11,
-    opacity: 0.6,
   },
   amount: {
     fontSize: 16,

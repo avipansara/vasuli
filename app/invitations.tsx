@@ -43,18 +43,18 @@ export default function InvitationsScreen() {
 
   const loadInvitations = async () => {
     if (!user?.email) return;
-    
+
     try {
       // Only show loader on first load
       if (!hasLoadedOnce.current) {
         setLoading(true);
         hasLoadedOnce.current = true;
       }
-      
+
       // Load received invitations
       const received = await invitationService.getReceivedInvitations(user.email);
       setReceivedInvitations(received);
-      
+
       // Load sent invitations
       const sent = await invitationService.getByInviter(user.id);
       setSentInvitations(sent);
@@ -70,12 +70,12 @@ export default function InvitationsScreen() {
     setActionLoading(invitation.id);
     try {
       await invitationService.updateStatus(invitation.id, 'accepted');
-      
+
       // Create friendship
       if (user?.id) {
         await friendshipService.createAccepted(user.id, invitation.inviterId);
       }
-      
+
       Alert.alert('Success', 'Invitation accepted!');
       loadInvitations();
     } catch (error) {
@@ -175,10 +175,10 @@ export default function InvitationsScreen() {
               />
             </View>
             <View style={styles.invitationInfo}>
-              <ThemedText style={[styles.inviterName, !isDark && { color: colors.text }]}>
+              <ThemedText style={[styles.inviterName, { color: colors.text }]}>
                 {item.inviterName || 'Someone'}
               </ThemedText>
-              <ThemedText style={[styles.invitationDate, !isDark && { color: colors.textSecondary }]}>
+              <ThemedText style={[styles.invitationDate, { color: colors.textSecondary }]}>
                 {new Date(item.createdAt).toLocaleDateString()}
               </ThemedText>
             </View>
@@ -242,10 +242,10 @@ export default function InvitationsScreen() {
               />
             </View>
             <View style={styles.invitationInfo}>
-              <ThemedText style={[styles.inviterName, !isDark && { color: colors.text }]}>
+              <ThemedText style={[styles.inviterName, { color: colors.text }]}>
                 {item.inviteeName || item.inviteeEmail}
               </ThemedText>
-              <ThemedText style={[styles.invitationDate, !isDark && { color: colors.textSecondary }]}>
+              <ThemedText style={[styles.invitationDate, { color: colors.textSecondary }]}>
                 {new Date(item.createdAt).toLocaleDateString()}
               </ThemedText>
             </View>
@@ -319,7 +319,7 @@ export default function InvitationsScreen() {
               styles.tabText,
               activeTab === 'received' && styles.activeTabText,
               activeTab === 'received' && { color: isDark ? '#2DD4BF' : colors.tint },
-              !isDark && { color: colors.text },
+              { color: colors.text },
             ]}>
               Received ({receivedInvitations.length})
             </ThemedText>
@@ -342,7 +342,7 @@ export default function InvitationsScreen() {
               styles.tabText,
               activeTab === 'sent' && styles.activeTabText,
               activeTab === 'sent' && { color: isDark ? '#2DD4BF' : colors.tint },
-              !isDark && { color: colors.text },
+              { color: colors.text },
             ]}>
               Sent ({sentInvitations.length})
             </ThemedText>
@@ -365,7 +365,7 @@ export default function InvitationsScreen() {
                   size={64}
                   color={isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(34, 197, 94, 0.3)'}
                 />
-                <ThemedText style={[styles.emptyText, !isDark && { color: colors.textSecondary }]}>
+                <ThemedText style={[styles.emptyText, { color: colors.textSecondary }]}>
                   {activeTab === 'received'
                     ? 'No invitations received'
                     : 'No invitations sent'}
@@ -467,7 +467,6 @@ const styles = StyleSheet.create({
   },
   invitationDate: {
     fontSize: 14,
-    opacity: 0.7,
   },
   statusBadge: {
     paddingHorizontal: 12,
@@ -524,6 +523,5 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 16,
     marginTop: 16,
-    opacity: 0.7,
   },
 });

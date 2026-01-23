@@ -52,23 +52,22 @@ export function InviteFriendModal({
           style={[
             styles.methodButton,
             inviteMethod === 'email' && styles.methodButtonActive,
-            !isDark &&
-              inviteMethod !== 'email' && {
-                backgroundColor: colors.card,
-                borderColor: colors.border,
-              },
+            inviteMethod !== 'email' && {
+              backgroundColor: isDark ? 'rgba(26, 26, 36, 0.6)' : colors.card,
+              borderColor: isDark ? 'rgba(45, 212, 191, 0.2)' : colors.border,
+            },
           ]}
           onPress={() => setInviteMethod('email')}>
           <IconSymbol
             size={20}
             name="envelope.fill"
-            color={inviteMethod === 'email' ? '#0A0A0F' : isDark ? '#2DD4BF' : colors.tint}
+            color={inviteMethod === 'email' ? '#0A0A0F' : colors.tint}
           />
           <ThemedText
             style={[
               styles.methodButtonText,
               inviteMethod === 'email' && styles.methodButtonTextActive,
-              !isDark && inviteMethod !== 'email' && { color: colors.text },
+              inviteMethod !== 'email' && { color: colors.text },
             ]}>
             Email
           </ThemedText>
@@ -77,28 +76,28 @@ export function InviteFriendModal({
           style={[
             styles.methodButton,
             inviteMethod === 'phone' && styles.methodButtonActive,
-            !isDark &&
-              inviteMethod !== 'phone' && {
-                backgroundColor: colors.card,
-                borderColor: colors.border,
-              },
+            inviteMethod !== 'phone' && {
+              backgroundColor: isDark ? 'rgba(26, 26, 36, 0.6)' : colors.card,
+              borderColor: isDark ? 'rgba(45, 212, 191, 0.2)' : colors.border,
+            },
           ]}
           onPress={() => setInviteMethod('phone')}>
           <IconSymbol
             size={20}
             name="phone.fill"
-            color={inviteMethod === 'phone' ? '#0A0A0F' : isDark ? '#2DD4BF' : colors.tint}
+            color={inviteMethod === 'phone' ? '#0A0A0F' : colors.tint}
           />
           <ThemedText
             style={[
               styles.methodButtonText,
               inviteMethod === 'phone' && styles.methodButtonTextActive,
-              !isDark && inviteMethod !== 'phone' && { color: colors.text },
+              inviteMethod !== 'phone' && { color: colors.text },
             ]}>
             Phone
           </ThemedText>
         </TouchableOpacity>
       </View>
+
 
       <FormGroup label="Name (Optional)">
         <FormInput
@@ -155,9 +154,7 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingVertical: 14,
     borderRadius: 12,
-    backgroundColor: 'rgba(26, 26, 36, 0.6)',
     borderWidth: 1,
-    borderColor: 'rgba(45, 212, 191, 0.2)',
   },
   methodButtonActive: {
     backgroundColor: '#2DD4BF',
@@ -166,7 +163,6 @@ const styles = StyleSheet.create({
   methodButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#f4f4f5',
   },
   methodButtonTextActive: {
     color: '#0A0A0F',

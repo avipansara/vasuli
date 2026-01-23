@@ -72,7 +72,7 @@ export default function CreateGroupScreen() {
     setLoading(true);
     try {
       await initDatabase();
-      
+
       console.log('[CreateGroup] Creating group with user:', currentUserId);
       const newGroup = await groupService.create({
         name: groupName.trim(),
@@ -98,8 +98,8 @@ export default function CreateGroupScreen() {
     <View style={styles.container}>
       <LinearGradient colors={gradients.screenBackground} style={StyleSheet.absoluteFill} />
 
-      <NavigationHeader 
-        title="Create Group" 
+      <NavigationHeader
+        title="Create Group"
         onBack={() => router.back()}
         rightAction={
           <TouchableOpacity
@@ -124,8 +124,8 @@ export default function CreateGroupScreen() {
 
       <KeyboardAwareScroll contentContainerStyle={styles.scrollContent}>
         <Animated.View style={[styles.content, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-            {/* Icon Preview */}
-            {/* <View style={styles.iconPreviewSection}>
+          {/* Icon Preview */}
+          {/* <View style={styles.iconPreviewSection}>
               <View style={[styles.iconPreview, {
                 backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)',
                 borderColor: isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(34, 197, 94, 0.3)',
@@ -137,83 +137,83 @@ export default function CreateGroupScreen() {
               </ThemedText>
             </View> */}
 
-            {/* Group Name Input */}
-            <View style={styles.inputSection}>
-              <ThemedText style={[styles.inputLabel, !isDark && { color: colors.textSecondary }]}>
-                Group Name *
-              </ThemedText>
-              <ThemedInput
-                ref={groupNameInputRef}
-                icon="pencil"
-                value={groupName}
-                onChangeText={setGroupName}
-                placeholder="e.g. Summer Trip 2024"
-                returnKeyType="next"
-                onSubmitEditing={() => descriptionInputRef.current?.focus()}
-                autoCapitalize="words"
-              />
-            </View>
+          {/* Group Name Input */}
+          <View style={styles.inputSection}>
+            <ThemedText style={[styles.inputLabel, { color: colors.textSecondary }]}>
+              Group Name *
+            </ThemedText>
+            <ThemedInput
+              ref={groupNameInputRef}
+              icon="pencil"
+              value={groupName}
+              onChangeText={setGroupName}
+              placeholder="e.g. Summer Trip 2024"
+              returnKeyType="next"
+              onSubmitEditing={() => descriptionInputRef.current?.focus()}
+              autoCapitalize="words"
+            />
+          </View>
 
-            {/* Description Input */}
-            <View style={styles.inputSection}>
-              <ThemedText style={[styles.inputLabel, !isDark && { color: colors.textSecondary }]}>
-                Description (Optional)
-              </ThemedText>
-              <ThemedInput
-                ref={descriptionInputRef}
-                value={description}
-                onChangeText={setDescription}
-                placeholder="Optional description"
-                multiline
-                numberOfLines={3}
-                textAlignVertical="top"
-                returnKeyType="done"
-                onSubmitEditing={() => Keyboard.dismiss()}
-                style={{ minHeight: 80 }}
-              />
-            </View>
+          {/* Description Input */}
+          <View style={styles.inputSection}>
+            <ThemedText style={[styles.inputLabel, { color: colors.textSecondary }]}>
+              Description (Optional)
+            </ThemedText>
+            <ThemedInput
+              ref={descriptionInputRef}
+              value={description}
+              onChangeText={setDescription}
+              placeholder="Optional description"
+              multiline
+              numberOfLines={3}
+              textAlignVertical="top"
+              returnKeyType="done"
+              onSubmitEditing={() => Keyboard.dismiss()}
+              style={{ minHeight: 80 }}
+            />
+          </View>
 
-            {/* Icon Selection */}
-            <View style={styles.inputSection}>
-              <ThemedText style={[styles.inputLabel, !isDark && { color: colors.textSecondary }]}>
-                Choose an Icon
-              </ThemedText>
-              <View style={styles.iconGrid}>
-                {GROUP_ICONS.map((item) => (
-                  <TouchableOpacity
-                    key={item.icon}
-                    style={[
-                      styles.iconOption,
-                      selectedIcon === item.icon && styles.iconOptionSelected,
-                      {
-                        backgroundColor: selectedIcon === item.icon
-                          ? (isDark ? '#2DD4BF' : colors.tint)
-                          : (isDark ? 'rgba(30, 41, 59, 0.6)' : 'rgba(241, 245, 249, 0.9)'),
-                        borderColor: selectedIcon === item.icon
-                          ? (isDark ? '#2DD4BF' : colors.tint)
-                          : (isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(34, 197, 94, 0.2)'),
-                      },
-                    ]}
-                    onPress={() => setSelectedIcon(item.icon)}>
-                    <IconSymbol
-                      name={item.icon as any}
-                      size={24}
-                      color={selectedIcon === item.icon ? '#0A0A0F' : (isDark ? '#2DD4BF' : colors.tint)}
-                    />
-                  </TouchableOpacity>
-                ))}
-              </View>
+          {/* Icon Selection */}
+          <View style={styles.inputSection}>
+            <ThemedText style={[styles.inputLabel, { color: colors.textSecondary }]}>
+              Choose an Icon
+            </ThemedText>
+            <View style={styles.iconGrid}>
+              {GROUP_ICONS.map((item) => (
+                <TouchableOpacity
+                  key={item.icon}
+                  style={[
+                    styles.iconOption,
+                    selectedIcon === item.icon && styles.iconOptionSelected,
+                    {
+                      backgroundColor: selectedIcon === item.icon
+                        ? (isDark ? '#2DD4BF' : colors.tint)
+                        : (isDark ? 'rgba(30, 41, 59, 0.6)' : 'rgba(241, 245, 249, 0.9)'),
+                      borderColor: selectedIcon === item.icon
+                        ? (isDark ? '#2DD4BF' : colors.tint)
+                        : (isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(34, 197, 94, 0.2)'),
+                    },
+                  ]}
+                  onPress={() => setSelectedIcon(item.icon)}>
+                  <IconSymbol
+                    name={item.icon as any}
+                    size={24}
+                    color={selectedIcon === item.icon ? '#0A0A0F' : (isDark ? '#2DD4BF' : colors.tint)}
+                  />
+                </TouchableOpacity>
+              ))}
             </View>
+          </View>
 
-            {/* Info Card */}
-            <BlurView intensity={isDark ? 20 : 40} tint={isDark ? 'dark' : 'light'} style={styles.infoCard}>
-              <View style={[styles.infoContent, !isDark && { backgroundColor: 'rgba(255,255,255,0.8)' }]}>
-                <IconSymbol name="info.circle" size={20} color={isDark ? '#2DD4BF' : colors.tint} />
-                <ThemedText style={[styles.infoText, !isDark && { color: colors.textSecondary }]}>
-                  You can add members to your group after creating it.
-                </ThemedText>
-              </View>
-            </BlurView>
+          {/* Info Card */}
+          <BlurView intensity={isDark ? 20 : 40} tint={isDark ? 'dark' : 'light'} style={styles.infoCard}>
+            <View style={[styles.infoContent, !isDark && { backgroundColor: 'rgba(255,255,255,0.8)' }]}>
+              <IconSymbol name="info.circle" size={20} color={isDark ? '#2DD4BF' : colors.tint} />
+              <ThemedText style={[styles.infoText, { color: colors.textSecondary }]}>
+                You can add members to your group after creating it.
+              </ThemedText>
+            </View>
+          </BlurView>
         </Animated.View>
       </KeyboardAwareScroll>
     </View>
@@ -297,7 +297,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     marginBottom: 10,
-    opacity: 0.8,
   },
   inputContainer: {
     flexDirection: 'row',
@@ -352,7 +351,6 @@ const styles = StyleSheet.create({
   infoText: {
     flex: 1,
     fontSize: 14,
-    opacity: 0.8,
   },
   footer: {
     position: 'absolute',

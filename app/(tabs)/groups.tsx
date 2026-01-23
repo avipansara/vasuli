@@ -60,12 +60,12 @@ export default function GroupsScreen() {
       }
       await initDatabase();
       const allGroups = await groupService.getUserGroups(currentUserId);
-      
+
       const groupsWithData = await Promise.all(
         allGroups.map(async (group) => {
           const balances = await calculateBalances(group.id);
           const yourBalance = balances.get(currentUserId) || 0;
-          
+
           return {
             ...group,
             yourBalance,
@@ -120,7 +120,7 @@ export default function GroupsScreen() {
       style={styles.container}>
       <View style={styles.header}>
         <View>
-          <ThemedText style={[styles.headerLabel, !isDark && { color: colors.textSecondary }]}>Total balance</ThemedText>
+          <ThemedText style={[styles.headerLabel, { color: colors.textSecondary }]}>Total balance</ThemedText>
           <ThemedText type="header" style={[styles.headerAmount, !isDark && { color: colors.text }]}>
             ${Math.abs(totalBalance).toFixed(2)}
           </ThemedText>
@@ -128,7 +128,7 @@ export default function GroupsScreen() {
         <TouchableOpacity
           style={[styles.addButtonRect, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)', borderColor: isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(34, 197, 94, 0.3)' }]}
           onPress={() => router.push('/create-group')}>
-         <IconSymbol size={20} name="plus" color={isDark ? '#2DD4BF' : colors.tint} />
+          <IconSymbol size={20} name="plus" color={isDark ? '#2DD4BF' : colors.tint} />
         </TouchableOpacity>
       </View>
 
@@ -142,10 +142,10 @@ export default function GroupsScreen() {
           <View style={[styles.emptyIconContainer, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.1)' : 'rgba(34, 197, 94, 0.1)' }]}>
             <IconSymbol size={80} name="person.3" color={isDark ? '#2DD4BF' : colors.tint} />
           </View>
-          <ThemedText type="subtitle" style={[styles.emptyTitle, !isDark && { color: colors.text }]}>
+          <ThemedText type="subtitle" style={[styles.emptyTitle, { color: colors.text }]}>
             No groups yet
           </ThemedText>
-          <ThemedText style={[styles.emptyText, !isDark && { color: colors.textSecondary }]}>
+          <ThemedText style={[styles.emptyText, { color: colors.textSecondary }]}>
             Create a group to start splitting expenses with friends
           </ThemedText>
           <TouchableOpacity
@@ -215,9 +215,8 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   headerLabel: {
-    fontSize: 14,
-    opacity: 0.6,
-    color: '#fff',
+    fontSize: 15,
+    fontWeight: '500',
   },
   headerAmount: {
     color: '#fff',
@@ -396,10 +395,9 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     textAlign: 'center',
-    opacity: 0.6,
-    marginBottom: 24,
-    fontSize: 13,
-    lineHeight: 20,
+    marginBottom: 28,
+    fontSize: 15,
+    lineHeight: 22,
   },
   createButton: {
     flexDirection: 'row',

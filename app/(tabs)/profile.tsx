@@ -171,7 +171,7 @@ export default function ProfileScreen() {
           <ThemedText type="title" style={[styles.userName, !isDark && { color: colors.text }]}>
             {currentUser?.name || 'User'}
           </ThemedText>
-          <ThemedText style={[styles.userEmail, !isDark && { color: colors.textSecondary }]}>
+          <ThemedText style={[styles.userEmail, { color: colors.textSecondary }]}>
             {currentUser?.email || 'No email set'}
           </ThemedText>
           <Pressable style={styles.editButton} onPress={handleEditProfile}>
@@ -182,17 +182,17 @@ export default function ProfileScreen() {
         <View style={[styles.statsSection, !isDark && { backgroundColor: colors.card, borderColor: colors.border }]}>
           <View style={styles.statItem}>
             <ThemedText style={[styles.statValue, !isDark && { color: colors.text }]}>${totalOwed.toFixed(2)}</ThemedText>
-            <ThemedText style={[styles.statLabel, !isDark && { color: colors.textSecondary }]}>Total Owed</ThemedText>
+            <ThemedText style={[styles.statLabel, { color: colors.textSecondary }]}>Total Owed</ThemedText>
           </View>
           <View style={[styles.statDivider, !isDark && { backgroundColor: colors.border }]} />
           <View style={styles.statItem}>
             <ThemedText style={[styles.statValue, !isDark && { color: colors.text }]}>${totalOwing.toFixed(2)}</ThemedText>
-            <ThemedText style={[styles.statLabel, !isDark && { color: colors.textSecondary }]}>Total Owing</ThemedText>
+            <ThemedText style={[styles.statLabel, { color: colors.textSecondary }]}>Total Owing</ThemedText>
           </View>
         </View>
 
         <View style={styles.settingsSection}>
-          <ThemedText style={[styles.sectionTitle, !isDark && { color: colors.textSecondary }]}>Settings</ThemedText>
+          <ThemedText style={[styles.sectionTitle, { color: colors.textSecondary }]}>Settings</ThemedText>
           {settingsItems.map((item, index) => (
             <Pressable
               key={index}
@@ -323,7 +323,6 @@ const styles = StyleSheet.create({
   },
   userEmail: {
     fontSize: 14,
-    color: 'rgba(255,255,255,0.6)',
     marginBottom: 16,
   },
   editButton: {
@@ -359,7 +358,6 @@ const styles = StyleSheet.create({
   },
   statLabel: {
     fontSize: 12,
-    color: 'rgba(255,255,255,0.6)',
   },
   statDivider: {
     width: 1,
@@ -372,7 +370,6 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: 'rgba(255,255,255,0.6)',
     marginBottom: 12,
     marginLeft: 4,
   },

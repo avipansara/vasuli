@@ -6,7 +6,7 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { LoadingState } from '@/components/ui/loading-state';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useThemeColors } from '@/hooks/use-theme-colors';
-import { calculateFriendBalance, initDatabase, userService } from '@/services/api';
+import { calculateFriendBalance, getFriendRecentExpenses, initDatabase, userService } from '@/services/api';
 import { friendshipService } from '@/services/friendship-service';
 import { invitationService } from '@/services/invitation-service';
 import type { User } from '@/types/database';
@@ -18,6 +18,7 @@ import { Alert, FlatList, Platform, StyleSheet, TouchableOpacity, View } from 'r
 
 interface UserWithBalance extends User {
   balance: number;
+  recentExpenses?: import('@/types/database').Expense[];
 }
 
 export default function FriendsScreen() {
@@ -49,10 +50,10 @@ export default function FriendsScreen() {
         hasLoadedOnce.current = true;
       }
       await initDatabase();
-      
+
       // Get only accepted friends, not all users
       const friendIds = await friendshipService.getFriends(currentUserId);
-      
+
       // Fetch user details for each friend
       const friendsData = await Promise.all(
         friendIds.map(async (friendId) => {
@@ -60,14 +61,17 @@ export default function FriendsScreen() {
           return user;
         })
       );
-      
+
       // Filter out null values and calculate balances
       const friendsWithBalances = await Promise.all(
         friendsData
           .filter((user): user is User => user !== null)
           .map(async (user: User) => {
-            const balance = await calculateFriendBalance(currentUserId, user.id);
-            return { ...user, balance };
+            const [balance, recentExpenses] = await Promise.all([
+              calculateFriendBalance(currentUserId, user.id),
+              getFriendRecentExpenses(currentUserId, user.id, 2)
+            ]);
+            return { ...user, balance, recentExpenses };
           })
       );
 
@@ -81,7 +85,7 @@ export default function FriendsScreen() {
 
   const sendInvite = async () => {
     const contact = inviteMethod === 'email' ? newFriendEmail.trim() : newFriendPhone.trim();
-    
+
     if (!contact) {
       Alert.alert('Required', `Please enter ${inviteMethod === 'email' ? 'an email address' : 'a phone number'}`);
       return;
@@ -137,16 +141,16 @@ export default function FriendsScreen() {
 
   // Calculate net balance (positive = you are owed, negative = you owe)
   const netBalance = friends.reduce((sum, f) => sum + f.balance, 0);
-  const balanceLabel = netBalance > 0 ? 'You are owed' : netBalance < 0 ? 'You owe' : 'All settled';
-  const balanceColor = netBalance > 0 ? '#10b981' : netBalance < 0 ? '#ef4444' : (isDark ? '#2DD4BF' : colors.tint);
+  const balanceLabel = netBalance > 0 ? 'You are owed' : netBalance < 0 ? 'You owe' : 'All settled up';
+  const balanceColor = netBalance > 0 ? colors.success : netBalance < 0 ? colors.error : colors.tint;
 
   return (
     <LinearGradient
       colors={gradients.screenBackground}
       style={styles.container}>
       <View style={styles.header}>
-        <View style={{ flexDirection: 'column', gap: 4 }}>
-          <ThemedText style={[styles.headerLabel, !isDark && { color: colors.textSecondary }]}>{balanceLabel}</ThemedText>
+        <View style={{ flexDirection: 'column', gap: 6 }}>
+          <ThemedText style={[styles.headerLabel, { color: colors.textSecondary }]}>{balanceLabel}</ThemedText>
           <ThemedText type="header" style={[styles.headerAmount, { color: balanceColor }]}>${Math.abs(netBalance).toFixed(2)}</ThemedText>
         </View>
         <View style={styles.headerButtons}>
@@ -175,11 +179,11 @@ export default function FriendsScreen() {
           <View style={[styles.emptyIconContainer, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.1)' : 'rgba(34, 197, 94, 0.1)' }]}>
             <IconSymbol size={64} name="person.2" color={isDark ? '#2DD4BF' : colors.tint} />
           </View>
-          <ThemedText type="subtitle" style={[styles.emptyTitle, !isDark && { color: colors.text }]}>
+          <ThemedText type="subtitle" style={[styles.emptyTitle, { color: colors.text }]}>
             No friends yet
           </ThemedText>
-          <ThemedText style={[styles.emptyText, !isDark && { color: colors.textSecondary }]}>
-            Add friends to split expenses with them
+          <ThemedText style={[styles.emptyText, { color: colors.textSecondary }]}>
+            Add friends to start splitting expenses together
           </ThemedText>
           <TouchableOpacity
             style={styles.createButton}
@@ -239,9 +243,8 @@ const styles = StyleSheet.create({
     paddingTop: Platform.OS === 'ios' ? 60 : 54,
   },
   headerLabel: {
-    fontSize: 14,
-    opacity: 0.6,
-    color: '#fff',
+    fontSize: 15,
+    fontWeight: '500',
   },
   headerAmount: {
     color: '#fff',
@@ -329,8 +332,9 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     textAlign: 'center',
-    opacity: 0.6,
-    marginBottom: 24,
+    marginBottom: 28,
+    fontSize: 15,
+    lineHeight: 22,
   },
   createButton: {
     paddingHorizontal: 20,

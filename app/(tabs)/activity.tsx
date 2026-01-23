@@ -136,8 +136,8 @@ export default function ActivityScreen() {
       colors={gradients.screenBackground}
       style={styles.container}>
       <View style={styles.header}>
-        <ThemedText style={[styles.headerLabel, !isDark && { color: colors.textSecondary }]}>Recent</ThemedText>
-        <ThemedText type="header" style={[styles.headerTitle, !isDark && { color: colors.text }]}>Activity</ThemedText>
+        <ThemedText style={[styles.headerLabel, { color: colors.textSecondary }]}>Recent</ThemedText>
+        <ThemedText type="header" style={[styles.headerTitle, { color: colors.text }]}>Activity</ThemedText>
       </View>
 
       {loading ? (
@@ -150,10 +150,10 @@ export default function ActivityScreen() {
           <View style={[styles.emptyIconContainer, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.1)' : 'rgba(34, 197, 94, 0.1)' }]}>
             <IconSymbol size={48} name="clock" color={isDark ? '#2DD4BF' : colors.tint} />
           </View>
-          <ThemedText type="subtitle" style={[styles.emptyTitle, !isDark && { color: colors.text }]}>
+          <ThemedText type="subtitle" style={[styles.emptyTitle, { color: colors.text }]}>
             No activity yet
           </ThemedText>
-          <ThemedText style={[styles.emptyText, !isDark && { color: colors.textSecondary }]}>
+          <ThemedText style={[styles.emptyText, { color: colors.textSecondary }]}>
             Your expense and payment history will appear here
           </ThemedText>
         </Animated.View>
@@ -174,7 +174,7 @@ export default function ActivityScreen() {
           )}
           renderSectionHeader={({ section: { title } }) => (
             <View style={styles.sectionHeader}>
-              <ThemedText style={[styles.sectionTitle, !isDark && { color: colors.textSecondary }]}>
+              <ThemedText style={[styles.sectionTitle, { color: colors.textSecondary }]}>
                 {title}
               </ThemedText>
             </View>
@@ -220,9 +220,8 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   headerLabel: {
-    fontSize: 14,
-    opacity: 0.6,
-    color: '#fff',
+    fontSize: 15,
+    fontWeight: '500',
   },
   headerTitle: {
     color: '#fff',
@@ -241,7 +240,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
-    color: 'rgba(255, 255, 255, 0.5)',
   },
   activityCard: {
     flexDirection: 'row',
@@ -312,7 +310,8 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     textAlign: 'center',
-    opacity: 0.6,
+    fontSize: 15,
+    lineHeight: 22,
   },
   footerLoader: {
     paddingVertical: 20,

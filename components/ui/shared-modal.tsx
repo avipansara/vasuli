@@ -109,7 +109,7 @@ export function SharedModal({
                 <ThemedText
                   style={[
                     styles.subtitle,
-                    !isDark && { color: colors.textSecondary },
+                    { color: colors.textSecondary },
                   ]}>
                   {subtitle}
                 </ThemedText>
@@ -173,7 +173,7 @@ export function FormGroup({ label, children }: FormGroupProps) {
   return (
     <View style={styles.formGroup}>
       <ThemedText
-        style={[styles.label, !isDark && { color: colors.textSecondary }]}>
+        style={[styles.label, { color: colors.textSecondary }]}>
         {label}
       </ThemedText>
       {children}
@@ -190,7 +190,7 @@ export function PrivacyNote({ children }: PrivacyNoteProps) {
 
   return (
     <ThemedText
-      style={[styles.privacyNote, !isDark && { color: colors.textSecondary }]}>
+      style={[styles.privacyNote, { color: colors.textSecondary }]}>
       {children}
     </ThemedText>
   );
@@ -243,7 +243,6 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 15,
-    opacity: 0.7,
     textAlign: 'center',
     lineHeight: 22,
   },
@@ -254,11 +253,9 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     marginBottom: 8,
-    opacity: 0.7,
   },
   privacyNote: {
     fontSize: 12,
-    opacity: 0.5,
     textAlign: 'center',
     marginTop: 8,
     lineHeight: 18,

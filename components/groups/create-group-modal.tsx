@@ -51,9 +51,9 @@ export function CreateGroupModal({
         <TextInput
           style={[
             styles.textArea,
-            !isDark && {
+            {
               backgroundColor: colors.inputBackground,
-              borderColor: colors.inputBorder,
+              borderColor: isDark ? 'rgba(45, 212, 191, 0.2)' : colors.inputBorder,
               color: colors.text,
             },
           ]}
@@ -84,9 +84,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     fontSize: 16,
-    color: '#f4f4f5',
-    backgroundColor: 'rgba(26, 26, 36, 0.8)',
-    borderColor: 'rgba(45, 212, 191, 0.2)',
     textAlignVertical: 'top',
   },
 });

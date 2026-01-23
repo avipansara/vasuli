@@ -141,7 +141,7 @@ export default function AddExpenseScreen() {
       if (splitType === SplitType.GROUP) {
         const members = await groupService.getMembers(selectedGroupId);
         const splits = calculateSplits(members.map((m: { userId: string }) => m.userId), amountNum);
-        
+
         if (!splits) {
           setLoading(false);
           return;
@@ -173,7 +173,7 @@ export default function AddExpenseScreen() {
       } else {
         const allParticipants = [currentUserId, ...selectedFriendIds];
         const splits = calculateSplits(allParticipants, amountNum);
-        
+
         if (!splits) {
           setLoading(false);
           return;
@@ -255,7 +255,7 @@ export default function AddExpenseScreen() {
         userId,
         shares: parseFloat(customShares[userId] || '0'),
       }));
-      
+
       const totalShares = sharesData.reduce((sum, item) => sum + item.shares, 0);
 
       if (totalShares === 0) {
@@ -280,8 +280,8 @@ export default function AddExpenseScreen() {
     <View style={styles.container}>
       <LinearGradient colors={gradients.screenBackground} style={StyleSheet.absoluteFill} />
 
-      <NavigationHeader 
-        title="Add Expense" 
+      <NavigationHeader
+        title="Add Expense"
         onBack={() => router.back()}
         rightAction={
           <TouchableOpacity
@@ -306,177 +306,177 @@ export default function AddExpenseScreen() {
 
       <KeyboardAwareScroll contentContainerStyle={styles.scrollContent}>
         <Animated.View style={[styles.content, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-            {/* Amount Input - Hero Style */}
-            <View style={styles.amountSection}>
-              <ThemedText style={[styles.amountLabel, !isDark && { color: colors.textSecondary }]}>
-                How much?
-              </ThemedText>
-              <View style={styles.amountInputRow}>
-                <Text style={[styles.currencySymbol, { color: isDark ? '#2DD4BF' : colors.tint }]}>$</Text>
-                <TextInput
-                  ref={amountInputRef}
-                  style={[styles.amountInput, { color: isDark ? '#fff' : colors.text }]}
-                  value={amount}
-                  onChangeText={setAmount}
-                  placeholder="0.00"
-                  placeholderTextColor={isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)'}
-                  keyboardType="decimal-pad"
-                  returnKeyType="next"
-                  onSubmitEditing={() => descriptionInputRef.current?.focus()}
-                  blurOnSubmit={false}
-                />
-              </View>
+          {/* Amount Input - Hero Style */}
+          <View style={styles.amountSection}>
+            <ThemedText style={[styles.amountLabel, { color: colors.textSecondary }]}>
+              How much?
+            </ThemedText>
+            <View style={styles.amountInputRow}>
+              <Text style={[styles.currencySymbol, { color: isDark ? '#2DD4BF' : colors.tint }]}>$</Text>
+              <TextInput
+                ref={amountInputRef}
+                style={[styles.amountInput, { color: isDark ? '#fff' : colors.text }]}
+                value={amount}
+                onChangeText={setAmount}
+                placeholder="0.00"
+                placeholderTextColor={isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)'}
+                keyboardType="decimal-pad"
+                returnKeyType="next"
+                onSubmitEditing={() => descriptionInputRef.current?.focus()}
+                blurOnSubmit={false}
+              />
             </View>
+          </View>
 
-            {/* Description Input */}
+          {/* Description Input */}
+          <View style={styles.inputSection}>
+            <ThemedText style={[styles.inputLabel, { color: colors.textSecondary }]}>
+              What&apos;s it for?
+            </ThemedText>
+            <View style={[styles.inputContainer, {
+              backgroundColor: isDark ? 'rgba(30, 41, 59, 0.6)' : 'rgba(241, 245, 249, 0.9)',
+              borderColor: isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(34, 197, 94, 0.2)',
+            }]}>
+              <IconSymbol name="doc.text" size={20} color={isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'} />
+              <TextInput
+                ref={descriptionInputRef}
+                style={[styles.textInput, { color: isDark ? '#fff' : colors.text }]}
+                value={description}
+                onChangeText={setDescription}
+                placeholder="e.g. Dinner, Groceries, Uber..."
+                placeholderTextColor={isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'}
+                returnKeyType="done"
+                onSubmitEditing={() => Keyboard.dismiss()}
+              />
+            </View>
+          </View>
+
+          {/* Split Type Toggle - only show if not pre-selected from friend/group screen */}
+          {!preselectedGroupId && !preselectedFriendId && (
             <View style={styles.inputSection}>
-              <ThemedText style={[styles.inputLabel, !isDark && { color: colors.textSecondary }]}>
-                What&apos;s it for?
+              <ThemedText style={[styles.inputLabel, { color: colors.textSecondary }]}>
+                Split with
               </ThemedText>
-              <View style={[styles.inputContainer, {
-                backgroundColor: isDark ? 'rgba(30, 41, 59, 0.6)' : 'rgba(241, 245, 249, 0.9)',
-                borderColor: isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(34, 197, 94, 0.2)',
-              }]}>
-                <IconSymbol name="doc.text" size={20} color={isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'} />
-                <TextInput
-                  ref={descriptionInputRef}
-                  style={[styles.textInput, { color: isDark ? '#fff' : colors.text }]}
-                  value={description}
-                  onChangeText={setDescription}
-                  placeholder="e.g. Dinner, Groceries, Uber..."
-                  placeholderTextColor={isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'}
-                  returnKeyType="done"
-                  onSubmitEditing={() => Keyboard.dismiss()}
-                />
+              <View style={styles.toggleContainer}>
+                <TouchableOpacity
+                  style={[
+                    styles.toggleButton,
+                    splitType === SplitType.GROUP && styles.toggleButtonActive,
+                    !isDark && splitType !== SplitType.GROUP && { backgroundColor: colors.card, borderColor: colors.border },
+                  ]}
+                  onPress={() => setSplitType(SplitType.GROUP)}>
+                  <IconSymbol
+                    name="person.3.fill"
+                    size={18}
+                    color={splitType === SplitType.GROUP ? '#0A0A0F' : (isDark ? '#2DD4BF' : colors.tint)}
+                  />
+                  <ThemedText style={[
+                    styles.toggleText,
+                    splitType === SplitType.GROUP && styles.toggleTextActive,
+                    !isDark && splitType !== SplitType.GROUP && { color: colors.text },
+                  ]}>
+                    Group
+                  </ThemedText>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.toggleButton,
+                    splitType === SplitType.FRIENDS && styles.toggleButtonActive,
+                    !isDark && splitType !== SplitType.FRIENDS && { backgroundColor: colors.card, borderColor: colors.border },
+                  ]}
+                  onPress={() => setSplitType(SplitType.FRIENDS)}>
+                  <IconSymbol
+                    name="person.2.fill"
+                    size={18}
+                    color={splitType === SplitType.FRIENDS ? '#0A0A0F' : (isDark ? '#2DD4BF' : colors.tint)}
+                  />
+                  <ThemedText style={[
+                    styles.toggleText,
+                    splitType === SplitType.FRIENDS && styles.toggleTextActive,
+                    !isDark && splitType !== SplitType.FRIENDS && { color: colors.text },
+                  ]}>
+                    Friends
+                  </ThemedText>
+                </TouchableOpacity>
               </View>
             </View>
+          )}
 
-            {/* Split Type Toggle - only show if not pre-selected from friend/group screen */}
-            {!preselectedGroupId && !preselectedFriendId && (
-              <View style={styles.inputSection}>
-                <ThemedText style={[styles.inputLabel, !isDark && { color: colors.textSecondary }]}>
-                  Split with
-                </ThemedText>
-                <View style={styles.toggleContainer}>
-                  <TouchableOpacity
-                    style={[
-                      styles.toggleButton,
-                      splitType === SplitType.GROUP && styles.toggleButtonActive,
-                      !isDark && splitType !== SplitType.GROUP && { backgroundColor: colors.card, borderColor: colors.border },
-                    ]}
-                    onPress={() => setSplitType(SplitType.GROUP)}>
-                    <IconSymbol
-                      name="person.3.fill"
-                      size={18}
-                      color={splitType === SplitType.GROUP ? '#0A0A0F' : (isDark ? '#2DD4BF' : colors.tint)}
-                    />
-                    <ThemedText style={[
-                      styles.toggleText,
-                      splitType === SplitType.GROUP && styles.toggleTextActive,
-                      !isDark && splitType !== SplitType.GROUP && { color: colors.text },
-                    ]}>
-                      Group
-                    </ThemedText>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[
-                      styles.toggleButton,
-                      splitType === SplitType.FRIENDS && styles.toggleButtonActive,
-                      !isDark && splitType !== SplitType.FRIENDS && { backgroundColor: colors.card, borderColor: colors.border },
-                    ]}
-                    onPress={() => setSplitType(SplitType.FRIENDS)}>
-                    <IconSymbol
-                      name="person.2.fill"
-                      size={18}
-                      color={splitType === SplitType.FRIENDS ? '#0A0A0F' : (isDark ? '#2DD4BF' : colors.tint)}
-                    />
-                    <ThemedText style={[
-                      styles.toggleText,
-                      splitType === SplitType.FRIENDS && styles.toggleTextActive,
-                      !isDark && splitType !== SplitType.FRIENDS && { color: colors.text },
-                    ]}>
-                      Friends
-                    </ThemedText>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            )}
-
-            {/* Split Method Selection */}
-            <View style={styles.inputSection}>
-              <ThemedText style={[styles.inputLabel, !isDark && { color: colors.textSecondary }]}>
-                How to split?
-              </ThemedText>
-              <View style={styles.splitMethodContainer}>
-                {SPLIT_METHODS
-                  .filter(method => {
-                    // Hide shares option for friends
-                    if (splitType === SplitType.FRIENDS && method.id === SplitMethod.SHARES) {
-                      return false;
-                    }
-                    return true;
-                  })
-                  .map(method => {
-                    const isActive = splitMethod === method.id;
-                    return (
-                      <TouchableOpacity
-                        key={method.id}
-                        style={[
-                          styles.splitMethodButton,
-                          isActive && styles.splitMethodButtonActive,
-                          {
-                            backgroundColor: isActive
-                              ? (isDark ? '#2DD4BF' : colors.tint)
-                              : (isDark ? 'rgba(30, 41, 59, 0.6)' : 'rgba(241, 245, 249, 0.9)'),
-                            borderColor: isActive
-                              ? (isDark ? '#2DD4BF' : colors.tint)
-                              : (isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(34, 197, 94, 0.2)'),
-                          },
-                        ]}
-                        onPress={() => setSplitMethod(method.id)}>
-                        <IconSymbol
-                          name={method.icon}
-                          size={18}
-                          color={isActive ? '#0A0A0F' : (isDark ? '#2DD4BF' : colors.tint)}
-                        />
-                        <ThemedText style={[
-                          styles.splitMethodText,
-                          isActive && styles.splitMethodTextActive,
-                          !isDark && !isActive && { color: colors.text },
-                        ]}>
-                          {method.label}
-                        </ThemedText>
-                      </TouchableOpacity>
-                    );
-                  })}
-              </View>
-            </View>
-
-            {/* Selection List */}
-            <View style={styles.selectionSection}>
-              <ThemedText style={[styles.inputLabel, !isDark && { color: colors.textSecondary }]}>
-                {splitType === SplitType.GROUP ? 'Select a group' : 'Select friends'}
-              </ThemedText>
-
-              {dataLoading ? (
-                <View style={styles.loadingContainer}>
-                  <ThemedText style={{ opacity: 0.6 }}>Loading...</ThemedText>
-                </View>
-              ) : splitType === SplitType.GROUP ? (
-                <View style={styles.optionsList}>
-                  {groups.length === 0 ? (
-                    <View style={styles.emptyState}>
-                      <IconSymbol name="person.3" size={32} color={isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)'} />
-                      <ThemedText style={[styles.emptyText, !isDark && { color: colors.textSecondary }]}>
-                        No groups yet
+          {/* Split Method Selection */}
+          <View style={styles.inputSection}>
+            <ThemedText style={[styles.inputLabel, { color: colors.textSecondary }]}>
+              How to split?
+            </ThemedText>
+            <View style={styles.splitMethodContainer}>
+              {SPLIT_METHODS
+                .filter(method => {
+                  // Hide shares option for friends
+                  if (splitType === SplitType.FRIENDS && method.id === SplitMethod.SHARES) {
+                    return false;
+                  }
+                  return true;
+                })
+                .map(method => {
+                  const isActive = splitMethod === method.id;
+                  return (
+                    <TouchableOpacity
+                      key={method.id}
+                      style={[
+                        styles.splitMethodButton,
+                        isActive && styles.splitMethodButtonActive,
+                        {
+                          backgroundColor: isActive
+                            ? (isDark ? '#2DD4BF' : colors.tint)
+                            : (isDark ? 'rgba(30, 41, 59, 0.6)' : 'rgba(241, 245, 249, 0.9)'),
+                          borderColor: isActive
+                            ? (isDark ? '#2DD4BF' : colors.tint)
+                            : (isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(34, 197, 94, 0.2)'),
+                        },
+                      ]}
+                      onPress={() => setSplitMethod(method.id)}>
+                      <IconSymbol
+                        name={method.icon}
+                        size={18}
+                        color={isActive ? '#0A0A0F' : (isDark ? '#2DD4BF' : colors.tint)}
+                      />
+                      <ThemedText style={[
+                        styles.splitMethodText,
+                        isActive && styles.splitMethodTextActive,
+                        !isDark && !isActive && { color: colors.text },
+                      ]}>
+                        {method.label}
                       </ThemedText>
-                    </View>
-                  ) : (
-                    groups.map(group => {
-                      // If preselected from group screen, only show that group and make it non-interactive
-                      if (preselectedGroupId && group.id !== preselectedGroupId) return null;
-                      
-                      return (
+                    </TouchableOpacity>
+                  );
+                })}
+            </View>
+          </View>
+
+          {/* Selection List */}
+          <View style={styles.selectionSection}>
+            <ThemedText style={[styles.inputLabel, { color: colors.textSecondary }]}>
+              {splitType === SplitType.GROUP ? 'Select a group' : 'Select friends'}
+            </ThemedText>
+
+            {dataLoading ? (
+              <View style={styles.loadingContainer}>
+                <ThemedText style={{ opacity: 0.6 }}>Loading...</ThemedText>
+              </View>
+            ) : splitType === SplitType.GROUP ? (
+              <View style={styles.optionsList}>
+                {groups.length === 0 ? (
+                  <View style={styles.emptyState}>
+                    <IconSymbol name="person.3" size={32} color={isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)'} />
+                    <ThemedText style={[styles.emptyText, { color: colors.textSecondary }]}>
+                      No groups yet
+                    </ThemedText>
+                  </View>
+                ) : (
+                  groups.map(group => {
+                    // If preselected from group screen, only show that group and make it non-interactive
+                    if (preselectedGroupId && group.id !== preselectedGroupId) return null;
+
+                    return (
                       <TouchableOpacity
                         key={group.id}
                         style={[
@@ -509,86 +509,86 @@ export default function AddExpenseScreen() {
                           <IconSymbol name="checkmark.circle.fill" size={22} color={isDark ? '#2DD4BF' : colors.tint} />
                         )}
                       </TouchableOpacity>
-                      );
-                    })
-                  )}
-                </View>
-              ) : (
-                <View style={styles.optionsList}>
-                  {friends.length === 0 ? (
-                    <View style={styles.emptyState}>
-                      <IconSymbol name="person.2" size={32} color={isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)'} />
-                      <ThemedText style={[styles.emptyText, !isDark && { color: colors.textSecondary }]}>
-                        No friends yet
-                      </ThemedText>
-                    </View>
-                  ) : (
-                    friends.map(friend => {
-                      // If preselected from friend screen, only show that friend and make it non-interactive
-                      if (preselectedFriendId && friend.id !== preselectedFriendId) return null;
-                      
-                      const isSelected = selectedFriendIds.includes(friend.id);
-                      return (
-                        <TouchableOpacity
-                          key={friend.id}
-                          style={[
-                            styles.optionCard,
-                            isSelected && styles.optionCardSelected,
-                            {
-                              backgroundColor: isDark ? 'rgba(30, 41, 59, 0.6)' : 'rgba(241, 245, 249, 0.9)',
-                              borderColor: isSelected
-                                ? (isDark ? '#2DD4BF' : colors.tint)
-                                : (isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(34, 197, 94, 0.2)'),
-                            },
-                          ]}
-                          onPress={() => !preselectedFriendId && toggleFriend(friend.id)}
-                          disabled={!!preselectedFriendId}>
-                          <View style={[styles.optionAvatar, {
-                            backgroundColor: isSelected
+                    );
+                  })
+                )}
+              </View>
+            ) : (
+              <View style={styles.optionsList}>
+                {friends.length === 0 ? (
+                  <View style={styles.emptyState}>
+                    <IconSymbol name="person.2" size={32} color={isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)'} />
+                    <ThemedText style={[styles.emptyText, { color: colors.textSecondary }]}>
+                      No friends yet
+                    </ThemedText>
+                  </View>
+                ) : (
+                  friends.map(friend => {
+                    // If preselected from friend screen, only show that friend and make it non-interactive
+                    if (preselectedFriendId && friend.id !== preselectedFriendId) return null;
+
+                    const isSelected = selectedFriendIds.includes(friend.id);
+                    return (
+                      <TouchableOpacity
+                        key={friend.id}
+                        style={[
+                          styles.optionCard,
+                          isSelected && styles.optionCardSelected,
+                          {
+                            backgroundColor: isDark ? 'rgba(30, 41, 59, 0.6)' : 'rgba(241, 245, 249, 0.9)',
+                            borderColor: isSelected
                               ? (isDark ? '#2DD4BF' : colors.tint)
-                              : (isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)'),
+                              : (isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(34, 197, 94, 0.2)'),
+                          },
+                        ]}
+                        onPress={() => !preselectedFriendId && toggleFriend(friend.id)}
+                        disabled={!!preselectedFriendId}>
+                        <View style={[styles.optionAvatar, {
+                          backgroundColor: isSelected
+                            ? (isDark ? '#2DD4BF' : colors.tint)
+                            : (isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)'),
+                        }]}>
+                          <ThemedText style={[styles.avatarText, {
+                            color: isSelected ? '#0A0A0F' : (isDark ? '#2DD4BF' : colors.tint),
                           }]}>
-                            <ThemedText style={[styles.avatarText, {
-                              color: isSelected ? '#0A0A0F' : (isDark ? '#2DD4BF' : colors.tint),
-                            }]}>
-                              {friend.name.charAt(0).toUpperCase()}
-                            </ThemedText>
-                          </View>
-                          <ThemedText style={[styles.optionText, !isDark && { color: colors.text }]}>
-                            {friend.name}
+                            {friend.name.charAt(0).toUpperCase()}
                           </ThemedText>
-                          {isSelected && (
-                            <IconSymbol name="checkmark.circle.fill" size={22} color={isDark ? '#2DD4BF' : colors.tint} />
-                          )}
-                        </TouchableOpacity>
-                      );
-                    })
-                  )}
-                </View>
-              )}
-            </View>
+                        </View>
+                        <ThemedText style={[styles.optionText, !isDark && { color: colors.text }]}>
+                          {friend.name}
+                        </ThemedText>
+                        {isSelected && (
+                          <IconSymbol name="checkmark.circle.fill" size={22} color={isDark ? '#2DD4BF' : colors.tint} />
+                        )}
+                      </TouchableOpacity>
+                    );
+                  })
+                )}
+              </View>
+            )}
+          </View>
 
-            {/* Custom Split Inputs - Show when non-equal split is selected */}
-            {splitMethod !== SplitMethod.EQUAL && (splitType === SplitType.FRIENDS ? selectedFriendIds.length > 0 : selectedGroupId) && amount && parseFloat(amount) > 0 && (() => {
-              // Calculate remaining balance for unequal split
-              const totalAmount = parseFloat(amount);
-              const userIds = splitType === SplitType.GROUP ? groupMembers : [currentUserId, ...selectedFriendIds];
-              const allocatedAmount = userIds.reduce((sum, userId) => {
-                const userAmount = parseFloat(customAmounts[userId] || '0');
-                return sum + userAmount;
-              }, 0);
-              const remaining = totalAmount - allocatedAmount;
-              const isBalanced = Math.abs(remaining) < 0.01;
+          {/* Custom Split Inputs - Show when non-equal split is selected */}
+          {splitMethod !== SplitMethod.EQUAL && (splitType === SplitType.FRIENDS ? selectedFriendIds.length > 0 : selectedGroupId) && amount && parseFloat(amount) > 0 && (() => {
+            // Calculate remaining balance for unequal split
+            const totalAmount = parseFloat(amount);
+            const userIds = splitType === SplitType.GROUP ? groupMembers : [currentUserId, ...selectedFriendIds];
+            const allocatedAmount = userIds.reduce((sum, userId) => {
+              const userAmount = parseFloat(customAmounts[userId] || '0');
+              return sum + userAmount;
+            }, 0);
+            const remaining = totalAmount - allocatedAmount;
+            const isBalanced = Math.abs(remaining) < 0.01;
 
-              return (
+            return (
               <View style={styles.customSplitSection}>
                 <View style={styles.customSplitHeader}>
-                  <ThemedText style={[styles.inputLabel, !isDark && { color: colors.textSecondary }]}>
+                  <ThemedText style={[styles.inputLabel, { color: colors.textSecondary }]}>
                     {splitMethod === SplitMethod.UNEQUAL ? 'Enter amounts' : splitMethod === SplitMethod.PERCENTAGE ? 'Enter percentages' : 'Enter shares'}
                   </ThemedText>
                   {splitMethod === SplitMethod.UNEQUAL && (
                     <View style={[styles.remainingBadge, {
-                      backgroundColor: isBalanced 
+                      backgroundColor: isBalanced
                         ? (isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(34, 197, 94, 0.2)')
                         : remaining > 0
                           ? (isDark ? 'rgba(251, 191, 36, 0.2)' : 'rgba(251, 191, 36, 0.2)')
@@ -606,7 +606,7 @@ export default function AddExpenseScreen() {
                     </View>
                   )}
                 </View>
-                
+
                 {/* Current User */}
                 <View style={[styles.customSplitCard, {
                   backgroundColor: isDark ? 'rgba(30, 41, 59, 0.6)' : 'rgba(241, 245, 249, 0.9)',
@@ -639,7 +639,7 @@ export default function AddExpenseScreen() {
                     placeholderTextColor={isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)'}
                     keyboardType="decimal-pad"
                   />
-                  <ThemedText style={[styles.customSplitSuffix, !isDark && { color: colors.textSecondary }]}>
+                  <ThemedText style={[styles.customSplitSuffix, { color: colors.textSecondary }]}>
                     {splitMethod === SplitMethod.UNEQUAL ? '$' : splitMethod === SplitMethod.PERCENTAGE ? '%' : 'x'}
                   </ThemedText>
                   {(splitMethod === SplitMethod.PERCENTAGE || splitMethod === SplitMethod.SHARES) && (() => {
@@ -653,7 +653,7 @@ export default function AddExpenseScreen() {
                       calculatedAmount = totalShares > 0 ? (totalAmount * shares) / totalShares : 0;
                     }
                     return (
-                      <ThemedText style={[styles.calculatedAmount, !isDark && { color: colors.textSecondary }]}>
+                      <ThemedText style={[styles.calculatedAmount, { color: colors.textSecondary }]}>
                         ${calculatedAmount.toFixed(2)}
                       </ThemedText>
                     );
@@ -696,7 +696,7 @@ export default function AddExpenseScreen() {
                         placeholderTextColor={isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)'}
                         keyboardType="decimal-pad"
                       />
-                      <ThemedText style={[styles.customSplitSuffix, !isDark && { color: colors.textSecondary }]}>
+                      <ThemedText style={[styles.customSplitSuffix, { color: colors.textSecondary }]}>
                         {splitMethod === SplitMethod.UNEQUAL ? '$' : splitMethod === SplitMethod.PERCENTAGE ? '%' : 'x'}
                       </ThemedText>
                       {(splitMethod === SplitMethod.PERCENTAGE || splitMethod === SplitMethod.SHARES) && (() => {
@@ -710,7 +710,7 @@ export default function AddExpenseScreen() {
                           calculatedAmount = totalShares > 0 ? (totalAmount * shares) / totalShares : 0;
                         }
                         return (
-                          <ThemedText style={[styles.calculatedAmount, !isDark && { color: colors.textSecondary }]}>
+                          <ThemedText style={[styles.calculatedAmount, { color: colors.textSecondary }]}>
                             ${calculatedAmount.toFixed(2)}
                           </ThemedText>
                         );
@@ -755,7 +755,7 @@ export default function AddExpenseScreen() {
                         placeholderTextColor={isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)'}
                         keyboardType="decimal-pad"
                       />
-                      <ThemedText style={[styles.customSplitSuffix, !isDark && { color: colors.textSecondary }]}>
+                      <ThemedText style={[styles.customSplitSuffix, { color: colors.textSecondary }]}>
                         {splitMethod === SplitMethod.UNEQUAL ? '$' : splitMethod === SplitMethod.PERCENTAGE ? '%' : 'x'}
                       </ThemedText>
                       {(splitMethod === SplitMethod.PERCENTAGE || splitMethod === SplitMethod.SHARES) && (() => {
@@ -769,7 +769,7 @@ export default function AddExpenseScreen() {
                           calculatedAmount = totalShares > 0 ? (totalAmount * shares) / totalShares : 0;
                         }
                         return (
-                          <ThemedText style={[styles.calculatedAmount, !isDark && { color: colors.textSecondary }]}>
+                          <ThemedText style={[styles.calculatedAmount, { color: colors.textSecondary }]}>
                             ${calculatedAmount.toFixed(2)}
                           </ThemedText>
                         );
@@ -778,26 +778,26 @@ export default function AddExpenseScreen() {
                   );
                 })}
               </View>
-              );
-            })()}
+            );
+          })()}
 
-            {/* Split Preview */}
-            {isValid && (
-              <BlurView intensity={isDark ? 20 : 40} tint={isDark ? 'dark' : 'light'} style={styles.previewCard}>
-                <View style={[styles.previewContent, !isDark && { backgroundColor: 'rgba(255,255,255,0.8)' }]}>
-                  <IconSymbol name="divide.circle" size={20} color={isDark ? '#2DD4BF' : colors.tint} />
-                  <ThemedText style={[styles.previewText, !isDark && { color: colors.textSecondary }]}>
-                    {splitMethod === SplitMethod.EQUAL 
-                      ? `Split equally: $${(parseFloat(amount) / (splitType === SplitType.GROUP ? groupMembers.length : selectedFriendIds.length + 1)).toFixed(2)} each`
-                      : splitMethod === SplitMethod.UNEQUAL
-                        ? 'Custom amounts per person'
-                        : splitMethod === SplitMethod.PERCENTAGE
-                          ? 'Split by percentage'
-                          : 'Split by shares'}
-                  </ThemedText>
-                </View>
-              </BlurView>
-            )}
+          {/* Split Preview */}
+          {isValid && (
+            <BlurView intensity={isDark ? 20 : 40} tint={isDark ? 'dark' : 'light'} style={styles.previewCard}>
+              <View style={[styles.previewContent, !isDark && { backgroundColor: 'rgba(255,255,255,0.8)' }]}>
+                <IconSymbol name="divide.circle" size={20} color={isDark ? '#2DD4BF' : colors.tint} />
+                <ThemedText style={[styles.previewText, { color: colors.textSecondary }]}>
+                  {splitMethod === SplitMethod.EQUAL
+                    ? `Split equally: $${(parseFloat(amount) / (splitType === SplitType.GROUP ? groupMembers.length : selectedFriendIds.length + 1)).toFixed(2)} each`
+                    : splitMethod === SplitMethod.UNEQUAL
+                      ? 'Custom amounts per person'
+                      : splitMethod === SplitMethod.PERCENTAGE
+                        ? 'Split by percentage'
+                        : 'Split by shares'}
+                </ThemedText>
+              </View>
+            </BlurView>
+          )}
         </Animated.View>
       </KeyboardAwareScroll>
     </View>
@@ -863,7 +863,6 @@ const styles = StyleSheet.create({
   },
   amountLabel: {
     fontSize: 16,
-    opacity: 0.7,
     marginBottom: 12,
   },
   amountInputRow: {
@@ -888,7 +887,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     marginBottom: 10,
-    opacity: 0.8,
   },
   inputContainer: {
     flexDirection: 'row',
@@ -1015,7 +1013,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     marginLeft: 8,
-    opacity: 0.7,
   },
   selectionSection: {
     marginBottom: 24,
@@ -1068,7 +1065,6 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 14,
-    opacity: 0.6,
   },
   previewCard: {
     borderRadius: 14,
@@ -1084,7 +1080,6 @@ const styles = StyleSheet.create({
   },
   previewText: {
     fontSize: 14,
-    opacity: 0.8,
   },
   footer: {
     position: 'absolute',

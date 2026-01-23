@@ -717,7 +717,6 @@ const styles = StyleSheet.create({
   },
   friendEmail: {
     fontSize: 14,
-    opacity: 0.6,
   },
   balanceCardWrapper: {
     marginHorizontal: 16,
@@ -749,7 +748,6 @@ const styles = StyleSheet.create({
   },
   balanceLabel: {
     fontSize: 14,
-    opacity: 0.8,
   },
   balanceAmount: {
     fontSize: 48,
@@ -793,7 +791,6 @@ const styles = StyleSheet.create({
   },
   settledSubtext: {
     fontSize: 14,
-    opacity: 0.6,
   },
   quickActions: {
     flexDirection: 'row',
@@ -845,7 +842,6 @@ const styles = StyleSheet.create({
   },
   expenseCount: {
     fontSize: 13,
-    opacity: 0.6,
   },
   emptyHistory: {
     flex: 1,
@@ -868,7 +864,6 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 14,
-    opacity: 0.6,
     textAlign: 'center',
   },
   expenseList: {
@@ -901,14 +896,12 @@ const styles = StyleSheet.create({
   },
   expenseDate: {
     fontSize: 12,
-    opacity: 0.5,
   },
   expenseAmounts: {
     alignItems: 'flex-end',
   },
   expenseTotal: {
     fontSize: 12,
-    opacity: 0.5,
     marginBottom: 2,
   },
   expenseShare: {
