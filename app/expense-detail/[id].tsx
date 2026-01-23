@@ -127,7 +127,7 @@ export default function ExpenseDetailScreen() {
 
   const handleDelete = () => {
     if (isDeleting) return;
-    
+
     Alert.alert(
       'Delete Expense',
       `Are you sure you want to delete "${expense?.description}"?`,
@@ -161,7 +161,7 @@ export default function ExpenseDetailScreen() {
       </View>
     );
   }
-  
+
 
   const date = new Date(expense.date);
   const dateStr = date.toLocaleDateString('en-US', {
@@ -179,7 +179,7 @@ export default function ExpenseDetailScreen() {
     <View style={styles.container}>
       <Stack.Screen options={{ headerShown: false }} />
       <LinearGradient colors={gradients.screenBackground} style={StyleSheet.absoluteFill} />
-      
+
       {/* Animated background orbs */}
       <View style={styles.orbContainer}>
         <Animated.View style={[styles.orb, styles.orb1, { transform: [{ scale: pulseAnim }] }]} />
@@ -187,8 +187,8 @@ export default function ExpenseDetailScreen() {
         <View style={[styles.orb, styles.orb3]} />
       </View>
 
-      <NavigationHeader 
-        title="Expense Details" 
+      <NavigationHeader
+        title="Expense Details"
         onBack={() => router.back()}
         rightAction={
           <View style={styles.headerActions}>
@@ -201,28 +201,30 @@ export default function ExpenseDetailScreen() {
               }]}>
               <IconSymbol name="pencil" size={18} color={isDark ? '#2DD4BF' : colors.tint} />
             </TouchableOpacity>
-            <TouchableOpacity
-              onPress={handleDelete}
-              disabled={isDeleting}
-              style={[styles.actionButton, {
-                backgroundColor: 'rgba(239, 68, 68, 0.15)',
-                opacity: isDeleting ? 0.5 : 1,
-              }]}>
-              {isDeleting ? (
-                <ThemedText style={{ fontSize: 18 }}>⏳</ThemedText>
-              ) : (
-                <IconSymbol name="trash" size={18} color="#ef4444" />
-              )}
-            </TouchableOpacity>
+            {isPayer && (
+              <TouchableOpacity
+                onPress={handleDelete}
+                disabled={isDeleting}
+                style={[styles.actionButton, {
+                  backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                  opacity: isDeleting ? 0.5 : 1,
+                }]}>
+                {isDeleting ? (
+                  <ThemedText style={{ fontSize: 18 }}>⏳</ThemedText>
+                ) : (
+                  <IconSymbol name="trash" size={18} color="#ef4444" />
+                )}
+              </TouchableOpacity>
+            )}
           </View>
         }
       />
 
-      <ScrollView 
+      <ScrollView
         style={styles.content}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}>
-        
+
         <Animated.View style={[styles.mainContent, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
           {/* Amount Card */}
           <BlurView intensity={isDark ? 40 : 80} tint={isDark ? 'dark' : 'light'} style={styles.amountCard}>
@@ -301,16 +303,16 @@ export default function ExpenseDetailScreen() {
             <ThemedText style={[styles.sectionTitle, !isDark && { color: colors.text }]}>
               Split Details
             </ThemedText>
-            
+
             {splits.map((split) => {
               const isCurrentUser = split.userId === currentUserId;
               const splitPercentage = ((split.amount / expense.amount) * 100).toFixed(1);
-              
+
               return (
-                <View 
+                <View
                   key={split.userId}
                   style={[styles.splitCard, {
-                    backgroundColor: isCurrentUser 
+                    backgroundColor: isCurrentUser
                       ? (isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.15)')
                       : (isDark ? 'rgba(30, 41, 59, 0.6)' : 'rgba(241, 245, 249, 0.9)'),
                     borderColor: isCurrentUser
@@ -352,7 +354,7 @@ export default function ExpenseDetailScreen() {
           {userSplit && (
             <BlurView intensity={isDark ? 40 : 80} tint={isDark ? 'dark' : 'light'} style={styles.summaryCard}>
               <LinearGradient
-                colors={isPayer 
+                colors={isPayer
                   ? (isDark ? ['rgba(16, 185, 129, 0.2)', 'rgba(16, 185, 129, 0.05)'] : ['rgba(34, 197, 94, 0.2)', 'rgba(34, 197, 94, 0.05)'])
                   : (isDark ? ['rgba(239, 68, 68, 0.2)', 'rgba(239, 68, 68, 0.05)'] : ['rgba(239, 68, 68, 0.2)', 'rgba(239, 68, 68, 0.05)'])
                 }
@@ -382,7 +384,7 @@ export default function ExpenseDetailScreen() {
               <ThemedText style={[styles.sectionTitle, !isDark && { color: colors.text }]}>
                 Activity History
               </ThemedText>
-              
+
               {activities.map((activity) => {
                 const activityDate = new Date(activity.createdAt);
                 const timeStr = activityDate.toLocaleString('en-US', {
@@ -419,7 +421,7 @@ export default function ExpenseDetailScreen() {
                 };
 
                 return (
-                  <View 
+                  <View
                     key={activity.id}
                     style={[styles.activityCard, {
                       backgroundColor: isDark ? 'rgba(30, 41, 59, 0.6)' : 'rgba(241, 245, 249, 0.9)',
@@ -428,10 +430,10 @@ export default function ExpenseDetailScreen() {
                     <View style={[styles.activityIcon, {
                       backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)',
                     }]}>
-                      <IconSymbol 
-                        name={getActivityIcon()} 
-                        size={20} 
-                        color={getActivityColor()} 
+                      <IconSymbol
+                        name={getActivityIcon()}
+                        size={20}
+                        color={getActivityColor()}
                       />
                     </View>
                     <View style={styles.activityContent}>

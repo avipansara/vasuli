@@ -105,7 +105,7 @@ export default function GroupDetailScreen() {
 
   const addExpense = async () => {
     if (isAddingExpense) return;
-    
+
     if (!description.trim() || !amount.trim()) {
       Alert.alert('Error', 'Please fill in all fields');
       return;
@@ -163,7 +163,7 @@ export default function GroupDetailScreen() {
 
   const addMember = async () => {
     if (isAddingMember) return;
-    
+
     if (!selectedUserId) {
       Alert.alert('Error', 'Please select a friend');
       return;
@@ -172,7 +172,7 @@ export default function GroupDetailScreen() {
     try {
       setIsAddingMember(true);
       await groupService.addMember(id, selectedUserId);
-      
+
       if (group && user) {
         const newMember = availableUsers.find(u => u.id === selectedUserId);
         await activityService.logMemberAdded({
@@ -183,7 +183,7 @@ export default function GroupDetailScreen() {
           groupName: group.name,
         });
       }
-      
+
       setSelectedUserId('');
       setMemberModalVisible(false);
       loadGroupData();
@@ -197,7 +197,7 @@ export default function GroupDetailScreen() {
 
   async function handleDeleteGroup() {
     if (isDeletingGroup) return;
-    
+
     Alert.alert(
       'Delete Group',
       'Are you sure you want to delete this group? This action cannot be undone.',
@@ -236,7 +236,7 @@ export default function GroupDetailScreen() {
 
   async function handleDeleteExpense(expenseId: string) {
     if (deletingExpenseId) return;
-    
+
     Alert.alert(
       'Delete Expense',
       'Are you sure you want to delete this expense?',
@@ -317,7 +317,7 @@ export default function GroupDetailScreen() {
           }
         }}
         renderLeftActions={(progress, dragX) => renderLeftActions(progress, dragX, item.id)}
-        renderRightActions={(progress, dragX) => renderRightActions(progress, dragX, item.id)}
+        renderRightActions={item.paidBy === currentUserId ? (progress, dragX) => renderRightActions(progress, dragX, item.id) : undefined}
         overshootLeft={false}
         overshootRight={false}
         friction={2}
@@ -342,7 +342,7 @@ export default function GroupDetailScreen() {
 
   function handleRemoveMember(member: GroupMember & { user?: User }) {
     if (removingMemberId) return;
-    
+
     // Don't allow removing yourself or if you're not an admin
     const currentMember = members.find(m => m.userId === currentUserId);
     if (member.userId === currentUserId) {
@@ -369,7 +369,7 @@ export default function GroupDetailScreen() {
             try {
               setRemovingMemberId(member.userId);
               await groupService.removeMember(id, member.userId);
-              
+
               // Log activity
               if (group && user) {
                 await activityService.logMemberRemoved({
@@ -380,7 +380,7 @@ export default function GroupDetailScreen() {
                   groupName: group.name,
                 });
               }
-              
+
               loadGroupData();
             } catch (error) {
               console.error('Error removing member:', error);
@@ -397,7 +397,7 @@ export default function GroupDetailScreen() {
   function renderMemberRightActions(progress: any, dragX: any, member: GroupMember & { user?: User }) {
     const currentMember = members.find(m => m.userId === currentUserId);
     const canRemove = currentMember?.role === 'admin' && member.userId !== currentUserId;
-    
+
     if (!canRemove) return null;
 
     const trans = dragX.interpolate({
@@ -441,33 +441,33 @@ export default function GroupDetailScreen() {
         enableTrackpadTwoFingerGesture
         containerStyle={{ overflow: 'visible' }}>
         <View style={[styles.memberCard, !isDark && { backgroundColor: colors.card, borderColor: colors.border }]}>
-        <View style={[styles.memberAvatar, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)' }]}>
-          <ThemedText style={[styles.avatarText, { color: isDark ? '#2DD4BF' : colors.tint }]}>
-            {item.user?.name.charAt(0).toUpperCase() || '?'}
-          </ThemedText>
+          <View style={[styles.memberAvatar, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)' }]}>
+            <ThemedText style={[styles.avatarText, { color: isDark ? '#2DD4BF' : colors.tint }]}>
+              {item.user?.name.charAt(0).toUpperCase() || '?'}
+            </ThemedText>
+          </View>
+          <View style={styles.memberInfo}>
+            <ThemedText type="defaultSemiBold" style={!isDark ? { color: colors.text } : undefined}>{item.user?.name || 'Unknown'}</ThemedText>
+            {item.role === 'admin' && (
+              <ThemedText style={[styles.roleLabel, { color: isDark ? '#2DD4BF' : colors.tint }]}>Admin</ThemedText>
+            )}
+          </View>
+          <View style={styles.balanceInfo}>
+            {balance !== 0 && (
+              <>
+                <ThemedText style={[styles.memberBalanceAmount, { color: balanceColor }]}>
+                  ${Math.abs(balance).toFixed(2)}
+                </ThemedText>
+                <ThemedText style={[styles.balanceLabel, !isDark && { color: colors.textSecondary }]}>
+                  {balance > 0 ? 'gets back' : 'owes'}
+                </ThemedText>
+              </>
+            )}
+            {balance === 0 && (
+              <ThemedText style={[styles.settledLabel, !isDark && { color: colors.textSecondary }]}>settled</ThemedText>
+            )}
+          </View>
         </View>
-        <View style={styles.memberInfo}>
-          <ThemedText type="defaultSemiBold" style={!isDark ? { color: colors.text } : undefined}>{item.user?.name || 'Unknown'}</ThemedText>
-          {item.role === 'admin' && (
-            <ThemedText style={[styles.roleLabel, { color: isDark ? '#2DD4BF' : colors.tint }]}>Admin</ThemedText>
-          )}
-        </View>
-        <View style={styles.balanceInfo}>
-          {balance !== 0 && (
-            <>
-              <ThemedText style={[styles.memberBalanceAmount, { color: balanceColor }]}>
-                ${Math.abs(balance).toFixed(2)}
-              </ThemedText>
-              <ThemedText style={[styles.balanceLabel, !isDark && { color: colors.textSecondary }]}>
-                {balance > 0 ? 'gets back' : 'owes'}
-              </ThemedText>
-            </>
-          )}
-          {balance === 0 && (
-            <ThemedText style={[styles.settledLabel, !isDark && { color: colors.textSecondary }]}>settled</ThemedText>
-          )}
-        </View>
-      </View>
       </Swipeable>
     );
   }
@@ -506,16 +506,16 @@ export default function GroupDetailScreen() {
 
   const currentUserBalance = balances.get(currentUserId) || 0;
   const balanceColor = currentUserBalance > 0 ? '#10b981' : currentUserBalance < 0 ? '#ef4444' : '#2DD4BF';
-  const balanceGradient = currentUserBalance > 0 
+  const balanceGradient = currentUserBalance > 0
     ? ['rgba(16, 185, 129, 0.2)', 'rgba(16, 185, 129, 0.05)']
-    : currentUserBalance < 0 
-    ? ['rgba(239, 68, 68, 0.2)', 'rgba(239, 68, 68, 0.05)']
-    : ['rgba(45, 212, 191, 0.2)', 'rgba(45, 212, 191, 0.05)'];
+    : currentUserBalance < 0
+      ? ['rgba(239, 68, 68, 0.2)', 'rgba(239, 68, 68, 0.05)']
+      : ['rgba(45, 212, 191, 0.2)', 'rgba(45, 212, 191, 0.05)'];
 
   return (
     <View style={styles.container}>
       <LinearGradient colors={gradients.screenBackground} style={StyleSheet.absoluteFill} />
-      
+
       {/* Animated background orbs */}
       <View style={styles.orbContainer}>
         <View style={[styles.orb, styles.orb1]} />
@@ -525,22 +525,22 @@ export default function GroupDetailScreen() {
 
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity 
-          onPress={() => router.back()} 
-          style={[styles.backButtonRect, { 
-            backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)', 
-            borderColor: isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(34, 197, 94, 0.3)' 
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={[styles.backButtonRect, {
+            backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)',
+            borderColor: isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(34, 197, 94, 0.3)'
           }]}>
           <IconSymbol size={20} name="chevron.left" color={isDark ? '#2DD4BF' : colors.tint} />
         </TouchableOpacity>
         <View style={styles.headerSpacer} />
       </View>
 
-      <ScrollView 
+      <ScrollView
         style={styles.content}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}>
-        
+
         {/* Group Hero */}
         <Animated.View style={[
           styles.heroSection,
@@ -648,17 +648,17 @@ export default function GroupDetailScreen() {
             <ThemedText type="subtitle" style={[styles.sectionTitle, !isDark && { color: colors.text }]}>
               Members
             </ThemedText>
-            <TouchableOpacity 
-              style={[styles.addButton, { 
-                backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)', 
-                borderColor: isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(34, 197, 94, 0.3)' 
+            <TouchableOpacity
+              style={[styles.addButton, {
+                backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)',
+                borderColor: isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(34, 197, 94, 0.3)'
               }]}
               onPress={() => setMemberModalVisible(true)}>
               <IconSymbol size={16} name="plus" color={isDark ? '#2DD4BF' : colors.tint} />
             </TouchableOpacity>
           </View>
           {members.map((member, index) => (
-            <Animated.View 
+            <Animated.View
               key={member.id}
               style={{
                 opacity: fadeAnim,
@@ -691,7 +691,7 @@ export default function GroupDetailScreen() {
             </View>
           ) : (
             expenses.map((expense, index) => (
-              <Animated.View 
+              <Animated.View
                 key={expense.id}
                 style={{
                   opacity: fadeAnim,

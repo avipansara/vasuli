@@ -7,7 +7,7 @@ export const expenseService = {
     splits: Omit<ExpenseSplit, 'id' | 'expenseId'>[]
   ): Promise<Expense> {
     const now = new Date().toISOString();
-    
+
     const { data, error } = await supabase
       .from('expenses')
       .insert({
@@ -25,9 +25,9 @@ export const expenseService = {
       })
       .select()
       .single();
-    
+
     if (error) throw error;
-    
+
     // Insert splits
     if (splits.length > 0) {
       const splitsToInsert = splits.map(split => ({
@@ -37,14 +37,14 @@ export const expenseService = {
         split_type: split.splitType,
         percentage: split.percentage || null,
       }));
-      
+
       const { error: splitsError } = await supabase
         .from('expense_splits')
         .insert(splitsToInsert);
-      
+
       if (splitsError) throw splitsError;
     }
-    
+
     return {
       id: data.id,
       groupId: data.group_id || undefined,
@@ -83,7 +83,7 @@ export const expenseService = {
       .from('expenses')
       .update(updateData)
       .eq('id', id);
-    
+
     if (error) throw error;
 
     // Update splits if provided
@@ -93,7 +93,7 @@ export const expenseService = {
         .from('expense_splits')
         .delete()
         .eq('expense_id', id);
-      
+
       if (deleteError) throw deleteError;
 
       // Insert new splits
@@ -105,11 +105,11 @@ export const expenseService = {
           split_type: split.splitType,
           percentage: split.percentage || null,
         }));
-        
+
         const { error: splitsError } = await supabase
           .from('expense_splits')
           .insert(splitsToInsert);
-        
+
         if (splitsError) throw splitsError;
       }
     }
@@ -121,12 +121,12 @@ export const expenseService = {
       .select('*')
       .eq('id', id)
       .single();
-    
+
     if (error) {
       if (error.code === 'PGRST116') return null;
       throw error;
     }
-    
+
     return {
       id: data.id,
       groupId: data.group_id || undefined,
@@ -149,9 +149,9 @@ export const expenseService = {
       .select('*')
       .eq('group_id', groupId)
       .order('date', { ascending: false });
-    
+
     if (error) throw error;
-    
+
     return (data || []).map(r => ({
       id: r.id,
       groupId: r.group_id || undefined,
@@ -173,9 +173,9 @@ export const expenseService = {
       .from('expense_splits')
       .select('*')
       .eq('expense_id', expenseId);
-    
+
     if (error) throw error;
-    
+
     return (data || []).map(r => ({
       id: r.id,
       expenseId: r.expense_id,
@@ -192,33 +192,33 @@ export const expenseService = {
       .from('expense_splits')
       .select('expense_id')
       .eq('user_id', userId);
-    
+
     if (splitError) throw splitError;
-    
+
     // Also get expenses paid by the user
     const { data: paidData, error: paidError } = await supabase
       .from('expenses')
       .select('id')
       .eq('paid_by', userId);
-    
+
     if (paidError) throw paidError;
-    
+
     // Combine both sets of expense IDs
     const splitExpenseIds = (splitData || []).map(s => s.expense_id);
     const paidExpenseIds = (paidData || []).map(e => e.id);
     const allExpenseIds = [...new Set([...splitExpenseIds, ...paidExpenseIds])];
-    
+
     if (allExpenseIds.length === 0) return [];
-    
+
     // Fetch full expense details
     const { data, error } = await supabase
       .from('expenses')
       .select('*')
       .in('id', allExpenseIds)
       .order('date', { ascending: false });
-    
+
     if (error) throw error;
-    
+
     return (data || []).map(r => ({
       id: r.id,
       groupId: r.group_id || undefined,
@@ -242,17 +242,22 @@ export const expenseService = {
       .select('*, groups(name)')
       .eq('id', id)
       .single();
-    
+
     if (fetchError) throw fetchError;
-    
+
+    // Check if user is the payer
+    if (expense.paid_by !== userId) {
+      throw new Error('Only the person who paid for this expense can delete it.');
+    }
+
     // Delete the expense
     const { error } = await supabase
       .from('expenses')
       .delete()
       .eq('id', id);
-    
+
     if (error) throw error;
-    
+
     // Log the activity
     const { activityService } = await import('./activity-service');
     await activityService.logExpenseDeleted({
