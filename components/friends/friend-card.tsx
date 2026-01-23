@@ -90,18 +90,37 @@ export function FriendCard({ friend, onPress, onDelete }: FriendCardProps) {
           {balance !== 0 ? (
             <View style={styles.recentExpenses}>
               {friend.recentExpenses && friend.recentExpenses.length > 0 ? (
-                friend.recentExpenses.map((expense) => (
-                  <ThemedText
-                    key={expense.id}
-                    numberOfLines={1}
-                    style={[styles.expenseDescription, { color: colors.textSecondary }]}>
-                    • {expense.description}
-                  </ThemedText>
+                friend.recentExpenses.map((expense, index) => (
+                  <View key={expense.id} style={styles.expenseBranchItem}>
+                    <View style={styles.branchGraphics}>
+                      <View
+                        style={[
+                          styles.vLine,
+                          {
+                            backgroundColor: colors.success,
+                            height: index === (friend.recentExpenses?.length ?? 0) - 1 ? '50%' : '100%'
+                          }
+                        ]}
+                      />
+                      <View style={[styles.hLine, { backgroundColor: colors.success }]} />
+                    </View>
+                    <ThemedText
+                      numberOfLines={1}
+                      style={[styles.expenseDescription, { color: colors.textSecondary }]}>
+                      {expense.description}
+                    </ThemedText>
+                  </View>
                 ))
               ) : (
-                <ThemedText style={[styles.noExpenses, { color: colors.textSecondary }]}>
-                  No pending expenses
-                </ThemedText>
+                <View style={styles.expenseBranchItem}>
+                  <View style={styles.branchGraphics}>
+                    <View style={[styles.vLine, { backgroundColor: colors.success, height: '50%' }]} />
+                    <View style={[styles.hLine, { backgroundColor: colors.success }]} />
+                  </View>
+                  <ThemedText style={[styles.noExpenses, { color: colors.textSecondary }]}>
+                    No pending expenses
+                  </ThemedText>
+                </View>
               )}
             </View>
           ) : (
@@ -169,15 +188,37 @@ const styles = StyleSheet.create({
   },
   recentExpenses: {
     marginTop: 4,
-    gap: 2,
+  },
+  expenseBranchItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 22,
+  },
+  branchGraphics: {
+    width: 20,
+    height: '100%',
+    marginRight: 4,
+  },
+  vLine: {
+    position: 'absolute',
+    width: 1.5,
+    left: 8,
+    top: 0,
+  },
+  hLine: {
+    position: 'absolute',
+    height: 1.5,
+    width: 10,
+    left: 8,
+    top: 11,
   },
   expenseDescription: {
     fontSize: 12,
     lineHeight: 16,
+    flex: 1,
   },
   noExpenses: {
     fontSize: 12,
-    marginTop: 3,
     fontStyle: 'italic',
   },
   balanceContainer: {

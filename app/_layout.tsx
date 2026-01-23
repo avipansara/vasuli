@@ -16,7 +16,7 @@ import 'react-native-reanimated';
 SplashScreen.preventAutoHideAsync();
 
 export const unstable_settings = {
-  initialRouteName: 'index',
+  initialRouteName: '(tabs)',
 };
 
 const AmbientDarkTheme = {
@@ -56,14 +56,19 @@ function useProtectedRoute() {
     const inAuthGroup = segments[0] === '(auth)';
 
     if (!isAuthenticated && !inAuthGroup) {
-      // Redirect to sign-in if not authenticated
+      // Redirect to sign-in if not authenticated and not already in auth flow
       router.replace('/(auth)/sign-in-otp');
     } else if (isAuthenticated && inAuthGroup) {
-      // Redirect to tabs if authenticated
+      // Redirect to tabs if authenticated but still in auth flow
       router.replace('/(tabs)');
+    } else if (!segments[0]) {
+      // Handle root index redirect
+      if (isAuthenticated) {
+        router.replace('/(tabs)');
+      } else {
+        router.replace('/(auth)/sign-in-otp');
+      }
     }
-    // We don't perform a default redirect here anymore to let app/index handle boot
-
   }, [isAuthenticated, isLoading, segments]);
 
   return isLoading;
@@ -163,28 +168,26 @@ function RootLayoutNav() {
   }
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <ThemeProvider value={isDark ? AmbientDarkTheme : AmbientLightTheme}>
-        <Stack>
-          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-          <Stack.Screen name="group/[id]" options={{ headerShown: false }} />
-          <Stack.Screen name="friend/[id]" options={{ headerShown: false }} />
-          <Stack.Screen name="scan-qr" options={{ headerShown: false }} />
-          <Stack.Screen name="add-expense" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
-          <Stack.Screen name="create-group" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
-          <Stack.Screen name="add-friend" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
-          <Stack.Screen name="edit-group/[id]" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
-          <Stack.Screen name="edit-expense/[id]" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
-          <Stack.Screen name="edit-profile" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
-          <Stack.Screen name="privacy-policy" options={{ headerShown: false }} />
-          <Stack.Screen name="terms-conditions" options={{ headerShown: false }} />
-          <Stack.Screen name="help-support" options={{ headerShown: false }} />
-        </Stack>
-        <StatusBar style={isDark ? 'light' : 'dark'} />
-      </ThemeProvider>
-    </GestureHandlerRootView>
+    <ThemeProvider value={isDark ? AmbientDarkTheme : AmbientLightTheme}>
+      <Stack>
+        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+        <Stack.Screen name="group/[id]" options={{ headerShown: false }} />
+        <Stack.Screen name="friend/[id]" options={{ headerShown: false }} />
+        <Stack.Screen name="scan-qr" options={{ headerShown: false }} />
+        <Stack.Screen name="add-expense" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
+        <Stack.Screen name="create-group" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
+        <Stack.Screen name="add-friend" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
+        <Stack.Screen name="edit-group/[id]" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
+        <Stack.Screen name="edit-expense/[id]" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
+        <Stack.Screen name="edit-profile" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
+        <Stack.Screen name="privacy-policy" options={{ headerShown: false }} />
+        <Stack.Screen name="terms-conditions" options={{ headerShown: false }} />
+        <Stack.Screen name="help-support" options={{ headerShown: false }} />
+      </Stack>
+      <StatusBar style={isDark ? 'light' : 'dark'} />
+    </ThemeProvider>
   );
 }
 
@@ -207,10 +210,12 @@ export default function RootLayout() {
   }
 
   return (
-    <AppThemeProvider>
-      <AuthProvider>
-        <RootLayoutNav />
-      </AuthProvider>
-    </AppThemeProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <AppThemeProvider>
+        <AuthProvider>
+          <RootLayoutNav />
+        </AuthProvider>
+      </AppThemeProvider>
+    </GestureHandlerRootView>
   );
 }

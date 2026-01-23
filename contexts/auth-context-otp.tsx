@@ -2,7 +2,7 @@ import { otpService } from '@/services/otp-service';
 import { userService } from '@/services/user-service';
 import type { User } from '@/types/database';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
 interface AuthContextType {
   user: User | null;
@@ -38,7 +38,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  async function refreshUser() {
+  const refreshUser = useCallback(async () => {
     try {
       // If user doesn't exist yet (after sign-in/sign-up), load the session
       if (!user) {
@@ -62,9 +62,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error('Error refreshing user:', error);
     }
-  }
+  }, [user]);
 
-  async function signOut() {
+  const signOut = useCallback(async () => {
     try {
       // Clear session from AsyncStorage
       await otpService.signOut();
@@ -86,17 +86,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Still clear user state even if there's an error
       setUser(null);
     }
-  }
+  }, []);
+
+  const value = useMemo(() => ({
+    user,
+    isLoading,
+    isAuthenticated: !!user,
+    signOut,
+    refreshUser,
+  }), [user, isLoading, signOut, refreshUser]);
 
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        isLoading,
-        isAuthenticated: !!user,
-        signOut,
-        refreshUser,
-      }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );
