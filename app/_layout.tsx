@@ -8,7 +8,7 @@ import * as Linking from 'expo-linking';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Alert } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
@@ -71,6 +71,15 @@ function RootLayoutNav() {
   const { isDark } = useTheme();
   const isLoading = useProtectedRoute();
   const router = useRouter();
+  const [animationComplete, setAnimationComplete] = useState(false);
+
+  // Ensure animation plays for at least 2.5 seconds
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setAnimationComplete(true);
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Initialize notifications - must be inside AuthProvider to access user context
   useNotifications();
@@ -110,7 +119,7 @@ function RootLayoutNav() {
     return () => subscription.remove();
   }, [router]);
 
-  if (isLoading) {
+  if (isLoading || !animationComplete) {
     return <AnimatedSplash />;
   }
 
