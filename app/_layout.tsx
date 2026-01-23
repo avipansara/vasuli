@@ -87,7 +87,7 @@ function RootLayoutNav() {
 
   // Handle deep links for invitations
   useEffect(() => {
-    const handleDeepLink = (event: { url: string }) => {
+    const handleDeepLink = async (event: { url: string }) => {
       if (!event.url) return;
 
       console.log('[DeepLink] Received URL:', event.url);
@@ -100,21 +100,36 @@ function RootLayoutNav() {
         let inviterId = '';
         if (path?.includes('invite/')) {
           const parts = path.split('invite/');
-          inviterId = parts[1]?.split('/')[0] || '';
+          inviterId = parts[1]?.split('/')[0]?.split('?')[0] || '';
         }
 
         if (inviterId) {
           console.log('[DeepLink] Found inviterId:', inviterId);
+
+          // Try to fetch inviter name to make the alert better
+          let inviterName = 'your friend';
+          try {
+            const { userService } = await import('@/services/user-service');
+            const inviter = await userService.getById(inviterId);
+            if (inviter?.name) {
+              inviterName = inviter.name;
+            }
+          } catch (e) {
+            console.warn('[DeepLink] Could not fetch inviter name:', e);
+          }
+
           Alert.alert(
             'Invitation Received',
-            'You have been invited to join Vasuli! Sign up or sign in to connect with your friend.',
+            `You have been invited to connect with ${inviterName} on Vasuli!`,
             [
-              { text: 'Cancel', style: 'cancel' },
+              { text: 'Later', style: 'cancel' },
               {
                 text: 'Join Now',
                 onPress: () => {
                   if (isAuthenticated) {
                     router.push('/(tabs)');
+                    // Potentially redirect to invitations screen directly
+                    setTimeout(() => router.push('/invitations'), 500);
                   } else {
                     router.push('/(auth)/sign-in-otp');
                   }
@@ -139,7 +154,7 @@ function RootLayoutNav() {
     const subscription = Linking.addEventListener('url', handleDeepLink);
 
     return () => subscription.remove();
-  }, [router]);
+  }, [router, isAuthenticated]);
 
   if (isLoading || !animationComplete) {
     return <AnimatedSplash />;

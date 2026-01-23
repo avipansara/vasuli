@@ -5,12 +5,12 @@ import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
 import {
-    Modal,
-    Platform,
-    Share,
-    StyleSheet,
-    TouchableOpacity,
-    View,
+  Modal,
+  Platform,
+  Share,
+  StyleSheet,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 
@@ -23,9 +23,9 @@ interface QRCodeModalProps {
 
 export function QRCodeModal({ visible, onClose, userId, userName }: QRCodeModalProps) {
   const { colors, isDark } = useThemeColors();
-  
-  const inviteLink = `vasuli://invite/${userId}`;
-  
+
+  const inviteLink = `https://split-space.com/invite/${userId}`;
+
   const handleShare = async () => {
     try {
       await Share.share({
