@@ -185,27 +185,57 @@ export async function calculateUserNetBalance(userId: string, friendIds: string[
   return netBalance;
 }
 /**
- * Get recent expenses between two users across ALL expenses (groups + individual)
- * Sorted by date DESC
+ * Get pending expenses between two users that contribute to the current net balance.
+ * Returns up to `limit` most recent expenses.
  */
 export async function getFriendRecentExpenses(currentUserId: string, friendId: string, limit: number = 2): Promise<import('@/types/database').Expense[]> {
+  const balance = await calculateFriendBalance(currentUserId, friendId);
+
+  // If settled up, no pending expenses
+  if (Math.abs(balance) < 0.01) {
+    return [];
+  }
+
   const allExpenses = await expenseService.getUserExpenses(currentUserId);
   const friendExpenses: import('@/types/database').Expense[] = [];
 
+  // 1. Filter expenses where both users are involved
   for (const expense of allExpenses) {
     const splits = await expenseService.getSplits(expense.id);
-
     const currentUserSplit = splits.find(s => s.userId === currentUserId);
     const friendSplit = splits.find(s => s.userId === friendId);
 
-    // Only count expenses where both users are involved
     if (currentUserSplit && friendSplit) {
-      friendExpenses.push(expense);
+      // Calculate the net impact of this specific expense on the balance
+      // If current user paid, it's a positive impact (friend owes me)
+      // If friend paid, it's a negative impact (I owe friend)
+      const amount = expense.paidBy === currentUserId ? friendSplit.amount : -currentUserSplit.amount;
+
+      // We only care about expenses that go in the SAME direction as the current total balance
+      // e.g. if friend owes me $50, we only look at expenses where they owe me.
+      if ((balance > 0 && amount > 0) || (balance < 0 && amount < 0)) {
+        friendExpenses.push({ ...expense, amount: Math.abs(amount) }); // Store the share amount for logic
+      }
     }
   }
 
-  // Sort by date DESC and limit
-  return friendExpenses
-    .sort((a, b) => b.date - a.date)
-    .slice(0, limit);
+  // 2. Sort by date DESC
+  friendExpenses.sort((a, b) => b.date - a.date);
+
+  // 3. Take the most recent expenses that account for the balance
+  const result: import('@/types/database').Expense[] = [];
+  let cumulativeAmount = 0;
+  const targetAmount = Math.abs(balance);
+
+  for (const exp of friendExpenses) {
+    if (result.length >= limit) break;
+
+    result.push(exp);
+    cumulativeAmount += exp.amount; // This is the specific share amount we stored above
+
+    // If we've accounted for the entire balance, we can stop
+    if (cumulativeAmount >= targetAmount - 0.01) break;
+  }
+
+  return result;
 }

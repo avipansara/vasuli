@@ -105,8 +105,8 @@ export function FriendCard({ friend, onPress, onDelete }: FriendCardProps) {
               )}
             </View>
           ) : (
-            <ThemedText style={[styles.email, { color: colors.textSecondary }]}>
-              {friend.email}
+            <ThemedText style={[styles.settledNote, { color: colors.textSecondary }]}>
+              All settled up
             </ThemedText>
           )}
         </View>
@@ -161,6 +161,11 @@ const styles = StyleSheet.create({
   email: {
     fontSize: 13,
     marginTop: 3,
+  },
+  settledNote: {
+    fontSize: 12,
+    marginTop: 4,
+    opacity: 0.8,
   },
   recentExpenses: {
     marginTop: 4,
