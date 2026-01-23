@@ -46,24 +46,37 @@ export const invitationService = {
 
     if (error) throw error;
 
-    // Send invitation email via Edge Function
+    // Send invitation: Push (if user exists & has token) or Email (fallback)
     try {
-      const { error: emailError } = await supabase.functions.invoke('send-invitation', {
-        body: {
-          inviteeEmail: invitation.inviteeEmail,
-          inviteeName: invitation.inviteeName || invitation.inviteeEmail.split('@')[0],
-          inviterName: invitation.inviterName || 'A friend',
-          inviterId: invitation.inviterId,
-        },
-      });
+      const { userService } = await import('@/services/user-service');
+      const { notificationService, createInvitationNotification } = await import('@/services/notification-service');
 
-      if (emailError) {
-        console.error('Failed to send invitation email:', emailError);
-        // Don't throw - invitation was created successfully, email is optional
+      const existingUser = await userService.getByEmail(invitation.inviteeEmail);
+
+      if (existingUser?.pushToken) {
+        // Person already has an account and push enabled - send push instead of email
+        console.log(`[Invitation] Sending push notification to ${invitation.inviteeEmail}`);
+        const notification = createInvitationNotification(invitation.inviterName || 'A friend');
+        await notificationService.sendPushNotification(existingUser.pushToken, notification);
+      } else {
+        // New person or no push token - send email
+        console.log(`[Invitation] Sending email to ${invitation.inviteeEmail}`);
+        const { error: emailError } = await supabase.functions.invoke('send-invitation', {
+          body: {
+            inviteeEmail: invitation.inviteeEmail,
+            inviteeName: invitation.inviteeName || invitation.inviteeEmail.split('@')[0],
+            inviterName: invitation.inviterName || 'A friend',
+            inviterId: invitation.inviterId,
+          },
+        });
+
+        if (emailError) {
+          console.error('Failed to send invitation email:', emailError);
+        }
       }
-    } catch (emailError) {
-      console.error('Error sending invitation email:', emailError);
-      // Don't throw - invitation was created successfully
+    } catch (invError) {
+      console.error('Error sending invitation delivery:', invError);
+      // Don't throw - invitation was created successfully in DB
     }
 
     return {

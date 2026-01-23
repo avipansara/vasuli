@@ -16,6 +16,10 @@ export default function ActivityScreen() {
   const { gradients, colors, isDark } = useThemeColors();
   const [activities, setActivities] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [offset, setOffset] = useState(0);
+  const PAGE_SIZE = 20;
   const hasLoadedOnce = useRef(false);
 
   // Animations
@@ -27,12 +31,15 @@ export default function ActivityScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      loadActivities();
+      // Reset and load on focus if needed or just initial load
+      if (!hasLoadedOnce.current) {
+        loadActivities(true);
+      }
     }, [])
   );
 
   useEffect(() => {
-    if (!loading) {
+    if (!loading && !loadingMore) {
       Animated.parallel([
         Animated.timing(fadeAnim, {
           toValue: 1,
@@ -46,33 +53,66 @@ export default function ActivityScreen() {
         }),
       ]).start();
     }
-  }, [loading]);
+  }, [loading, loadingMore]);
 
-  const loadActivities = async () => {
+  const loadActivities = async (isInitial: boolean = false) => {
     if (!currentUserId) return;
+    if (!isInitial && (!hasMore || loadingMore)) return;
+
     try {
-      // Only show loader on first load
-      if (!hasLoadedOnce.current) {
-        setLoading(true);
-        hasLoadedOnce.current = true;
+      if (isInitial) {
+        if (!hasLoadedOnce.current) {
+          setLoading(true);
+        }
+        setOffset(0);
+      } else {
+        setLoadingMore(true);
       }
+
       await initDatabase();
-      const allActivities = await activityService.getUserActivities(currentUserId);
-      console.log('[Activity] Loaded activities:', allActivities.length);
-      setActivities(allActivities);
+      const currentOffset = isInitial ? 0 : offset;
+      const newActivities = await activityService.getUserActivities(currentUserId, PAGE_SIZE, currentOffset);
+
+      console.log(`[Activity] Loaded ${newActivities.length} activities (offset: ${currentOffset})`);
+
+      if (isInitial) {
+        setActivities(newActivities);
+        hasLoadedOnce.current = true;
+      } else {
+        setActivities(prev => [...prev, ...newActivities]);
+      }
+
+      setHasMore(newActivities.length === PAGE_SIZE);
+      setOffset(currentOffset + newActivities.length);
     } catch (error) {
       console.error('[Activity] Error loading activities:', error);
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
   }
+
+  const handleLoadMore = () => {
+    if (!loading && !loadingMore && hasMore) {
+      loadActivities(false);
+    }
+  };
+
+  const renderFooter = () => {
+    if (!loadingMore) return null;
+    return (
+      <View style={styles.footerLoader}>
+        <LoadingState message="Loading more..." />
+      </View>
+    );
+  };
 
   // Group activities by time period
   const getTimePeriod = (timestamp: number): string => {
     const now = new Date();
     const date = new Date(timestamp);
     const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
-    
+
     if (diffDays === 0 && date.toDateString() === now.toDateString()) return 'Today';
     if (diffDays === 1 || (diffDays === 0 && date.toDateString() !== now.toDateString())) return 'Yesterday';
     if (diffDays < 7) return 'This Week';
@@ -139,6 +179,9 @@ export default function ActivityScreen() {
               </ThemedText>
             </View>
           )}
+          onEndReached={handleLoadMore}
+          onEndReachedThreshold={0.5}
+          ListFooterComponent={renderFooter}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
           stickySectionHeadersEnabled={false}
@@ -270,5 +313,9 @@ const styles = StyleSheet.create({
   emptyText: {
     textAlign: 'center',
     opacity: 0.6,
+  },
+  footerLoader: {
+    paddingVertical: 20,
+    alignItems: 'center',
   },
 });

@@ -69,6 +69,7 @@ function useProtectedRoute() {
 
 function RootLayoutNav() {
   const { isDark } = useTheme();
+  const { isAuthenticated } = useAuth();
   const isLoading = useProtectedRoute();
   const router = useRouter();
   const [animationComplete, setAnimationComplete] = useState(false);
@@ -77,7 +78,7 @@ function RootLayoutNav() {
   useEffect(() => {
     const timer = setTimeout(() => {
       setAnimationComplete(true);
-    }, 1000);
+    }, 2500);
     return () => clearTimeout(timer);
   }, []);
 
@@ -87,22 +88,43 @@ function RootLayoutNav() {
   // Handle deep links for invitations
   useEffect(() => {
     const handleDeepLink = (event: { url: string }) => {
-      const { path } = Linking.parse(event.url);
-      if (path?.startsWith('invite/')) {
-        const inviterId = path.split('/')[1];
+      if (!event.url) return;
+
+      console.log('[DeepLink] Received URL:', event.url);
+
+      try {
+        const parsed = Linking.parse(event.url);
+        const path = parsed.path;
+
+        // Extract inviterId from path (handles invite/ID or /invite/ID)
+        let inviterId = '';
+        if (path?.includes('invite/')) {
+          const parts = path.split('invite/');
+          inviterId = parts[1]?.split('/')[0] || '';
+        }
+
         if (inviterId) {
+          console.log('[DeepLink] Found inviterId:', inviterId);
           Alert.alert(
             'Invitation Received',
-            'You have been invited to join Vasuli! Sign up to connect with your friend.',
+            'You have been invited to join Vasuli! Sign up or sign in to connect with your friend.',
             [
               { text: 'Cancel', style: 'cancel' },
               {
-                text: 'Sign Up',
-                onPress: () => router.push('/(auth)/sign-up-otp')
+                text: 'Join Now',
+                onPress: () => {
+                  if (isAuthenticated) {
+                    router.push('/(tabs)');
+                  } else {
+                    router.push('/(auth)/sign-in-otp');
+                  }
+                }
               }
             ]
           );
         }
+      } catch (err) {
+        console.error('[DeepLink] Error parsing URL:', err);
       }
     };
 

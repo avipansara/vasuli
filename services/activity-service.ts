@@ -68,17 +68,17 @@ export const activityService = {
     }));
   },
 
-  async getUserActivities(userId: string, limit?: number): Promise<Activity[]> {
+  async getUserActivities(userId: string, limit?: number, offset?: number): Promise<Activity[]> {
     // Get activities from groups the user is a member of
     const { data: memberData, error: memberError } = await supabase
       .from('group_members')
       .select('group_id')
       .eq('user_id', userId);
-    
+
     if (memberError) throw memberError;
-    
+
     const groupIds = (memberData || []).map(m => m.group_id);
-    
+
     // Build query for activities: user's own activities OR activities in their groups
     let query = supabase
       .from('activities')
@@ -94,7 +94,9 @@ export const activityService = {
     }
 
     if (limit) {
-      query = query.limit(limit);
+      const from = offset || 0;
+      const to = from + limit - 1;
+      query = query.range(from, to);
     }
 
     const { data, error } = await query;

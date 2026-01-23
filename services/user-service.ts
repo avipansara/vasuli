@@ -62,6 +62,28 @@ export const userService = {
     };
   },
 
+  async getByEmail(email: string): Promise<User | null> {
+    const { data, error } = await supabase
+      .from('users')
+      .select('*')
+      .eq('email', email)
+      .maybeSingle();
+
+    if (error) throw error;
+    if (!data) return null;
+
+    return {
+      id: data.id,
+      name: data.name,
+      email: data.email || undefined,
+      phone: data.phone || undefined,
+      avatar: data.avatar || undefined,
+      pushToken: data.push_token || undefined,
+      isActive: data.is_active ?? true,
+      createdAt: new Date(data.created_at).getTime(),
+    };
+  },
+
   async getAll(): Promise<User[]> {
     const { data, error } = await supabase
       .from('users')
