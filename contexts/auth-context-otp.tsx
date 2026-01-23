@@ -27,6 +27,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const session = await otpService.getSession();
       if (session) {
         setUser(session.user);
+      } else {
+        // Explicitly clear if no session found to prevent stale data issues
+        await otpService.clearSession();
       }
     } catch (error) {
       console.error('Error loading session:', error);
@@ -42,12 +45,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await loadSession();
         return;
       }
-      
+
       // Fetch fresh user data from database
       const freshUser = await userService.getById(user.id);
       if (freshUser) {
         setUser(freshUser);
-        
+
         // Update session in AsyncStorage with fresh data
         const sessionData = await AsyncStorage.getItem('auth_session');
         if (sessionData) {
@@ -65,13 +68,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       // Clear session from AsyncStorage
       await otpService.signOut();
-      
+
       // Clear user state
       setUser(null);
-      
-      // Force garbage collection of any cached data by clearing AsyncStorage completely
-      // This ensures no previous user's data persists in memory or storage
-      console.log('[Auth] User signed out, all data cleared');
+
+      // Force aggressive cleanup of all app data on sign out to prevent "caching" issues
+      await AsyncStorage.multiRemove([
+        'auth_session',
+        'pending_signup',
+        'pending_signin',
+        'supabase.auth.token' // legacy token if any
+      ]);
+
+      console.log('[Auth] User signed out, all critical data cleared');
     } catch (error) {
       console.error('[Auth] Error during sign out:', error);
       // Still clear user state even if there's an error

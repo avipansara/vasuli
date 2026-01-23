@@ -16,7 +16,7 @@ import 'react-native-reanimated';
 SplashScreen.preventAutoHideAsync();
 
 export const unstable_settings = {
-  initialRouteName: '(auth)',
+  initialRouteName: 'index',
 };
 
 const AmbientDarkTheme = {
@@ -62,6 +62,8 @@ function useProtectedRoute() {
       // Redirect to tabs if authenticated
       router.replace('/(tabs)');
     }
+    // We don't perform a default redirect here anymore to let app/index handle boot
+
   }, [isAuthenticated, isLoading, segments]);
 
   return isLoading;

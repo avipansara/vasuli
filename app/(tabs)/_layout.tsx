@@ -1,5 +1,6 @@
+import { useAuth } from '@/contexts/auth-context-otp';
 import { BlurView } from 'expo-blur';
-import { Tabs } from 'expo-router';
+import { Redirect, Tabs } from 'expo-router';
 import React from 'react';
 import { Platform, StyleSheet, View, useWindowDimensions } from 'react-native';
 
@@ -10,6 +11,12 @@ import { useThemeColors } from '@/hooks/use-theme-colors';
 export default function TabLayout() {
   const { colors, isDark } = useThemeColors();
   const { width } = useWindowDimensions();
+  const { isAuthenticated, isLoading } = useAuth();
+
+  // Layout-level protection guard
+  if (!isLoading && !isAuthenticated) {
+    return <Redirect href="/(auth)/sign-in-otp" />;
+  }
 
   // Constrain tab bar width on tablet/desktop for better ergonomics
   const isTablet = width > 768;
