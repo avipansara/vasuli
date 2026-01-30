@@ -14,6 +14,7 @@ import {
   groupService,
   userService
 } from '@/services/api';
+import { friendshipService } from '@/services/friendship-service';
 import type { Expense, Group, GroupMember, User } from '@/types/database';
 import { useFocusEffect } from '@react-navigation/native';
 import { BlurView } from 'expo-blur';
@@ -50,6 +51,7 @@ export default function GroupDetailScreen() {
   const [amount, setAmount] = useState('');
   const [availableUsers, setAvailableUsers] = useState<User[]>([]);
   const [selectedUserId, setSelectedUserId] = useState('');
+  const [friendshipStatus, setFriendshipStatus] = useState<Map<string, 'none' | 'pending_sent' | 'pending_received' | 'accepted'>>(new Map());
   const { user } = useAuth();
   const currentUserId = user?.id || '';
 
@@ -88,6 +90,24 @@ export default function GroupDetailScreen() {
       const memberIds = new Set(groupMembers.map(m => m.userId));
       const available = userFriends.filter(u => !memberIds.has(u.id));
       setAvailableUsers(available);
+
+      // Get all friendships to determine status with current group members
+      const allFriendships = await friendshipService.getAllFriendships(currentUserId);
+      const statusMap = new Map<string, 'none' | 'pending_sent' | 'pending_received' | 'accepted'>();
+
+      allFriendships.forEach(f => {
+        const otherId = f.userId === currentUserId ? f.friendId : f.userId;
+        let status: 'none' | 'pending_sent' | 'pending_received' | 'accepted' = 'none';
+
+        if (f.status === 'accepted') {
+          status = 'accepted';
+        } else if (f.status === 'pending') {
+          status = f.userId === currentUserId ? 'pending_sent' : 'pending_received';
+        }
+
+        statusMap.set(otherId, status);
+      });
+      setFriendshipStatus(statusMap);
     } catch (error) {
       console.error('Error loading group data:', error);
     } finally {
@@ -192,6 +212,23 @@ export default function GroupDetailScreen() {
       Alert.alert('Error', 'Failed to add member');
     } finally {
       setIsAddingMember(false);
+    }
+  }
+
+  async function handleAddFriend(memberUserId: string) {
+    try {
+      await friendshipService.create(currentUserId, memberUserId);
+
+      setFriendshipStatus(prev => {
+        const newMap = new Map(prev);
+        newMap.set(memberUserId, 'pending_sent');
+        return newMap;
+      });
+
+      Alert.alert('Success', 'Friend request sent');
+    } catch (error) {
+      console.error('Error sending friend request:', error);
+      Alert.alert('Error', 'Failed to send friend request');
     }
   }
 
@@ -447,7 +484,40 @@ export default function GroupDetailScreen() {
             </ThemedText>
           </View>
           <View style={styles.memberInfo}>
-            <ThemedText type="defaultSemiBold" style={!isDark ? { color: colors.text } : undefined}>{item.user?.name || 'Unknown'}</ThemedText>
+            <View style={styles.memberNameRow}>
+              <ThemedText type="defaultSemiBold" style={!isDark ? { color: colors.text } : undefined}>{item.user?.name || 'Unknown'}</ThemedText>
+              {item.userId !== currentUserId && (
+                (() => {
+                  const status = friendshipStatus.get(item.userId) || 'none';
+                  if (status === 'accepted') return null;
+
+                  const isPending = status === 'pending_sent';
+                  const isReceived = status === 'pending_received';
+
+                  return (
+                    <TouchableOpacity
+                      onPress={() => status === 'none' ? handleAddFriend(item.userId) : null}
+                      activeOpacity={status === 'none' ? 0.7 : 1}
+                      style={[
+                        styles.friendBadge,
+                        isPending && styles.friendBadgePending,
+                        isReceived && styles.friendBadgeReceived,
+                        { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.1)' : 'rgba(34, 197, 94, 0.1)' }
+                      ]}
+                    >
+                      <IconSymbol
+                        name={status === 'none' ? "person.badge.plus" : "clock"}
+                        size={12}
+                        color={isDark ? '#2DD4BF' : colors.tint}
+                      />
+                      <ThemedText style={[styles.friendBadgeText, { color: isDark ? '#2DD4BF' : colors.tint }]}>
+                        {status === 'none' ? 'Add' : isPending ? 'Sent' : 'Pending'}
+                      </ThemedText>
+                    </TouchableOpacity>
+                  );
+                })()
+              )}
+            </View>
             {item.role === 'admin' && (
               <ThemedText style={[styles.roleLabel, { color: isDark ? '#2DD4BF' : colors.tint }]}>Admin</ThemedText>
             )}
@@ -983,6 +1053,29 @@ const styles = StyleSheet.create({
     fontSize: 11,
     opacity: 0.6,
     marginTop: 2,
+  },
+  memberNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  friendBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 12,
+    gap: 4,
+  },
+  friendBadgePending: {
+    opacity: 0.7,
+  },
+  friendBadgeReceived: {
+    opacity: 0.7,
+  },
+  friendBadgeText: {
+    fontSize: 10,
+    fontWeight: '600',
   },
   balanceInfo: {
     alignItems: 'flex-end',
