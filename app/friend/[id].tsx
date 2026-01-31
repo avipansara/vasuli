@@ -107,7 +107,8 @@ export default function FriendDetailScreen() {
         },
         (payload) => {
           console.log('[Realtime] Friend expense change detected:', payload);
-          loadFriendData();
+          // Add a small delay to ensure transaction propagation
+          setTimeout(() => loadFriendData(), 500);
         }
       )
       .on(
@@ -119,7 +120,7 @@ export default function FriendDetailScreen() {
         },
         (payload) => {
           console.log('[Realtime] Split change detected:', payload);
-          loadFriendData();
+          setTimeout(() => loadFriendData(), 500);
         }
       )
       .on(
@@ -131,7 +132,7 @@ export default function FriendDetailScreen() {
         },
         (payload) => {
           console.log('[Realtime] Settlement change detected:', payload);
-          loadFriendData();
+          setTimeout(() => loadFriendData(), 500);
         }
       )
       .subscribe();

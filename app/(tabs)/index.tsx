@@ -6,6 +6,7 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { LoadingState } from '@/components/ui/loading-state';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useThemeColors } from '@/hooks/use-theme-colors';
+import { supabase } from '@/lib/supabase';
 import { calculateFriendBalance, getFriendRecentExpenses, initDatabase, userService } from '@/services/api';
 import { friendshipService } from '@/services/friendship-service';
 import { invitationService } from '@/services/invitation-service';
@@ -13,7 +14,7 @@ import type { User } from '@/types/database';
 import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, FlatList, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 interface UserWithBalance extends User {
@@ -40,6 +41,81 @@ export default function FriendsScreen() {
       loadFriends();
     }, [])
   );
+
+  // Real-time subscriptions
+  useEffect(() => {
+    if (!currentUserId) return;
+
+    console.log('[Realtime] Subscribing to friend list updates');
+
+    const subscription = supabase
+      .channel(`friends-list-${currentUserId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'friendships',
+          filter: `user_id_1=eq.${currentUserId}`,
+        },
+        () => setTimeout(() => loadFriends(), 500)
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'friendships',
+          filter: `user_id_2=eq.${currentUserId}`,
+        },
+        () => setTimeout(() => loadFriends(), 500)
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'expenses',
+        },
+        (payload) => {
+          console.log('[Realtime] Expenses change:', payload);
+          // Alert.alert('Debug', 'Expenses update received');
+          setTimeout(() => loadFriends(), 2000);
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'expense_splits',
+        },
+        (payload) => {
+          console.log('[Realtime] Splits change:', payload);
+          // Alert.alert('Debug', 'Splits update received');
+          setTimeout(() => loadFriends(), 2000);
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'settlements',
+        },
+        (payload) => {
+          console.log('[Realtime] Settlement change:', payload);
+          // Alert.alert('Debug', 'Settlement update received');
+          setTimeout(() => loadFriends(), 2000);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      console.log('[Realtime] Unsubscribing from friend list updates');
+      supabase.removeChannel(subscription);
+    };
+  }, [currentUserId]);
 
   const loadFriends = async () => {
     if (!currentUserId) return;
