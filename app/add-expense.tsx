@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/auth-context-otp';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { activityService } from '@/services/activity-service';
 import { expenseService, groupService, initDatabase, userService } from '@/services/api';
+import { CACHE_KEYS, cacheService } from '@/services/cache-service';
 import type { Group, User } from '@/types/database';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -170,6 +171,12 @@ export default function AddExpenseScreen() {
           groupId: selectedGroupId,
           groupName: group?.name,
         });
+
+        // Invalidate group cache and friends list (balances may change)
+        await cacheService.invalidate(CACHE_KEYS.GROUPS_LIST);
+        await cacheService.invalidate(CACHE_KEYS.GROUP_DETAIL(selectedGroupId));
+        await cacheService.invalidate(CACHE_KEYS.GROUP_EXPENSES(selectedGroupId));
+        await cacheService.invalidate(CACHE_KEYS.FRIENDS_LIST);
       } else {
         const allParticipants = [currentUserId, ...selectedFriendIds];
         const splits = calculateSplits(allParticipants, amountNum);
@@ -198,6 +205,13 @@ export default function AddExpenseScreen() {
           description: description.trim(),
           amount: amountNum,
         });
+
+        // Invalidate caches for all involved friends
+        await cacheService.invalidate(CACHE_KEYS.FRIENDS_LIST);
+        for (const friendId of selectedFriendIds) {
+          await cacheService.invalidate(CACHE_KEYS.FRIEND_DETAIL(friendId));
+          await cacheService.invalidate(CACHE_KEYS.FRIEND_EXPENSES(friendId));
+        }
       }
 
       router.back();

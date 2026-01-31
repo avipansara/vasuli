@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/auth-context-otp';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { supabase } from '@/lib/supabase';
 import { calculateBalances, groupService, initDatabase, userService } from '@/services/api';
+import { CACHE_KEYS, cacheService } from '@/services/cache-service';
 import type { GroupWithMembers } from '@/types/database';
 import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -82,15 +83,26 @@ export default function GroupsScreen() {
     };
   }, [currentUserId]);
 
-  const loadGroups = async () => {
+  const loadGroups = async (skipCache = false) => {
     if (!currentUserId) return;
     try {
+      // 1. Load from cache first (instant)
+      if (!skipCache) {
+        const cached = await cacheService.get<GroupWithMembers[]>(CACHE_KEYS.GROUPS_LIST);
+        if (cached && cached.length > 0) {
+          setGroups(cached);
+          hasLoadedOnce.current = true;
+        }
+      }
+
       // Only show loader if we don't have data yet
       if (!hasLoadedOnce.current) {
         setLoading(true);
         hasLoadedOnce.current = true;
       }
       await initDatabase();
+
+      // 2. Fetch fresh data from API
       const allGroups = await groupService.getUserGroups(currentUserId);
 
       const groupsWithData = await Promise.all(
@@ -104,7 +116,10 @@ export default function GroupsScreen() {
           };
         })
       );
+
+      // 3. Update state and cache
       setGroups(groupsWithData);
+      await cacheService.set(CACHE_KEYS.GROUPS_LIST, groupsWithData);
     } catch (error) {
       console.error('Error loading groups:', error);
     } finally {

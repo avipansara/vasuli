@@ -7,6 +7,7 @@ import { useThemeColors } from '@/hooks/use-theme-colors';
 import { supabase } from '@/lib/supabase';
 import { activityService } from '@/services/activity-service';
 import { calculateFriendBalance, expenseService, initDatabase, settlementService, userService } from '@/services/api';
+import { CACHE_KEYS, cacheService } from '@/services/cache-service';
 import { friendshipService } from '@/services/friendship-service';
 import { notificationService } from '@/services/notification-service';
 import type { Expense, ExpenseSplit, User } from '@/types/database';
@@ -149,14 +150,35 @@ export default function FriendDetailScreen() {
     }, [id])
   );
 
-  const loadFriendData = async () => {
+  const loadFriendData = async (skipCache = false) => {
     if (!id) return;
 
     try {
-      setLoading(true);
+      // 1. Load from cache first (instant)
+      if (!skipCache) {
+        const cachedFriend = await cacheService.get<UserWithBalance>(CACHE_KEYS.FRIEND_DETAIL(id));
+        const cachedExpenses = await cacheService.get<ExpenseWithSplit[]>(CACHE_KEYS.FRIEND_EXPENSES(id));
+
+        if (cachedFriend) {
+          setFriend(cachedFriend);
+          setLoading(false);
+        }
+        if (cachedExpenses) {
+          setExpenses(cachedExpenses);
+        }
+        // If we have cached data, don't show loading
+        if (cachedFriend && cachedExpenses) {
+          // Continue to fetch fresh data in background
+        } else {
+          setLoading(true);
+        }
+      } else {
+        setLoading(true);
+      }
+
       await initDatabase();
 
-      // Get friend info
+      // 2. Fetch fresh data from API
       const friendData = await userService.getById(id);
 
       if (!friendData) {
@@ -165,11 +187,11 @@ export default function FriendDetailScreen() {
         return;
       }
 
-      // Calculate balance (includes all shared expenses - friend-only and group)
       const balance = await calculateFriendBalance(currentUserId, id);
-      setFriend({ ...friendData, balance });
+      const friendWithBalance = { ...friendData, balance };
+      setFriend(friendWithBalance);
 
-      // Get expenses involving the current user and filter for ones involving both users
+      // Get expenses involving both users
       const allExpenses = await expenseService.getUserExpenses(currentUserId);
       const allSplits = await Promise.all(
         allExpenses.map(async (expense: Expense) => {
@@ -178,7 +200,6 @@ export default function FriendDetailScreen() {
         })
       );
 
-      // Filter expenses where both current user and friend are involved
       const sharedExpenses: ExpenseWithSplit[] = [];
       for (const { expense, splits } of allSplits) {
         const currentUserSplit = splits.find((s: ExpenseSplit) => s.userId === currentUserId);
@@ -194,9 +215,12 @@ export default function FriendDetailScreen() {
         }
       }
 
-      // Sort by date descending
       sharedExpenses.sort((a, b) => b.date - a.date);
       setExpenses(sharedExpenses);
+
+      // 3. Update cache
+      await cacheService.set(CACHE_KEYS.FRIEND_DETAIL(id), friendWithBalance);
+      await cacheService.set(CACHE_KEYS.FRIEND_EXPENSES(id), sharedExpenses);
     } catch (error) {
       console.error('Error loading friend data:', error);
       Alert.alert('Error', 'Failed to load friend data');
@@ -249,7 +273,13 @@ export default function FriendDetailScreen() {
       }
 
       setSettleModalVisible(false);
-      loadFriendData();
+
+      // Invalidate caches
+      await cacheService.invalidate(CACHE_KEYS.FRIENDS_LIST);
+      await cacheService.invalidate(CACHE_KEYS.FRIEND_DETAIL(friendId));
+      await cacheService.invalidate(CACHE_KEYS.FRIEND_EXPENSES(friendId));
+
+      loadFriendData(true); // Skip cache, fetch fresh
     } catch (error) {
       console.error('Error settling up:', error);
       Alert.alert('Error', 'Failed to settle up');
@@ -281,7 +311,15 @@ export default function FriendDetailScreen() {
             try {
               setDeletingExpenseId(expenseId);
               await expenseService.delete(expenseId, currentUserId, user?.name || 'Unknown');
-              loadFriendData();
+
+              // Invalidate caches
+              await cacheService.invalidate(CACHE_KEYS.FRIENDS_LIST);
+              if (id) {
+                await cacheService.invalidate(CACHE_KEYS.FRIEND_DETAIL(id));
+                await cacheService.invalidate(CACHE_KEYS.FRIEND_EXPENSES(id));
+              }
+
+              loadFriendData(true);
             } catch (error) {
               console.error('Error deleting expense:', error);
               Alert.alert('Error', 'Failed to delete expense');

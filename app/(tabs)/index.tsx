@@ -8,6 +8,7 @@ import { useAuth } from '@/contexts/auth-context-otp';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { supabase } from '@/lib/supabase';
 import { calculateFriendBalance, getFriendRecentExpenses, initDatabase, userService } from '@/services/api';
+import { CACHE_KEYS, cacheService } from '@/services/cache-service';
 import { friendshipService } from '@/services/friendship-service';
 import { invitationService } from '@/services/invitation-service';
 import type { User } from '@/types/database';
@@ -117,20 +118,30 @@ export default function FriendsScreen() {
     };
   }, [currentUserId]);
 
-  const loadFriends = async () => {
+  const loadFriends = async (skipCache = false) => {
     if (!currentUserId) return;
     try {
-      // Only show loader on first load
+      // 1. Load from cache first (instant)
+      if (!skipCache) {
+        const cached = await cacheService.get<UserWithBalance[]>(CACHE_KEYS.FRIENDS_LIST);
+        if (cached && cached.length > 0) {
+          setFriends(cached);
+          // Don't show loading if we have cached data
+          hasLoadedOnce.current = true;
+        }
+      }
+
+      // Only show loader on first load with no cache
       if (!hasLoadedOnce.current) {
         setLoading(true);
         hasLoadedOnce.current = true;
       }
+
       await initDatabase();
 
-      // Get only accepted friends, not all users
+      // 2. Fetch fresh data from API
       const friendIds = await friendshipService.getFriends(currentUserId);
 
-      // Fetch user details for each friend
       const friendsData = await Promise.all(
         friendIds.map(async (friendId) => {
           const user = await userService.getById(friendId);
@@ -138,7 +149,6 @@ export default function FriendsScreen() {
         })
       );
 
-      // Filter out null values and calculate balances
       const friendsWithBalances = await Promise.all(
         friendsData
           .filter((user): user is User => user !== null)
@@ -151,7 +161,9 @@ export default function FriendsScreen() {
           })
       );
 
+      // 3. Update state and cache
       setFriends(friendsWithBalances);
+      await cacheService.set(CACHE_KEYS.FRIENDS_LIST, friendsWithBalances);
     } catch (error) {
       console.error('Error loading friends:', error);
     } finally {
