@@ -7,6 +7,7 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { LoadingState } from '@/components/ui/loading-state';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useThemeColors } from '@/hooks/use-theme-colors';
+import { supabase } from '@/lib/supabase';
 import { activityService } from '@/services/activity-service';
 import {
   calculateBalances,
@@ -114,6 +115,59 @@ export default function GroupDetailScreen() {
       setLoading(false);
     }
   }, [id, currentUserId]);
+
+  // Real-time subscriptions
+  useEffect(() => {
+    if (!id) return;
+
+    console.log('[Realtime] Subscribing to group updates:', id);
+
+    const subscription = supabase
+      .channel(`group-${id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'group_members',
+        },
+        (payload) => {
+          console.log('[Realtime] Group member change detected:', payload);
+          loadGroupData();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'expenses',
+        },
+        (payload) => {
+          console.log('[Realtime] Expense change detected:', payload);
+          loadGroupData();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'groups',
+          filter: `id=eq.${id}`,
+        },
+        (payload) => {
+          console.log('[Realtime] Group details change detected:', payload);
+          loadGroupData();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      console.log('[Realtime] Unsubscribing from group updates:', id);
+      supabase.removeChannel(subscription);
+    };
+  }, [id, loadGroupData]);
 
   useFocusEffect(
     useCallback(() => {

@@ -4,6 +4,7 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { LoadingState } from '@/components/ui/loading-state';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useThemeColors } from '@/hooks/use-theme-colors';
+import { supabase } from '@/lib/supabase';
 import { activityService } from '@/services/activity-service';
 import { calculateFriendBalance, expenseService, initDatabase, settlementService, userService } from '@/services/api';
 import { friendshipService } from '@/services/friendship-service';
@@ -88,6 +89,58 @@ export default function FriendDetailScreen() {
       }
     }
   }, [loading, friend]);
+
+  // Real-time subscriptions for 1-on-1 expenses
+  useEffect(() => {
+    if (!currentUserId || !id) return;
+
+    console.log('[Realtime] Subscribing to friend updates:', id);
+
+    const subscription = supabase
+      .channel(`friend-${id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'expenses',
+        },
+        (payload) => {
+          console.log('[Realtime] Friend expense change detected:', payload);
+          loadFriendData();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'expense_splits',
+        },
+        (payload) => {
+          console.log('[Realtime] Split change detected:', payload);
+          loadFriendData();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'settlements',
+        },
+        (payload) => {
+          console.log('[Realtime] Settlement change detected:', payload);
+          loadFriendData();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      console.log('[Realtime] Unsubscribing from friend updates');
+      supabase.removeChannel(subscription);
+    };
+  }, [currentUserId, id]);
 
   useFocusEffect(
     useCallback(() => {

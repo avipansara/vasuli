@@ -4,6 +4,7 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { LoadingState } from '@/components/ui/loading-state';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useThemeColors } from '@/hooks/use-theme-colors';
+import { supabase } from '@/lib/supabase';
 import { calculateBalances, groupService, initDatabase, userService } from '@/services/api';
 import type { GroupWithMembers } from '@/types/database';
 import { useFocusEffect } from '@react-navigation/native';
@@ -49,6 +50,37 @@ export default function GroupsScreen() {
       ]).start();
     }
   }, [loading]);
+
+  // Real-time subscriptions for group list
+  useEffect(() => {
+    if (!currentUserId) return;
+
+    console.log('[Realtime] Subscribing to membership updates for user:', currentUserId);
+
+    const subscription = supabase
+      .channel(`user-groups-${currentUserId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'group_members',
+          // Removed filter to rely on RLS and debug connectivity
+        },
+        (payload) => {
+          console.log('[Realtime] Membership change detected:', payload);
+          // Temporary Alert to verify event receipt
+          // Alert.alert('Debug', 'Realtime update received!'); 
+          loadGroups();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      console.log('[Realtime] Unsubscribing from membership updates');
+      supabase.removeChannel(subscription);
+    };
+  }, [currentUserId]);
 
   const loadGroups = async () => {
     if (!currentUserId) return;
