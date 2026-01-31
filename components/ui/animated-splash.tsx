@@ -7,60 +7,185 @@ const { width, height } = Dimensions.get('window');
 
 export function AnimatedSplash() {
   const { isDark } = useThemeColors();
-  
-  // Animation values
-  const logoScale = useRef(new Animated.Value(0)).current;
-  const logoRotate = useRef(new Animated.Value(0)).current;
-  const logoOpacity = useRef(new Animated.Value(0)).current;
-  const circleScale = useRef(new Animated.Value(0)).current;
+
+  // Avatar animations
+  const avatar1X = useRef(new Animated.Value(-width / 2)).current;
+  const avatar2X = useRef(new Animated.Value(width / 2)).current;
+  const avatar1Opacity = useRef(new Animated.Value(0)).current;
+  const avatar2Opacity = useRef(new Animated.Value(0)).current;
+  const avatar1Pulse = useRef(new Animated.Value(1)).current;
+  const avatar2Pulse = useRef(new Animated.Value(1)).current;
+
+  // Central money icon
+  const moneyScale = useRef(new Animated.Value(0)).current;
+  const moneyOpacity = useRef(new Animated.Value(0)).current;
+  const moneyRotate = useRef(new Animated.Value(0)).current;
+
+  // Splitting coins
+  const coin1X = useRef(new Animated.Value(0)).current;
+  const coin1Y = useRef(new Animated.Value(0)).current;
+  const coin1Opacity = useRef(new Animated.Value(0)).current;
+  const coin1Scale = useRef(new Animated.Value(1)).current;
+
+  const coin2X = useRef(new Animated.Value(0)).current;
+  const coin2Y = useRef(new Animated.Value(0)).current;
+  const coin2Opacity = useRef(new Animated.Value(0)).current;
+  const coin2Scale = useRef(new Animated.Value(1)).current;
+
+  // Text animations
   const textOpacity = useRef(new Animated.Value(0)).current;
   const textSlide = useRef(new Animated.Value(30)).current;
-  const glowPulse = useRef(new Animated.Value(0)).current;
-  const shimmer = useRef(new Animated.Value(0)).current;
-  
-  // Floating particles (more particles for richer effect)
+
+  // Background particles
   const particle1Y = useRef(new Animated.Value(0)).current;
-  const particle2Y = useRef(new Animated.Value(0)).current;
-  const particle3Y = useRef(new Animated.Value(0)).current;
-  const particle4Y = useRef(new Animated.Value(0)).current;
-  const particle5Y = useRef(new Animated.Value(0)).current;
   const particle1Opacity = useRef(new Animated.Value(0)).current;
+  const particle2Y = useRef(new Animated.Value(0)).current;
   const particle2Opacity = useRef(new Animated.Value(0)).current;
+  const particle3Y = useRef(new Animated.Value(0)).current;
   const particle3Opacity = useRef(new Animated.Value(0)).current;
-  const particle4Opacity = useRef(new Animated.Value(0)).current;
-  const particle5Opacity = useRef(new Animated.Value(0)).current;
+
+  // Glow effect
+  const glowPulse = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    // Sequence of animations
+    // Main animation sequence
     Animated.sequence([
-      // 1. Circle expands
-      Animated.timing(circleScale, {
-        toValue: 1,
-        duration: 600,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
-      // 2. Logo appears with bounce
+      // Phase 1: Avatars slide in from sides
       Animated.parallel([
-        Animated.spring(logoScale, {
-          toValue: 1,
-          friction: 6,
-          tension: 40,
+        Animated.timing(avatar1X, {
+          toValue: -60,
+          duration: 600,
+          easing: Easing.out(Easing.back(1.2)),
           useNativeDriver: true,
         }),
-        Animated.timing(logoOpacity, {
+        Animated.timing(avatar2X, {
+          toValue: 60,
+          duration: 600,
+          easing: Easing.out(Easing.back(1.2)),
+          useNativeDriver: true,
+        }),
+        Animated.timing(avatar1Opacity, {
           toValue: 1,
           duration: 400,
           useNativeDriver: true,
         }),
-        Animated.timing(logoRotate, {
+        Animated.timing(avatar2Opacity, {
           toValue: 1,
-          duration: 800,
-          easing: Easing.out(Easing.back(1.5)),
+          duration: 400,
           useNativeDriver: true,
         }),
       ]),
-      // 3. Text slides up
+
+      // Phase 2: Central money icon appears with spin
+      Animated.parallel([
+        Animated.spring(moneyScale, {
+          toValue: 1,
+          friction: 6,
+          tension: 50,
+          useNativeDriver: true,
+        }),
+        Animated.timing(moneyOpacity, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.timing(moneyRotate, {
+          toValue: 1,
+          duration: 600,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+      ]),
+
+      // Phase 3: Coins split and fly to avatars
+      Animated.parallel([
+        // Coin 1 flies to left avatar
+        Animated.timing(coin1Opacity, {
+          toValue: 1,
+          duration: 100,
+          useNativeDriver: true,
+        }),
+        Animated.timing(coin1X, {
+          toValue: -80,
+          duration: 500,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.timing(coin1Y, {
+          toValue: -20,
+          duration: 500,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.sequence([
+          Animated.delay(400),
+          Animated.timing(coin1Opacity, {
+            toValue: 0,
+            duration: 100,
+            useNativeDriver: true,
+          }),
+        ]),
+
+        // Coin 2 flies to right avatar
+        Animated.timing(coin2Opacity, {
+          toValue: 1,
+          duration: 100,
+          useNativeDriver: true,
+        }),
+        Animated.timing(coin2X, {
+          toValue: 80,
+          duration: 500,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.timing(coin2Y, {
+          toValue: -20,
+          duration: 500,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.sequence([
+          Animated.delay(400),
+          Animated.timing(coin2Opacity, {
+            toValue: 0,
+            duration: 100,
+            useNativeDriver: true,
+          }),
+        ]),
+
+        // Avatars pulse when receiving coins
+        Animated.sequence([
+          Animated.delay(400),
+          Animated.parallel([
+            Animated.sequence([
+              Animated.timing(avatar1Pulse, {
+                toValue: 1.15,
+                duration: 150,
+                useNativeDriver: true,
+              }),
+              Animated.timing(avatar1Pulse, {
+                toValue: 1,
+                duration: 150,
+                useNativeDriver: true,
+              }),
+            ]),
+            Animated.sequence([
+              Animated.timing(avatar2Pulse, {
+                toValue: 1.15,
+                duration: 150,
+                useNativeDriver: true,
+              }),
+              Animated.timing(avatar2Pulse, {
+                toValue: 1,
+                duration: 150,
+                useNativeDriver: true,
+              }),
+            ]),
+          ]),
+        ]),
+      ]),
+
+      // Phase 4: Text appears
       Animated.parallel([
         Animated.timing(textOpacity, {
           toValue: 1,
@@ -76,7 +201,7 @@ export function AnimatedSplash() {
       ]),
     ]).start();
 
-    // Pulsing glow effect (loop)
+    // Looping glow animation
     Animated.loop(
       Animated.sequence([
         Animated.timing(glowPulse, {
@@ -94,17 +219,7 @@ export function AnimatedSplash() {
       ])
     ).start();
 
-    // Shimmer effect (loop)
-    Animated.loop(
-      Animated.timing(shimmer, {
-        toValue: 1,
-        duration: 2500,
-        easing: Easing.linear,
-        useNativeDriver: true,
-      })
-    ).start();
-
-    // Floating particles animation (loop)
+    // Floating particles
     Animated.loop(
       Animated.parallel([
         Animated.sequence([
@@ -117,7 +232,7 @@ export function AnimatedSplash() {
             }),
             Animated.sequence([
               Animated.timing(particle1Opacity, {
-                toValue: 0.6,
+                toValue: 0.5,
                 duration: 500,
                 useNativeDriver: true,
               }),
@@ -145,7 +260,7 @@ export function AnimatedSplash() {
             }),
             Animated.sequence([
               Animated.timing(particle2Opacity, {
-                toValue: 0.5,
+                toValue: 0.4,
                 duration: 500,
                 useNativeDriver: true,
               }),
@@ -173,7 +288,7 @@ export function AnimatedSplash() {
             }),
             Animated.sequence([
               Animated.timing(particle3Opacity, {
-                toValue: 0.4,
+                toValue: 0.3,
                 duration: 500,
                 useNativeDriver: true,
               }),
@@ -190,85 +305,23 @@ export function AnimatedSplash() {
             useNativeDriver: true,
           }),
         ]),
-        // Additional particles
-        Animated.sequence([
-          Animated.delay(1500),
-          Animated.parallel([
-            Animated.timing(particle4Y, {
-              toValue: -110,
-              duration: 3200,
-              easing: Easing.inOut(Easing.ease),
-              useNativeDriver: true,
-            }),
-            Animated.sequence([
-              Animated.timing(particle4Opacity, {
-                toValue: 0.5,
-                duration: 500,
-                useNativeDriver: true,
-              }),
-              Animated.timing(particle4Opacity, {
-                toValue: 0,
-                duration: 2700,
-                useNativeDriver: true,
-              }),
-            ]),
-          ]),
-          Animated.timing(particle4Y, {
-            toValue: 0,
-            duration: 0,
-            useNativeDriver: true,
-          }),
-        ]),
-        Animated.sequence([
-          Animated.delay(700),
-          Animated.parallel([
-            Animated.timing(particle5Y, {
-              toValue: -95,
-              duration: 2900,
-              easing: Easing.inOut(Easing.ease),
-              useNativeDriver: true,
-            }),
-            Animated.sequence([
-              Animated.timing(particle5Opacity, {
-                toValue: 0.45,
-                duration: 500,
-                useNativeDriver: true,
-              }),
-              Animated.timing(particle5Opacity, {
-                toValue: 0,
-                duration: 2400,
-                useNativeDriver: true,
-              }),
-            ]),
-          ]),
-          Animated.timing(particle5Y, {
-            toValue: 0,
-            duration: 0,
-            useNativeDriver: true,
-          }),
-        ]),
       ])
     ).start();
   }, []);
 
-  const rotation = logoRotate.interpolate({
+  const moneyRotation = moneyRotate.interpolate({
     inputRange: [0, 1],
     outputRange: ['0deg', '360deg'],
   });
 
   const glowScale = glowPulse.interpolate({
     inputRange: [0, 1],
-    outputRange: [1, 1.15],
+    outputRange: [1, 1.2],
   });
 
   const glowOpacity = glowPulse.interpolate({
     inputRange: [0, 1],
-    outputRange: [0.3, 0.6],
-  });
-
-  const shimmerTranslate = shimmer.interpolate({
-    inputRange: [0, 1],
-    outputRange: [-width, width],
+    outputRange: [0.2, 0.5],
   });
 
   return (
@@ -292,7 +345,7 @@ export function AnimatedSplash() {
         ]}>
         <View style={[styles.particleCircle, { backgroundColor: isDark ? '#2DD4BF' : '#22C55E' }]} />
       </Animated.View>
-      
+
       <Animated.View
         style={[
           styles.particle,
@@ -303,9 +356,9 @@ export function AnimatedSplash() {
             transform: [{ translateY: particle2Y }],
           },
         ]}>
-        <View style={[styles.particleCircle, { backgroundColor: isDark ? '#22D3EE' : '#10B981' }]} />
+        <View style={[styles.particleCircle, { backgroundColor: isDark ? '#8B5CF6' : '#10B981' }]} />
       </Animated.View>
-      
+
       <Animated.View
         style={[
           styles.particle,
@@ -316,51 +369,11 @@ export function AnimatedSplash() {
             transform: [{ translateY: particle3Y }],
           },
         ]}>
-        <View style={[styles.particleCircle, { backgroundColor: isDark ? '#2DD4BF' : '#22C55E' }]} />
-      </Animated.View>
-
-      <Animated.View
-        style={[
-          styles.particle,
-          {
-            left: width * 0.15,
-            bottom: height * 0.5,
-            opacity: particle4Opacity,
-            transform: [{ translateY: particle4Y }],
-          },
-        ]}>
-        <View style={[styles.particleLarge, { backgroundColor: isDark ? '#8B5CF6' : '#059669' }]} />
-      </Animated.View>
-
-      <Animated.View
-        style={[
-          styles.particle,
-          {
-            right: width * 0.15,
-            bottom: height * 0.35,
-            opacity: particle5Opacity,
-            transform: [{ translateY: particle5Y }],
-          },
-        ]}>
-        <View style={[styles.particleSmall, { backgroundColor: isDark ? '#22D3EE' : '#10B981' }]} />
+        <View style={[styles.particleCircle, { backgroundColor: isDark ? '#22D3EE' : '#059669' }]} />
       </Animated.View>
 
       {/* Main Content */}
       <View style={styles.content}>
-        {/* Expanding Circle Background */}
-        <Animated.View
-          style={[
-            styles.circle,
-            {
-              transform: [{ scale: circleScale }],
-            },
-          ]}>
-          <LinearGradient
-            colors={isDark ? ['rgba(45, 212, 191, 0.15)', 'rgba(34, 211, 238, 0.05)'] : ['rgba(34, 197, 94, 0.15)', 'rgba(16, 185, 129, 0.05)']}
-            style={styles.circleGradient}
-          />
-        </Animated.View>
-
         {/* Pulsing Glow Effect */}
         <Animated.View
           style={[
@@ -376,50 +389,119 @@ export function AnimatedSplash() {
           />
         </Animated.View>
 
-        {/* Logo Container */}
-        <Animated.View
-          style={[
-            styles.logoContainer,
-            {
-              opacity: logoOpacity,
-              transform: [
-                { scale: logoScale },
-                { rotate: rotation },
-              ],
-            },
-          ]}>
-          {/* Shimmer overlay */}
+        {/* Avatars and Money Container */}
+        <View style={styles.splitContainer}>
+          {/* Left Avatar (Friend 1) */}
           <Animated.View
             style={[
-              styles.shimmerContainer,
+              styles.avatarContainer,
               {
-                transform: [{ translateX: shimmerTranslate }],
+                opacity: avatar1Opacity,
+                transform: [
+                  { translateX: avatar1X },
+                  { scale: avatar1Pulse },
+                ],
               },
             ]}>
             <LinearGradient
-              colors={['transparent', 'rgba(255,255,255,0.3)', 'transparent']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.shimmer}
-            />
+              colors={isDark ? ['#2DD4BF', '#14B8A6'] : ['#22C55E', '#16A34A']}
+              style={styles.avatar}>
+              {/* Person Icon */}
+              <View style={styles.personIcon}>
+                <View style={[styles.personHead, { backgroundColor: isDark ? '#0A0A0F' : '#fff' }]} />
+                <View style={[styles.personBody, { backgroundColor: isDark ? '#0A0A0F' : '#fff' }]} />
+              </View>
+            </LinearGradient>
           </Animated.View>
 
-          <LinearGradient
-            colors={isDark ? ['#2DD4BF', '#22D3EE'] : ['#22C55E', '#10B981']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.logoGradient}>
-            {/* Dollar Sign Icon */}
-            <View style={styles.dollarSign}>
-              <View style={[styles.dollarLine, { backgroundColor: '#fff' }]} />
-              <View style={styles.sShape}>
-                <View style={[styles.sTop, { borderColor: '#fff' }]} />
-                <View style={[styles.sBottom, { borderColor: '#fff' }]} />
+          {/* Central Money Icon */}
+          <Animated.View
+            style={[
+              styles.moneyContainer,
+              {
+                opacity: moneyOpacity,
+                transform: [
+                  { scale: moneyScale },
+                  { rotate: moneyRotation },
+                ],
+              },
+            ]}>
+            <LinearGradient
+              colors={isDark ? ['#F59E0B', '#D97706'] : ['#FBBF24', '#F59E0B']}
+              style={styles.moneyIcon}>
+              <View style={styles.dollarSign}>
+                <View style={[styles.dollarLine, { backgroundColor: isDark ? '#0A0A0F' : '#fff' }]} />
+                <View style={styles.sShape}>
+                  <View style={[styles.sTop, { borderColor: isDark ? '#0A0A0F' : '#fff' }]} />
+                  <View style={[styles.sBottom, { borderColor: isDark ? '#0A0A0F' : '#fff' }]} />
+                </View>
               </View>
-              <View style={[styles.dollarLine, { backgroundColor: '#fff' }]} />
-            </View>
-          </LinearGradient>
-        </Animated.View>
+            </LinearGradient>
+          </Animated.View>
+
+          {/* Right Avatar (Friend 2) */}
+          <Animated.View
+            style={[
+              styles.avatarContainer,
+              {
+                opacity: avatar2Opacity,
+                transform: [
+                  { translateX: avatar2X },
+                  { scale: avatar2Pulse },
+                ],
+              },
+            ]}>
+            <LinearGradient
+              colors={isDark ? ['#8B5CF6', '#7C3AED'] : ['#10B981', '#059669']}
+              style={styles.avatar}>
+              {/* Person Icon */}
+              <View style={styles.personIcon}>
+                <View style={[styles.personHead, { backgroundColor: isDark ? '#0A0A0F' : '#fff' }]} />
+                <View style={[styles.personBody, { backgroundColor: isDark ? '#0A0A0F' : '#fff' }]} />
+              </View>
+            </LinearGradient>
+          </Animated.View>
+
+          {/* Flying Coin 1 (to left) */}
+          <Animated.View
+            style={[
+              styles.flyingCoin,
+              {
+                opacity: coin1Opacity,
+                transform: [
+                  { translateX: coin1X },
+                  { translateY: coin1Y },
+                  { scale: coin1Scale },
+                ],
+              },
+            ]}>
+            <LinearGradient
+              colors={['#FCD34D', '#F59E0B']}
+              style={styles.coin}>
+              <View style={[styles.coinInner, { backgroundColor: isDark ? '#0A0A0F' : '#78350F' }]} />
+            </LinearGradient>
+          </Animated.View>
+
+          {/* Flying Coin 2 (to right) */}
+          <Animated.View
+            style={[
+              styles.flyingCoin,
+              {
+                opacity: coin2Opacity,
+                transform: [
+                  { translateX: coin2X },
+                  { translateY: coin2Y },
+                  { scale: coin2Scale },
+                ],
+              },
+            ]}>
+            <LinearGradient
+              colors={['#FCD34D', '#F59E0B']}
+              style={styles.coin}>
+              <View style={[styles.coinInner, { backgroundColor: isDark ? '#0A0A0F' : '#78350F' }]} />
+            </LinearGradient>
+          </Animated.View>
+        </View>
 
         {/* App Name */}
         <Animated.View
@@ -460,64 +542,103 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  circle: {
-    position: 'absolute',
-    width: width * 0.8,
-    height: width * 0.8,
-    borderRadius: width * 0.4,
-    overflow: 'hidden',
-  },
-  circleGradient: {
-    width: '100%',
-    height: '100%',
-  },
-  logoContainer: {
-    marginBottom: 24,
-  },
-  logoGradient: {
-    width: 120,
+  splitContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 40,
     height: 120,
-    borderRadius: 30,
+  },
+  avatarContainer: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  avatar: {
+    width: 64,
+    height: 64,
+    borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#2DD4BF',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.4,
-    shadowRadius: 24,
-    elevation: 12,
+  },
+  personIcon: {
+    alignItems: 'center',
+  },
+  personHead: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    marginBottom: 2,
+  },
+  personBody: {
+    width: 28,
+    height: 16,
+    borderTopLeftRadius: 14,
+    borderTopRightRadius: 14,
+  },
+  moneyContainer: {
+    marginHorizontal: 20,
+    shadowColor: '#F59E0B',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.5,
+    shadowRadius: 16,
+    elevation: 10,
+  },
+  moneyIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   dollarSign: {
-    width: 60,
-    height: 80,
+    width: 40,
+    height: 50,
     justifyContent: 'center',
     alignItems: 'center',
   },
   dollarLine: {
     width: 3,
-    height: 90,
+    height: 55,
     position: 'absolute',
   },
   sShape: {
-    width: 40,
-    height: 60,
+    width: 28,
+    height: 40,
   },
   sTop: {
-    width: 40,
-    height: 30,
-    borderTopWidth: 5,
-    borderLeftWidth: 5,
-    borderTopLeftRadius: 20,
-    borderColor: '#fff',
-    marginBottom: -5,
+    width: 28,
+    height: 20,
+    borderTopWidth: 4,
+    borderLeftWidth: 4,
+    borderTopLeftRadius: 14,
+    marginBottom: -4,
   },
   sBottom: {
-    width: 40,
-    height: 30,
-    borderBottomWidth: 5,
-    borderRightWidth: 5,
-    borderBottomRightRadius: 20,
-    borderColor: '#fff',
+    width: 28,
+    height: 20,
+    borderBottomWidth: 4,
+    borderRightWidth: 4,
+    borderBottomRightRadius: 14,
     alignSelf: 'flex-end',
+  },
+  flyingCoin: {
+    position: 'absolute',
+  },
+  coin: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  coinInner: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    opacity: 0.3,
   },
   textContainer: {
     alignItems: 'center',
@@ -541,36 +662,59 @@ const styles = StyleSheet.create({
     height: 8,
     borderRadius: 4,
   },
-  particleLarge: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-  },
-  particleSmall: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
   glowContainer: {
     position: 'absolute',
-    width: 180,
-    height: 180,
-    borderRadius: 90,
+    width: 200,
+    height: 200,
+    borderRadius: 100,
   },
   glow: {
     width: '100%',
     height: '100%',
-    borderRadius: 90,
+    borderRadius: 100,
   },
-  shimmerContainer: {
-    position: 'absolute',
-    width: 120,
-    height: 120,
-    borderRadius: 30,
-    overflow: 'hidden',
+  // Full body person styles
+  personFull: {
+    alignItems: 'center',
   },
-  shimmer: {
-    width: 60,
-    height: 120,
+  head: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    marginBottom: 4,
+  },
+  bodyContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  arm: {
+    width: 8,
+    height: 32,
+    borderRadius: 4,
+  },
+  leftArm: {
+    transform: [{ rotate: '20deg' }],
+    marginRight: -2,
+    marginTop: 4,
+  },
+  rightArm: {
+    transform: [{ rotate: '-20deg' }],
+    marginLeft: -2,
+    marginTop: 4,
+  },
+  torso: {
+    width: 24,
+    height: 36,
+    borderRadius: 6,
+  },
+  legsContainer: {
+    flexDirection: 'row',
+    gap: 4,
+    marginTop: -2,
+  },
+  leg: {
+    width: 10,
+    height: 28,
+    borderRadius: 5,
   },
 });
