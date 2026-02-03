@@ -15,7 +15,7 @@ import type { User } from '@/types/database';
 import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, FlatList, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 interface UserWithBalance extends User {
@@ -230,6 +230,16 @@ export default function FriendsScreen() {
   // Calculate net balance (positive = you are owed, negative = you owe)
   const netBalance = friends.reduce((sum, f) => sum + f.balance, 0);
   const balanceLabel = netBalance > 0 ? 'You are owed' : netBalance < 0 ? 'You owe' : 'All settled up';
+
+  // Separate friends with balances and settled friends
+  const { friendsWithBalance, settledFriends } = useMemo(() => {
+    const withBalance = friends.filter(f => f.balance !== 0);
+    const settled = friends.filter(f => f.balance === 0);
+    return { friendsWithBalance: withBalance, settledFriends: settled };
+  }, [friends]);
+
+  // Accordion state for settled friends
+  const [settledExpanded, setSettledExpanded] = useState(false);
   const balanceColor = netBalance > 0 ? colors.success : netBalance < 0 ? colors.error : colors.tint;
 
   return (
@@ -287,11 +297,62 @@ export default function FriendsScreen() {
         </View>
       ) : (
         <FlatList
-          data={friends}
+          data={friendsWithBalance}
           renderItem={({ item }) => <FriendCard friend={item} onPress={handleFriendPress} onDelete={handleDeleteFriend} />}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            settledFriends.length > 0 ? (
+              <View style={styles.allSettledContainer}>
+                <IconSymbol name="checkmark.seal.fill" size={48} color={colors.tint} />
+                <ThemedText type="subtitle" style={[styles.allSettledTitle, { color: colors.text }]}>
+                  All Settled Up!
+                </ThemedText>
+                <ThemedText style={[styles.allSettledText, { color: colors.textSecondary }]}>
+                  You have no pending balances with any friends.
+                </ThemedText>
+              </View>
+            ) : null
+          }
+          ListFooterComponent={
+            settledFriends.length > 0 ? (
+              <View style={[styles.settledSection, { borderTopColor: colors.border, borderTopWidth: friendsWithBalance.length > 0 ? 1 : 0 }]}>
+                <TouchableOpacity
+                  style={[styles.accordionHeader, { backgroundColor: isDark ? 'rgba(20, 35, 38, 0.4)' : 'rgba(0,0,0,0.03)' }]}
+                  onPress={() => setSettledExpanded(!settledExpanded)}
+                  activeOpacity={0.7}>
+                  <View style={styles.accordionTitleRow}>
+                    <IconSymbol
+                      name="checkmark.circle.fill"
+                      size={18}
+                      color={colors.tint}
+                    />
+                    <ThemedText style={[styles.accordionTitle, { color: colors.textSecondary }]}>
+                      Settled Up ({settledFriends.length})
+                    </ThemedText>
+                  </View>
+                  <IconSymbol
+                    name={settledExpanded ? 'chevron.up' : 'chevron.down'}
+                    size={16}
+                    color={colors.textSecondary}
+                  />
+                </TouchableOpacity>
+                {settledExpanded && (
+                  <View style={styles.settledList}>
+                    {settledFriends.map((friend) => (
+                      <FriendCard
+                        key={friend.id}
+                        friend={friend}
+                        onPress={handleFriendPress}
+                        onDelete={handleDeleteFriend}
+                      />
+                    ))}
+                  </View>
+                )}
+              </View>
+            ) : null
+          }
         />
       )}
 
@@ -620,5 +681,43 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(45, 212, 191, 0.3)',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  settledSection: {
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+  },
+  accordionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 14,
+    borderRadius: 12,
+    marginBottom: 12,
+  },
+  accordionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  accordionTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  settledList: {
+    gap: 0,
+  },
+  allSettledContainer: {
+    alignItems: 'center',
+    paddingVertical: 32,
+    paddingHorizontal: 24,
+  },
+  allSettledTitle: {
+    marginTop: 12,
+    marginBottom: 6,
+  },
+  allSettledText: {
+    fontSize: 14,
+    textAlign: 'center',
   },
 });
