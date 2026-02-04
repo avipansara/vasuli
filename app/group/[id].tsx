@@ -16,6 +16,7 @@ import {
   userService
 } from '@/services/api';
 import { friendshipService } from '@/services/friendship-service';
+import { createExpenseNotification, notificationService } from '@/services/notification-service';
 import type { Expense, Group, GroupMember, User } from '@/types/database';
 import { useFocusEffect } from '@react-navigation/native';
 import { BlurView } from 'expo-blur';
@@ -221,6 +222,26 @@ export default function GroupDetailScreen() {
           groupId: id,
           groupName: group.name,
         });
+
+        // Send push notifications to other members
+        const otherMembers = members.filter(m => m.userId !== currentUserId);
+        const usersToNotify = await Promise.all(
+          otherMembers.map(m => userService.getById(m.userId))
+        );
+
+        const pushTokens = usersToNotify
+          .filter(u => u && u.pushToken)
+          .map(u => u!.pushToken!);
+
+        if (pushTokens.length > 0) {
+          const notification = createExpenseNotification(
+            description.trim(),
+            amountNum,
+            user.name,
+            group.name
+          );
+          await notificationService.sendNotificationToUsers(pushTokens, notification);
+        }
       }
 
       setDescription('');

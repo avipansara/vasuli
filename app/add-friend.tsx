@@ -34,6 +34,43 @@ export default function AddFriendScreen() {
   const [phone, setPhone] = useState('');
   const [inviteMethod, setInviteMethod] = useState<InviteMethod>('email');
   const [loading, setLoading] = useState(false);
+  const [pendingInvites, setPendingInvites] = useState<any[]>([]);
+
+  useEffect(() => {
+    loadPendingInvites();
+  }, []);
+
+  async function loadPendingInvites() {
+    try {
+      const invites = await invitationService.getByInviter(currentUserId);
+      setPendingInvites(invites.filter(inv => inv.status === 'pending'));
+    } catch (error) {
+      console.error('Error loading pending invites:', error);
+    }
+  }
+
+  async function handleDeleteInvite(inviteId: string) {
+    Alert.alert(
+      'Cancel Invite',
+      'Are you sure you want to cancel this invitation?',
+      [
+        { text: 'No', style: 'cancel' },
+        {
+          text: 'Yes',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await invitationService.delete(inviteId);
+              loadPendingInvites();
+            } catch (error) {
+              console.error('Error deleting invite:', error);
+              Alert.alert('Error', 'Failed to cancel invite');
+            }
+          }
+        }
+      ]
+    );
+  }
 
   // Animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -107,7 +144,20 @@ export default function AddFriendScreen() {
       Alert.alert(
         'Invite Sent!',
         `An invitation has been sent to ${friendName}. They'll appear in your friends list once they accept.`,
-        [{ text: 'OK', onPress: () => router.back() }]
+        [{
+          text: 'OK', onPress: () => {
+            // Stay on screen to see the new invite in list?
+            // Or go back? User flow typically implies "I'm done".
+            // But if they want to add another... let's keep them here.
+            // Wait, earlier code had router.back().
+            // Let's reload list and then decide.
+            loadPendingInvites();
+            setEmail('');
+            setPhone('');
+            setName('');
+            router.back();
+          }
+        }]
       );
     } catch (error: any) {
       console.error('Error adding friend:', error);
@@ -351,6 +401,39 @@ export default function AddFriendScreen() {
               </ThemedText>
             </View>
           </BlurView>
+
+          {/* Pending Invites Section */}
+          {pendingInvites.length > 0 && (
+            <View style={styles.pendingSection}>
+              <ThemedText style={[styles.sectionTitle, { color: colors.text }]}>
+                Pending Invites
+              </ThemedText>
+              {pendingInvites.map((invite) => (
+                <View key={invite.id} style={[styles.pendingItem, {
+                  backgroundColor: isDark ? 'rgba(30, 41, 59, 0.6)' : 'white',
+                  borderColor: isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(0,0,0,0.05)'
+                }]}>
+                  <View style={styles.pendingInfo}>
+                    <ThemedText style={[styles.pendingName, { color: colors.text }]}>
+                      {invite.inviteeName || invite.inviteeEmail}
+                    </ThemedText>
+                    <ThemedText style={[styles.pendingEmail, { color: colors.textSecondary }]}>
+                      {invite.inviteeEmail}
+                    </ThemedText>
+                  </View>
+                  <TouchableOpacity
+                    onPress={() => handleDeleteInvite(invite.id)}
+                    style={[styles.revokeButton, { backgroundColor: isDark ? 'rgba(239, 68, 68, 0.2)' : '#fee2e2' }]}
+                  >
+                    <ThemedText style={[styles.revokeText, { color: isDark ? '#ef4444' : '#dc2626' }]}>
+                      Revoke
+                    </ThemedText>
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
+          )}
+
         </Animated.View>
       </KeyboardAwareScroll>
     </View>
@@ -548,5 +631,44 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 17,
     fontWeight: '700',
+  },
+  pendingSection: {
+    marginTop: 32,
+    marginBottom: 20,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 16,
+  },
+  pendingItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    borderRadius: 14,
+    borderWidth: 1,
+    marginBottom: 12,
+  },
+  pendingInfo: {
+    flex: 1,
+    marginRight: 12,
+  },
+  pendingName: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  pendingEmail: {
+    fontSize: 14,
+  },
+  revokeButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  revokeText: {
+    fontSize: 13,
+    fontWeight: '600',
   },
 });
