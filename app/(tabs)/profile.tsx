@@ -14,7 +14,7 @@ import { Alert, Animated, Modal, Platform, Pressable, ScrollView, StyleSheet, Sw
 export default function ProfileScreen() {
   const { gradients, isDark, colors } = useThemeColors();
   const { toggleTheme } = useTheme();
-  const { user: currentUser, signOut } = useAuth();
+  const { user: currentUser, signOut, refreshUser } = useAuth();
   const [notificationsEnabled, setNotificationsEnabled] = useState(!!currentUser?.pushToken);
 
   useEffect(() => {
@@ -30,6 +30,8 @@ export default function ProfileScreen() {
         const token = await notificationService.registerForPushNotificationsAsync();
         if (token && currentUser?.id) {
           await userService.updatePushToken(currentUser.id, token);
+          // Refresh user to update session in AsyncStorage
+          await refreshUser();
         } else {
           // If permission denied or no token, revert switch
           setNotificationsEnabled(false);
@@ -38,6 +40,8 @@ export default function ProfileScreen() {
         // Disable: Clear token from DB
         if (currentUser?.id) {
           await userService.updatePushToken(currentUser.id, null);
+          // Refresh user to update session in AsyncStorage
+          await refreshUser();
         }
       }
     } catch (error) {

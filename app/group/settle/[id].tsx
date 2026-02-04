@@ -62,7 +62,7 @@ export default function GroupSettleScreen() {
 
       // Load members
       const groupMembers = await groupService.getMembers(id);
-      
+
       // Load user details for each member
       const membersWithUsers = await Promise.all(
         groupMembers.map(async (member) => {
@@ -73,7 +73,7 @@ export default function GroupSettleScreen() {
 
       // Calculate balances
       const balances = await calculateBalances(id);
-      
+
       // Combine members with balances, excluding current user
       const membersWithBalances = membersWithUsers
         .filter(m => m.userId !== currentUserId)
@@ -112,10 +112,17 @@ export default function GroupSettleScreen() {
     try {
       setSettling(true);
 
+      // Determine payer/receiver based on balance direction
+      // If balance < 0 (They owe), then 'from' = Them, 'to' = Me
+      // If balance > 0 (I owe), then 'from' = Me, 'to' = Them
+      const isReceiving = selectedMember.balance < 0;
+      const fromUserId = isReceiving ? selectedMember.userId : currentUserId;
+      const toUserId = isReceiving ? currentUserId : selectedMember.userId;
+
       const settlement = await settlementService.create({
         groupId: id,
-        fromUserId: currentUserId,
-        toUserId: selectedMember.userId,
+        fromUserId,
+        toUserId,
         amount: amountNum,
         currency: 'USD',
         date: Date.now(),
@@ -125,9 +132,9 @@ export default function GroupSettleScreen() {
       if (group && user && selectedMember.user) {
         await activityService.logSettlementCreated({
           settlementId: settlement.id,
-          fromUserId: currentUserId,
-          fromUserName: user.name,
-          toUserName: selectedMember.user.name,
+          fromUserId,
+          fromUserName: isReceiving ? selectedMember.user.name : user.name,
+          toUserName: isReceiving ? user.name : selectedMember.user.name,
           amount: amountNum,
           groupId: id,
           groupName: group.name,
@@ -147,12 +154,21 @@ export default function GroupSettleScreen() {
   function renderMember({ item }: { item: MemberWithBalance }) {
     const isSelected = selectedMember?.userId === item.userId;
     const balance = item.balance;
-    const owesYou = balance > 0;
-    const youOwe = balance < 0;
+    const owesYou = balance < 0;
+    const youOwe = balance > 0;
+
+    const handleSelect = () => {
+      setSelectedMember(item);
+      if (Math.abs(balance) > 0) {
+        setAmount(Math.abs(balance).toFixed(2));
+      } else {
+        setAmount('');
+      }
+    };
 
     return (
       <TouchableOpacity
-        onPress={() => setSelectedMember(item)}
+        onPress={handleSelect}
         style={[
           styles.memberCard,
           isSelected && {
