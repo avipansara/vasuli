@@ -2,7 +2,9 @@
 
 ## Project Overview
 
-This is an Expo/React Native mobile application. Prioritize mobile-first patterns, performance, and cross-platform compatibility.
+This is an Expo/React Native mobile application (**Expo SDK 54**, React Native 0.81, React 19.1). Prioritize mobile-first patterns, performance, and cross-platform compatibility.
+
+After changing the `expo` version, run `npx expo install --fix` and `npx expo-doctor`. Manual `eas update` requires `--environment` (e.g. `production`, `preview`); EAS Workflow update jobs in this repo set `environment` explicitly.
 
 ## Documentation Resources
 
@@ -161,7 +163,6 @@ If there are errors in **Expo Go** or the project is not running, create a **dev
 When working on this project:
 
 1. **Always start by consulting the appropriate documentation**:
-
    - For general Expo questions: https://docs.expo.dev/llms-full.txt
    - For EAS/deployment questions: https://docs.expo.dev/llms-eas.txt
    - For SDK/API questions: https://docs.expo.dev/llms-sdk.txt
