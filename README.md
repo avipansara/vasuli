@@ -10,12 +10,46 @@ To start the app, in your terminal run:
 npm run start
 ```
 
-In the output, you'll find options to open the app in:
+### Supabase environment variables
+
+The app needs your Supabase **project URL** and **anon (public) API key** at startup (see [`lib/supabase.ts`](./lib/supabase.ts)).
+
+1. Open the [Supabase Dashboard](https://supabase.com/dashboard), select your project.
+2. Go to **Project Settings** (gear) → **API**.
+3. Under **Project URL**, copy the URL → set `EXPO_PUBLIC_SUPABASE_URL` in a `.env` file in the repo root.
+4. Under **Project API keys**, copy the **`anon` `public`** key → set `EXPO_PUBLIC_SUPABASE_KEY`.
+
+Do **not** use the `service_role` key in the app; it bypasses RLS and must stay server-side only.
+
+**Invitations RLS:** Tight policies require a Supabase Auth JWT where `auth.uid()` matches `public.users.id`. The default OTP-only anon client cannot satisfy that — see [`supabase/docs/RLS_INVITATIONS.md`](./supabase/docs/RLS_INVITATIONS.md) before applying [`supabase/migrations/002_invitations_rls_policies.sql`](./supabase/migrations/002_invitations_rls_policies.sql).
+
+```bash
+cp .env.example .env
+# Edit .env, then restart the dev server (Expo reads EXPO_PUBLIC_* on startup).
+```
+
+This app targets **Expo SDK 54**, which matches the **App Store** [Expo Go](https://expo.dev/go) client for day-to-day development on a physical device.
+
+For **custom native code** or modules Expo Go does not include, use a **development build** and the dev-client bundler:
+
+```bash
+npx expo start --dev-client
+```
+
+Then open the **Vasuli** app installed from your last **EAS development** build. If you see *“Unable to open … exp+vasuli … build and install a compatible Development Build”*, install a **new** iOS development build that matches the current SDK:
+
+```bash
+eas build --profile development --platform ios
+```
+
+A terminal line like `[redirect middleware]: Unable to determine redirect location for runtime 'custom' and platform 'ios'` usually means the CLI could not open a matching dev client — fixing the install fixes the flow.
+
+In the dev server output, you'll find options to open the app in:
 
 - [a development build](https://docs.expo.dev/develop/development-builds/introduction/)
 - [an Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
 - [an iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+- [Expo Go](https://expo.dev/go)
 
 You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
 
@@ -25,7 +59,7 @@ This project is configured to use [EAS Workflows](https://docs.expo.dev/eas/work
 
 ### Previews
 
-Run `npm run draft` to [publish a preview update](https://docs.expo.dev/eas/workflows/examples/publish-preview-update/) of your project, which can be viewed in Expo Go or in a development build.
+Run `npm run draft` to [publish a preview update](https://docs.expo.dev/eas/workflows/examples/publish-preview-update/) of your project.
 
 ### Development Builds
 
