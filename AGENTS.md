@@ -68,6 +68,14 @@ npx expo lint        # Run ESLint
 npm run draft        # Publish preview update and website (workflow)
 ```
 
+### Git hooks (Husky)
+
+Pre-commit runs `npm run precommit` (ESLint via `expo lint` + `typecheck:supabase`). After `npm install`, the `prepare` script wires Husky. If hooks do not run, set `git config core.hooksPath .husky` and ensure `.husky/pre-commit` is executable.
+
+```bash
+npm run precommit    # Run the same checks locally without committing
+```
+
 ### Production
 
 ```bash
