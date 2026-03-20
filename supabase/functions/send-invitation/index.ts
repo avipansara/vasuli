@@ -14,7 +14,7 @@ interface InvitationRequest {
   inviterId: string
 }
 
-serve(async (req) => {
+serve(async (req: Request) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -24,7 +24,7 @@ serve(async (req) => {
     const { inviteeEmail, inviteeName, inviterName, inviterId }: InvitationRequest = await req.json()
 
     // Validate required fields
-    if (!inviteeEmail || !inviteeName || !inviterName) {
+    if (!inviteeEmail || !inviteeName || !inviterName || !inviterId) {
       return new Response(
         JSON.stringify({ error: 'Missing required fields' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -42,10 +42,11 @@ serve(async (req) => {
       JSON.stringify({ success: true, message: 'Invitation sent successfully' }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error sending invitation:', error)
+    const message = error instanceof Error ? error.message : 'Failed to send invitation'
     return new Response(
-      JSON.stringify({ error: error.message || 'Failed to send invitation' }),
+      JSON.stringify({ error: message }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   }
@@ -158,7 +159,7 @@ async function sendInvitationEmail(
     const data = await res.json()
     console.log('Invitation email sent successfully:', data)
     return true
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error sending invitation email:', error)
     return false
   }

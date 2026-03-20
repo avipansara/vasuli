@@ -103,6 +103,11 @@ export default function AddFriendScreen() {
       : false;
 
   async function handleSubmit() {
+    if (!currentUserId) {
+      Alert.alert('Error', 'You must be signed in to send an invitation.');
+      return;
+    }
+
     if (!name.trim()) {
       Alert.alert('Error', 'Please enter a name');
       return;
