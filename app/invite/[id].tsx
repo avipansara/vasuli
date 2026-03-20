@@ -4,6 +4,7 @@ import { LoadingState } from '@/components/ui/loading-state';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { friendshipService } from '@/services/friendship-service';
+import { invitationService } from '@/services/invitation-service';
 import { userService } from '@/services/user-service';
 import type { User } from '@/types/database';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -11,8 +12,15 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Alert, StyleSheet, TouchableOpacity, View } from 'react-native';
 
+function firstQueryParam(v: string | string[] | undefined): string | undefined {
+    if (v == null) return undefined;
+    return Array.isArray(v) ? v[0] : v;
+}
+
 export default function InviteScreen() {
-    const { id } = useLocalSearchParams<{ id: string }>(); // This is the inviterId
+    const params = useLocalSearchParams<{ id: string | string[]; invitation?: string | string[] }>();
+    const id = firstQueryParam(params.id);
+    const invitation = params.invitation;
     const { gradients, colors, isDark } = useThemeColors();
     const { user } = useAuth();
 
@@ -24,7 +32,7 @@ export default function InviteScreen() {
         async function loadInviter() {
             if (!id) return;
             try {
-                const inviterUser = await userService.getById(id);
+                const inviterUser = await userService.getById(String(id));
                 setInviter(inviterUser);
             } catch (error) {
                 console.error('Error loading inviter:', error);
@@ -38,7 +46,15 @@ export default function InviteScreen() {
     }, [id]);
 
     const handleAccept = async () => {
-        if (!user || !inviter) return;
+        if (!inviter) return;
+
+        if (!user) {
+            Alert.alert(
+                'Sign in required',
+                'Sign in with the email address your friend invited so we can link your accounts.',
+            );
+            return;
+        }
 
         if (user.id === inviter.id) {
             Alert.alert('Error', 'You cannot accept your own invitation');
@@ -48,18 +64,18 @@ export default function InviteScreen() {
 
         setProcessing(true);
         try {
-            // Create friendship
-            // We use createAccepted to make them friends immediately since user clicked the invite link
-            // Or strictly, we should create a request?
-            // Since it's an "invite link", usually it implies auto-friend if clicked.
-            // But verify if friendshipService.createAccepted is bidirectional.
+            const invitationId = firstQueryParam(invitation);
 
-            // Let's use create() first if we want to follow standard flow, OR createAccepted if this link implies trust.
-            // Given the flow, "Accept Invite" usually means confirmed connection.
+            await invitationService.acceptInvitationFromLink({
+                invitationId,
+                inviterId: inviter.id,
+                inviteeEmail: user.email,
+            });
+
             await friendshipService.createAccepted(user.id, inviter.id);
 
             Alert.alert('Success', `You are now connected with ${inviter.name}`);
-            router.replace('/(tabs)/friends');
+            router.replace('/(tabs)');
         } catch (error) {
             console.error('Error accepting invitation:', error);
             Alert.alert('Error', 'Failed to connect with user');

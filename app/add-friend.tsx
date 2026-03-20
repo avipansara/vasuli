@@ -22,8 +22,6 @@ import {
   View,
 } from 'react-native';
 
-type InviteMethod = 'email' | 'phone' | 'qr';
-
 export default function AddFriendScreen() {
   const { gradients, colors, isDark } = useThemeColors();
   const { user } = useAuth();
@@ -31,8 +29,6 @@ export default function AddFriendScreen() {
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
-  const [inviteMethod, setInviteMethod] = useState<InviteMethod>('email');
   const [loading, setLoading] = useState(false);
   const [pendingInvites, setPendingInvites] = useState<any[]>([]);
 
@@ -79,7 +75,6 @@ export default function AddFriendScreen() {
   // Input refs for focus management
   const nameInputRef = useRef<TextInput>(null);
   const emailInputRef = useRef<TextInput>(null);
-  const phoneInputRef = useRef<TextInput>(null);
 
   useEffect(() => {
     Animated.parallel([
@@ -96,11 +91,7 @@ export default function AddFriendScreen() {
     ]).start();
   }, []);
 
-  const isValid = inviteMethod === 'email'
-    ? email.trim().length > 0
-    : inviteMethod === 'phone'
-      ? phone.trim().length > 0
-      : false;
+  const isValid = isEmailValid(email);
 
   async function handleSubmit() {
     if (!currentUserId) {
@@ -113,19 +104,12 @@ export default function AddFriendScreen() {
       return;
     }
 
-    if (inviteMethod === 'email') {
-      if (!email.trim()) {
-        Alert.alert('Error', 'Please enter an email address');
-        return;
-      }
-      if (!isEmailValid(email)) {
-        Alert.alert('Invalid Email', 'Please enter a valid email address');
-        return;
-      }
+    if (!email.trim()) {
+      Alert.alert('Error', 'Please enter an email address');
+      return;
     }
-
-    if (inviteMethod === 'phone' && !phone.trim()) {
-      Alert.alert('Error', 'Please enter a phone number');
+    if (!isEmailValid(email)) {
+      Alert.alert('Invalid Email', 'Please enter a valid email address');
       return;
     }
 
@@ -133,15 +117,12 @@ export default function AddFriendScreen() {
     try {
       await initDatabase();
 
-      // Create an invitation for the friend
-      const friendEmail = inviteMethod === 'email' ? email.trim() : `${phone.replace(/\D/g, '')}@phone.placeholder`;
-      const friendName = name.trim() || (inviteMethod === 'email' ? email.split('@')[0] : phone);
-      const friendPhone = inviteMethod === 'phone' ? phone.trim() : undefined;
+      const friendEmail = email.trim();
+      const friendName = name.trim() || friendEmail.split('@')[0];
 
       await invitationService.create({
         inviterId: currentUserId,
         inviteeEmail: friendEmail,
-        inviteePhone: friendPhone,
         inviteeName: friendName,
         inviterName: user?.name || 'A friend',
       });
@@ -158,7 +139,6 @@ export default function AddFriendScreen() {
             // Let's reload list and then decide.
             loadPendingInvites();
             setEmail('');
-            setPhone('');
             setName('');
             router.back();
           }
@@ -232,67 +212,6 @@ export default function AddFriendScreen() {
             </ThemedText>
           </View>
 
-          {/* Method Selection */}
-          {/* <View style={styles.methodSection}>
-              <View style={styles.methodToggle}>
-                <TouchableOpacity
-                  style={[
-                    styles.methodButton,
-                    inviteMethod === 'email' && styles.methodButtonActive,
-                    {
-                      backgroundColor: inviteMethod === 'email'
-                        ? (isDark ? '#2DD4BF' : colors.tint)
-                        : (isDark ? 'rgba(30, 41, 59, 0.6)' : 'rgba(241, 245, 249, 0.9)'),
-                      borderColor: inviteMethod === 'email'
-                        ? (isDark ? '#2DD4BF' : colors.tint)
-                        : (isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(34, 197, 94, 0.2)'),
-                    },
-                  ]}
-                  onPress={() => setInviteMethod('email')}>
-                  <IconSymbol
-                    name="envelope.fill"
-                    size={20}
-                    color={inviteMethod === 'email' ? '#0A0A0F' : (isDark ? '#2DD4BF' : colors.tint)}
-                  />
-                  <ThemedText style={[
-                    styles.methodButtonText,
-                    inviteMethod === 'email' && styles.methodButtonTextActive,
-                    !isDark && inviteMethod !== 'email' && { color: colors.text },
-                  ]}>
-                    Email
-                  </ThemedText>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[
-                    styles.methodButton,
-                    inviteMethod === 'phone' && styles.methodButtonActive,
-                    {
-                      backgroundColor: inviteMethod === 'phone'
-                        ? (isDark ? '#2DD4BF' : colors.tint)
-                        : (isDark ? 'rgba(30, 41, 59, 0.6)' : 'rgba(241, 245, 249, 0.9)'),
-                      borderColor: inviteMethod === 'phone'
-                        ? (isDark ? '#2DD4BF' : colors.tint)
-                        : (isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(34, 197, 94, 0.2)'),
-                    },
-                  ]}
-                  onPress={() => setInviteMethod('phone')}>
-                  <IconSymbol
-                    name="phone.fill"
-                    size={20}
-                    color={inviteMethod === 'phone' ? '#0A0A0F' : (isDark ? '#2DD4BF' : colors.tint)}
-                  />
-                  <ThemedText style={[
-                    styles.methodButtonText,
-                    inviteMethod === 'phone' && styles.methodButtonTextActive,
-                    !isDark && inviteMethod !== 'phone' && { color: colors.text },
-                  ]}>
-                    Phone
-                  </ThemedText>
-                </TouchableOpacity>
-              </View>
-            </View> */}
-
           {/* Name Input */}
           <View style={styles.inputSection}>
             <ThemedText style={[styles.inputLabel, { color: colors.textSecondary }]}>
@@ -311,68 +230,36 @@ export default function AddFriendScreen() {
                 placeholder="e.g. John Doe"
                 placeholderTextColor={isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'}
                 returnKeyType="next"
-                onSubmitEditing={() => {
-                  if (inviteMethod === 'email') {
-                    emailInputRef.current?.focus();
-                  } else {
-                    phoneInputRef.current?.focus();
-                  }
-                }}
+                onSubmitEditing={() => emailInputRef.current?.focus()}
                 blurOnSubmit={false}
               />
             </View>
           </View>
 
-          {/* Email/Phone Input */}
-          {inviteMethod === 'email' ? (
-            <View style={styles.inputSection}>
-              <ThemedText style={[styles.inputLabel, { color: colors.textSecondary }]}>
-                Email Address *
-              </ThemedText>
-              <View style={[styles.inputContainer, {
-                backgroundColor: isDark ? 'rgba(30, 41, 59, 0.6)' : 'rgba(241, 245, 249, 0.9)',
-                borderColor: isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(34, 197, 94, 0.2)',
-              }]}>
-                <IconSymbol name="envelope" size={20} color={isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'} />
-                <TextInput
-                  ref={emailInputRef}
-                  style={[styles.textInput, { color: isDark ? '#fff' : colors.text }]}
-                  value={email}
-                  onChangeText={setEmail}
-                  placeholder="friend@example.com"
-                  placeholderTextColor={isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  returnKeyType="done"
-                  autoCorrect={false}
-                  onSubmitEditing={() => Keyboard.dismiss()}
-                />
-              </View>
+          <View style={styles.inputSection}>
+            <ThemedText style={[styles.inputLabel, { color: colors.textSecondary }]}>
+              Email Address *
+            </ThemedText>
+            <View style={[styles.inputContainer, {
+              backgroundColor: isDark ? 'rgba(30, 41, 59, 0.6)' : 'rgba(241, 245, 249, 0.9)',
+              borderColor: isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(34, 197, 94, 0.2)',
+            }]}>
+              <IconSymbol name="envelope" size={20} color={isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'} />
+              <TextInput
+                ref={emailInputRef}
+                style={[styles.textInput, { color: isDark ? '#fff' : colors.text }]}
+                value={email}
+                onChangeText={setEmail}
+                placeholder="friend@example.com"
+                placeholderTextColor={isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                returnKeyType="done"
+                autoCorrect={false}
+                onSubmitEditing={() => Keyboard.dismiss()}
+              />
             </View>
-          ) : (
-            <View style={styles.inputSection}>
-              <ThemedText style={[styles.inputLabel, { color: colors.textSecondary }]}>
-                Phone Number *
-              </ThemedText>
-              <View style={[styles.inputContainer, {
-                backgroundColor: isDark ? 'rgba(30, 41, 59, 0.6)' : 'rgba(241, 245, 249, 0.9)',
-                borderColor: isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(34, 197, 94, 0.2)',
-              }]}>
-                <IconSymbol name="phone" size={20} color={isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'} />
-                <TextInput
-                  ref={phoneInputRef}
-                  style={[styles.textInput, { color: isDark ? '#fff' : colors.text }]}
-                  value={phone}
-                  onChangeText={setPhone}
-                  placeholder="+1 (555) 123-4567"
-                  placeholderTextColor={isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'}
-                  keyboardType="phone-pad"
-                  returnKeyType="done"
-                  onSubmitEditing={() => Keyboard.dismiss()}
-                />
-              </View>
-            </View>
-          )}
+          </View>
 
           {/* QR Code Option */}
           <TouchableOpacity

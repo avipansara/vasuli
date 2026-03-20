@@ -12,6 +12,8 @@ interface InvitationRequest {
   inviteeName: string
   inviterName: string
   inviterId: string
+  /** DB row id — included in the CTA link so Accept can mark invitations.accepted */
+  invitationId: string
 }
 
 serve(async (req: Request) => {
@@ -21,10 +23,11 @@ serve(async (req: Request) => {
   }
 
   try {
-    const { inviteeEmail, inviteeName, inviterName, inviterId }: InvitationRequest = await req.json()
+    const { inviteeEmail, inviteeName, inviterName, inviterId, invitationId }: InvitationRequest =
+      await req.json()
 
     // Validate required fields
-    if (!inviteeEmail || !inviteeName || !inviterName || !inviterId) {
+    if (!inviteeEmail || !inviteeName || !inviterName || !inviterId || !invitationId) {
       return new Response(
         JSON.stringify({ error: 'Missing required fields' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -32,7 +35,13 @@ serve(async (req: Request) => {
     }
 
     // Send invitation email via Resend
-    const emailSent = await sendInvitationEmail(inviteeEmail, inviteeName, inviterName, inviterId)
+    const emailSent = await sendInvitationEmail(
+      inviteeEmail,
+      inviteeName,
+      inviterName,
+      inviterId,
+      invitationId
+    )
 
     if (!emailSent) {
       throw new Error('Failed to send invitation email')
@@ -52,12 +61,19 @@ serve(async (req: Request) => {
   }
 })
 
+function inviteCtaUrl(inviterId: string, invitationId: string): string {
+  const q = new URLSearchParams({ invitation: invitationId })
+  return `https://split-space.com/invite/${encodeURIComponent(inviterId)}?${q.toString()}`
+}
+
 async function sendInvitationEmail(
   inviteeEmail: string,
   inviteeName: string,
   inviterName: string,
-  inviterId: string
+  inviterId: string,
+  invitationId: string
 ): Promise<boolean> {
+  const joinUrl = inviteCtaUrl(inviterId, invitationId)
   try {
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
@@ -116,7 +132,7 @@ async function sendInvitationEmail(
                           <table width="100%" cellpadding="0" cellspacing="0" style="margin: 30px 0;">
                             <tr>
                               <td align="center">
-                                <a href="https://split-space.com/invite/${inviterId}" style="display: inline-block; background: linear-gradient(135deg, #2DD4BF 0%, #22C55E 100%); color: #ffffff; text-decoration: none; padding: 16px 40px; border-radius: 12px; font-size: 16px; font-weight: 600; box-shadow: 0 4px 6px rgba(45, 212, 191, 0.3);">
+                                <a href="${joinUrl}" style="display: inline-block; background: linear-gradient(135deg, #2DD4BF 0%, #22C55E 100%); color: #ffffff; text-decoration: none; padding: 16px 40px; border-radius: 12px; font-size: 16px; font-weight: 600; box-shadow: 0 4px 6px rgba(45, 212, 191, 0.3);">
                                   Join Vasuli
                                 </a>
                               </td>

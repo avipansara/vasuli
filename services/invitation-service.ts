@@ -16,6 +16,7 @@ async function assertSendInvitationEmail(params: {
   inviteeName: string;
   inviterName: string;
   inviterId: string;
+  invitationId: string;
 }): Promise<void> {
   const { data, error } = await supabase.functions.invoke('send-invitation', {
     body: params,
@@ -85,6 +86,7 @@ export const invitationService = {
           inviteeName,
           inviterName,
           inviterId: invitation.inviterId,
+          invitationId: data.id,
         });
       } catch (emailErr) {
         console.error('Error sending invitation email:', emailErr);
@@ -205,9 +207,7 @@ export const invitationService = {
 
     const inviteeEmail = String(inv.invitee_email).trim().toLowerCase();
     if (!isDeliverableEmail(inviteeEmail)) {
-      throw new Error(
-        'Cannot resend email for phone-only invites. Use SMS or another channel until email delivery is supported.'
-      );
+      throw new Error('This invitation has no deliverable email address.');
     }
 
     await assertSendInvitationEmail({
@@ -215,9 +215,58 @@ export const invitationService = {
       inviteeName: inv.invitee_name || inviteeEmail.split('@')[0],
       inviterName: inviterName || 'A friend',
       inviterId: inv.inviter_id,
+      invitationId: id,
     });
   },
 
+  /**
+   * Mark the invitation accepted when the invitee opens the email deep link and taps Accept.
+   * Uses `invitationId` from the URL when present; otherwise finds the newest pending row for
+   * (inviterId, inviteeEmail). No-ops if invitee has no email or nothing matches.
+   */
+  async acceptInvitationFromLink(params: {
+    invitationId?: string | null;
+    inviterId: string;
+    inviteeEmail?: string | null;
+  }): Promise<void> {
+    if (USE_MOCK_DATA) return;
+
+    const email = params.inviteeEmail?.trim().toLowerCase();
+    if (!email) return;
+
+    if (params.invitationId) {
+      const { data, error } = await supabase
+        .from('invitations')
+        .select('id, inviter_id, invitee_email, status')
+        .eq('id', params.invitationId)
+        .maybeSingle();
+
+      if (error || !data) return;
+
+      if (data.inviter_id !== params.inviterId) return;
+      if (String(data.invitee_email).trim().toLowerCase() !== email) return;
+      if (data.status === 'accepted' || data.status === 'declined') return;
+      if (data.status !== 'pending') return;
+
+      await this.updateStatus(data.id, 'accepted');
+      return;
+    }
+
+    const { data: rows, error } = await supabase
+      .from('invitations')
+      .select('id, status')
+      .eq('inviter_id', params.inviterId)
+      .eq('invitee_email', email)
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false })
+      .limit(1);
+
+    if (error || !rows?.length) return;
+
+    await this.updateStatus(rows[0].id, 'accepted');
+  },
+
+  /** Pending invites for the signed-in user's email (email invites only). */
   async getReceivedInvitations(email: string): Promise<(Invitation & { inviterName?: string })[]> {
     if (USE_MOCK_DATA) {
       return [];

@@ -12,6 +12,7 @@ import { CACHE_KEYS, cacheService } from '@/services/cache-service';
 import { friendshipService } from '@/services/friendship-service';
 import { invitationService } from '@/services/invitation-service';
 import type { User } from '@/types/database';
+import { isEmailValid } from '@/utils/validation';
 import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
@@ -30,8 +31,6 @@ export default function FriendsScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [newFriendName, setNewFriendName] = useState('');
   const [newFriendEmail, setNewFriendEmail] = useState('');
-  const [newFriendPhone, setNewFriendPhone] = useState('');
-  const [inviteMethod, setInviteMethod] = useState<'email' | 'phone'>('email');
   const [qrModalVisible, setQrModalVisible] = useState(false);
   const { user } = useAuth();
   const currentUserId = user?.id || '';
@@ -172,24 +171,27 @@ export default function FriendsScreen() {
   }
 
   const sendInvite = async () => {
-    const contact = inviteMethod === 'email' ? newFriendEmail.trim() : newFriendPhone.trim();
+    const contact = newFriendEmail.trim();
 
     if (!contact) {
-      Alert.alert('Required', `Please enter ${inviteMethod === 'email' ? 'an email address' : 'a phone number'}`);
+      Alert.alert('Required', 'Please enter an email address');
+      return;
+    }
+    if (!isEmailValid(contact)) {
+      Alert.alert('Invalid Email', 'Please enter a valid email address');
       return;
     }
 
     try {
       await invitationService.create({
         inviterId: currentUserId,
-        inviteeEmail: inviteMethod === 'email' ? contact : `${contact}@phone.placeholder`,
-        inviteePhone: inviteMethod === 'phone' ? contact : undefined,
-        inviteeName: newFriendName.trim() || contact,
+        inviteeEmail: contact,
+        inviteeName: newFriendName.trim() || contact.split('@')[0],
+        inviterName: user?.name || 'A friend',
       });
 
       setNewFriendName('');
       setNewFriendEmail('');
-      setNewFriendPhone('');
       setModalVisible(false);
       loadFriends();
       Alert.alert('Invite Sent!', `An invite has been sent to ${contact}`);
@@ -363,10 +365,6 @@ export default function FriendsScreen() {
         setName={setNewFriendName}
         email={newFriendEmail}
         setEmail={setNewFriendEmail}
-        phone={newFriendPhone}
-        setPhone={setNewFriendPhone}
-        inviteMethod={inviteMethod}
-        setInviteMethod={setInviteMethod}
         onSubmit={sendInvite}
       />
 
