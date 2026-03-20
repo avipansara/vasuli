@@ -11,7 +11,7 @@ import type { Group, GroupMember, User } from '@/types/database';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
+import React, { memo, useCallback, useEffect, useState } from 'react';
 import {
   Alert,
   FlatList,
@@ -30,6 +30,94 @@ interface MemberWithBalance extends GroupMember {
   balance: number;
 }
 
+interface SettleMemberRowProps {
+  item: MemberWithBalance;
+  isSelected: boolean;
+  onSelect: (item: MemberWithBalance) => void;
+}
+
+function areSettleMemberRowEqual(prev: SettleMemberRowProps, next: SettleMemberRowProps): boolean {
+  return (
+    prev.onSelect === next.onSelect &&
+    prev.isSelected === next.isSelected &&
+    prev.item.userId === next.item.userId &&
+    prev.item.balance === next.item.balance &&
+    prev.item.user?.name === next.item.user?.name
+  );
+}
+
+const SettleMemberRow = memo(function SettleMemberRow({ item, isSelected, onSelect }: SettleMemberRowProps) {
+  const { colors, isDark } = useThemeColors();
+  const balance = item.balance;
+  const owesYou = balance < 0;
+  const youOwe = balance > 0;
+
+  return (
+    <TouchableOpacity
+      onPress={() => onSelect(item)}
+      style={[
+        styles.memberCard,
+        isSelected && {
+          borderColor: isDark ? '#2DD4BF' : colors.tint,
+          borderWidth: 2,
+        },
+      ]}>
+      <BlurView
+        intensity={isDark ? 20 : 40}
+        tint={isDark ? 'dark' : 'light'}
+        style={StyleSheet.absoluteFill}
+      />
+      <View style={styles.memberContent}>
+        <View style={styles.memberLeft}>
+          <View
+            style={[
+              styles.avatar,
+              {
+                backgroundColor: isDark
+                  ? 'rgba(45, 212, 191, 0.15)'
+                  : 'rgba(34, 197, 94, 0.1)',
+              },
+            ]}>
+            <ThemedText
+              style={[styles.avatarText, { color: isDark ? '#2DD4BF' : colors.tint }]}>
+              {item.user?.name?.charAt(0).toUpperCase() || 'U'}
+            </ThemedText>
+          </View>
+          <View style={styles.memberInfo}>
+            <ThemedText style={[styles.memberName, !isDark && { color: colors.text }]}>
+              {item.user?.name || 'Unknown'}
+            </ThemedText>
+            {balance !== 0 && (
+              <ThemedText
+                style={[
+                  styles.balanceText,
+                  {
+                    color: owesYou
+                      ? '#22C55E'
+                      : youOwe
+                        ? '#EF4444'
+                        : isDark
+                          ? '#9CA3AF'
+                          : colors.textSecondary,
+                  },
+                ]}>
+                {owesYou
+                  ? `Owes you $${Math.abs(balance).toFixed(2)}`
+                  : youOwe
+                    ? `You owe $${Math.abs(balance).toFixed(2)}`
+                    : 'Settled up'}
+              </ThemedText>
+            )}
+          </View>
+        </View>
+        {isSelected && (
+          <IconSymbol size={24} name="checkmark.circle.fill" color={isDark ? '#2DD4BF' : colors.tint} />
+        )}
+      </View>
+    </TouchableOpacity>
+  );
+}, areSettleMemberRowEqual);
+
 export default function GroupSettleScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user } = useAuth();
@@ -43,11 +131,7 @@ export default function GroupSettleScreen() {
   const [amount, setAmount] = useState('');
   const [settling, setSettling] = useState(false);
 
-  useEffect(() => {
-    loadData();
-  }, [id]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
 
@@ -90,7 +174,11 @@ export default function GroupSettleScreen() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [id, currentUserId]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const handleSettle = async () => {
     if (!selectedMember) {
@@ -151,86 +239,26 @@ export default function GroupSettleScreen() {
     }
   }
 
-  function renderMember({ item }: { item: MemberWithBalance }) {
-    const isSelected = selectedMember?.userId === item.userId;
+  const handleSelectMember = useCallback((item: MemberWithBalance) => {
+    setSelectedMember(item);
     const balance = item.balance;
-    const owesYou = balance < 0;
-    const youOwe = balance > 0;
+    if (Math.abs(balance) > 0) {
+      setAmount(Math.abs(balance).toFixed(2));
+    } else {
+      setAmount('');
+    }
+  }, []);
 
-    const handleSelect = () => {
-      setSelectedMember(item);
-      if (Math.abs(balance) > 0) {
-        setAmount(Math.abs(balance).toFixed(2));
-      } else {
-        setAmount('');
-      }
-    };
-
-    return (
-      <TouchableOpacity
-        onPress={handleSelect}
-        style={[
-          styles.memberCard,
-          isSelected && {
-            borderColor: isDark ? '#2DD4BF' : colors.tint,
-            borderWidth: 2,
-          },
-        ]}>
-        <BlurView
-          intensity={isDark ? 20 : 40}
-          tint={isDark ? 'dark' : 'light'}
-          style={StyleSheet.absoluteFill}
-        />
-        <View style={styles.memberContent}>
-          <View style={styles.memberLeft}>
-            <View
-              style={[
-                styles.avatar,
-                {
-                  backgroundColor: isDark
-                    ? 'rgba(45, 212, 191, 0.15)'
-                    : 'rgba(34, 197, 94, 0.1)',
-                },
-              ]}>
-              <ThemedText
-                style={[styles.avatarText, { color: isDark ? '#2DD4BF' : colors.tint }]}>
-                {item.user?.name?.charAt(0).toUpperCase() || 'U'}
-              </ThemedText>
-            </View>
-            <View style={styles.memberInfo}>
-              <ThemedText style={[styles.memberName, !isDark && { color: colors.text }]}>
-                {item.user?.name || 'Unknown'}
-              </ThemedText>
-              {balance !== 0 && (
-                <ThemedText
-                  style={[
-                    styles.balanceText,
-                    {
-                      color: owesYou
-                        ? '#22C55E'
-                        : youOwe
-                          ? '#EF4444'
-                          : isDark
-                            ? '#9CA3AF'
-                            : colors.textSecondary,
-                    },
-                  ]}>
-                  {owesYou
-                    ? `Owes you $${Math.abs(balance).toFixed(2)}`
-                    : youOwe
-                      ? `You owe $${Math.abs(balance).toFixed(2)}`
-                      : 'Settled up'}
-                </ThemedText>
-              )}
-            </View>
-          </View>
-          {isSelected && (
-            <IconSymbol size={24} name="checkmark.circle.fill" color={isDark ? '#2DD4BF' : colors.tint} />
-          )}
-        </View>
-      </TouchableOpacity>
-    );
-  }
+  const renderMember = useCallback(
+    ({ item }: { item: MemberWithBalance }) => (
+      <SettleMemberRow
+        item={item}
+        isSelected={selectedMember?.userId === item.userId}
+        onSelect={handleSelectMember}
+      />
+    ),
+    [selectedMember?.userId, handleSelectMember]
+  );
 
   if (loading) {
     return (

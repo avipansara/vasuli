@@ -4,7 +4,7 @@ import { useThemeColors } from '@/hooks/use-theme-colors';
 import { groupService } from '@/services/api';
 import type { GroupWithMembers } from '@/types/database';
 import { router } from 'expo-router';
-import React, { useRef } from 'react';
+import React, { memo, useRef } from 'react';
 import { Alert, Animated as RNAnimated, StyleSheet, TouchableOpacity, View } from 'react-native';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
 import Animated, { FadeInDown } from 'react-native-reanimated';
@@ -15,7 +15,21 @@ interface GroupCardProps {
   onRefresh?: () => void;
 }
 
-export function GroupCard({ group, index, onRefresh }: GroupCardProps) {
+function areGroupCardPropsEqual(prev: GroupCardProps, next: GroupCardProps): boolean {
+  if (prev.onRefresh !== next.onRefresh || prev.index !== next.index) {
+    return false;
+  }
+  const a = prev.group;
+  const b = next.group;
+  return (
+    a.id === b.id &&
+    a.name === b.name &&
+    a.description === b.description &&
+    (a.yourBalance ?? 0) === (b.yourBalance ?? 0)
+  );
+}
+
+function GroupCardInner({ group, index, onRefresh }: GroupCardProps) {
   const { colors, isDark } = useThemeColors();
   const swipeableRef = useRef<Swipeable>(null);
   const balance = group.yourBalance || 0;
@@ -169,6 +183,8 @@ export function GroupCard({ group, index, onRefresh }: GroupCardProps) {
     </Animated.View>
   );
 }
+
+export const GroupCard = memo(GroupCardInner, areGroupCardPropsEqual);
 
 const styles = StyleSheet.create({
   wrapper: {

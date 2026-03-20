@@ -5,7 +5,7 @@ import { useThemeColors } from '@/hooks/use-theme-colors';
 import { expenseService } from '@/services/api';
 import type { Expense, Group } from '@/types/database';
 import { router } from 'expo-router';
-import React, { useRef } from 'react';
+import React, { memo, useRef } from 'react';
 import { Alert, Animated, StyleSheet, TouchableOpacity, View } from 'react-native';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
 
@@ -14,7 +14,24 @@ interface ExpenseListCardProps {
   onDelete?: () => void;
 }
 
-export function ExpenseListCard({ expense, onDelete }: ExpenseListCardProps) {
+function areExpenseListCardPropsEqual(prev: ExpenseListCardProps, next: ExpenseListCardProps): boolean {
+  if (prev.onDelete !== next.onDelete) {
+    return false;
+  }
+  const a = prev.expense;
+  const b = next.expense;
+  if (a.id !== b.id || a.amount !== b.amount || a.description !== b.description || a.date !== b.date || a.groupId !== b.groupId) {
+    return false;
+  }
+  const ag = a.group?.id;
+  const bg = b.group?.id;
+  if (ag !== bg || a.group?.name !== b.group?.name) {
+    return false;
+  }
+  return true;
+}
+
+function ExpenseListCardInner({ expense, onDelete }: ExpenseListCardProps) {
   const { user } = useAuth();
   const { colors, isDark } = useThemeColors();
   const swipeableRef = useRef<Swipeable>(null);
@@ -141,6 +158,8 @@ export function ExpenseListCard({ expense, onDelete }: ExpenseListCardProps) {
     </Swipeable>
   );
 }
+
+export const ExpenseListCard = memo(ExpenseListCardInner, areExpenseListCardPropsEqual);
 
 const styles = StyleSheet.create({
   card: {

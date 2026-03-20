@@ -98,6 +98,8 @@ export default function ActivityScreen() {
     }
   };
 
+  const renderActivityItem = useCallback(({ item }: { item: Activity }) => <ActivityCard activity={item} />, []);
+
   const renderFooter = () => {
     if (!loadingMore) return null;
     return (
@@ -160,18 +162,7 @@ export default function ActivityScreen() {
       ) : (
         <SectionList
           sections={groupedActivities}
-          renderItem={({ item }) => (
-            <ActivityCard
-              activity={{
-                id: item.id,
-                type: item.type.includes('expense') ? 'expense' : item.type.includes('settlement') ? 'settlement' : 'group_join',
-                description: item.description,
-                amount: item.amount || 0,
-                date: item.createdAt,
-                groupName: item.groupName,
-              }}
-            />
-          )}
+          renderItem={renderActivityItem}
           renderSectionHeader={({ section: { title } }) => (
             <View style={styles.sectionHeader}>
               <ThemedText style={[styles.sectionTitle, { color: colors.textSecondary }]}>

@@ -36,10 +36,63 @@ export default function FriendsScreen() {
   const currentUserId = user?.id || '';
   const hasLoadedOnce = useRef(false);
 
+  const loadFriends = useCallback(async (skipCache = false) => {
+    if (!currentUserId) return;
+    try {
+      // 1. Load from cache first (instant)
+      if (!skipCache) {
+        const cached = await cacheService.get<UserWithBalance[]>(CACHE_KEYS.FRIENDS_LIST);
+        if (cached && cached.length > 0) {
+          setFriends(cached);
+          // Don't show loading if we have cached data
+          hasLoadedOnce.current = true;
+        }
+      }
+
+      // Only show loader on first load with no cache
+      if (!hasLoadedOnce.current) {
+        setLoading(true);
+        hasLoadedOnce.current = true;
+      }
+
+      await initDatabase();
+
+      // 2. Fetch fresh data from API
+      const friendIds = await friendshipService.getFriends(currentUserId);
+
+      const friendsData = await Promise.all(
+        friendIds.map(async (friendId) => {
+          const u = await userService.getById(friendId);
+          return u;
+        })
+      );
+
+      const friendsWithBalances = await Promise.all(
+        friendsData
+          .filter((u): u is User => u !== null)
+          .map(async (u: User) => {
+            const [balance, recentExpenses] = await Promise.all([
+              calculateFriendBalance(currentUserId, u.id),
+              getFriendRecentExpenses(currentUserId, u.id, 2)
+            ]);
+            return { ...u, balance, recentExpenses };
+          })
+      );
+
+      // 3. Update state and cache
+      setFriends(friendsWithBalances);
+      await cacheService.set(CACHE_KEYS.FRIENDS_LIST, friendsWithBalances);
+    } catch (error) {
+      console.error('Error loading friends:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [currentUserId]);
+
   useFocusEffect(
     useCallback(() => {
       loadFriends();
-    }, [])
+    }, [loadFriends])
   );
 
   // Real-time subscriptions
@@ -115,60 +168,7 @@ export default function FriendsScreen() {
       console.log('[Realtime] Unsubscribing from friend list updates');
       supabase.removeChannel(subscription);
     };
-  }, [currentUserId]);
-
-  const loadFriends = async (skipCache = false) => {
-    if (!currentUserId) return;
-    try {
-      // 1. Load from cache first (instant)
-      if (!skipCache) {
-        const cached = await cacheService.get<UserWithBalance[]>(CACHE_KEYS.FRIENDS_LIST);
-        if (cached && cached.length > 0) {
-          setFriends(cached);
-          // Don't show loading if we have cached data
-          hasLoadedOnce.current = true;
-        }
-      }
-
-      // Only show loader on first load with no cache
-      if (!hasLoadedOnce.current) {
-        setLoading(true);
-        hasLoadedOnce.current = true;
-      }
-
-      await initDatabase();
-
-      // 2. Fetch fresh data from API
-      const friendIds = await friendshipService.getFriends(currentUserId);
-
-      const friendsData = await Promise.all(
-        friendIds.map(async (friendId) => {
-          const user = await userService.getById(friendId);
-          return user;
-        })
-      );
-
-      const friendsWithBalances = await Promise.all(
-        friendsData
-          .filter((user): user is User => user !== null)
-          .map(async (user: User) => {
-            const [balance, recentExpenses] = await Promise.all([
-              calculateFriendBalance(currentUserId, user.id),
-              getFriendRecentExpenses(currentUserId, user.id, 2)
-            ]);
-            return { ...user, balance, recentExpenses };
-          })
-      );
-
-      // 3. Update state and cache
-      setFriends(friendsWithBalances);
-      await cacheService.set(CACHE_KEYS.FRIENDS_LIST, friendsWithBalances);
-    } catch (error) {
-      console.error('Error loading friends:', error);
-    } finally {
-      setLoading(false);
-    }
-  }
+  }, [currentUserId, loadFriends]);
 
   const sendInvite = async () => {
     const contact = newFriendEmail.trim();
@@ -201,33 +201,43 @@ export default function FriendsScreen() {
     }
   }
 
-  function handleFriendPress(friend: UserWithBalance) {
+  const handleFriendPress = useCallback((friend: UserWithBalance) => {
     router.push(`/friend/${friend.id}` as any);
-  }
+  }, []);
 
-  function handleDeleteFriend(friend: UserWithBalance) {
-    Alert.alert(
-      'Remove Friend',
-      `Are you sure you want to remove ${friend.name} from your friends?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Remove',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await friendshipService.remove(currentUserId, friend.id);
-              loadFriends();
-              Alert.alert('Success', `${friend.name} has been removed from your friends`);
-            } catch (error) {
-              console.error('Error removing friend:', error);
-              Alert.alert('Error', 'Failed to remove friend');
-            }
+  const handleDeleteFriend = useCallback(
+    (friend: UserWithBalance) => {
+      Alert.alert(
+        'Remove Friend',
+        `Are you sure you want to remove ${friend.name} from your friends?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Remove',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                await friendshipService.remove(currentUserId, friend.id);
+                loadFriends();
+                Alert.alert('Success', `${friend.name} has been removed from your friends`);
+              } catch (error) {
+                console.error('Error removing friend:', error);
+                Alert.alert('Error', 'Failed to remove friend');
+              }
+            },
           },
-        },
-      ]
-    );
-  }
+        ]
+      );
+    },
+    [currentUserId, loadFriends]
+  );
+
+  const renderFriendItem = useCallback(
+    ({ item }: { item: UserWithBalance }) => (
+      <FriendCard friend={item} onPress={handleFriendPress} onDelete={handleDeleteFriend} />
+    ),
+    [handleFriendPress, handleDeleteFriend]
+  );
 
   // Calculate net balance (positive = you are owed, negative = you owe)
   const netBalance = friends.reduce((sum, f) => sum + f.balance, 0);
@@ -300,7 +310,7 @@ export default function FriendsScreen() {
       ) : (
         <FlatList
           data={friendsWithBalance}
-          renderItem={({ item }) => <FriendCard friend={item} onPress={handleFriendPress} onDelete={handleDeleteFriend} />}
+          renderItem={renderFriendItem}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}

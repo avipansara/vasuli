@@ -35,13 +35,7 @@ export default function InvitationsScreen() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const hasLoadedOnce = useRef(false);
 
-  useFocusEffect(
-    useCallback(() => {
-      loadInvitations();
-    }, [])
-  );
-
-  const loadInvitations = async () => {
+  const loadInvitations = useCallback(async () => {
     if (!user?.email) return;
 
     try {
@@ -63,9 +57,15 @@ export default function InvitationsScreen() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [user?.email, user?.id]);
 
-  const handleAccept = async (invitation: InvitationWithDetails) => {
+  useFocusEffect(
+    useCallback(() => {
+      loadInvitations();
+    }, [loadInvitations])
+  );
+
+  const handleAccept = useCallback(async (invitation: InvitationWithDetails) => {
     setActionLoading(invitation.id);
     try {
       await invitationService.updateStatus(invitation.id, 'accepted');
@@ -83,9 +83,9 @@ export default function InvitationsScreen() {
     } finally {
       setActionLoading(null);
     }
-  }
+  }, [user?.id, loadInvitations]);
 
-  const handleDecline = async (invitation: InvitationWithDetails) => {
+  const handleDecline = useCallback(async (invitation: InvitationWithDetails) => {
     Alert.alert(
       'Decline Invitation',
       'Are you sure you want to decline this invitation?',
@@ -110,9 +110,9 @@ export default function InvitationsScreen() {
         },
       ]
     );
-  }
+  }, [loadInvitations]);
 
-  const handleResend = async (invitation: InvitationWithDetails) => {
+  const handleResend = useCallback(async (invitation: InvitationWithDetails) => {
     setActionLoading(invitation.id);
     try {
       await invitationService.resend(invitation.id, user?.name);
@@ -124,9 +124,9 @@ export default function InvitationsScreen() {
     } finally {
       setActionLoading(null);
     }
-  }
+  }, [user?.name, loadInvitations]);
 
-  async function handleCancel(invitation: InvitationWithDetails) {
+  const handleCancel = useCallback(async (invitation: InvitationWithDetails) => {
     Alert.alert(
       'Cancel Invitation',
       'Are you sure you want to cancel this invitation?',
@@ -151,9 +151,9 @@ export default function InvitationsScreen() {
         },
       ]
     );
-  }
+  }, [loadInvitations]);
 
-  function renderReceivedInvitation({ item }: { item: InvitationWithDetails }) {
+  const renderReceivedInvitation = useCallback(({ item }: { item: InvitationWithDetails }) => {
     const isLoading = actionLoading === item.id;
     const isExpired = item.expiresAt && item.expiresAt < Date.now();
 
@@ -218,9 +218,9 @@ export default function InvitationsScreen() {
         </View>
       </BlurView>
     );
-  }
+  }, [actionLoading, colors, isDark, handleAccept, handleDecline]);
 
-  function renderSentInvitation({ item }: { item: InvitationWithDetails }) {
+  const renderSentInvitation = useCallback(({ item }: { item: InvitationWithDetails }) => {
     const isLoading = actionLoading === item.id;
     const statusColor = item.status === 'accepted' ? '#22C55E' : item.status === 'declined' ? '#EF4444' : '#F59E0B';
 
@@ -286,7 +286,7 @@ export default function InvitationsScreen() {
         </View>
       </BlurView>
     );
-  }
+  }, [actionLoading, colors, isDark, handleResend, handleCancel]);
 
   const currentInvitations = activeTab === 'received' ? receivedInvitations : sentInvitations;
 
