@@ -10,7 +10,7 @@ interface OTPRequest {
   type: 'signup' | 'signin'
 }
 
-serve(async (req) => {
+serve(async (req: Request) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response('ok', {
@@ -57,10 +57,11 @@ serve(async (req) => {
         },
       }
     )
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error sending OTP:', error)
+    const message = error instanceof Error ? error.message : 'Request failed'
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: message }),
       {
         status: 400,
         headers: {
@@ -185,7 +186,7 @@ async function sendEmailOTP(params: {
     }
 
     return true
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error sending email:', error)
     return false
   }
