@@ -35,6 +35,8 @@ If you **cannot** attach a Supabase JWT to the client yet, strict row-level chec
 
 Do **not** run `002_invitations_rls_policies.sql` until Path A is in place, or the app will lose permission to read/write invitations.
 
+If you **already applied 002** but still use the OTP + anon client (no Supabase JWT), apply **`migrations/003_invitations_anon_policies_otp.sql`** so the `anon` role can read/update invitations again. This restores Path B behavior for the current app; tighten with Path A when you add JWT-based sessions.
+
 ## Applying the migration
 
 1. Open **Supabase Dashboard → SQL Editor**.
