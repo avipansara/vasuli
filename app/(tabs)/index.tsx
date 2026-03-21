@@ -14,7 +14,7 @@ import { friendshipService } from '@/services/friendship-service';
 import { invitationService } from '@/services/invitation-service';
 import type { User } from '@/types/database';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
-import { isEmailValid } from '@/utils/validation';
+import { isEmailValid, normalizeEmail } from '@/utils/validation';
 import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
@@ -176,7 +176,7 @@ export default function FriendsScreen() {
   }, [currentUserId, loadFriends]);
 
   const sendInvite = async () => {
-    const contact = newFriendEmail.trim();
+    const contact = normalizeEmail(newFriendEmail);
 
     if (!contact) {
       Alert.alert('Required', 'Please enter an email address');

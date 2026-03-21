@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { normalizeEmail } from '@/utils/validation';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const OTP_EXPIRY_MINUTES = 15;
@@ -25,9 +26,16 @@ const TEST_ACCOUNTS = [
  * Check if the email/phone is a test account
  */
 function isTestAccount(email?: string, phone?: string): boolean {
+  const normalizedInputEmail = normalizeEmail(email);
+  const trimmedPhone = phone?.trim();
   return TEST_ACCOUNTS.some(account => {
-    const emailMatches = !!(account.email && email === account.email);
-    const phoneMatches = !!(account.phone && phone === account.phone);
+    const normalizedConfiguredEmail = normalizeEmail(account.email);
+    const emailMatches = !!(
+      normalizedConfiguredEmail &&
+      normalizedInputEmail &&
+      normalizedConfiguredEmail === normalizedInputEmail
+    );
+    const phoneMatches = !!(account.phone && trimmedPhone && account.phone.trim() === trimmedPhone);
     return emailMatches || phoneMatches;
   });
 }
@@ -81,7 +89,9 @@ export async function sendSignUpCode(params: {
   phone?: string;
 }): Promise<{ success: boolean; error?: string }> {
   try {
-    const { name, email, phone } = params;
+    const { name } = params;
+    const email = normalizeEmail(params.email);
+    const phone = params.phone?.trim() || undefined;
 
     if (!email && !phone) {
       return { success: false, error: 'Email or phone is required' };
@@ -169,7 +179,8 @@ export async function sendSignInCode(params: {
   phone?: string;
 }): Promise<{ success: boolean; error?: string }> {
   try {
-    const { email, phone } = params;
+    const email = normalizeEmail(params.email);
+    const phone = params.phone?.trim() || undefined;
 
     if (!email && !phone) {
       return { success: false, error: 'Email or phone is required' };
@@ -262,7 +273,9 @@ export async function verifySignUpCode(params: {
   code: string;
 }): Promise<{ success: boolean; session?: AuthSession; error?: string }> {
   try {
-    const { name, email, phone, code } = params;
+    const { name, code } = params;
+    const email = normalizeEmail(params.email);
+    const phone = params.phone?.trim() || undefined;
 
     if (!email && !phone) {
       return { success: false, error: 'Email or phone is required' };
@@ -446,7 +459,9 @@ export async function verifySignInCode(params: {
   code: string;
 }): Promise<{ success: boolean; session?: AuthSession; error?: string }> {
   try {
-    const { email, phone, code } = params;
+    const { code } = params;
+    const email = normalizeEmail(params.email);
+    const phone = params.phone?.trim() || undefined;
 
     if (!email && !phone) {
       return { success: false, error: 'Email or phone is required' };

@@ -8,7 +8,7 @@ import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { initDatabase } from '@/services/api';
 import { invitationService } from '@/services/invitation-service';
-import { isEmailValid } from '@/utils/validation';
+import { isEmailValid, normalizeEmail } from '@/utils/validation';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
@@ -122,7 +122,11 @@ export default function AddFriendScreen() {
     try {
       await initDatabase();
 
-      const friendEmail = email.trim();
+      const friendEmail = normalizeEmail(email);
+      if (!friendEmail) {
+        Alert.alert('Error', 'Please enter an email address');
+        return;
+      }
       const friendName = name.trim() || friendEmail.split('@')[0];
 
       await invitationService.create({

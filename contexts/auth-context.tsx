@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { userService } from '@/services/api';
+import { normalizeEmail } from '@/utils/validation';
 import type { User } from '@/types/database';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 
@@ -41,6 +42,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               email: profile.email || undefined,
               phone: profile.phone || undefined,
               avatar: profile.avatar || undefined,
+              pushToken: profile.push_token || undefined,
+              isActive: profile.is_active ?? true,
               createdAt: new Date(profile.created_at).getTime(),
             });
           }
@@ -96,7 +99,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } else {
       // Mock auth
       const allUsers = await userService.getAll();
-      const foundUser = allUsers.find((u: User) => u.email?.toLowerCase() === email.toLowerCase());
+      const foundUser = allUsers.find((u: User) => normalizeEmail(u.email) === normalizeEmail(email));
       
       if (!foundUser) {
         throw new Error('No account found with this email');
@@ -128,13 +131,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } else {
       // Mock auth
       const allUsers = await userService.getAll();
-      const existingUser = allUsers.find((u: User) => u.email?.toLowerCase() === email.toLowerCase());
+      const existingUser = allUsers.find((u: User) => normalizeEmail(u.email) === normalizeEmail(email));
       
       if (existingUser) {
         throw new Error('An account with this email already exists');
       }
       
-      const newUser = await userService.create({ name, email });
+      const newUser = await userService.create({ name, email, isActive: true });
       setUser(newUser);
     }
   }
