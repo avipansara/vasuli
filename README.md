@@ -23,6 +23,8 @@ Do **not** use the `service_role` key in the app; it bypasses RLS and must stay 
 
 **Invitations RLS:** Tight policies require a Supabase Auth JWT where `auth.uid()` matches `public.users.id`. The default OTP-only anon client cannot satisfy that — see [`supabase/docs/RLS_INVITATIONS.md`](./supabase/docs/RLS_INVITATIONS.md) before applying [`supabase/migrations/002_invitations_rls_policies.sql`](./supabase/migrations/002_invitations_rls_policies.sql).
 
+**Edge Function `send-invitation` (401):** The gateway defaults to requiring a JWT; this app invokes with the anon key only. [`supabase/config.toml`](./supabase/config.toml) sets `verify_jwt = false` for that function. After changing config, redeploy: `npm run supabase:deploy:send-invitation` (uses `--no-verify-jwt`). You can also toggle **Enforce JWT** off for that function in the Dashboard under Edge Functions → send-invitation → Details / Settings.
+
 ```bash
 cp .env.example .env
 # Edit .env, then restart the dev server (Expo reads EXPO_PUBLIC_* on startup).
@@ -52,6 +54,18 @@ In the dev server output, you'll find options to open the app in:
 - [Expo Go](https://expo.dev/go)
 
 You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+
+### Invitation emails (Resend)
+
+If the app creates an invite and the `send-invitation` Edge Function returns **200**, the handler successfully called Resend. Delivery still depends on: **`RESEND_API_KEY`** set for the function (Dashboard → Edge Functions → Secrets), **sender domain** verified in [Resend](https://resend.com/docs) (e.g. `support@split-space.com`), and the recipient inbox (spam / promotions). Check Resend’s **Logs** if the message does not arrive.
+
+### Tests
+
+Unit tests for the invitation payload parser and invite link live next to the Edge Function:
+
+```bash
+npm test
+```
 
 ## Workflows
 
