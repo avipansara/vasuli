@@ -7,8 +7,8 @@
     "icon": "./assets/images/icon.png",
     "scheme": "vasuli",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
     "ios": {
+      "newArchEnabled": true,
       "supportsTablet": true,
       "bundleIdentifier": "com.avipansara.vasuli",
       "buildNumber": "3",
@@ -21,12 +21,12 @@
       ]
     },
     "android": {
+      "edgeToEdgeEnabled": true,
       "icon": "./assets/images/icon.png",
       "adaptiveIcon": {
         "backgroundColor": "#0E2A1F",
         "foregroundImage": "./assets/images/adaptive-icon.png"
       },
-      "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "package": "com.avipansara.vasuli",
       "intentFilters": [
@@ -85,7 +85,9 @@
         {
           "cameraPermission": "Vasuli uses your camera to scan QR codes when adding friends. For example, you can scan a friend's QR code to quickly connect and start splitting expenses together."
         }
-      ]
+      ],
+      "expo-sqlite",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true,

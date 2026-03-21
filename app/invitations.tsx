@@ -51,7 +51,6 @@ export default function InvitationsScreen() {
         hasLoadedOnce.current = true;
       }
 
-      // Load received invitations
       const received = await invitationService.getReceivedInvitations(user.email);
       setReceivedInvitations(received);
 

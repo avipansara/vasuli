@@ -24,10 +24,11 @@ export function InvitationsSection() {
     if (!user) return;
     setLoading(true);
     try {
-      // Load received invitations (by email)
       if (user.email) {
         const received = await invitationService.getReceivedInvitations(user.email);
         setReceivedInvitations(received);
+      } else {
+        setReceivedInvitations([]);
       }
 
       // Load sent invitations

@@ -2,7 +2,9 @@
 
 ## Project Overview
 
-This is an Expo/React Native mobile application. Prioritize mobile-first patterns, performance, and cross-platform compatibility.
+This is an Expo/React Native mobile application (**Expo SDK 54**, React Native 0.81, React 19.1). Prioritize mobile-first patterns, performance, and cross-platform compatibility.
+
+After changing the `expo` version, run `npx expo install --fix` and `npx expo-doctor`. Manual `eas update` requires `--environment` (e.g. `production`, `preview`); EAS Workflow update jobs in this repo set `environment` explicitly.
 
 ## Documentation Resources
 
@@ -66,6 +68,14 @@ npm run reset-project           # Reset to blank template
 npx expo doctor      # Check project health and dependencies
 npx expo lint        # Run ESLint
 npm run draft        # Publish preview update and website (workflow)
+```
+
+### Git hooks (Husky)
+
+Pre-commit runs `npm run precommit` (ESLint via `expo lint` + `typecheck:supabase`). After `npm install`, the `prepare` script wires Husky. If hooks do not run, set `git config core.hooksPath .husky` and ensure `.husky/pre-commit` is executable.
+
+```bash
+npm run precommit    # Run the same checks locally without committing
 ```
 
 ### Production
@@ -153,7 +163,6 @@ If there are errors in **Expo Go** or the project is not running, create a **dev
 When working on this project:
 
 1. **Always start by consulting the appropriate documentation**:
-
    - For general Expo questions: https://docs.expo.dev/llms-full.txt
    - For EAS/deployment questions: https://docs.expo.dev/llms-eas.txt
    - For SDK/API questions: https://docs.expo.dev/llms-sdk.txt

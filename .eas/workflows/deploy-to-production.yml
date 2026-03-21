@@ -8,6 +8,7 @@ jobs:
   fingerprint:
     name: Fingerprint
     type: fingerprint
+    environment: production
   get_android_build:
     name: Check for existing android build
     needs: [fingerprint]
@@ -55,6 +56,7 @@ jobs:
     needs: [get_android_build]
     if: ${{ needs.get_android_build.outputs.build_id }}
     type: update
+    environment: production
     params:
       branch: production
       platform: android
@@ -63,6 +65,7 @@ jobs:
     needs: [get_ios_build]
     if: ${{ needs.get_ios_build.outputs.build_id }}
     type: update
+    environment: production
     params:
       branch: production
       platform: ios

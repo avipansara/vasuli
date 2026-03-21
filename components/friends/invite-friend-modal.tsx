@@ -4,7 +4,7 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { FormGroup, PrivacyNote, SharedModal } from '@/components/ui/shared-modal';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import React from 'react';
-import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 interface InviteFriendModalProps {
   visible: boolean;
@@ -13,10 +13,6 @@ interface InviteFriendModalProps {
   setName: (value: string) => void;
   email: string;
   setEmail: (value: string) => void;
-  phone: string;
-  setPhone: (value: string) => void;
-  inviteMethod: 'email' | 'phone';
-  setInviteMethod: (value: 'email' | 'phone') => void;
   onSubmit: () => void;
 }
 
@@ -27,77 +23,32 @@ export function InviteFriendModal({
   setName,
   email,
   setEmail,
-  phone,
-  setPhone,
-  inviteMethod,
-  setInviteMethod,
   onSubmit,
 }: InviteFriendModalProps) {
   const { colors, isDark } = useThemeColors();
-  const isDisabled = inviteMethod === 'email' ? !email.trim() : !phone.trim();
+  const isDisabled = !email.trim();
 
   return (
     <SharedModal
       visible={visible}
       onClose={onClose}
       title="Invite a Friend"
-      subtitle="Send an invite via email or phone number"
+      subtitle="We’ll email them a link to join Vasuli"
       icon="person.badge.plus"
       submitLabel="Send Invite"
       submitIcon="paperplane.fill"
       submitDisabled={isDisabled}
       onSubmit={onSubmit}>
-      <View style={styles.methodToggle}>
-        <TouchableOpacity
-          style={[
-            styles.methodButton,
-            inviteMethod === 'email' && styles.methodButtonActive,
-            inviteMethod !== 'email' && {
-              backgroundColor: isDark ? 'rgba(26, 26, 36, 0.6)' : colors.card,
-              borderColor: isDark ? 'rgba(45, 212, 191, 0.2)' : colors.border,
-            },
-          ]}
-          onPress={() => setInviteMethod('email')}>
-          <IconSymbol
-            size={20}
-            name="envelope.fill"
-            color={inviteMethod === 'email' ? '#0A0A0F' : colors.tint}
-          />
-          <ThemedText
-            style={[
-              styles.methodButtonText,
-              inviteMethod === 'email' && styles.methodButtonTextActive,
-              inviteMethod !== 'email' && { color: colors.text },
-            ]}>
-            Email
-          </ThemedText>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[
-            styles.methodButton,
-            inviteMethod === 'phone' && styles.methodButtonActive,
-            inviteMethod !== 'phone' && {
-              backgroundColor: isDark ? 'rgba(26, 26, 36, 0.6)' : colors.card,
-              borderColor: isDark ? 'rgba(45, 212, 191, 0.2)' : colors.border,
-            },
-          ]}
-          onPress={() => setInviteMethod('phone')}>
-          <IconSymbol
-            size={20}
-            name="phone.fill"
-            color={inviteMethod === 'phone' ? '#0A0A0F' : colors.tint}
-          />
-          <ThemedText
-            style={[
-              styles.methodButtonText,
-              inviteMethod === 'phone' && styles.methodButtonTextActive,
-              inviteMethod !== 'phone' && { color: colors.text },
-            ]}>
-            Phone
-          </ThemedText>
-        </TouchableOpacity>
+      <View style={styles.emailHint}>
+        <IconSymbol
+          size={20}
+          name="envelope.fill"
+          color={isDark ? '#2DD4BF' : colors.tint}
+        />
+        <ThemedText style={[styles.emailHintText, { color: colors.textSecondary }]}>
+          Email invite
+        </ThemedText>
       </View>
-
 
       <FormGroup label="Name (Optional)">
         <FormInput
@@ -108,30 +59,17 @@ export function InviteFriendModal({
         />
       </FormGroup>
 
-      {inviteMethod === 'email' ? (
-        <FormGroup label="Email Address *">
-          <FormInput
-            placeholder="friend@example.com"
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoFocus
-            returnKeyType="done"
-          />
-        </FormGroup>
-      ) : (
-        <FormGroup label="Phone Number *">
-          <FormInput
-            placeholder="+1 (555) 123-4567"
-            value={phone}
-            onChangeText={setPhone}
-            keyboardType="phone-pad"
-            autoFocus
-            returnKeyType="done"
-          />
-        </FormGroup>
-      )}
+      <FormGroup label="Email Address *">
+        <FormInput
+          placeholder="friend@example.com"
+          value={email}
+          onChangeText={setEmail}
+          keyboardType="email-address"
+          autoCapitalize="none"
+          autoFocus
+          returnKeyType="done"
+        />
+      </FormGroup>
 
       <PrivacyNote>
         We will send them an invite to join Vasuli. They will be able to accept and connect with you.
@@ -141,30 +79,14 @@ export function InviteFriendModal({
 }
 
 const styles = StyleSheet.create({
-  methodToggle: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 24,
-  },
-  methodButton: {
-    flex: 1,
+  emailHint: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
     gap: 8,
-    paddingVertical: 14,
-    borderRadius: 12,
-    borderWidth: 1,
+    marginBottom: 20,
   },
-  methodButtonActive: {
-    backgroundColor: '#2DD4BF',
-    borderColor: '#2DD4BF',
-  },
-  methodButtonText: {
+  emailHintText: {
     fontSize: 14,
     fontWeight: '600',
-  },
-  methodButtonTextActive: {
-    color: '#0A0A0F',
   },
 });

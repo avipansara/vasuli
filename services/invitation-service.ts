@@ -1,8 +1,34 @@
 import { supabase } from '@/lib/supabase';
+import { createInvitationNotification, notificationService } from '@/services/notification-service';
+import { userService } from '@/services/user-service';
 import type { Invitation } from '@/types/database';
 
 // Set to true for development/testing without real Supabase
 const USE_MOCK_DATA = false;
+
+/** Phone invites use a synthetic inbox; Resend cannot deliver to it. */
+function isDeliverableEmail(email: string): boolean {
+  return !email.toLowerCase().endsWith('@phone.placeholder');
+}
+
+async function assertSendInvitationEmail(params: {
+  inviteeEmail: string;
+  inviteeName: string;
+  inviterName: string;
+  inviterId: string;
+  invitationId: string;
+}): Promise<void> {
+  const { data, error } = await supabase.functions.invoke('send-invitation', {
+    body: params,
+  });
+
+  if (error) {
+    throw new Error(error.message || 'Failed to send invitation email');
+  }
+  if (data && typeof data === 'object' && 'error' in data && data.error) {
+    throw new Error(String((data as { error: string }).error));
+  }
+}
 
 export const invitationService = {
   async create(invitation: {
@@ -14,14 +40,15 @@ export const invitationService = {
   }): Promise<Invitation> {
     const createdAt = new Date().toISOString();
     const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(); // 30 days
+    const inviteeEmail = invitation.inviteeEmail.trim().toLowerCase();
 
     // Mock mode - return a mock invitation
     if (USE_MOCK_DATA) {
-      console.log(`[MOCK] Invitation created for ${invitation.inviteeEmail}`);
+      console.log(`[MOCK] Invitation created for ${inviteeEmail}`);
       return {
         id: `mock-invitation-${Date.now()}`,
         inviterId: invitation.inviterId,
-        inviteeEmail: invitation.inviteeEmail,
+        inviteeEmail,
         inviteePhone: invitation.inviteePhone,
         inviteeName: invitation.inviteeName,
         status: 'pending',
@@ -34,7 +61,7 @@ export const invitationService = {
       .from('invitations')
       .insert({
         inviter_id: invitation.inviterId,
-        invitee_email: invitation.inviteeEmail,
+        invitee_email: inviteeEmail,
         invitee_phone: invitation.inviteePhone || null,
         invitee_name: invitation.inviteeName || null,
         status: 'pending',
@@ -46,37 +73,40 @@ export const invitationService = {
 
     if (error) throw error;
 
-    // Send invitation: Push (if user exists & has token) or Email (fallback)
-    try {
-      const { userService } = await import('@/services/user-service');
-      const { notificationService, createInvitationNotification } = await import('@/services/notification-service');
+    const inviterName = invitation.inviterName || 'A friend';
+    const inviteeName = invitation.inviteeName || inviteeEmail.split('@')[0];
 
-      const existingUser = await userService.getByEmail(invitation.inviteeEmail);
+    const existingUser = await userService.getByEmail(inviteeEmail);
 
-      if (existingUser?.pushToken) {
-        // Person already has an account and push enabled - send push instead of email
-        console.log(`[Invitation] Sending push notification to ${invitation.inviteeEmail}`);
-        const notification = createInvitationNotification(invitation.inviterName || 'A friend');
-        await notificationService.sendPushNotification(existingUser.pushToken, notification);
-      } else {
-        // New person or no push token - send email
-        console.log(`[Invitation] Sending email to ${invitation.inviteeEmail}`);
-        const { error: emailError } = await supabase.functions.invoke('send-invitation', {
-          body: {
-            inviteeEmail: invitation.inviteeEmail,
-            inviteeName: invitation.inviteeName || invitation.inviteeEmail.split('@')[0],
-            inviterName: invitation.inviterName || 'A friend',
-            inviterId: invitation.inviterId,
-          },
+    if (isDeliverableEmail(inviteeEmail)) {
+      try {
+        console.log(`[Invitation] Sending email to ${inviteeEmail}`);
+        await assertSendInvitationEmail({
+          inviteeEmail,
+          inviteeName,
+          inviterName,
+          inviterId: invitation.inviterId,
+          invitationId: data.id,
         });
-
-        if (emailError) {
-          console.error('Failed to send invitation email:', emailError);
-        }
+      } catch (emailErr) {
+        console.error('Error sending invitation email:', emailErr);
+        await supabase.from('invitations').delete().eq('id', data.id);
+        throw emailErr;
       }
-    } catch (invError) {
-      console.error('Error sending invitation delivery:', invError);
-      // Don't throw - invitation was created successfully in DB
+    } else {
+      console.warn(
+        `[Invitation] Skipping email for synthetic address ${inviteeEmail} (phone invite — add SMS or another channel to notify).`
+      );
+    }
+
+    if (existingUser?.pushToken) {
+      try {
+        console.log(`[Invitation] Also sending push notification to ${inviteeEmail}`);
+        const notification = createInvitationNotification(inviterName);
+        await notificationService.sendPushNotification(existingUser.pushToken, notification);
+      } catch (pushErr) {
+        console.error('Error sending invitation push notification:', pushErr);
+      }
     }
 
     return {
@@ -117,10 +147,11 @@ export const invitationService = {
   },
 
   async getByEmail(email: string): Promise<Invitation[]> {
+    const normalized = email.trim().toLowerCase();
     const { data, error } = await supabase
       .from('invitations')
       .select('*')
-      .eq('invitee_email', email)
+      .eq('invitee_email', normalized)
       .order('created_at', { ascending: false });
 
     if (error) throw error;
@@ -174,33 +205,81 @@ export const invitationService = {
 
     if (updateError) throw updateError;
 
-    // Resend the invitation email
-    try {
-      await supabase.functions.invoke('send-invitation', {
-        body: {
-          inviteeEmail: inv.invitee_email,
-          inviteeName: inv.invitee_name || inv.invitee_email.split('@')[0],
-          inviterName: inviterName || 'A friend',
-          inviterId: inv.inviter_id,
-        },
-      });
-    } catch (emailError) {
-      console.error('Error resending invitation email:', emailError);
+    const inviteeEmail = String(inv.invitee_email).trim().toLowerCase();
+    if (!isDeliverableEmail(inviteeEmail)) {
+      throw new Error('This invitation has no deliverable email address.');
     }
+
+    await assertSendInvitationEmail({
+      inviteeEmail,
+      inviteeName: inv.invitee_name || inviteeEmail.split('@')[0],
+      inviterName: inviterName || 'A friend',
+      inviterId: inv.inviter_id,
+      invitationId: id,
+    });
   },
 
+  /**
+   * Mark the invitation accepted when the invitee opens the email deep link and taps Accept.
+   * Uses `invitationId` from the URL when present; otherwise finds the newest pending row for
+   * (inviterId, inviteeEmail). No-ops if invitee has no email or nothing matches.
+   */
+  async acceptInvitationFromLink(params: {
+    invitationId?: string | null;
+    inviterId: string;
+    inviteeEmail?: string | null;
+  }): Promise<void> {
+    if (USE_MOCK_DATA) return;
+
+    const email = params.inviteeEmail?.trim().toLowerCase();
+    if (!email) return;
+
+    if (params.invitationId) {
+      const { data, error } = await supabase
+        .from('invitations')
+        .select('id, inviter_id, invitee_email, status')
+        .eq('id', params.invitationId)
+        .maybeSingle();
+
+      if (error || !data) return;
+
+      if (data.inviter_id !== params.inviterId) return;
+      if (String(data.invitee_email).trim().toLowerCase() !== email) return;
+      if (data.status === 'accepted' || data.status === 'declined') return;
+      if (data.status !== 'pending') return;
+
+      await this.updateStatus(data.id, 'accepted');
+      return;
+    }
+
+    const { data: rows, error } = await supabase
+      .from('invitations')
+      .select('id, status')
+      .eq('inviter_id', params.inviterId)
+      .eq('invitee_email', email)
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false })
+      .limit(1);
+
+    if (error || !rows?.length) return;
+
+    await this.updateStatus(rows[0].id, 'accepted');
+  },
+
+  /** Pending invites for the signed-in user's email (email invites only). */
   async getReceivedInvitations(email: string): Promise<(Invitation & { inviterName?: string })[]> {
     if (USE_MOCK_DATA) {
       return [];
     }
 
+    const normalized = email.trim().toLowerCase();
     const { data, error } = await supabase
       .from('invitations')
       .select(`
         *,
         inviter:users!inviter_id(name)
       `)
-      .eq('invitee_email', email)
+      .eq('invitee_email', normalized)
       .eq('status', 'pending')
       .order('created_at', { ascending: false });
 

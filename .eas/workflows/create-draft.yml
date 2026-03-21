@@ -8,6 +8,7 @@ jobs:
   publish_preview_update:
     name: Publish preview update
     type: update
+    environment: preview
     params:
       branch: ${{ github.ref_name || 'test' }}
   deploy_website:
