@@ -1,4 +1,5 @@
 import { AnimatedSplash } from '@/components/ui/animated-splash';
+import { RouteErrorBoundary } from '@/components/ui/route-error-boundary';
 import { AuthProvider, useAuth } from '@/contexts/auth-context-otp';
 import { ThemeProvider as AppThemeProvider, useTheme } from '@/contexts/theme-context';
 import { useNotifications } from '@/hooks/use-notifications';
@@ -6,7 +7,13 @@ import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native
 import { useFonts } from 'expo-font';
 import { buildInvitePath, parseInviteFromUrl } from '@/lib/invite-deeplink';
 import * as Linking from 'expo-linking';
-import { Stack, useRootNavigationState, useRouter, useSegments } from 'expo-router';
+import {
+  type Href,
+  Stack,
+  useRootNavigationState,
+  useRouter,
+  useSegments,
+} from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
@@ -111,7 +118,7 @@ function RootLayoutNav() {
         console.log('[DeepLink] Navigating to invite', { inviterId, invitationId });
 
         const path = buildInvitePath(inviterId, invitationId);
-        router.replace(path);
+        router.replace(path as Href);
       } catch (err) {
         console.error('[DeepLink] Error handling invite URL:', err);
       }
@@ -134,6 +141,7 @@ function RootLayoutNav() {
 
   return (
     <ThemeProvider value={isDark ? AmbientDarkTheme : AmbientLightTheme}>
+      <RouteErrorBoundary homeHref="/(tabs)">
       <Stack>
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
@@ -153,6 +161,7 @@ function RootLayoutNav() {
         <Stack.Screen name="invite/[id]" options={{ headerShown: false }} />
         <Stack.Screen name="invitations" options={{ headerShown: false }} />
       </Stack>
+      </RouteErrorBoundary>
       <StatusBar style={isDark ? 'light' : 'dark'} />
     </ThemeProvider>
   );

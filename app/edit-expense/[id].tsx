@@ -1,15 +1,17 @@
 import { ThemedText } from '@/components/themed-text';
+import { AsyncErrorState } from '@/components/ui/async-error-state';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { KeyboardAwareScroll } from '@/components/ui/keyboard-aware-scroll';
 import { NavigationHeader } from '@/components/ui/screen-header';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useThemeColors } from '@/hooks/use-theme-colors';
+import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { activityService } from '@/services/activity-service';
 import { expenseService, groupService, initDatabase, userService } from '@/services/api';
 import type { Group, User } from '@/types/database';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Alert,
   Animated,
@@ -57,6 +59,8 @@ export default function EditExpenseScreen() {
   const [groupMembers, setGroupMembers] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [dataLoading, setDataLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [groupMembersLoadError, setGroupMembersLoadError] = useState<string | null>(null);
   const [splitMethod, setSplitMethod] = useState<SplitMethod>(SplitMethod.EQUAL);
   const [customAmounts, setCustomAmounts] = useState<Record<string, string>>({});
   const [customPercentages, setCustomPercentages] = useState<Record<string, string>>({});
@@ -70,81 +74,87 @@ export default function EditExpenseScreen() {
   const amountInputRef = useRef<TextInput>(null);
   const descriptionInputRef = useRef<TextInput>(null);
 
-  useEffect(() => {
-    async function loadGroupMembers() {
-      if (selectedGroupId) {
-        try {
-          const members = await groupService.getMembers(selectedGroupId);
-          setGroupMembers(members.map((m: { userId: string }) => m.userId));
-        } catch (error) {
-          console.error('Error loading group members:', error);
-        }
-      } else {
-        setGroupMembers([]);
-      }
+  const loadGroupMembersForSelection = useCallback(async () => {
+    if (!selectedGroupId) {
+      setGroupMembers([]);
+      setGroupMembersLoadError(null);
+      return;
     }
-    loadGroupMembers();
+    try {
+      setGroupMembersLoadError(null);
+      const members = await groupService.getMembers(selectedGroupId);
+      setGroupMembers(members.map((m: { userId: string }) => m.userId));
+    } catch (error) {
+      console.error('Error loading group members:', error);
+      setGroupMembersLoadError(getFetchErrorMessage(error));
+    }
   }, [selectedGroupId]);
 
   useEffect(() => {
-    async function loadExpenseData() {
-      try {
-        await initDatabase();
+    void loadGroupMembersForSelection();
+  }, [loadGroupMembersForSelection]);
 
-        const expense = await expenseService.getById(id);
-        if (!expense) {
-          Alert.alert('Error', 'Expense not found');
-          router.back();
-          return;
-        }
+  const loadExpenseData = useCallback(async () => {
+    setLoadError(null);
+    setDataLoading(true);
+    try {
+      await initDatabase();
 
-        setDescription(expense.description);
-        setAmount(expense.amount.toString());
-
-        if (expense.groupId) {
-          setSplitType(SplitType.GROUP);
-          setSelectedGroupId(expense.groupId);
-        } else {
-          setSplitType(SplitType.FRIENDS);
-        }
-
-        const [groupsData, userFriends, existingSplits] = await Promise.all([
-          groupService.getUserGroups(user?.id || ''),
-          userService.getUserFriends(currentUserId),
-          expenseService.getSplits(id),
-        ]);
-
-        // Pre-select friends from existing splits (exclude current user)
-        const splitFriendIds = existingSplits
-          .map(split => split.userId)
-          .filter(userId => userId !== currentUserId);
-        setSelectedFriendIds(splitFriendIds);
-
-        setGroups(groupsData);
-        setFriends(userFriends);
+      const expense = await expenseService.getById(id);
+      if (!expense) {
         setDataLoading(false);
-
-        Animated.parallel([
-          Animated.timing(fadeAnim, {
-            toValue: 1,
-            duration: 400,
-            useNativeDriver: true,
-          }),
-          Animated.timing(slideAnim, {
-            toValue: 0,
-            duration: 400,
-            useNativeDriver: true,
-          }),
-        ]).start();
-      } catch (error) {
-        console.error('Error loading expense:', error);
-        Alert.alert('Error', 'Failed to load expense');
+        Alert.alert('Error', 'Expense not found');
         router.back();
+        return;
       }
-    }
 
+      setDescription(expense.description);
+      setAmount(expense.amount.toString());
+
+      if (expense.groupId) {
+        setSplitType(SplitType.GROUP);
+        setSelectedGroupId(expense.groupId);
+      } else {
+        setSplitType(SplitType.FRIENDS);
+      }
+
+      const [groupsData, userFriends, existingSplits] = await Promise.all([
+        groupService.getUserGroups(user?.id || ''),
+        userService.getUserFriends(currentUserId),
+        expenseService.getSplits(id),
+      ]);
+
+      const splitFriendIds = existingSplits
+        .map(split => split.userId)
+        .filter(userId => userId !== currentUserId);
+      setSelectedFriendIds(splitFriendIds);
+
+      setGroups(groupsData);
+      setFriends(userFriends);
+      setDataLoading(false);
+
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 400,
+          useNativeDriver: true,
+        }),
+        Animated.timing(slideAnim, {
+          toValue: 0,
+          duration: 400,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    } catch (error) {
+      console.error('Error loading expense:', error);
+      setLoadError(getFetchErrorMessage(error));
+      setDataLoading(false);
+    }
+  }, [id, currentUserId, user?.id]);
+
+  useEffect(() => {
     loadExpenseData();
-  }, [id]);
+  }, [loadExpenseData]);
 
   const isValid =
     description.trim().length > 0 &&
@@ -283,6 +293,23 @@ export default function EditExpenseScreen() {
     );
   }
 
+  if (loadError) {
+    return (
+      <View style={styles.container}>
+        <LinearGradient colors={gradients.screenBackground} style={StyleSheet.absoluteFill} />
+        <NavigationHeader
+          title="Edit Expense"
+          onBack={() => router.back()}
+        />
+        <AsyncErrorState
+          message={loadError}
+          onRetry={() => void loadExpenseData()}
+          title="Couldn't load expense"
+        />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <LinearGradient colors={gradients.screenBackground} style={StyleSheet.absoluteFill} />
@@ -414,6 +441,14 @@ export default function EditExpenseScreen() {
               <ThemedText style={[styles.inputLabel, !isDark && { color: colors.textSecondary }]}>
                 Select Group *
               </ThemedText>
+              {selectedGroupId && groupMembersLoadError && (
+                <AsyncErrorState
+                  variant="compact"
+                  title="Couldn't load members"
+                  message={groupMembersLoadError}
+                  onRetry={() => void loadGroupMembersForSelection()}
+                />
+              )}
               {groups.length === 0 ? (
                 <View style={[styles.emptyState, !isDark && { backgroundColor: colors.card }]}>
                   <IconSymbol name="person.3.fill" size={32} color={isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)'} />

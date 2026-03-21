@@ -13,7 +13,7 @@
     "typecheck:supabase": "tsc --noEmit -p supabase/functions/tsconfig.json",
     "test": "vitest run",
     "test:watch": "vitest",
-    "precommit": "npm run lint && npm run typecheck:supabase",
+    "precommit": "npm run lint && npm run typecheck:supabase && npm run test",
     "draft": "npx eas-cli@latest workflow:run create-draft.yml",
     "development-builds": "npx eas-cli@latest workflow:run create-development-builds.yml",
     "deploy": "npx eas-cli@latest workflow:run deploy-to-production.yml",
@@ -55,6 +55,7 @@
     "expo-web-browser": "~15.0.10",
     "react": "19.1.0",
     "react-dom": "19.1.0",
+    "react-error-boundary": "^6.1.1",
     "react-native": "0.81.5",
     "react-native-gesture-handler": "~2.28.0",
     "react-native-qrcode-svg": "^6.3.21",
@@ -66,9 +67,11 @@
     "react-native-worklets": "0.5.1"
   },
   "devDependencies": {
+    "@testing-library/react": "^16.3.2",
     "@types/react": "~19.1.10",
     "eslint": "^9.25.0",
     "eslint-config-expo": "~10.0.0",
+    "happy-dom": "^20.8.4",
     "husky": "^9.1.7",
     "supabase": "^2.83.0",
     "typescript": "~5.9.2",

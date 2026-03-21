@@ -29,6 +29,27 @@ describe('parseInvitationBody', () => {
     expect(r.ok).toBe(true)
   })
 
+  it('prefers camelCase when both naming styles are present', () => {
+    const r = parseInvitationBody({
+      inviteeEmail: 'camel@b.com',
+      invitee_email: 'snake@b.com',
+      inviteeName: 'CamelName',
+      invitee_name: 'SnakeName',
+      inviterName: 'Inv',
+      inviter_name: 'Ignored',
+      inviterId: '11111111-1111-4111-8111-111111111111',
+      inviter_id: '99999999-9999-4999-8999-999999999999',
+      invitationId: '22222222-2222-4222-8222-222222222222',
+      invitation_id: '33333333-3333-4333-8333-333333333333',
+    })
+    expect(r.ok).toBe(true)
+    if (r.ok) {
+      expect(r.data.inviteeEmail).toBe('camel@b.com')
+      expect(r.data.inviteeName).toBe('CamelName')
+      expect(r.data.invitationId).toBe('22222222-2222-4222-8222-222222222222')
+    }
+  })
+
   it('returns missing fields when empty', () => {
     const r = parseInvitationBody({
       inviteeEmail: 'a@b.com',

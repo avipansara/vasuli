@@ -23,6 +23,8 @@ Do **not** use the `service_role` key in the app; it bypasses RLS and must stay 
 
 **Invitations RLS:** Tight policies require a Supabase Auth JWT where `auth.uid()` matches `public.users.id`. The default OTP-only anon client cannot satisfy that — see [`supabase/docs/RLS_INVITATIONS.md`](./supabase/docs/RLS_INVITATIONS.md) before applying [`supabase/migrations/002_invitations_rls_policies.sql`](./supabase/migrations/002_invitations_rls_policies.sql).
 
+**Expenses RLS:** [`supabase/migrations/004_expenses_rls_policies.sql`](./supabase/migrations/004_expenses_rls_policies.sql) adds payer/group-member rules for **`authenticated`** and permissive **`anon`** policies for the OTP-only client. See [`supabase/docs/RLS_EXPENSES.md`](./supabase/docs/RLS_EXPENSES.md).
+
 **Edge Function `send-invitation` (401):** The gateway defaults to requiring a JWT; this app invokes with the anon key only. [`supabase/config.toml`](./supabase/config.toml) sets `verify_jwt = false` for that function. After changing config, redeploy: `npm run supabase:deploy:send-invitation` (uses `--no-verify-jwt`). You can also toggle **Enforce JWT** off for that function in the Dashboard under Edge Functions → send-invitation → Details / Settings.
 
 ```bash
@@ -61,11 +63,18 @@ If the app creates an invite and the `send-invitation` Edge Function returns **2
 
 ### Tests
 
-Unit tests for the invitation payload parser and invite link live next to the Edge Function:
+[Vitest](https://vitest.dev/) runs in Node and covers:
+
+- **Edge Functions** — `supabase/functions/**/*.test.ts` (e.g. `send-invitation` payload parsing)
+- **App helpers** — `lib/**/*.test.ts`, `utils/**/*.test.ts` (validation, invite deep links)
+- **Services** — `services/**/*.test.ts` (mocked Supabase client for invitations, friendships, users)
 
 ```bash
 npm test
+npm run test:watch
 ```
+
+**Optional later:** component tests with [Expo unit testing](https://docs.expo.dev/develop/unit-testing/) (jest-expo / React Native Testing Library) and E2E smoke (e.g. Maestro) for full user flows — not wired in this repo yet.
 
 ## Workflows
 

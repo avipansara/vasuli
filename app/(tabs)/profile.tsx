@@ -1,15 +1,29 @@
 import { ThemedText } from '@/components/themed-text';
+import { AsyncErrorState } from '@/components/ui/async-error-state';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { LoadingState } from '@/components/ui/loading-state';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useTheme } from '@/contexts/theme-context';
 import { useThemeColors } from '@/hooks/use-theme-colors';
+import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { calculateUserTotalBalance, initDatabase, userService } from '@/services/api';
 import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, Animated, Modal, Platform, Pressable, ScrollView, StyleSheet, Switch, TouchableOpacity, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Alert,
+  Animated,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 
 export default function ProfileScreen() {
   const { gradients, isDark, colors } = useThemeColors();
@@ -53,6 +67,8 @@ export default function ProfileScreen() {
 
   const [totalOwed, setTotalOwed] = useState(0);
   const [totalOwing, setTotalOwing] = useState(0);
+  const [statsLoading, setStatsLoading] = useState(false);
+  const [statsError, setStatsError] = useState<string | null>(null);
 
   const [playgroundVisible, setPlaygroundVisible] = useState(false);
 
@@ -60,10 +76,28 @@ export default function ProfileScreen() {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
 
+  const loadStats = useCallback(async () => {
+    if (!currentUser?.id) return;
+    setStatsError(null);
+    setStatsLoading(true);
+    try {
+      await initDatabase();
+      const { totalOwed: totalOwedAmount, totalOwing: totalOwingAmount } =
+        await calculateUserTotalBalance(currentUser.id);
+      setTotalOwed(totalOwedAmount);
+      setTotalOwing(totalOwingAmount);
+    } catch (error) {
+      console.error('Error loading stats:', error);
+      setStatsError(getFetchErrorMessage(error));
+    } finally {
+      setStatsLoading(false);
+    }
+  }, [currentUser?.id]);
+
   useFocusEffect(
     useCallback(() => {
       loadStats();
-    }, [])
+    }, [loadStats])
   );
 
   useEffect(() => {
@@ -80,22 +114,6 @@ export default function ProfileScreen() {
       }),
     ]).start();
   }, []);
-
-  async function loadStats() {
-    try {
-      await initDatabase();
-      const currentUserId = currentUser?.id || '';
-
-      // Use unified balance calculation service
-      const { totalOwed: totalOwedAmount, totalOwing: totalOwingAmount } = await calculateUserTotalBalance(currentUserId);
-
-      setTotalOwed(totalOwedAmount);
-      setTotalOwing(totalOwingAmount);
-
-    } catch (error) {
-      console.error('Error loading stats:', error);
-    }
-  }
 
   function handleEditProfile() {
     router.push('/edit-profile');
@@ -183,16 +201,40 @@ export default function ProfileScreen() {
           </Pressable>
         </View>
 
-        <View style={[styles.statsSection, !isDark && { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <View style={styles.statItem}>
-            <ThemedText style={[styles.statValue, !isDark && { color: colors.text }]}>${totalOwed.toFixed(2)}</ThemedText>
-            <ThemedText style={[styles.statLabel, { color: colors.textSecondary }]}>Total Owed</ThemedText>
-          </View>
-          <View style={[styles.statDivider, !isDark && { backgroundColor: colors.border }]} />
-          <View style={styles.statItem}>
-            <ThemedText style={[styles.statValue, !isDark && { color: colors.text }]}>${totalOwing.toFixed(2)}</ThemedText>
-            <ThemedText style={[styles.statLabel, { color: colors.textSecondary }]}>Total Owing</ThemedText>
-          </View>
+        <View
+          style={[
+            styles.statsSection,
+            (statsLoading || statsError) && styles.statsSectionStack,
+            !isDark && { backgroundColor: colors.card, borderColor: colors.border },
+          ]}>
+          {statsLoading ? (
+            <View style={styles.statsLoading}>
+              <ActivityIndicator size="small" color={isDark ? '#2DD4BF' : colors.tint} />
+            </View>
+          ) : statsError ? (
+            <AsyncErrorState
+              variant="compact"
+              message={statsError}
+              onRetry={loadStats}
+              title="Couldn't load balances"
+            />
+          ) : (
+            <>
+              <View style={styles.statItem}>
+                <ThemedText style={[styles.statValue, !isDark && { color: colors.text }]}>
+                  ${totalOwed.toFixed(2)}
+                </ThemedText>
+                <ThemedText style={[styles.statLabel, { color: colors.textSecondary }]}>Total Owed</ThemedText>
+              </View>
+              <View style={[styles.statDivider, !isDark && { backgroundColor: colors.border }]} />
+              <View style={styles.statItem}>
+                <ThemedText style={[styles.statValue, !isDark && { color: colors.text }]}>
+                  ${totalOwing.toFixed(2)}
+                </ThemedText>
+                <ThemedText style={[styles.statLabel, { color: colors.textSecondary }]}>Total Owing</ThemedText>
+              </View>
+            </>
+          )}
         </View>
 
         <View style={styles.settingsSection}>
@@ -349,6 +391,14 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: 'rgba(20, 35, 38, 0.6)',
     marginBottom: 24,
+  },
+  statsSectionStack: {
+    flexDirection: 'column',
+  },
+  statsLoading: {
+    paddingVertical: 8,
+    alignItems: 'center',
+    width: '100%',
   },
   statItem: {
     flex: 1,

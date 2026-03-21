@@ -1,10 +1,12 @@
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { KeyboardAwareScroll } from '@/components/ui/keyboard-aware-scroll';
+import { AsyncErrorState } from '@/components/ui/async-error-state';
 import { LoadingState } from '@/components/ui/loading-state';
 import { NavigationHeader } from '@/components/ui/screen-header';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useThemeColors } from '@/hooks/use-theme-colors';
+import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { activityService } from '@/services/activity-service';
 import { calculateBalances, groupService, settlementService, userService } from '@/services/api';
 import type { Group, GroupMember, User } from '@/types/database';
@@ -127,12 +129,14 @@ export default function GroupSettleScreen() {
   const [group, setGroup] = useState<Group | null>(null);
   const [members, setMembers] = useState<MemberWithBalance[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [selectedMember, setSelectedMember] = useState<MemberWithBalance | null>(null);
   const [amount, setAmount] = useState('');
   const [settling, setSettling] = useState(false);
 
   const loadData = useCallback(async () => {
     try {
+      setLoadError(null);
       setLoading(true);
 
       // Load group
@@ -170,7 +174,7 @@ export default function GroupSettleScreen() {
       setMembers(membersWithBalances);
     } catch (error) {
       console.error('Error loading data:', error);
-      Alert.alert('Error', 'Failed to load group data');
+      setLoadError(getFetchErrorMessage(error));
     } finally {
       setLoading(false);
     }
@@ -267,6 +271,23 @@ export default function GroupSettleScreen() {
         <View style={styles.container}>
           <LinearGradient colors={gradients.screenBackground} style={StyleSheet.absoluteFill} />
           <LoadingState message="Loading members..." />
+        </View>
+      </>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <>
+        <Stack.Screen options={{ headerShown: false }} />
+        <View style={styles.container}>
+          <LinearGradient colors={gradients.screenBackground} style={StyleSheet.absoluteFill} />
+          <NavigationHeader title="Settle Up" onBack={() => router.back()} />
+          <AsyncErrorState
+            message={loadError}
+            onRetry={() => void loadData()}
+            title="Couldn't load group"
+          />
         </View>
       </>
     );

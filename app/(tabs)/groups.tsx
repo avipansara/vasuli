@@ -1,9 +1,11 @@
 import { CreateGroupModal, GroupCard } from '@/components/groups';
 import { ThemedText } from '@/components/themed-text';
+import { AsyncErrorState } from '@/components/ui/async-error-state';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { LoadingState } from '@/components/ui/loading-state';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useThemeColors } from '@/hooks/use-theme-colors';
+import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { supabase } from '@/lib/supabase';
 import { calculateBalances, groupService, initDatabase, userService } from '@/services/api';
 import { CACHE_KEYS, cacheService } from '@/services/cache-service';
@@ -18,6 +20,7 @@ export default function GroupsScreen() {
   const { colors, gradients, isDark } = useThemeColors();
   const [groups, setGroups] = useState<GroupWithMembers[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
   const [newGroupDescription, setNewGroupDescription] = useState('');
@@ -32,6 +35,7 @@ export default function GroupsScreen() {
   const loadGroups = useCallback(async (skipCache = false) => {
     if (!currentUserId) return;
     try {
+      setLoadError(null);
       // 1. Load from cache first (instant)
       if (!skipCache) {
         const cached = await cacheService.get<GroupWithMembers[]>(CACHE_KEYS.GROUPS_LIST);
@@ -68,6 +72,7 @@ export default function GroupsScreen() {
       await cacheService.set(CACHE_KEYS.GROUPS_LIST, groupsWithData);
     } catch (error) {
       console.error('Error loading groups:', error);
+      setLoadError(getFetchErrorMessage(error));
     } finally {
       setLoading(false);
     }
@@ -189,6 +194,12 @@ export default function GroupsScreen() {
 
       {loading ? (
         <LoadingState message="Loading your groups..." />
+      ) : loadError ? (
+        <AsyncErrorState
+          message={loadError}
+          onRetry={() => loadGroups(true)}
+          title="Couldn't load groups"
+        />
       ) : groups.length === 0 ? (
         <Animated.View style={[
           styles.emptyContainer,

@@ -3,10 +3,12 @@ import {
   AddMemberModal,
 } from '@/components/group';
 import { ThemedText } from '@/components/themed-text';
+import { AsyncErrorState } from '@/components/ui/async-error-state';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { LoadingState } from '@/components/ui/loading-state';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useThemeColors } from '@/hooks/use-theme-colors';
+import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { supabase } from '@/lib/supabase';
 import { activityService } from '@/services/activity-service';
 import {
@@ -35,6 +37,7 @@ export default function GroupDetailScreen() {
   const [members, setMembers] = useState<(GroupMember & { user?: User })[]>([]);
   const [balances, setBalances] = useState<Map<string, number>>(new Map());
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [expenseModalVisible, setExpenseModalVisible] = useState(false);
   const [isAddingExpense, setIsAddingExpense] = useState(false);
   const [isAddingMember, setIsAddingMember] = useState(false);
@@ -59,6 +62,7 @@ export default function GroupDetailScreen() {
 
   const loadGroupData = useCallback(async () => {
     try {
+      setLoadError(null);
       const groupData = await groupService.getById(id);
       if (!groupData) {
         Alert.alert('Error', 'Group not found');
@@ -112,6 +116,7 @@ export default function GroupDetailScreen() {
       setFriendshipStatus(statusMap);
     } catch (error) {
       console.error('Error loading group data:', error);
+      setLoadError(getFetchErrorMessage(error));
     } finally {
       setLoading(false);
     }
@@ -643,6 +648,30 @@ export default function GroupDetailScreen() {
 
   if (loading) {
     return <LoadingState message="Loading group details..." />;
+  }
+
+  if (loadError) {
+    return (
+      <View style={styles.container}>
+        <LinearGradient colors={gradients.screenBackground} style={StyleSheet.absoluteFill} />
+        <View style={styles.header}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={[styles.backButtonRect, {
+              backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)',
+              borderColor: isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(34, 197, 94, 0.3)'
+            }]}>
+            <IconSymbol size={20} name="chevron.left" color={isDark ? '#2DD4BF' : colors.tint} />
+          </TouchableOpacity>
+          <View style={styles.headerSpacer} />
+        </View>
+        <AsyncErrorState
+          message={loadError}
+          onRetry={() => loadGroupData()}
+          title="Couldn't load group"
+        />
+      </View>
+    );
   }
 
   if (!group) {

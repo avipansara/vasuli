@@ -1,8 +1,26 @@
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vitest/config'
 
+const dirname = path.dirname(fileURLToPath(import.meta.url))
+
 export default defineConfig({
+  define: {
+    __DEV__: true,
+  },
+  resolve: {
+    alias: {
+      '@': path.resolve(dirname, '.'),
+    },
+  },
   test: {
     environment: 'node',
-    include: ['supabase/functions/**/*.test.ts'],
+    include: [
+      'supabase/functions/**/*.test.ts',
+      'lib/**/*.test.ts',
+      'utils/**/*.test.ts',
+      'services/**/*.test.ts',
+      'components/**/*.test.tsx',
+    ],
   },
 })

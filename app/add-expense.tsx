@@ -1,9 +1,11 @@
 import { ThemedText } from '@/components/themed-text';
+import { AsyncErrorState } from '@/components/ui/async-error-state';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { KeyboardAwareScroll } from '@/components/ui/keyboard-aware-scroll';
 import { NavigationHeader } from '@/components/ui/screen-header';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useThemeColors } from '@/hooks/use-theme-colors';
+import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { activityService } from '@/services/activity-service';
 import { expenseService, groupService, initDatabase, userService } from '@/services/api';
 import { CACHE_KEYS, cacheService } from '@/services/cache-service';
@@ -11,7 +13,7 @@ import type { Group, User } from '@/types/database';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Alert,
   Animated,
@@ -59,6 +61,8 @@ export default function AddExpenseScreen() {
   const [groupMembers, setGroupMembers] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [dataLoading, setDataLoading] = useState(true);
+  const [dataLoadError, setDataLoadError] = useState<string | null>(null);
+  const [groupMembersLoadError, setGroupMembersLoadError] = useState<string | null>(null);
   const [splitMethod, setSplitMethod] = useState<SplitMethod>(SplitMethod.EQUAL);
   const [customAmounts, setCustomAmounts] = useState<Record<string, string>>({});
   const [customPercentages, setCustomPercentages] = useState<Record<string, string>>({});
@@ -71,6 +75,45 @@ export default function AddExpenseScreen() {
   // Input refs for focus management
   const amountInputRef = useRef<TextInput>(null);
   const descriptionInputRef = useRef<TextInput>(null);
+
+  const loadData = async () => {
+    if (!currentUserId) return;
+    try {
+      setDataLoadError(null);
+      await initDatabase();
+      const [allGroups, userFriends] = await Promise.all([
+        groupService.getUserGroups(currentUserId),
+        userService.getUserFriends(currentUserId),
+      ]);
+      setGroups(allGroups);
+      setFriends(userFriends);
+    } catch (error) {
+      console.error('Error loading data:', error);
+      setDataLoadError(getFetchErrorMessage(error));
+    } finally {
+      setDataLoading(false);
+    }
+  };
+
+  const loadGroupMembersForSelection = useCallback(async () => {
+    if (!selectedGroupId) {
+      setGroupMembers([]);
+      setGroupMembersLoadError(null);
+      return;
+    }
+    try {
+      setGroupMembersLoadError(null);
+      const members = await groupService.getMembers(selectedGroupId);
+      setGroupMembers(members.map((m: { userId: string }) => m.userId));
+    } catch (error) {
+      console.error('Error loading group members:', error);
+      setGroupMembersLoadError(getFetchErrorMessage(error));
+    }
+  }, [selectedGroupId]);
+
+  useEffect(() => {
+    void loadGroupMembersForSelection();
+  }, [loadGroupMembersForSelection]);
 
   useEffect(() => {
     loadData();
@@ -87,39 +130,6 @@ export default function AddExpenseScreen() {
       }),
     ]).start();
   }, []);
-
-  useEffect(() => {
-    async function loadGroupMembers() {
-      if (selectedGroupId) {
-        try {
-          const members = await groupService.getMembers(selectedGroupId);
-          setGroupMembers(members.map((m: { userId: string }) => m.userId));
-        } catch (error) {
-          console.error('Error loading group members:', error);
-        }
-      } else {
-        setGroupMembers([]);
-      }
-    }
-    loadGroupMembers();
-  }, [selectedGroupId]);
-
-  const loadData = async () => {
-    if (!currentUserId) return;
-    try {
-      await initDatabase();
-      const [allGroups, userFriends] = await Promise.all([
-        groupService.getUserGroups(currentUserId),
-        userService.getUserFriends(currentUserId),
-      ]);
-      setGroups(allGroups);
-      setFriends(userFriends);
-    } catch (error) {
-      console.error('Error loading data:', error);
-    } finally {
-      setDataLoading(false);
-    }
-  }
 
   const toggleFriend = (friendId: string) => {
     if (selectedFriendIds.includes(friendId)) {
@@ -288,6 +298,23 @@ export default function AddExpenseScreen() {
     }
 
     return null;
+  }
+
+  if (dataLoadError && !dataLoading) {
+    return (
+      <View style={styles.container}>
+        <LinearGradient colors={gradients.screenBackground} style={StyleSheet.absoluteFill} />
+        <NavigationHeader
+          title="Add Expense"
+          onBack={() => router.back()}
+        />
+        <AsyncErrorState
+          message={dataLoadError}
+          onRetry={() => void loadData()}
+          title="Couldn't load"
+        />
+      </View>
+    );
   }
 
   return (
@@ -471,6 +498,15 @@ export default function AddExpenseScreen() {
             <ThemedText style={[styles.inputLabel, { color: colors.textSecondary }]}>
               {splitType === SplitType.GROUP ? 'Select a group' : 'Select friends'}
             </ThemedText>
+
+            {splitType === SplitType.GROUP && selectedGroupId && groupMembersLoadError && !dataLoading && (
+              <AsyncErrorState
+                variant="compact"
+                title="Couldn't load members"
+                message={groupMembersLoadError}
+                onRetry={() => void loadGroupMembersForSelection()}
+              />
+            )}
 
             {dataLoading ? (
               <View style={styles.loadingContainer}>

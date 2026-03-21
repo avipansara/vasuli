@@ -5,6 +5,7 @@ import { Platform, StyleSheet, View, useWindowDimensions } from 'react-native';
 
 import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { RouteErrorBoundary } from '@/components/ui/route-error-boundary';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 
 export default function TabLayout() {
@@ -16,6 +17,7 @@ export default function TabLayout() {
   const TAB_BAR_WIDTH = 500;
 
   return (
+    <RouteErrorBoundary homeHref="/(tabs)">
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: colors.tint,
@@ -107,5 +109,6 @@ export default function TabLayout() {
         }}
       />
     </Tabs>
+    </RouteErrorBoundary>
   );
 }
