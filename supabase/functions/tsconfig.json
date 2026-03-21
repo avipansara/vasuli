@@ -11,5 +11,6 @@
     "noImplicitReturns": true,
     "skipLibCheck": true
   },
-  "include": ["./**/*.ts", "./deno-shim.d.ts"]
+  "include": ["./**/*.ts", "./deno-shim.d.ts"],
+  "exclude": ["./**/*.test.ts"]
 }
