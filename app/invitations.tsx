@@ -9,6 +9,7 @@ import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { friendshipService } from '@/services/friendship-service';
 import { invitationService } from '@/services/invitation-service';
 import { userService } from '@/services/user-service';
+import { normalizeEmail } from '@/utils/validation';
 import type { Invitation } from '@/types/database';
 import { useFocusEffect } from '@react-navigation/native';
 import { BlurView } from 'expo-blur';
@@ -53,7 +54,7 @@ export default function InvitationsScreen() {
 
       await refreshUser();
       const profile = await userService.getById(user.id);
-      const email = profile?.email?.trim().toLowerCase();
+      const email = normalizeEmail(profile?.email);
 
       const sent = await invitationService.getByInviter(user.id);
       setSentInvitations(sent);

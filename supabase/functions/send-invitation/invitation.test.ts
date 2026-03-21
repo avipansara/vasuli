@@ -3,6 +3,20 @@ import { describe, expect, it } from 'vitest'
 import { inviteCtaUrl, parseInvitationBody } from './invitation'
 
 describe('parseInvitationBody', () => {
+  it('normalizes invitee email casing and whitespace', () => {
+    const r = parseInvitationBody({
+      inviteeEmail: '  User@EXAMPLE.COM  ',
+      inviteeName: 'Alex',
+      inviterName: 'Sam',
+      inviterId: '11111111-1111-4111-8111-111111111111',
+      invitationId: '22222222-2222-4222-8222-222222222222',
+    })
+    expect(r.ok).toBe(true)
+    if (r.ok) {
+      expect(r.data.inviteeEmail).toBe('user@example.com')
+    }
+  })
+
   it('accepts camelCase payload', () => {
     const r = parseInvitationBody({
       inviteeEmail: 'a@b.com',

@@ -2,13 +2,16 @@ import { supabase } from '@/lib/supabase';
 import { createInvitationNotification, notificationService } from '@/services/notification-service';
 import { userService } from '@/services/user-service';
 import type { Invitation } from '@/types/database';
+import { normalizeEmail } from '@/utils/validation';
 
 // Set to true for development/testing without real Supabase
 const USE_MOCK_DATA = false;
 
 /** Phone invites use a synthetic inbox; Resend cannot deliver to it. */
 function isDeliverableEmail(email: string): boolean {
-  return !email.toLowerCase().endsWith('@phone.placeholder');
+  const n = normalizeEmail(email);
+  if (!n) return true;
+  return !n.endsWith('@phone.placeholder');
 }
 
 async function assertSendInvitationEmail(params: {
@@ -40,7 +43,7 @@ export const invitationService = {
   }): Promise<Invitation> {
     const createdAt = new Date().toISOString();
     const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(); // 30 days
-    const inviteeEmail = invitation.inviteeEmail.trim().toLowerCase();
+    const inviteeEmail = normalizeEmail(invitation.inviteeEmail) ?? '';
 
     // Mock mode - return a mock invitation
     if (USE_MOCK_DATA) {
@@ -151,7 +154,9 @@ export const invitationService = {
   },
 
   async getByEmail(email: string): Promise<Invitation[]> {
-    const normalized = email.trim().toLowerCase();
+    const normalized = normalizeEmail(email);
+    if (!normalized) return [];
+
     const { data, error } = await supabase
       .from('invitations')
       .select('*')
@@ -209,7 +214,7 @@ export const invitationService = {
 
     if (updateError) throw updateError;
 
-    const inviteeEmail = String(inv.invitee_email).trim().toLowerCase();
+    const inviteeEmail = normalizeEmail(String(inv.invitee_email)) ?? '';
     if (!isDeliverableEmail(inviteeEmail)) {
       throw new Error('This invitation has no deliverable email address.');
     }
@@ -235,7 +240,7 @@ export const invitationService = {
   }): Promise<void> {
     if (USE_MOCK_DATA) return;
 
-    const email = params.inviteeEmail?.trim().toLowerCase();
+    const email = normalizeEmail(params.inviteeEmail ?? undefined);
     if (!email) return;
 
     if (params.invitationId) {
@@ -248,7 +253,7 @@ export const invitationService = {
       if (error || !data) return;
 
       if (data.inviter_id !== params.inviterId) return;
-      if (String(data.invitee_email).trim().toLowerCase() !== email) return;
+      if (normalizeEmail(String(data.invitee_email)) !== email) return;
       if (data.status === 'accepted' || data.status === 'declined') return;
       if (data.status !== 'pending') return;
 
@@ -276,7 +281,11 @@ export const invitationService = {
       return [];
     }
 
-    const normalized = email.trim().toLowerCase();
+    const normalized = normalizeEmail(email);
+    if (!normalized) {
+      return [];
+    }
+
     const { data, error } = await supabase
       .from('invitations')
       .select('*')

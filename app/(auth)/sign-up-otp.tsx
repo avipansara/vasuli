@@ -3,10 +3,10 @@ import { useAuth } from '@/contexts/auth-context-otp';
 import { PENDING_INVITE_PATH_KEY } from '@/lib/invite-deeplink';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { otpService } from '@/services/otp-service';
-import { isEmailValid } from '@/utils/validation';
+import { isEmailValid, normalizeEmail } from '@/utils/validation';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Link, router } from 'expo-router';
+import { Link, router, type Href } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import {
   Alert,
@@ -136,7 +136,7 @@ export default function SignUpOTPScreen() {
     try {
       const result = await otpService.sendSignUpCode({
         name: name.trim(),
-        email: contactMethod === 'email' ? email.trim() : undefined,
+        email: contactMethod === 'email' ? normalizeEmail(email) : undefined,
         phone: contactMethod === 'phone' ? phone.trim() : undefined,
       });
 
@@ -162,7 +162,7 @@ export default function SignUpOTPScreen() {
     try {
       const result = await otpService.verifySignUpCode({
         name: name.trim(),
-        email: contactMethod === 'email' ? email.trim() : undefined,
+        email: contactMethod === 'email' ? normalizeEmail(email) : undefined,
         phone: contactMethod === 'phone' ? phone.trim() : undefined,
         code,
       });
@@ -173,7 +173,7 @@ export default function SignUpOTPScreen() {
         await AsyncStorage.removeItem(PENDING_INVITE_PATH_KEY);
         setTimeout(() => {
           if (pendingInvite) {
-            router.replace(pendingInvite);
+            router.replace(pendingInvite as Href);
           } else {
             router.replace('/(tabs)');
           }
@@ -260,7 +260,7 @@ export default function SignUpOTPScreen() {
     try {
       const result = await otpService.sendSignUpCode({
         name: name.trim(),
-        email: contactMethod === 'email' ? email.trim() : undefined,
+        email: contactMethod === 'email' ? normalizeEmail(email) : undefined,
         phone: contactMethod === 'phone' ? phone.trim() : undefined,
       });
 

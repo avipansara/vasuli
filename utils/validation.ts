@@ -19,6 +19,20 @@ export function isEmailValid(email: string): boolean {
 }
 
 /**
+ * Canonical form for auth lookups and storage. Domain matching is case-insensitive per
+ * RFC 5321; local parts may be case-sensitive in theory, but we lowercase the full
+ * address so sign-in matches rows stored in lowercase (avoids "user not found" for
+ * Varun@ vs varun@).
+ */
+export function normalizeEmail(email: string | undefined): string | undefined {
+  if (email == null || typeof email !== 'string') {
+    return undefined;
+  }
+  const trimmed = email.trim().toLowerCase();
+  return trimmed.length === 0 ? undefined : trimmed;
+}
+
+/**
  * Validates and formats email address
  * @param email - Email address to validate and format
  * @returns Trimmed and lowercase email if valid, null otherwise
@@ -27,7 +41,7 @@ export function validateAndFormatEmail(email: string): string | null {
   if (!isEmailValid(email)) {
     return null;
   }
-  return email.trim().toLowerCase();
+  return normalizeEmail(email) ?? null;
 }
 
 /**

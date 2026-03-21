@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import type { User } from '@/types/database';
+import { normalizeEmail } from '@/utils/validation';
 
 export const userService = {
   async create(user: Omit<User, 'id' | 'createdAt'> & { id?: string }): Promise<User> {
@@ -7,7 +8,7 @@ export const userService = {
 
     const insertData: any = {
       name: user.name,
-      email: user.email || null,
+      email: user.email ? normalizeEmail(user.email) ?? null : null,
       phone: user.phone || null,
       avatar: user.avatar || null,
       created_at: createdAt,
@@ -63,10 +64,13 @@ export const userService = {
   },
 
   async getByEmail(email: string): Promise<User | null> {
+    const normalized = normalizeEmail(email);
+    if (!normalized) return null;
+
     const { data, error } = await supabase
       .from('users')
       .select('*')
-      .eq('email', email)
+      .eq('email', normalized)
       .maybeSingle();
 
     if (error) throw error;
@@ -149,7 +153,12 @@ export const userService = {
       .from('users')
       .update({
         name: updates.name,
-        email: updates.email,
+        email:
+          updates.email !== undefined
+            ? updates.email
+              ? normalizeEmail(updates.email) ?? null
+              : null
+            : undefined,
         phone: updates.phone,
         avatar: updates.avatar,
       })
