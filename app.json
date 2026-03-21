@@ -2,7 +2,7 @@
   "expo": {
     "name": "Vasuli",
     "slug": "vasuli",
-    "version": "1.0.2",
+    "version": "1.0.5",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "vasuli",
@@ -11,7 +11,7 @@
       "newArchEnabled": true,
       "supportsTablet": true,
       "bundleIdentifier": "com.avipansara.vasuli",
-      "buildNumber": "3",
+      "buildNumber": "5",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       },
