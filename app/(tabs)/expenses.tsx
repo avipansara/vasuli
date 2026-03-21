@@ -20,13 +20,7 @@ export default function ExpensesScreen() {
   const currentUserId = user?.id || '';
   const hasLoadedOnce = useRef(false);
 
-  useFocusEffect(
-    useCallback(() => {
-      loadData();
-    }, [])
-  );
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     if (!currentUserId) return;
     try {
       // Only show loader on first load
@@ -55,7 +49,29 @@ export default function ExpensesScreen() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [currentUserId]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+    }, [loadData])
+  );
+
+  const renderExpenseItem = useCallback(
+    ({ item }: { item: Expense & { group?: Group } }) => (
+      <ExpenseListCard expense={item} onDelete={loadData} />
+    ),
+    [loadData]
+  );
+
+  const renderExpenseSectionHeader = useCallback(
+    ({ section }: { section: { title: string } }) => (
+      <View style={styles.sectionHeader}>
+        <ThemedText style={[styles.sectionTitle, { color: colors.textSecondary }]}>{section.title}</ThemedText>
+      </View>
+    ),
+    [colors.textSecondary]
+  );
 
   // Calculate total spent
   const totalSpent = expenses.reduce((sum, e) => sum + e.amount, 0);
@@ -131,14 +147,8 @@ export default function ExpensesScreen() {
       ) : (
         <SectionList
           sections={groupedExpenses}
-          renderItem={({ item }) => <ExpenseListCard expense={item} onDelete={loadData} />}
-          renderSectionHeader={({ section: { title } }) => (
-            <View style={styles.sectionHeader}>
-              <ThemedText style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-                {title}
-              </ThemedText>
-            </View>
-          )}
+          renderItem={renderExpenseItem}
+          renderSectionHeader={renderExpenseSectionHeader}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
           stickySectionHeadersEnabled={false}

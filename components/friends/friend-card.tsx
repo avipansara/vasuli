@@ -2,7 +2,7 @@ import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import type { User } from '@/types/database';
-import React from 'react';
+import React, { memo, useMemo } from 'react';
 import { Animated, StyleSheet, TouchableOpacity, View } from 'react-native';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
 
@@ -17,7 +17,32 @@ interface FriendCardProps {
   onDelete?: (friend: UserWithBalance) => void;
 }
 
-export function FriendCard({ friend, onPress, onDelete }: FriendCardProps) {
+function areFriendCardPropsEqual(prev: FriendCardProps, next: FriendCardProps): boolean {
+  if (prev.onPress !== next.onPress || prev.onDelete !== next.onDelete) {
+    return false;
+  }
+  const a = prev.friend;
+  const b = next.friend;
+  if (a.id !== b.id || a.balance !== b.balance || a.name !== b.name) {
+    return false;
+  }
+  const ar = a.recentExpenses;
+  const br = b.recentExpenses;
+  if (ar === br) {
+    return true;
+  }
+  if (!ar || !br || ar.length !== br.length) {
+    return false;
+  }
+  for (let i = 0; i < ar.length; i++) {
+    if (ar[i].id !== br[i].id || ar[i].description !== br[i].description) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function FriendCardInner({ friend, onPress, onDelete }: FriendCardProps) {
   const { colors, isDark } = useThemeColors();
   const balance = friend.balance;
   const balanceColor =
@@ -26,6 +51,20 @@ export function FriendCard({ friend, onPress, onDelete }: FriendCardProps) {
       : balance < 0
         ? colors.error
         : colors.tint;
+
+  const cardStyle = useMemo(
+    () =>
+      isDark
+        ? { backgroundColor: 'rgba(20, 35, 38, 0.6)' }
+        : {
+            backgroundColor: colors.card,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 1 },
+            shadowOpacity: 0.08,
+            elevation: 2,
+          },
+    [colors.card, isDark]
+  );
 
   const renderRightActions = (progress: Animated.AnimatedInterpolation<number>, dragX: Animated.AnimatedInterpolation<number>) => {
     const opacity = dragX.interpolate({
@@ -45,19 +84,6 @@ export function FriendCard({ friend, onPress, onDelete }: FriendCardProps) {
       </Animated.View>
     );
   };
-
-  // Card styling for light/dark mode
-  const cardStyle = isDark
-    ? { backgroundColor: 'rgba(20, 35, 38, 0.6)' }
-    : {
-      backgroundColor: colors.card,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.08,
-      elevation: 2,
-      // borderWidth: 1,
-      // borderColor: colors.border,
-    };
 
   return (
     <Swipeable
@@ -149,6 +175,8 @@ export function FriendCard({ friend, onPress, onDelete }: FriendCardProps) {
     </Swipeable>
   );
 }
+
+export const FriendCard = memo(FriendCardInner, areFriendCardPropsEqual);
 
 const styles = StyleSheet.create({
   card: {

@@ -1,7 +1,8 @@
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol, IconSymbolName } from '@/components/ui/icon-symbol';
 import { useThemeColors } from '@/hooks/use-theme-colors';
-import React from 'react';
+import type { Activity as DbActivity } from '@/types/database';
+import React, { memo } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 interface ActivityItem {
@@ -15,12 +16,46 @@ interface ActivityItem {
 }
 
 interface ActivityCardProps {
-  activity: ActivityItem;
+  activity: DbActivity;
 }
 
-export function ActivityCard({ activity }: ActivityCardProps) {
+function mapDbActivityToItem(activity: DbActivity): ActivityItem {
+  const typeStr = String(activity.type);
+  const type: ActivityItem['type'] = typeStr.includes('expense')
+    ? 'expense'
+    : typeStr.includes('settlement')
+      ? 'settlement'
+      : typeStr.includes('deleted')
+        ? 'deleted'
+        : 'group_join';
+  return {
+    id: activity.id,
+    type,
+    description: activity.description,
+    amount: activity.amount ?? 0,
+    date: activity.createdAt,
+    groupName: activity.groupName,
+    isDeleted: typeStr.includes('deleted'),
+  };
+}
+
+function areActivityCardPropsEqual(prev: ActivityCardProps, next: ActivityCardProps): boolean {
+  const a = prev.activity;
+  const b = next.activity;
+  return (
+    a.id === b.id &&
+    a.type === b.type &&
+    a.description === b.description &&
+    a.amount === b.amount &&
+    a.createdAt === b.createdAt &&
+    a.groupName === b.groupName
+  );
+}
+
+function ActivityCardInner({ activity }: ActivityCardProps) {
   const { colors, isDark } = useThemeColors();
-  const date = new Date(activity.date);
+  const item = mapDbActivityToItem(activity);
+  const date = new Date(item.date);
   const dateStr = date.toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
@@ -28,32 +63,32 @@ export function ActivityCard({ activity }: ActivityCardProps) {
     minute: '2-digit',
   });
 
-  const isDeleted = activity.isDeleted || activity.description.startsWith('Deleted:');
+  const isDeleted = item.isDeleted || item.description.startsWith('Deleted:');
 
   const iconName: IconSymbolName =
     isDeleted
       ? 'trash.fill'
-      : activity.type === 'expense'
+      : item.type === 'expense'
         ? 'dollarsign.circle.fill'
-        : activity.type === 'settlement'
+        : item.type === 'settlement'
           ? 'checkmark.circle.fill'
           : 'person.badge.plus';
 
   const iconColor =
     isDeleted
       ? '#ef4444'
-      : activity.type === 'expense'
+      : item.type === 'expense'
         ? isDark ? '#2DD4BF' : colors.tint
-        : activity.type === 'settlement'
+        : item.type === 'settlement'
           ? isDark ? '#10b981' : colors.success
           : isDark ? '#A78BFA' : '#8B5CF6';
 
   const iconBgColor =
     isDeleted
       ? 'rgba(239, 68, 68, 0.15)'
-      : activity.type === 'expense'
+      : item.type === 'expense'
         ? isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)'
-        : activity.type === 'settlement'
+        : item.type === 'settlement'
           ? 'rgba(16, 185, 129, 0.15)'
           : 'rgba(167, 139, 250, 0.15)';
 
@@ -74,12 +109,12 @@ export function ActivityCard({ activity }: ActivityCardProps) {
             !isDark && { color: colors.text },
             isDeleted && styles.deletedText,
           ]}>
-          {activity.description}
+          {item.description}
         </ThemedText>
         <View style={styles.details}>
-          {activity.groupName && (
+          {item.groupName && (
             <ThemedText style={[styles.groupName, { color: isDark ? '#2DD4BF' : colors.tint }]}>
-              {activity.groupName}
+              {item.groupName}
             </ThemedText>
           )}
           <ThemedText style={[styles.date, !isDark && { color: colors.textSecondary }]}>
@@ -87,23 +122,25 @@ export function ActivityCard({ activity }: ActivityCardProps) {
           </ThemedText>
         </View>
       </View>
-      {activity.amount !== undefined && (
+      {item.amount !== undefined && (
         <ThemedText
           style={[
             styles.amount,
             {
               color:
-                activity.type === 'settlement'
+                item.type === 'settlement'
                   ? isDark ? '#10b981' : colors.success
                   : !isDark ? colors.text : '#fff',
             },
           ]}>
-          {activity.type === 'settlement' ? '+' : ''}${activity.amount.toFixed(2)}
+          {item.type === 'settlement' ? '+' : ''}${item.amount.toFixed(2)}
         </ThemedText>
       )}
     </View>
   );
 }
+
+export const ActivityCard = memo(ActivityCardInner, areActivityCardPropsEqual);
 
 const styles = StyleSheet.create({
   card: {

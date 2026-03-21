@@ -29,10 +29,54 @@ export default function GroupsScreen() {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
 
+  const loadGroups = useCallback(async (skipCache = false) => {
+    if (!currentUserId) return;
+    try {
+      // 1. Load from cache first (instant)
+      if (!skipCache) {
+        const cached = await cacheService.get<GroupWithMembers[]>(CACHE_KEYS.GROUPS_LIST);
+        if (cached && cached.length > 0) {
+          setGroups(cached);
+          hasLoadedOnce.current = true;
+        }
+      }
+
+      // Only show loader if we don't have data yet
+      if (!hasLoadedOnce.current) {
+        setLoading(true);
+        hasLoadedOnce.current = true;
+      }
+      await initDatabase();
+
+      // 2. Fetch fresh data from API
+      const allGroups = await groupService.getUserGroups(currentUserId);
+
+      const groupsWithData = await Promise.all(
+        allGroups.map(async (group) => {
+          const balances = await calculateBalances(group.id);
+          const yourBalance = balances.get(currentUserId) || 0;
+
+          return {
+            ...group,
+            yourBalance,
+          };
+        })
+      );
+
+      // 3. Update state and cache
+      setGroups(groupsWithData);
+      await cacheService.set(CACHE_KEYS.GROUPS_LIST, groupsWithData);
+    } catch (error) {
+      console.error('Error loading groups:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [currentUserId]);
+
   useFocusEffect(
     useCallback(() => {
       loadGroups();
-    }, [])
+    }, [loadGroups])
   );
 
   useEffect(() => {
@@ -81,51 +125,14 @@ export default function GroupsScreen() {
       console.log('[Realtime] Unsubscribing from membership updates');
       supabase.removeChannel(subscription);
     };
-  }, [currentUserId]);
+  }, [currentUserId, loadGroups]);
 
-  const loadGroups = async (skipCache = false) => {
-    if (!currentUserId) return;
-    try {
-      // 1. Load from cache first (instant)
-      if (!skipCache) {
-        const cached = await cacheService.get<GroupWithMembers[]>(CACHE_KEYS.GROUPS_LIST);
-        if (cached && cached.length > 0) {
-          setGroups(cached);
-          hasLoadedOnce.current = true;
-        }
-      }
-
-      // Only show loader if we don't have data yet
-      if (!hasLoadedOnce.current) {
-        setLoading(true);
-        hasLoadedOnce.current = true;
-      }
-      await initDatabase();
-
-      // 2. Fetch fresh data from API
-      const allGroups = await groupService.getUserGroups(currentUserId);
-
-      const groupsWithData = await Promise.all(
-        allGroups.map(async (group) => {
-          const balances = await calculateBalances(group.id);
-          const yourBalance = balances.get(currentUserId) || 0;
-
-          return {
-            ...group,
-            yourBalance,
-          };
-        })
-      );
-
-      // 3. Update state and cache
-      setGroups(groupsWithData);
-      await cacheService.set(CACHE_KEYS.GROUPS_LIST, groupsWithData);
-    } catch (error) {
-      console.error('Error loading groups:', error);
-    } finally {
-      setLoading(false);
-    }
-  }
+  const renderGroupItem = useCallback(
+    ({ item, index }: { item: GroupWithMembers; index: number }) => (
+      <GroupCard group={item} index={index} onRefresh={loadGroups} />
+    ),
+    [loadGroups]
+  );
 
   const createGroup = async () => {
     if (!newGroupName.trim()) {
@@ -142,8 +149,9 @@ export default function GroupsScreen() {
       const currentUser = await userService.getById(currentUserId);
       if (!currentUser) {
         await userService.create({
-          name: user?.name,
-          email: user?.email,
+          name: user?.name ?? 'User',
+          email: user?.email ?? '',
+          isActive: true,
         });
       }
 
@@ -211,7 +219,7 @@ export default function GroupsScreen() {
       ) : (
         <FlatList
           data={groups}
-          renderItem={({ item, index }) => <GroupCard group={item} index={index} onRefresh={loadGroups} />}
+          renderItem={renderGroupItem}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
