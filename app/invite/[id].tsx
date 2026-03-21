@@ -3,10 +3,12 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { LoadingState } from '@/components/ui/loading-state';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useThemeColors } from '@/hooks/use-theme-colors';
+import { PENDING_INVITE_PATH_KEY, buildInvitePath } from '@/lib/invite-deeplink';
 import { friendshipService } from '@/services/friendship-service';
 import { invitationService } from '@/services/invitation-service';
 import { userService } from '@/services/user-service';
 import type { User } from '@/types/database';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
@@ -27,6 +29,17 @@ export default function InviteScreen() {
     const [inviter, setInviter] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
     const [processing, setProcessing] = useState(false);
+
+    useEffect(() => {
+        if (!id) return;
+        const invId = firstQueryParam(invitation);
+        const path = buildInvitePath(String(id), invId);
+        if (user) {
+            AsyncStorage.removeItem(PENDING_INVITE_PATH_KEY).catch(() => undefined);
+        } else {
+            AsyncStorage.setItem(PENDING_INVITE_PATH_KEY, path).catch(() => undefined);
+        }
+    }, [id, invitation, user]);
 
     useEffect(() => {
         async function loadInviter() {
@@ -74,6 +87,7 @@ export default function InviteScreen() {
 
             await friendshipService.createAccepted(user.id, inviter.id);
 
+            await AsyncStorage.removeItem(PENDING_INVITE_PATH_KEY).catch(() => undefined);
             Alert.alert('Success', `You are now connected with ${inviter.name}`);
             router.replace('/(tabs)');
         } catch (error) {
