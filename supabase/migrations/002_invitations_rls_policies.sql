@@ -4,6 +4,11 @@
 -- See supabase/docs/RLS_INVITATIONS.md — do NOT apply while the app uses only the anon key.
 --
 -- Idempotent: drops both legacy and new policy names, then recreates.
+--
+-- Aligns with Supabase RLS guidance: https://supabase.com/docs/guides/database/postgres/row-level-security
+-- - Use (select auth.uid()) in policies for better performance (initPlan / per-statement).
+-- - Explicit IS NOT NULL so intent matches "authenticated" requests (uid null => false).
+-- - UPDATE requires a matching SELECT policy (see doc).
 
 -- Legacy names (schema-otp-auth.sql, schema-fresh.sql)
 DROP POLICY IF EXISTS "Users can view invitations" ON public.invitations;
@@ -26,15 +31,18 @@ CREATE POLICY "invitations_select_inviter_or_invitee"
   FOR SELECT
   TO authenticated
   USING (
-    inviter_id::text = auth.uid()::text
-    OR (
-      invitee_email IS NOT NULL
-      AND EXISTS (
-        SELECT 1
-        FROM public.users u
-        WHERE u.id::text = auth.uid()::text
-          AND u.email IS NOT NULL
-          AND lower(btrim(u.email)) = lower(btrim(invitee_email))
+    (select auth.uid()) IS NOT NULL
+    AND (
+      inviter_id::text = (select auth.uid())::text
+      OR (
+        invitee_email IS NOT NULL
+        AND EXISTS (
+          SELECT 1
+          FROM public.users u
+          WHERE u.id::text = (select auth.uid())::text
+            AND u.email IS NOT NULL
+            AND lower(btrim(u.email)) = lower(btrim(invitee_email))
+        )
       )
     )
   );
@@ -44,7 +52,10 @@ CREATE POLICY "invitations_insert_as_inviter"
   ON public.invitations
   FOR INSERT
   TO authenticated
-  WITH CHECK (inviter_id::text = auth.uid()::text);
+  WITH CHECK (
+    (select auth.uid()) IS NOT NULL
+    AND inviter_id::text = (select auth.uid())::text
+  );
 
 -- UPDATE: invitee (accept/decline) or inviter (cancel/resend/extend expiry)
 CREATE POLICY "invitations_update_as_invitee"
@@ -52,21 +63,23 @@ CREATE POLICY "invitations_update_as_invitee"
   FOR UPDATE
   TO authenticated
   USING (
-    invitee_email IS NOT NULL
+    (select auth.uid()) IS NOT NULL
+    AND invitee_email IS NOT NULL
     AND EXISTS (
       SELECT 1
       FROM public.users u
-      WHERE u.id::text = auth.uid()::text
+      WHERE u.id::text = (select auth.uid())::text
         AND u.email IS NOT NULL
         AND lower(btrim(u.email)) = lower(btrim(invitee_email))
     )
   )
   WITH CHECK (
-    invitee_email IS NOT NULL
+    (select auth.uid()) IS NOT NULL
+    AND invitee_email IS NOT NULL
     AND EXISTS (
       SELECT 1
       FROM public.users u
-      WHERE u.id::text = auth.uid()::text
+      WHERE u.id::text = (select auth.uid())::text
         AND u.email IS NOT NULL
         AND lower(btrim(u.email)) = lower(btrim(invitee_email))
     )
@@ -76,12 +89,21 @@ CREATE POLICY "invitations_update_as_inviter"
   ON public.invitations
   FOR UPDATE
   TO authenticated
-  USING (inviter_id::text = auth.uid()::text)
-  WITH CHECK (inviter_id::text = auth.uid()::text);
+  USING (
+    (select auth.uid()) IS NOT NULL
+    AND inviter_id::text = (select auth.uid())::text
+  )
+  WITH CHECK (
+    (select auth.uid()) IS NOT NULL
+    AND inviter_id::text = (select auth.uid())::text
+  );
 
 -- DELETE: inviter cancels invite
 CREATE POLICY "invitations_delete_as_inviter"
   ON public.invitations
   FOR DELETE
   TO authenticated
-  USING (inviter_id::text = auth.uid()::text);
+  USING (
+    (select auth.uid()) IS NOT NULL
+    AND inviter_id::text = (select auth.uid())::text
+  );
