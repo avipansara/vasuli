@@ -74,7 +74,7 @@ npm run draft        # Publish preview update and website (workflow)
 
 ### Git hooks (Husky)
 
-Pre-commit runs `npm run precommit` (ESLint via `expo lint` + `typecheck:supabase`). After `npm install`, the `prepare` script wires Husky. If hooks do not run, set `git config core.hooksPath .husky` and ensure `.husky/pre-commit` is executable.
+Pre-commit runs `npm run precommit` (ESLint via `expo lint` + `typecheck:supabase` + `npm test`). After `npm install`, the `prepare` script wires Husky. If hooks do not run, set `git config core.hooksPath .husky` and ensure `.husky/pre-commit` is executable.
 
 ```bash
 npm run precommit    # Run the same checks locally without committing
@@ -130,7 +130,7 @@ npm run deploy                                      # Deploy to production (work
 
 #### Unit tests (Vitest)
 
-When you **change existing behavior** or **add a feature**, **add or update automated tests** that cover the new logic, and **run `npm test`** before finishing (alongside `npm run precommit` when appropriate). Co-locate tests with the code they exercise (e.g. `supabase/functions/**/*.test.ts`). Prefer testing pure helpers, parsers, and service boundaries; use mocks for network/DB where full integration is impractical. See [`README.md`](./README.md) for the current test layout.
+When you **change existing behavior** or **add a feature**, **add or update automated tests** that cover the new logic, and **run `npm test`** before finishing (alongside `npm run precommit` when appropriate). Co-locate tests as `*.test.ts` next to **Edge Functions** (`supabase/functions/`), **shared helpers** (`lib/`, `utils/`), and **services** (`services/`). Prefer pure helpers and mocked Supabase clients; add screen-level or E2E tests only when needed (see [`README.md`](./README.md)).
 
 #### Automated Testing with MCP Tools
 

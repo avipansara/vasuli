@@ -61,11 +61,18 @@ If the app creates an invite and the `send-invitation` Edge Function returns **2
 
 ### Tests
 
-Unit tests for the invitation payload parser and invite link live next to the Edge Function:
+[Vitest](https://vitest.dev/) runs in Node and covers:
+
+- **Edge Functions** — `supabase/functions/**/*.test.ts` (e.g. `send-invitation` payload parsing)
+- **App helpers** — `lib/**/*.test.ts`, `utils/**/*.test.ts` (validation, invite deep links)
+- **Services** — `services/**/*.test.ts` (mocked Supabase client for invitations, friendships, users)
 
 ```bash
 npm test
+npm run test:watch
 ```
+
+**Optional later:** component tests with [Expo unit testing](https://docs.expo.dev/develop/unit-testing/) (jest-expo / React Native Testing Library) and E2E smoke (e.g. Maestro) for full user flows — not wired in this repo yet.
 
 ## Workflows
 
