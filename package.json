@@ -11,10 +11,13 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "typecheck:supabase": "tsc --noEmit -p supabase/functions/tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "precommit": "npm run lint && npm run typecheck:supabase",
     "draft": "npx eas-cli@latest workflow:run create-draft.yml",
     "development-builds": "npx eas-cli@latest workflow:run create-development-builds.yml",
     "deploy": "npx eas-cli@latest workflow:run deploy-to-production.yml",
+    "supabase:deploy:send-invitation": "supabase functions deploy send-invitation --no-verify-jwt",
     "prepare": "husky"
   },
   "dependencies": {
@@ -67,6 +70,8 @@
     "eslint": "^9.25.0",
     "eslint-config-expo": "~10.0.0",
     "husky": "^9.1.7",
-    "typescript": "~5.9.2"
+    "supabase": "^2.83.0",
+    "typescript": "~5.9.2",
+    "vitest": "^4.1.0"
   }
 }

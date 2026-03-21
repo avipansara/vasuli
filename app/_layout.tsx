@@ -4,12 +4,12 @@ import { ThemeProvider as AppThemeProvider, useTheme } from '@/contexts/theme-co
 import { useNotifications } from '@/hooks/use-notifications';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
+import { buildInvitePath, parseInviteFromUrl } from '@/lib/invite-deeplink';
 import * as Linking from 'expo-linking';
-import { Stack, useRouter, useSegments } from 'expo-router';
+import { Stack, useRootNavigationState, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
-import { Alert } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
 
@@ -49,13 +49,16 @@ function useProtectedRoute() {
   const { isAuthenticated, isLoading } = useAuth();
   const segments = useSegments();
   const router = useRouter();
+  const navState = useRootNavigationState();
 
   useEffect(() => {
     if (isLoading) return;
+    if (!navState?.key) return;
 
     const inAuthGroup = segments[0] === '(auth)';
+    const inInviteRoute = segments[0] === 'invite';
 
-    if (!isAuthenticated && !inAuthGroup) {
+    if (!isAuthenticated && !inAuthGroup && !inInviteRoute) {
       // Redirect to sign-in if not authenticated and not already in auth flow
       router.replace('/(auth)/sign-in-otp');
     } else if (isAuthenticated && inAuthGroup) {
@@ -69,14 +72,13 @@ function useProtectedRoute() {
         router.replace('/(auth)/sign-in-otp');
       }
     }
-  }, [isAuthenticated, isLoading, segments]);
+  }, [isAuthenticated, isLoading, navState?.key, segments, router]);
 
   return isLoading;
 }
 
 function RootLayoutNav() {
   const { isDark } = useTheme();
-  const { isAuthenticated } = useAuth();
   const isLoading = useProtectedRoute();
   const router = useRouter();
   const [animationComplete, setAnimationComplete] = useState(false);
@@ -92,76 +94,39 @@ function RootLayoutNav() {
   // Initialize notifications - must be inside AuthProvider to access user context
   useNotifications();
 
-  // Handle deep links for invitations
+  // Handle deep links for invitations → full invite screen (with invitation id in query)
   useEffect(() => {
-    const handleDeepLink = async (event: { url: string }) => {
+    const handleDeepLink = (event: { url: string }) => {
       if (!event.url) return;
 
       console.log('[DeepLink] Received URL:', event.url);
 
       try {
-        const parsed = Linking.parse(event.url);
-        const path = parsed.path;
-
-        // Extract inviterId from path (handles invite/ID or /invite/ID)
-        let inviterId = '';
-        if (path?.includes('invite/')) {
-          const parts = path.split('invite/');
-          inviterId = parts[1]?.split('/')[0]?.split('?')[0] || '';
+        const parsed = parseInviteFromUrl(event.url);
+        if (!parsed) {
+          return;
         }
 
-        if (inviterId) {
-          console.log('[DeepLink] Found inviterId:', inviterId);
+        const { inviterId, invitationId } = parsed;
+        console.log('[DeepLink] Navigating to invite', { inviterId, invitationId });
 
-          // Try to fetch inviter name to make the alert better
-          let inviterName = 'your friend';
-          try {
-            const { userService } = await import('@/services/user-service');
-            const inviter = await userService.getById(inviterId);
-            if (inviter?.name) {
-              inviterName = inviter.name;
-            }
-          } catch (e) {
-            console.warn('[DeepLink] Could not fetch inviter name:', e);
-          }
-
-          Alert.alert(
-            'Invitation Received',
-            `You have been invited to connect with ${inviterName} on Vasuli!`,
-            [
-              { text: 'Later', style: 'cancel' },
-              {
-                text: 'Join Now',
-                onPress: () => {
-                  if (isAuthenticated) {
-                    router.push('/(tabs)');
-                    // Potentially redirect to invitations screen directly
-                    setTimeout(() => router.push('/invitations'), 500);
-                  } else {
-                    router.push('/(auth)/sign-in-otp');
-                  }
-                }
-              }
-            ]
-          );
-        }
+        const path = buildInvitePath(inviterId, invitationId);
+        router.replace(path);
       } catch (err) {
-        console.error('[DeepLink] Error parsing URL:', err);
+        console.error('[DeepLink] Error handling invite URL:', err);
       }
     };
 
-    // Get initial URL if app was opened from a link
     Linking.getInitialURL().then((url) => {
       if (url) {
         handleDeepLink({ url });
       }
     });
 
-    // Listen for deep links while app is running
     const subscription = Linking.addEventListener('url', handleDeepLink);
 
     return () => subscription.remove();
-  }, [router, isAuthenticated]);
+  }, [router]);
 
   if (isLoading || !animationComplete) {
     return <AnimatedSplash />;
@@ -185,6 +150,8 @@ function RootLayoutNav() {
         <Stack.Screen name="privacy-policy" options={{ headerShown: false }} />
         <Stack.Screen name="terms-conditions" options={{ headerShown: false }} />
         <Stack.Screen name="help-support" options={{ headerShown: false }} />
+        <Stack.Screen name="invite/[id]" options={{ headerShown: false }} />
+        <Stack.Screen name="invitations" options={{ headerShown: false }} />
       </Stack>
       <StatusBar style={isDark ? 'light' : 'dark'} />
     </ThemeProvider>

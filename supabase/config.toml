@@ -1,0 +1,8 @@
+# Supabase local / deploy config — https://supabase.com/docs/guides/functions/function-configuration
+#
+# The app uses custom OTP (AsyncStorage) and does not call supabase.auth.setSession,
+# so supabase.functions.invoke() has no JWT — only the anon API key.
+# Without this, the Edge gateway returns 401 before your function runs.
+
+[functions.send-invitation]
+verify_jwt = false

@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/auth-context-otp';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { friendshipService } from '@/services/friendship-service';
 import { invitationService } from '@/services/invitation-service';
+import { userService } from '@/services/user-service';
 import type { Invitation } from '@/types/database';
 import { useFocusEffect } from '@react-navigation/native';
 import { BlurView } from 'expo-blur';
@@ -27,16 +28,17 @@ type TabType = 'received' | 'sent';
 
 export default function InvitationsScreen() {
   const { gradients, colors, isDark } = useThemeColors();
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>('received');
   const [receivedInvitations, setReceivedInvitations] = useState<InvitationWithDetails[]>([]);
   const [sentInvitations, setSentInvitations] = useState<InvitationWithDetails[]>([]);
   const [loading, setLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [noEmailForInvites, setNoEmailForInvites] = useState(false);
   const hasLoadedOnce = useRef(false);
 
   const loadInvitations = useCallback(async () => {
-    if (!user?.email) return;
+    if (!user?.id) return;
 
     try {
       // Only show loader on first load
@@ -45,19 +47,29 @@ export default function InvitationsScreen() {
         hasLoadedOnce.current = true;
       }
 
-      const received = await invitationService.getReceivedInvitations(user.email);
-      setReceivedInvitations(received);
+      await refreshUser();
+      const profile = await userService.getById(user.id);
+      const email = profile?.email?.trim().toLowerCase();
 
-      // Load sent invitations
       const sent = await invitationService.getByInviter(user.id);
       setSentInvitations(sent);
+
+      if (!email) {
+        setReceivedInvitations([]);
+        setNoEmailForInvites(true);
+        return;
+      }
+
+      setNoEmailForInvites(false);
+      const received = await invitationService.getReceivedInvitations(email);
+      setReceivedInvitations(received);
     } catch (error) {
       console.error('Error loading invitations:', error);
       Alert.alert('Error', 'Failed to load invitations');
     } finally {
       setLoading(false);
     }
-  }, [user?.email, user?.id]);
+  }, [user?.id, refreshUser]);
 
   useFocusEffect(
     useCallback(() => {
@@ -366,7 +378,9 @@ export default function InvitationsScreen() {
                 />
                 <ThemedText style={[styles.emptyText, { color: colors.textSecondary }]}>
                   {activeTab === 'received'
-                    ? 'No invitations received'
+                    ? noEmailForInvites
+                      ? 'Friend invitations are sent to your email. Add an email in your profile so pending invites appear here.'
+                      : 'No invitations received'
                     : 'No invitations sent'}
                 </ThemedText>
               </View>

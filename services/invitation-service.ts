@@ -80,13 +80,17 @@ export const invitationService = {
 
     if (isDeliverableEmail(inviteeEmail)) {
       try {
+        const invitationId = data?.id != null ? String(data.id) : '';
+        if (!invitationId) {
+          throw new Error('Invitation insert did not return an id; cannot send email.');
+        }
         console.log(`[Invitation] Sending email to ${inviteeEmail}`);
         await assertSendInvitationEmail({
-          inviteeEmail,
-          inviteeName,
-          inviterName,
-          inviterId: invitation.inviterId,
-          invitationId: data.id,
+          inviteeEmail: String(inviteeEmail),
+          inviteeName: String(inviteeName),
+          inviterName: String(inviterName),
+          inviterId: String(invitation.inviterId),
+          invitationId,
         });
       } catch (emailErr) {
         console.error('Error sending invitation email:', emailErr);
@@ -275,17 +279,29 @@ export const invitationService = {
     const normalized = email.trim().toLowerCase();
     const { data, error } = await supabase
       .from('invitations')
-      .select(`
-        *,
-        inviter:users!inviter_id(name)
-      `)
+      .select('*')
       .eq('invitee_email', normalized)
       .eq('status', 'pending')
       .order('created_at', { ascending: false });
 
     if (error) throw error;
 
-    return data.map(inv => ({
+    if (!data?.length) {
+      return [];
+    }
+
+    const inviterIds = [...new Set(data.map((row) => row.inviter_id as string))];
+    const inviterNames = new Map<string, string>();
+    await Promise.all(
+      inviterIds.map(async (inviterId) => {
+        const u = await userService.getById(inviterId);
+        if (u?.name) {
+          inviterNames.set(inviterId, u.name);
+        }
+      })
+    );
+
+    return data.map((inv) => ({
       id: inv.id,
       inviterId: inv.inviter_id,
       inviteeEmail: inv.invitee_email,
@@ -294,7 +310,7 @@ export const invitationService = {
       status: inv.status,
       createdAt: new Date(inv.created_at).getTime(),
       expiresAt: new Date(inv.expires_at).getTime(),
-      inviterName: inv.inviter?.name,
+      inviterName: inviterNames.get(inv.inviter_id),
     }));
   },
 };

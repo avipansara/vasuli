@@ -67,6 +67,8 @@ npm run reset-project           # Reset to blank template
 ```bash
 npx expo doctor      # Check project health and dependencies
 npx expo lint        # Run ESLint
+npm test             # Run unit tests (Vitest)
+npm run test:watch   # Vitest in watch mode
 npm run draft        # Publish preview update and website (workflow)
 ```
 
@@ -126,6 +128,10 @@ npm run deploy                                      # Deploy to production (work
 
 ### Testing & Quality Assurance
 
+#### Unit tests (Vitest)
+
+When you **change existing behavior** or **add a feature**, **add or update automated tests** that cover the new logic, and **run `npm test`** before finishing (alongside `npm run precommit` when appropriate). Co-locate tests with the code they exercise (e.g. `supabase/functions/**/*.test.ts`). Prefer testing pure helpers, parsers, and service boundaries; use mocks for network/DB where full integration is impractical. See [`README.md`](./README.md) for the current test layout.
+
 #### Automated Testing with MCP Tools
 
 Developers can configure the Expo MCP server with the following doc: https://docs.expo.dev/eas/ai/mcp/
@@ -170,3 +176,5 @@ When working on this project:
 2. **Understand before implementing**: Read the relevant docs section before writing code
 
 3. **Follow existing patterns**: Look at existing components and screens for patterns to follow
+
+4. **Tests for feature work**: When modifying or adding features, create or extend test cases for the affected behavior and run `npm test` to confirm they pass

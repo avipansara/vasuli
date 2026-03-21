@@ -1,19 +1,12 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 
+import { inviteCtaUrl, parseInvitationBody } from './invitation'
+
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
-
-interface InvitationRequest {
-  inviteeEmail: string
-  inviteeName: string
-  inviterName: string
-  inviterId: string
-  /** DB row id — included in the CTA link so Accept can mark invitations.accepted */
-  invitationId: string
 }
 
 serve(async (req: Request) => {
@@ -23,16 +16,21 @@ serve(async (req: Request) => {
   }
 
   try {
-    const { inviteeEmail, inviteeName, inviterName, inviterId, invitationId }: InvitationRequest =
-      await req.json()
-
-    // Validate required fields
-    if (!inviteeEmail || !inviteeName || !inviterName || !inviterId || !invitationId) {
+    const rawBody = await req.json()
+    const parsed = parseInvitationBody(rawBody)
+    if (!parsed.ok) {
+      if ('missing' in parsed) {
+        return new Response(
+          JSON.stringify({ error: 'Missing required fields', missing: parsed.missing }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
       return new Response(
-        JSON.stringify({ error: 'Missing required fields' }),
+        JSON.stringify({ error: 'Invalid JSON body' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
+    const { inviteeEmail, inviteeName, inviterName, inviterId, invitationId } = parsed.data
 
     // Send invitation email via Resend
     const emailSent = await sendInvitationEmail(
@@ -60,11 +58,6 @@ serve(async (req: Request) => {
     )
   }
 })
-
-function inviteCtaUrl(inviterId: string, invitationId: string): string {
-  const q = new URLSearchParams({ invitation: invitationId })
-  return `https://split-space.com/invite/${encodeURIComponent(inviterId)}?${q.toString()}`
-}
 
 async function sendInvitationEmail(
   inviteeEmail: string,

@@ -1,8 +1,10 @@
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useAuth } from '@/contexts/auth-context-otp';
+import { PENDING_INVITE_PATH_KEY } from '@/lib/invite-deeplink';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { otpService } from '@/services/otp-service';
 import { isEmailValid } from '@/utils/validation';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Link, router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
@@ -167,9 +169,14 @@ export default function SignUpOTPScreen() {
 
       if (result.success) {
         await refreshUser();
-        // Small delay to ensure auth state is updated
+        const pendingInvite = await AsyncStorage.getItem(PENDING_INVITE_PATH_KEY);
+        await AsyncStorage.removeItem(PENDING_INVITE_PATH_KEY);
         setTimeout(() => {
-          router.replace('/(tabs)');
+          if (pendingInvite) {
+            router.replace(pendingInvite);
+          } else {
+            router.replace('/(tabs)');
+          }
         }, 100);
       } else {
         Alert.alert('Error', result.error || 'Invalid code');
