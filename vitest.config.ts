@@ -5,6 +5,9 @@ import { defineConfig } from 'vitest/config'
 const dirname = path.dirname(fileURLToPath(import.meta.url))
 
 export default defineConfig({
+  define: {
+    __DEV__: true,
+  },
   resolve: {
     alias: {
       '@': path.resolve(dirname, '.'),
@@ -17,6 +20,7 @@ export default defineConfig({
       'lib/**/*.test.ts',
       'utils/**/*.test.ts',
       'services/**/*.test.ts',
+      'components/**/*.test.tsx',
     ],
   },
 })
