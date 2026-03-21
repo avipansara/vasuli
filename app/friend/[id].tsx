@@ -1,9 +1,11 @@
 import { SettleUpModal } from '@/components/friends/settle-up-modal';
 import { ThemedText } from '@/components/themed-text';
+import { AsyncErrorState } from '@/components/ui/async-error-state';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { LoadingState } from '@/components/ui/loading-state';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useThemeColors } from '@/hooks/use-theme-colors';
+import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { supabase } from '@/lib/supabase';
 import { activityService } from '@/services/activity-service';
 import { calculateFriendBalance, expenseService, initDatabase, settlementService, userService } from '@/services/api';
@@ -36,6 +38,7 @@ export default function FriendDetailScreen() {
   const [friend, setFriend] = useState<UserWithBalance | null>(null);
   const [expenses, setExpenses] = useState<ExpenseWithSplit[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [settleModalVisible, setSettleModalVisible] = useState(false);
   const [isRemovingFriend, setIsRemovingFriend] = useState(false);
   const [isSettlingUp, setIsSettlingUp] = useState(false);
@@ -91,69 +94,11 @@ export default function FriendDetailScreen() {
     }
   }, [loading, friend]);
 
-  // Real-time subscriptions for 1-on-1 expenses
-  useEffect(() => {
-    if (!currentUserId || !id) return;
-
-    console.log('[Realtime] Subscribing to friend updates:', id);
-
-    const subscription = supabase
-      .channel(`friend-${id}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'expenses',
-        },
-        (payload) => {
-          console.log('[Realtime] Friend expense change detected:', payload);
-          // Add a small delay to ensure transaction propagation
-          setTimeout(() => loadFriendData(), 500);
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'expense_splits',
-        },
-        (payload) => {
-          console.log('[Realtime] Split change detected:', payload);
-          setTimeout(() => loadFriendData(), 500);
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'settlements',
-        },
-        (payload) => {
-          console.log('[Realtime] Settlement change detected:', payload);
-          setTimeout(() => loadFriendData(), 500);
-        }
-      )
-      .subscribe();
-
-    return () => {
-      console.log('[Realtime] Unsubscribing from friend updates');
-      supabase.removeChannel(subscription);
-    };
-  }, [currentUserId, id]);
-
-  useFocusEffect(
-    useCallback(() => {
-      loadFriendData();
-    }, [id])
-  );
-
-  const loadFriendData = async (skipCache = false) => {
+  const loadFriendData = useCallback(async (skipCache = false) => {
     if (!id) return;
 
     try {
+      setLoadError(null);
       // 1. Load from cache first (instant)
       if (!skipCache) {
         const cachedFriend = await cacheService.get<UserWithBalance>(CACHE_KEYS.FRIEND_DETAIL(id));
@@ -223,11 +168,69 @@ export default function FriendDetailScreen() {
       await cacheService.set(CACHE_KEYS.FRIEND_EXPENSES(id), sharedExpenses);
     } catch (error) {
       console.error('Error loading friend data:', error);
-      Alert.alert('Error', 'Failed to load friend data');
+      setLoadError(getFetchErrorMessage(error));
     } finally {
       setLoading(false);
     }
-  }
+  }, [id, currentUserId]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadFriendData();
+    }, [loadFriendData])
+  );
+
+  // Real-time subscriptions for 1-on-1 expenses
+  useEffect(() => {
+    if (!currentUserId || !id) return;
+
+    console.log('[Realtime] Subscribing to friend updates:', id);
+
+    const subscription = supabase
+      .channel(`friend-${id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'expenses',
+        },
+        (payload) => {
+          console.log('[Realtime] Friend expense change detected:', payload);
+          setTimeout(() => loadFriendData(), 500);
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'expense_splits',
+        },
+        (payload) => {
+          console.log('[Realtime] Split change detected:', payload);
+          setTimeout(() => loadFriendData(), 500);
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'settlements',
+        },
+        (payload) => {
+          console.log('[Realtime] Settlement change detected:', payload);
+          setTimeout(() => loadFriendData(), 500);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      console.log('[Realtime] Unsubscribing from friend updates');
+      supabase.removeChannel(subscription);
+    };
+  }, [currentUserId, id, loadFriendData]);
 
   const handleSettleUp = async (friendId: string, amount: number) => {
     try {
@@ -395,6 +398,29 @@ export default function FriendDetailScreen() {
 
   if (loading) {
     return <LoadingState message="Loading friend details..." />;
+  }
+
+  if (loadError) {
+    return (
+      <View style={styles.container}>
+        <LinearGradient colors={gradients.screenBackground} style={StyleSheet.absoluteFill} />
+        <View style={styles.header}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={[styles.backButtonRect, {
+              backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)',
+              borderColor: isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(34, 197, 94, 0.3)'
+            }]}>
+            <IconSymbol size={20} name="chevron.left" color={isDark ? '#2DD4BF' : colors.tint} />
+          </TouchableOpacity>
+        </View>
+        <AsyncErrorState
+          message={loadError}
+          onRetry={() => loadFriendData(true)}
+          title="Couldn't load friend"
+        />
+      </View>
+    );
   }
 
   if (!friend) {

@@ -1,7 +1,9 @@
 import { ThemedText } from '@/components/themed-text';
+import { AsyncErrorState } from '@/components/ui/async-error-state';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useThemeColors } from '@/hooks/use-theme-colors';
+import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { invitationService } from '@/services/invitation-service';
 import type { Invitation } from '@/types/database';
 import { useCallback, useEffect, useState } from 'react';
@@ -18,12 +20,14 @@ export function InvitationsSection() {
   const [receivedInvitations, setReceivedInvitations] = useState<InvitationWithInviter[]>([]);
   const [sentInvitations, setSentInvitations] = useState<Invitation[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   const loadInvitations = useCallback(async () => {
     if (!user) return;
     setLoading(true);
     try {
+      setLoadError(null);
       if (user.email) {
         const received = await invitationService.getReceivedInvitations(user.email);
         setReceivedInvitations(received);
@@ -36,6 +40,7 @@ export function InvitationsSection() {
       setSentInvitations(sent.filter(inv => inv.status === 'pending'));
     } catch (error) {
       console.error('Error loading invitations:', error);
+      setLoadError(getFetchErrorMessage(error));
     } finally {
       setLoading(false);
     }
@@ -143,6 +148,24 @@ export function InvitationsSection() {
         </ThemedText>
         <View style={[styles.loadingContainer, { backgroundColor: isDark ? 'rgba(20, 35, 38, 0.6)' : colors.card }]}>
           <ActivityIndicator size="small" color={isDark ? '#2DD4BF' : colors.tint} />
+        </View>
+      </View>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <View style={styles.section}>
+        <ThemedText style={[styles.sectionTitle, !isDark && { color: colors.textSecondary }]}>
+          Invitations
+        </ThemedText>
+        <View style={[styles.errorCard, { backgroundColor: isDark ? 'rgba(20, 35, 38, 0.6)' : colors.card }]}>
+          <AsyncErrorState
+            variant="compact"
+            message={loadError}
+            onRetry={loadInvitations}
+            title="Couldn't load invitations"
+          />
         </View>
       </View>
     );
@@ -360,6 +383,11 @@ const styles = StyleSheet.create({
     padding: 24,
     borderRadius: 12,
     alignItems: 'center',
+  },
+  errorCard: {
+    borderRadius: 12,
+    overflow: 'hidden',
+    paddingVertical: 4,
   },
   tabContainer: {
     flexDirection: 'row',

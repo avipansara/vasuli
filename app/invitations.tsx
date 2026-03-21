@@ -1,9 +1,11 @@
 import { ThemedText } from '@/components/themed-text';
+import { AsyncErrorState } from '@/components/ui/async-error-state';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { LoadingState } from '@/components/ui/loading-state';
 import { NavigationHeader } from '@/components/ui/screen-header';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useThemeColors } from '@/hooks/use-theme-colors';
+import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { friendshipService } from '@/services/friendship-service';
 import { invitationService } from '@/services/invitation-service';
 import { userService } from '@/services/user-service';
@@ -33,6 +35,7 @@ export default function InvitationsScreen() {
   const [receivedInvitations, setReceivedInvitations] = useState<InvitationWithDetails[]>([]);
   const [sentInvitations, setSentInvitations] = useState<InvitationWithDetails[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [noEmailForInvites, setNoEmailForInvites] = useState(false);
   const hasLoadedOnce = useRef(false);
@@ -41,6 +44,7 @@ export default function InvitationsScreen() {
     if (!user?.id) return;
 
     try {
+      setLoadError(null);
       // Only show loader on first load
       if (!hasLoadedOnce.current) {
         setLoading(true);
@@ -65,7 +69,7 @@ export default function InvitationsScreen() {
       setReceivedInvitations(received);
     } catch (error) {
       console.error('Error loading invitations:', error);
-      Alert.alert('Error', 'Failed to load invitations');
+      setLoadError(getFetchErrorMessage(error));
     } finally {
       setLoading(false);
     }
@@ -363,6 +367,12 @@ export default function InvitationsScreen() {
         {/* Content */}
         {loading ? (
           <LoadingState message="Loading invitations..." />
+        ) : loadError ? (
+          <AsyncErrorState
+            message={loadError}
+            onRetry={loadInvitations}
+            title="Couldn't load invitations"
+          />
         ) : (
           <FlatList
             data={currentInvitations}

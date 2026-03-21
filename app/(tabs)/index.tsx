@@ -2,6 +2,7 @@ import { FriendCard } from '@/components/friends/friend-card';
 import { InviteFriendModal } from '@/components/friends/invite-friend-modal';
 import { QRCodeModal } from '@/components/friends/qr-code-modal';
 import { ThemedText } from '@/components/themed-text';
+import { AsyncErrorState } from '@/components/ui/async-error-state';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { LoadingState } from '@/components/ui/loading-state';
 import { useAuth } from '@/contexts/auth-context-otp';
@@ -12,6 +13,7 @@ import { CACHE_KEYS, cacheService } from '@/services/cache-service';
 import { friendshipService } from '@/services/friendship-service';
 import { invitationService } from '@/services/invitation-service';
 import type { User } from '@/types/database';
+import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { isEmailValid } from '@/utils/validation';
 import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -28,6 +30,7 @@ export default function FriendsScreen() {
   const { gradients, colors, isDark } = useThemeColors();
   const [friends, setFriends] = useState<UserWithBalance[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [newFriendName, setNewFriendName] = useState('');
   const [newFriendEmail, setNewFriendEmail] = useState('');
@@ -39,6 +42,7 @@ export default function FriendsScreen() {
   const loadFriends = useCallback(async (skipCache = false) => {
     if (!currentUserId) return;
     try {
+      setLoadError(null);
       // 1. Load from cache first (instant)
       if (!skipCache) {
         const cached = await cacheService.get<UserWithBalance[]>(CACHE_KEYS.FRIENDS_LIST);
@@ -84,6 +88,7 @@ export default function FriendsScreen() {
       await cacheService.set(CACHE_KEYS.FRIENDS_LIST, friendsWithBalances);
     } catch (error) {
       console.error('Error loading friends:', error);
+      setLoadError(getFetchErrorMessage(error));
     } finally {
       setLoading(false);
     }
@@ -284,6 +289,12 @@ export default function FriendsScreen() {
 
       {loading ? (
         <LoadingState message="Loading friends..." />
+      ) : loadError ? (
+        <AsyncErrorState
+          message={loadError}
+          onRetry={() => loadFriends(true)}
+          title="Couldn't load friends"
+        />
       ) : friends.length === 0 ? (
         <View style={styles.emptyContainer}>
           <View style={[styles.emptyIconContainer, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.1)' : 'rgba(34, 197, 94, 0.1)' }]}>

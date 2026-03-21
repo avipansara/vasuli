@@ -1,9 +1,11 @@
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { AsyncErrorState } from '@/components/ui/async-error-state';
 import { LoadingState } from '@/components/ui/loading-state';
 import { NavigationHeader } from '@/components/ui/screen-header';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useThemeColors } from '@/hooks/use-theme-colors';
+import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { activityService } from '@/services/activity-service';
 import { expenseService, groupService, userService } from '@/services/api';
 import type { Activity, Expense, ExpenseSplit, Group, User } from '@/types/database';
@@ -37,26 +39,20 @@ export default function ExpenseDetailScreen() {
   const [group, setGroup] = useState<Group | null>(null);
   const [activities, setActivities] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
-  useEffect(() => {
-    loadExpenseDetails();
-  }, [id]);
-
-  useFocusEffect(
-    useCallback(() => {
-      loadExpenseDetails();
-    }, [id])
-  );
-
-  const loadExpenseDetails = async () => {
+  const loadExpenseDetails = useCallback(async () => {
+    setLoadError(null);
+    setLoading(true);
     try {
       const expenseData = await expenseService.getById(id);
       if (!expenseData) {
+        setLoading(false);
         Alert.alert('Error', 'Expense not found');
         router.back();
         return;
@@ -120,10 +116,20 @@ export default function ExpenseDetailScreen() {
       ).start();
     } catch (error) {
       console.error('Error loading expense details:', error);
-      Alert.alert('Error', 'Failed to load expense details');
-      router.back();
+      setLoadError(getFetchErrorMessage(error));
+      setLoading(false);
     }
-  }
+  }, [id]);
+
+  useEffect(() => {
+    loadExpenseDetails();
+  }, [loadExpenseDetails]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadExpenseDetails();
+    }, [loadExpenseDetails])
+  );
 
   const handleDelete = () => {
     if (isDeleting) return;
@@ -151,6 +157,24 @@ export default function ExpenseDetailScreen() {
       ]
     );
   };
+
+  if (loadError) {
+    return (
+      <View style={styles.container}>
+        <Stack.Screen options={{ headerShown: false }} />
+        <LinearGradient colors={gradients.screenBackground} style={StyleSheet.absoluteFill} />
+        <NavigationHeader
+          title="Expense Details"
+          onBack={() => router.back()}
+        />
+        <AsyncErrorState
+          message={loadError}
+          onRetry={() => void loadExpenseDetails()}
+          title="Couldn't load expense"
+        />
+      </View>
+    );
+  }
 
   if (loading || !expense) {
     return (

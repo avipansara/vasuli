@@ -1,9 +1,11 @@
 import { ThemedText } from '@/components/themed-text';
+import { AsyncErrorState } from '@/components/ui/async-error-state';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { KeyboardAwareScroll } from '@/components/ui/keyboard-aware-scroll';
 import { NavigationHeader } from '@/components/ui/screen-header';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useThemeColors } from '@/hooks/use-theme-colors';
+import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { initDatabase } from '@/services/api';
 import { invitationService } from '@/services/invitation-service';
 import { isEmailValid } from '@/utils/validation';
@@ -31,6 +33,7 @@ export default function AddFriendScreen() {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [pendingInvites, setPendingInvites] = useState<any[]>([]);
+  const [invitesLoadError, setInvitesLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     loadPendingInvites();
@@ -38,10 +41,12 @@ export default function AddFriendScreen() {
 
   async function loadPendingInvites() {
     try {
+      setInvitesLoadError(null);
       const invites = await invitationService.getByInviter(currentUserId);
       setPendingInvites(invites.filter(inv => inv.status === 'pending'));
     } catch (error) {
       console.error('Error loading pending invites:', error);
+      setInvitesLoadError(getFetchErrorMessage(error));
     }
   }
 
@@ -295,12 +300,20 @@ export default function AddFriendScreen() {
           </BlurView>
 
           {/* Pending Invites Section */}
-          {pendingInvites.length > 0 && (
+          {(invitesLoadError || pendingInvites.length > 0) && (
             <View style={styles.pendingSection}>
               <ThemedText style={[styles.sectionTitle, { color: colors.text }]}>
                 Pending Invites
               </ThemedText>
-              {pendingInvites.map((invite) => (
+              {invitesLoadError ? (
+                <AsyncErrorState
+                  variant="compact"
+                  title="Couldn't load invites"
+                  message={invitesLoadError}
+                  onRetry={() => void loadPendingInvites()}
+                />
+              ) : (
+              pendingInvites.map((invite) => (
                 <View key={invite.id} style={[styles.pendingItem, {
                   backgroundColor: isDark ? 'rgba(30, 41, 59, 0.6)' : 'white',
                   borderColor: isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(0,0,0,0.05)'
@@ -322,7 +335,8 @@ export default function AddFriendScreen() {
                     </ThemedText>
                   </TouchableOpacity>
                 </View>
-              ))}
+              ))
+              )}
             </View>
           )}
 

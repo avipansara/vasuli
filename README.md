@@ -23,6 +23,8 @@ Do **not** use the `service_role` key in the app; it bypasses RLS and must stay 
 
 **Invitations RLS:** Tight policies require a Supabase Auth JWT where `auth.uid()` matches `public.users.id`. The default OTP-only anon client cannot satisfy that — see [`supabase/docs/RLS_INVITATIONS.md`](./supabase/docs/RLS_INVITATIONS.md) before applying [`supabase/migrations/002_invitations_rls_policies.sql`](./supabase/migrations/002_invitations_rls_policies.sql).
 
+**Expenses RLS:** [`supabase/migrations/004_expenses_rls_policies.sql`](./supabase/migrations/004_expenses_rls_policies.sql) adds payer/group-member rules for **`authenticated`** and permissive **`anon`** policies for the OTP-only client. See [`supabase/docs/RLS_EXPENSES.md`](./supabase/docs/RLS_EXPENSES.md).
+
 **Edge Function `send-invitation` (401):** The gateway defaults to requiring a JWT; this app invokes with the anon key only. [`supabase/config.toml`](./supabase/config.toml) sets `verify_jwt = false` for that function. After changing config, redeploy: `npm run supabase:deploy:send-invitation` (uses `--no-verify-jwt`). You can also toggle **Enforce JWT** off for that function in the Dashboard under Edge Functions → send-invitation → Details / Settings.
 
 ```bash

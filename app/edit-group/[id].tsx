@@ -1,8 +1,10 @@
 import { ThemedText } from '@/components/themed-text';
+import { AsyncErrorState } from '@/components/ui/async-error-state';
 import { KeyboardAwareScroll } from '@/components/ui/keyboard-aware-scroll';
 import { NavigationHeader } from '@/components/ui/screen-header';
 import { ThemedInput } from '@/components/ui/themed-input';
 import { useThemeColors } from '@/hooks/use-theme-colors';
+import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { groupService, initDatabase } from '@/services/api';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -26,6 +28,7 @@ export default function EditGroupScreen() {
   const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   // Animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -41,6 +44,7 @@ export default function EditGroupScreen() {
 
   async function loadGroupData() {
     try {
+      setLoadError(null);
       const group = await groupService.getById(id);
       if (!group) {
         Alert.alert('Error', 'Group not found');
@@ -65,8 +69,8 @@ export default function EditGroupScreen() {
       ]).start();
     } catch (error) {
       console.error('Error loading group:', error);
-      Alert.alert('Error', 'Failed to load group');
-      router.back();
+      setLoadError(getFetchErrorMessage(error));
+      setInitialLoading(false);
     }
   }
 
@@ -99,6 +103,23 @@ export default function EditGroupScreen() {
         <View style={styles.loadingContainer}>
           <ThemedText>Loading...</ThemedText>
         </View>
+      </View>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <View style={styles.container}>
+        <LinearGradient colors={gradients.screenBackground} style={StyleSheet.absoluteFill} />
+        <NavigationHeader
+          title="Edit Group"
+          onBack={() => router.back()}
+        />
+        <AsyncErrorState
+          message={loadError}
+          onRetry={() => void loadGroupData()}
+          title="Couldn't load group"
+        />
       </View>
     );
   }

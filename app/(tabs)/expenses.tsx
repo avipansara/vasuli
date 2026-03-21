@@ -1,9 +1,11 @@
 import { ExpenseListCard } from '@/components/expenses/expense-list-card';
 import { ThemedText } from '@/components/themed-text';
+import { AsyncErrorState } from '@/components/ui/async-error-state';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { LoadingState } from '@/components/ui/loading-state';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useThemeColors } from '@/hooks/use-theme-colors';
+import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { expenseService, groupService, initDatabase } from '@/services/api';
 import type { Expense, Group } from '@/types/database';
 import { useFocusEffect } from '@react-navigation/native';
@@ -16,6 +18,7 @@ export default function ExpensesScreen() {
   const { gradients, colors, isDark } = useThemeColors();
   const [expenses, setExpenses] = useState<(Expense & { group?: Group })[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const { user } = useAuth();
   const currentUserId = user?.id || '';
   const hasLoadedOnce = useRef(false);
@@ -23,6 +26,7 @@ export default function ExpensesScreen() {
   const loadData = useCallback(async () => {
     if (!currentUserId) return;
     try {
+      setLoadError(null);
       // Only show loader on first load
       if (!hasLoadedOnce.current) {
         setLoading(true);
@@ -46,6 +50,7 @@ export default function ExpensesScreen() {
       setExpenses(allExpenses);
     } catch (error) {
       console.error('[Expenses] Error loading expenses:', error);
+      setLoadError(getFetchErrorMessage(error));
     } finally {
       setLoading(false);
     }
@@ -121,6 +126,12 @@ export default function ExpensesScreen() {
 
       {loading ? (
         <LoadingState />
+      ) : loadError ? (
+        <AsyncErrorState
+          message={loadError}
+          onRetry={loadData}
+          title="Couldn't load expenses"
+        />
       ) : expenses.length === 0 ? (
         <View style={styles.emptyContainer}>
           <View style={[styles.emptyIconContainer, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.1)' : 'rgba(34, 197, 94, 0.1)' }]}>
