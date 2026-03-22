@@ -143,6 +143,10 @@ export const friendshipService = {
       throw new Error(message);
     }
 
+    // Dynamic import keeps unit tests from loading invitation-service → notification → react-native.
+    const { invitationService } = await import('@/services/invitation-service');
+    await invitationService.deleteInvitationsForRemovedFriendship(userId, friendId);
+
     const { error } = await supabase
       .from('friendships')
       .delete()
