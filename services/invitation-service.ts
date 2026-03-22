@@ -322,4 +322,37 @@ export const invitationService = {
       inviterName: inviterNames.get(inv.inviter_id),
     }));
   },
+
+  /**
+   * Remove invitation rows for this user pair so the inviter can send a new invite after unfriend.
+   * Deletes (inviter_id=userId, invitee_email=friend's email) and the reverse.
+   */
+  async deleteInvitationsForRemovedFriendship(userId: string, friendId: string): Promise<void> {
+    if (USE_MOCK_DATA) return;
+
+    const [user, friend] = await Promise.all([
+      userService.getById(userId),
+      userService.getById(friendId),
+    ]);
+    const userEmail = normalizeEmail(user?.email);
+    const friendEmail = normalizeEmail(friend?.email);
+
+    if (friendEmail) {
+      const { error } = await supabase
+        .from('invitations')
+        .delete()
+        .eq('inviter_id', userId)
+        .eq('invitee_email', friendEmail);
+      if (error) throw error;
+    }
+
+    if (userEmail) {
+      const { error } = await supabase
+        .from('invitations')
+        .delete()
+        .eq('inviter_id', friendId)
+        .eq('invitee_email', userEmail);
+      if (error) throw error;
+    }
+  },
 };
