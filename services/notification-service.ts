@@ -2,11 +2,45 @@ import Constants from 'expo-constants';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 
+import { supabase } from '@/lib/supabase';
+
 export interface PushNotificationData {
   type: 'expense_added' | 'expense_reminder' | 'group_created' | 'member_added' | 'invitation_sent' | 'invitation_accepted' | 'settlement_created';
   title: string;
   body: string;
   data?: Record<string, any>;
+}
+
+async function invokeSendPushNotification(
+  tokens: string[],
+  notification: PushNotificationData
+): Promise<void> {
+  const unique = [...new Set(tokens.map((t) => t.trim()).filter(Boolean))];
+  if (unique.length === 0) return;
+
+  try {
+    const { data, error } = await supabase.functions.invoke('send-push-notification', {
+      body: {
+        tokens: unique,
+        notification: {
+          type: notification.type,
+          title: notification.title,
+          body: notification.body,
+          data: notification.data,
+        },
+      },
+    });
+
+    if (error) {
+      console.error('Error sending push notification:', error.message);
+      return;
+    }
+    if (data && typeof data === 'object' && 'error' in data && data.error) {
+      console.error('send-push-notification:', String((data as { error: string }).error));
+    }
+  } catch (err) {
+    console.error('Error sending push notification:', err);
+  }
 }
 
 Notifications.setNotificationHandler({
@@ -68,58 +102,14 @@ export const notificationService = {
     expoPushToken: string,
     notification: PushNotificationData
   ): Promise<void> {
-    const message = {
-      to: expoPushToken,
-      sound: 'default',
-      title: notification.title,
-      body: notification.body,
-      data: { ...notification.data, type: notification.type },
-      priority: 'high' as const,
-      channelId: 'default',
-    };
-
-    try {
-      await fetch('https://exp.host/--/api/v2/push/send', {
-        method: 'POST',
-        headers: {
-          Accept: 'application/json',
-          'Accept-encoding': 'gzip, deflate',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(message),
-      });
-    } catch (error) {
-      console.error('Error sending push notification:', error);
-    }
+    await invokeSendPushNotification([expoPushToken], notification);
   },
 
   async sendNotificationToUsers(
     userTokens: string[],
     notification: PushNotificationData
   ): Promise<void> {
-    const messages = userTokens.map(token => ({
-      to: token,
-      sound: 'default',
-      title: notification.title,
-      body: notification.body,
-      data: { ...notification.data, type: notification.type },
-      priority: 'high' as const,
-      channelId: 'default',
-    }));
-
-    try {
-      await fetch('https://exp.host/--/api/v2/push/send', {
-        method: 'POST',
-        headers: {
-          Accept: 'application/json',
-          'Accept-encoding': 'gzip, deflate',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(messages),
-      });
-    } catch (error) {
-      console.error('Error sending push notifications:', error);
-    }
+    await invokeSendPushNotification(userTokens, notification);
   },
 
   async scheduleLocalNotification(

@@ -6,3 +6,7 @@
 
 [functions.send-invitation]
 verify_jwt = false
+
+# Same as send-invitation: app invokes with anon key only (custom OTP session).
+[functions.send-push-notification]
+verify_jwt = false
