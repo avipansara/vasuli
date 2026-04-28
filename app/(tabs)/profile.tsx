@@ -5,6 +5,7 @@ import { LoadingState } from '@/components/ui/loading-state';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useTheme } from '@/contexts/theme-context';
 import { useThemeColors } from '@/hooks/use-theme-colors';
+import { getAppVersionLabel } from '@/lib/app-version';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { calculateUserTotalBalance, initDatabase, userService } from '@/services/api';
 import { useFocusEffect } from '@react-navigation/native';
@@ -275,7 +276,9 @@ export default function ProfileScreen() {
           <ThemedText style={[styles.logoutText, styles.deleteText]}>Delete Account</ThemedText>
         </Pressable>
 
-        <ThemedText style={[styles.versionText, !isDark && { color: colors.textSecondary }]}>Version 1.0.0</ThemedText>
+        <ThemedText style={[styles.versionText, !isDark && { color: colors.textSecondary }]}>
+          {getAppVersionLabel()}
+        </ThemedText>
       </ScrollView>
 
       {/* Loading Playground Modal */}
