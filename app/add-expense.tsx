@@ -236,6 +236,19 @@ export default function AddExpenseScreen() {
           amount: amountNum,
         });
 
+        // Notify selected friends for direct (non-group) expenses.
+        const friendPushTokens = friends
+          .filter((friend) => selectedFriendIds.includes(friend.id) && friend.pushToken)
+          .map((friend) => friend.pushToken as string);
+        if (friendPushTokens.length > 0) {
+          const notification = createExpenseNotification(
+            description.trim(),
+            amountNum,
+            user?.name || 'Someone'
+          );
+          await notificationService.sendNotificationToUsers(friendPushTokens, notification);
+        }
+
         // Invalidate caches for all involved friends
         await cacheService.invalidate(CACHE_KEYS.FRIENDS_LIST);
         for (const friendId of selectedFriendIds) {
