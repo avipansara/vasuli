@@ -1,114 +1,71 @@
-import { BlurView } from 'expo-blur';
-import { Tabs } from 'expo-router';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { NativeTabs, Icon, Label, VectorIcon } from 'expo-router/unstable-native-tabs';
 import React from 'react';
-import { Platform, StyleSheet, View, useWindowDimensions } from 'react-native';
+import type { SFSymbol } from 'sf-symbols-typescript';
 
-import { HapticTab } from '@/components/haptic-tab';
-import { IconSymbol } from '@/components/ui/icon-symbol';
 import { RouteErrorBoundary } from '@/components/ui/route-error-boundary';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 
+/** `NativeTabs.Trigger` only reads direct `Icon` / `Label` children — no wrapper components. */
+function iosPair(defaultSf: SFSymbol, selectedSf: SFSymbol) {
+  return { default: defaultSf, selected: selectedSf };
+}
+
 export default function TabLayout() {
   const { colors, isDark } = useThemeColors();
-  const { width } = useWindowDimensions();
-
-  // Constrain tab bar width on tablet/desktop for better ergonomics
-  const isTablet = width > 768;
-  const TAB_BAR_WIDTH = 500;
 
   return (
     <RouteErrorBoundary homeHref="/(tabs)">
-    <Tabs
-      screenOptions={{
-        tabBarActiveTintColor: colors.tint,
-        tabBarInactiveTintColor: isDark ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.4)',
-        headerShown: false,
-        tabBarButton: HapticTab,
-        tabBarShowLabel: true,
-        tabBarStyle: {
-          position: 'absolute',
-          bottom: 24,
-          // Center tab bar on tablets
-          ...(isTablet ? {
-            left: (width - TAB_BAR_WIDTH) / 2,
-            width: TAB_BAR_WIDTH,
-          } : {
-            left: 16,
-            right: 16,
-          }),
-          height: 70,
-          backgroundColor: Platform.OS === 'android'
-            ? (isDark ? 'rgba(20, 30, 35, 0.95)' : 'rgba(255, 255, 255, 0.95)')
-            : (isDark ? 'rgba(20, 30, 35, 0.50)' : 'rgba(255, 255, 255, 0.50)'),
-          borderRadius: 16,
-          paddingHorizontal: 8,
-          shadowColor: isDark ? '#000' : '#64748B',
-          shadowOffset: { width: 0, height: 8 },
-          shadowOpacity: isDark ? 0.3 : 0.15,
-          shadowRadius: 16,
-          elevation: 10,
-          // Removed redundant marginHorizontal
-          borderWidth: isDark ? 1 : 1,
-          borderColor: isDark ? 'rgba(45, 212, 191, 0.1)' : 'rgba(0, 0, 0, 0.05)',
-        },
-        tabBarBackground: () => (
-          <View style={[StyleSheet.absoluteFill, { borderRadius: 16, overflow: 'hidden' }]}>
-            {Platform.OS === 'ios' && (
-              <BlurView
-                intensity={40}
-                tint={isDark ? 'dark' : 'light'}
-                style={StyleSheet.absoluteFill}
-              />
-            )}
-          </View>
-        ),
-        tabBarItemStyle: {
-          borderRadius: 12,
-          marginHorizontal: 4,
-          paddingVertical: 6,
-        },
-        tabBarLabelStyle: {
-          fontSize: 10,
-          fontWeight: '500',
-          marginTop: 2,
-        },
-      }}>
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Friends',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="person.2.fill" color={color} />,
+      <NativeTabs
+        tintColor={colors.tint}
+        blurEffect="systemChromeMaterial"
+        minimizeBehavior="automatic"
+        labelStyle={{
+          default: { color: isDark ? 'rgba(255,255,255,0.55)' : 'rgba(0,0,0,0.45)' },
+          selected: { color: colors.tint },
         }}
-      />
-      <Tabs.Screen
-        name="groups"
-        options={{
-          title: 'Groups',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="person.3.fill" color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="expenses"
-        options={{
-          title: 'Expenses',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="dollarsign.circle.fill" color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="activity"
-        options={{
-          title: 'Activity',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="clock.fill" color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="profile"
-        options={{
-          title: 'Profile',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="person.circle.fill" color={color} />,
-        }}
-      />
-    </Tabs>
+      >
+        <NativeTabs.Trigger name="index">
+          {process.env.EXPO_OS === 'ios' ? (
+            <Icon sf={iosPair('person.2', 'person.2.fill')} />
+          ) : (
+            <Icon src={<VectorIcon family={MaterialIcons} name="people" />} />
+          )}
+          <Label>Friends</Label>
+        </NativeTabs.Trigger>
+        <NativeTabs.Trigger name="groups">
+          {process.env.EXPO_OS === 'ios' ? (
+            <Icon sf={iosPair('person.3', 'person.3.fill')} />
+          ) : (
+            <Icon src={<VectorIcon family={MaterialIcons} name="groups" />} />
+          )}
+          <Label>Groups</Label>
+        </NativeTabs.Trigger>
+        <NativeTabs.Trigger name="expenses">
+          {process.env.EXPO_OS === 'ios' ? (
+            <Icon sf={iosPair('dollarsign.circle', 'dollarsign.circle.fill')} />
+          ) : (
+            <Icon src={<VectorIcon family={MaterialIcons} name="attach-money" />} />
+          )}
+          <Label>Expenses</Label>
+        </NativeTabs.Trigger>
+        <NativeTabs.Trigger name="activity">
+          {process.env.EXPO_OS === 'ios' ? (
+            <Icon sf={iosPair('clock', 'clock.fill')} />
+          ) : (
+            <Icon src={<VectorIcon family={MaterialIcons} name="schedule" />} />
+          )}
+          <Label>Activity</Label>
+        </NativeTabs.Trigger>
+        <NativeTabs.Trigger name="profile">
+          {process.env.EXPO_OS === 'ios' ? (
+            <Icon sf={iosPair('person.circle', 'person.circle.fill')} />
+          ) : (
+            <Icon src={<VectorIcon family={MaterialIcons} name="account-circle" />} />
+          )}
+          <Label>Profile</Label>
+        </NativeTabs.Trigger>
+      </NativeTabs>
     </RouteErrorBoundary>
   );
 }
