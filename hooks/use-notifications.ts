@@ -1,5 +1,4 @@
 import { useAuth } from '@/contexts/auth-context-otp';
-import { userService } from '@/services/api';
 import { notificationService } from '@/services/notification-service';
 import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
@@ -7,8 +6,7 @@ import { useCallback, useEffect, useRef } from 'react';
 
 export function useNotifications() {
   const router = useRouter();
-  const { user } = useAuth();
-  const userId = user?.id;
+  useAuth();
   const notificationListener = useRef<Notifications.EventSubscription>(undefined);
   const responseListener = useRef<Notifications.EventSubscription>(undefined);
 
@@ -46,22 +44,6 @@ export function useNotifications() {
   }, [router]);
 
   useEffect(() => {
-    // Register for push notifications and get token
-    const registerForPushNotifications = async () => {
-      const token = await notificationService.registerForPushNotificationsAsync();
-      if (token && userId) {
-        console.log('Push token registered:', token);
-        // Store token in user profile
-        try {
-          await userService.updatePushToken(userId, token);
-        } catch (error) {
-          console.error('Error storing push token:', error);
-        }
-      }
-    };
-
-    registerForPushNotifications();
-
     // Listen for notifications received while app is in foreground
     notificationListener.current = notificationService.addNotificationReceivedListener(
       (notification) => {
@@ -89,7 +71,7 @@ export function useNotifications() {
         notificationService.removeNotificationSubscription(responseListener.current);
       }
     };
-  }, [handleNotificationNavigation, userId]);
+  }, [handleNotificationNavigation]);
 
   return {
     clearBadge: notificationService.clearBadge,

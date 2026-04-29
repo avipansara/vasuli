@@ -9,6 +9,7 @@ import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { activityService } from '@/services/activity-service';
 import { expenseService, groupService, initDatabase, userService } from '@/services/api';
 import { CACHE_KEYS, cacheService } from '@/services/cache-service';
+import { createExpenseNotification, notificationService } from '@/services/notification-service';
 import type { Group, User } from '@/types/database';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -182,6 +183,25 @@ export default function AddExpenseScreen() {
           groupName: group?.name,
         });
 
+        // Notify other group members when an expense is created via the Add Expense screen.
+        const usersToNotify = await Promise.all(
+          members
+            .filter((member: { userId: string }) => member.userId !== currentUserId)
+            .map((member: { userId: string }) => userService.getById(member.userId))
+        );
+        const pushTokens = usersToNotify
+          .filter((u) => u && u.pushToken)
+          .map((u) => u!.pushToken!);
+        if (pushTokens.length > 0) {
+          const notification = createExpenseNotification(
+            description.trim(),
+            amountNum,
+            user?.name || 'Someone',
+            group?.name
+          );
+          await notificationService.sendNotificationToUsers(pushTokens, notification);
+        }
+
         // Invalidate group cache and friends list (balances may change)
         await cacheService.invalidate(CACHE_KEYS.GROUPS_LIST);
         await cacheService.invalidate(CACHE_KEYS.GROUP_DETAIL(selectedGroupId));
@@ -215,6 +235,19 @@ export default function AddExpenseScreen() {
           description: description.trim(),
           amount: amountNum,
         });
+
+        // Notify selected friends for direct (non-group) expenses.
+        const friendPushTokens = friends
+          .filter((friend) => selectedFriendIds.includes(friend.id) && friend.pushToken)
+          .map((friend) => friend.pushToken as string);
+        if (friendPushTokens.length > 0) {
+          const notification = createExpenseNotification(
+            description.trim(),
+            amountNum,
+            user?.name || 'Someone'
+          );
+          await notificationService.sendNotificationToUsers(friendPushTokens, notification);
+        }
 
         // Invalidate caches for all involved friends
         await cacheService.invalidate(CACHE_KEYS.FRIENDS_LIST);
