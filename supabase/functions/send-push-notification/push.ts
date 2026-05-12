@@ -1,6 +1,8 @@
 /** Matches app `PushNotificationData.type` in services/notification-service.ts */
 export type PushNotificationType =
   | 'expense_added'
+  | 'expense_updated'
+  | 'expense_deleted'
   | 'expense_reminder'
   | 'group_created'
   | 'member_added'
@@ -24,6 +26,8 @@ const EXPO_BATCH_SIZE = 100;
 
 const ALLOWED_TYPES = new Set<string>([
   'expense_added',
+  'expense_updated',
+  'expense_deleted',
   'expense_reminder',
   'group_created',
   'member_added',

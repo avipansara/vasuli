@@ -50,6 +50,32 @@ describe('parsePushNotificationBody', () => {
     if (r.ok) expect(r.tokens).toEqual(['ExponentPushToken[a]']);
   });
 
+  it('accepts expense update notifications', () => {
+    const r = parsePushNotificationBody({
+      tokens: ['ExponentPushToken[a]'],
+      notification: {
+        type: 'expense_updated',
+        title: 'Expense Updated',
+        body: 'Someone edited an expense',
+      },
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.notification.type).toBe('expense_updated');
+  });
+
+  it('accepts expense delete notifications', () => {
+    const r = parsePushNotificationBody({
+      tokens: ['ExponentPushToken[a]'],
+      notification: {
+        type: 'expense_deleted',
+        title: 'Expense Deleted',
+        body: 'Someone deleted an expense',
+      },
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.notification.type).toBe('expense_deleted');
+  });
+
   it('rejects unknown notification type', () => {
     const r = parsePushNotificationBody({
       tokens: ['ExponentPushToken[a]'],

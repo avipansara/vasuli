@@ -19,7 +19,7 @@ import {
 } from '@/services/api';
 import { calculateGroupBalances } from '@/services/group-detail-service';
 import { friendshipService } from '@/services/friendship-service';
-import { createExpenseNotification, notificationService } from '@/services/notification-service';
+import { createExpenseDeletedNotification, createExpenseNotification, notificationService } from '@/services/notification-service';
 import { queryKeys } from '@/services/query-keys';
 import type { Expense, ExpenseSplit, Group, GroupMember, Settlement, User } from '@/types/database';
 import { useFocusEffect } from '@react-navigation/native';
@@ -354,6 +354,27 @@ export default function GroupDetailScreen() {
               }
 
               await expenseService.delete(expenseId, currentUserId, user?.name || 'Unknown');
+              if (expenseToDelete) {
+                const deletedExpenseSplits = expenseSplits.filter(split => split.expenseId === expenseId);
+                const usersToNotify = await Promise.all(
+                  deletedExpenseSplits
+                    .map(split => split.userId)
+                    .filter(userId => userId !== currentUserId)
+                    .map(userId => userService.getById(userId))
+                );
+                const pushTokens = usersToNotify
+                  .filter((u) => u && u.pushToken)
+                  .map((u) => u!.pushToken!);
+                if (pushTokens.length > 0) {
+                  const notification = createExpenseDeletedNotification(
+                    expenseToDelete.description,
+                    expenseToDelete.amount,
+                    user?.name || 'Someone',
+                    group?.name
+                  );
+                  await notificationService.sendNotificationToUsers(pushTokens, notification);
+                }
+              }
               await loadGroupData();
             } catch (error) {
               setExpenses(previousExpenses);
