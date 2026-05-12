@@ -19,7 +19,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, FlatList, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Alert, FlatList, Platform, RefreshControl, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 interface UserWithBalance extends User {
   balance: number;
@@ -30,6 +30,7 @@ export default function FriendsScreen() {
   const { gradients, colors, isDark } = useThemeColors();
   const [friends, setFriends] = useState<UserWithBalance[]>([]);
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [newFriendName, setNewFriendName] = useState('');
@@ -99,6 +100,15 @@ export default function FriendsScreen() {
       loadFriends();
     }, [loadFriends])
   );
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await loadFriends(true);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [loadFriends]);
 
   // Real-time subscriptions
   useEffect(() => {
@@ -295,38 +305,49 @@ export default function FriendsScreen() {
           onRetry={() => loadFriends(true)}
           title="Couldn't load friends"
         />
-      ) : friends.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <View style={[styles.emptyIconContainer, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.1)' : 'rgba(34, 197, 94, 0.1)' }]}>
-            <IconSymbol size={64} name="person.2" color={isDark ? '#2DD4BF' : colors.tint} />
-          </View>
-          <ThemedText type="subtitle" style={[styles.emptyTitle, { color: colors.text }]}>
-            No friends yet
-          </ThemedText>
-          <ThemedText style={[styles.emptyText, { color: colors.textSecondary }]}>
-            Add friends to start splitting expenses together
-          </ThemedText>
-          <TouchableOpacity
-            style={styles.createButton}
-            onPress={() => router.push('/add-friend')}>
-            <LinearGradient
-              colors={gradients.buttonPrimary}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.createButtonGradient}>
-              <ThemedText style={styles.createButtonText}>Add Friend</ThemedText>
-            </LinearGradient>
-          </TouchableOpacity>
-        </View>
       ) : (
         <FlatList
           data={friendsWithBalance}
           renderItem={renderFriendItem}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
+          contentInsetAdjustmentBehavior="automatic"
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor={colors.tint}
+              titleColor={colors.textSecondary}
+              colors={[colors.tint]}
+              progressBackgroundColor={colors.background}
+            />
+          }
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
-            settledFriends.length > 0 ? (
+            friends.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <View style={[styles.emptyIconContainer, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.1)' : 'rgba(34, 197, 94, 0.1)' }]}>
+                  <IconSymbol size={64} name="person.2" color={isDark ? '#2DD4BF' : colors.tint} />
+                </View>
+                <ThemedText type="subtitle" style={[styles.emptyTitle, { color: colors.text }]}>
+                  No friends yet
+                </ThemedText>
+                <ThemedText style={[styles.emptyText, { color: colors.textSecondary }]}>
+                  Add friends to start splitting expenses together
+                </ThemedText>
+                <TouchableOpacity
+                  style={styles.createButton}
+                  onPress={() => router.push('/add-friend')}>
+                  <LinearGradient
+                    colors={gradients.buttonPrimary}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.createButtonGradient}>
+                    <ThemedText style={styles.createButtonText}>Add Friend</ThemedText>
+                  </LinearGradient>
+                </TouchableOpacity>
+              </View>
+            ) : settledFriends.length > 0 ? (
               <View style={styles.allSettledContainer}>
                 <IconSymbol name="checkmark.seal.fill" size={48} color={colors.tint} />
                 <ThemedText type="subtitle" style={[styles.allSettledTitle, { color: colors.text }]}>
@@ -435,6 +456,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   listContent: {
+    flexGrow: 1,
     padding: 16,
     paddingBottom: 120,
   },

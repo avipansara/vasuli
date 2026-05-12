@@ -46,6 +46,7 @@ export default function FriendDetailScreen() {
   const { user } = useAuth();
   const currentUserId = user?.id || '';
   const swipeableRefs = useRef<Map<string, Swipeable>>(new Map());
+  const hasLoadedOnce = useRef(false);
 
   // Animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -99,6 +100,8 @@ export default function FriendDetailScreen() {
 
     try {
       setLoadError(null);
+      const shouldShowLoading = !hasLoadedOnce.current;
+
       // 1. Load from cache first (instant)
       if (!skipCache) {
         const cachedFriend = await cacheService.get<UserWithBalance>(CACHE_KEYS.FRIEND_DETAIL(id));
@@ -106,6 +109,7 @@ export default function FriendDetailScreen() {
 
         if (cachedFriend) {
           setFriend(cachedFriend);
+          hasLoadedOnce.current = true;
           setLoading(false);
         }
         if (cachedExpenses) {
@@ -114,10 +118,10 @@ export default function FriendDetailScreen() {
         // If we have cached data, don't show loading
         if (cachedFriend && cachedExpenses) {
           // Continue to fetch fresh data in background
-        } else {
+        } else if (shouldShowLoading) {
           setLoading(true);
         }
-      } else {
+      } else if (shouldShowLoading) {
         setLoading(true);
       }
 
@@ -135,6 +139,7 @@ export default function FriendDetailScreen() {
       const balance = await calculateFriendBalance(currentUserId, id);
       const friendWithBalance = { ...friendData, balance };
       setFriend(friendWithBalance);
+      hasLoadedOnce.current = true;
 
       // Get expenses involving both users
       const allExpenses = await expenseService.getUserExpenses(currentUserId);
@@ -322,7 +327,7 @@ export default function FriendDetailScreen() {
                 await cacheService.invalidate(CACHE_KEYS.FRIEND_EXPENSES(id));
               }
 
-              loadFriendData(true);
+              await loadFriendData(true);
             } catch (error) {
               console.error('Error deleting expense:', error);
               Alert.alert('Error', 'Failed to delete expense');

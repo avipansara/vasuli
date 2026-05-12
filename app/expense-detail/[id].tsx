@@ -13,7 +13,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import {
   Alert,
   Animated,
@@ -45,10 +45,13 @@ export default function ExpenseDetailScreen() {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
+  const hasLoadedOnce = useRef(false);
 
   const loadExpenseDetails = useCallback(async () => {
     setLoadError(null);
-    setLoading(true);
+    if (!hasLoadedOnce.current) {
+      setLoading(true);
+    }
     try {
       const expenseData = await expenseService.getById(id);
       if (!expenseData) {
@@ -84,6 +87,7 @@ export default function ExpenseDetailScreen() {
       const activitiesData = await activityService.getByTarget(id);
       setActivities(activitiesData);
 
+      hasLoadedOnce.current = true;
       setLoading(false);
 
       Animated.parallel([
@@ -120,10 +124,6 @@ export default function ExpenseDetailScreen() {
       setLoading(false);
     }
   }, [id]);
-
-  useEffect(() => {
-    loadExpenseDetails();
-  }, [loadExpenseDetails]);
 
   useFocusEffect(
     useCallback(() => {
