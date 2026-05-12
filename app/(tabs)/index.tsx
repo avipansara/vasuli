@@ -8,18 +8,19 @@ import { LoadingState } from '@/components/ui/loading-state';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { supabase } from '@/lib/supabase';
-import { calculateFriendBalance, getFriendRecentExpenses, initDatabase, userService } from '@/services/api';
-import { CACHE_KEYS, cacheService } from '@/services/cache-service';
+import { friendSummaryService, initDatabase } from '@/services/api';
 import { friendshipService } from '@/services/friendship-service';
 import { invitationService } from '@/services/invitation-service';
+import { queryKeys } from '@/services/query-keys';
 import type { User } from '@/types/database';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { isEmailValid, normalizeEmail } from '@/utils/validation';
 import { useFocusEffect } from '@react-navigation/native';
+import { useQuery } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, FlatList, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Alert, FlatList, Platform, RefreshControl, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 interface UserWithBalance extends User {
   balance: number;
@@ -28,77 +29,49 @@ interface UserWithBalance extends User {
 
 export default function FriendsScreen() {
   const { gradients, colors, isDark } = useThemeColors();
-  const [friends, setFriends] = useState<UserWithBalance[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [newFriendName, setNewFriendName] = useState('');
   const [newFriendEmail, setNewFriendEmail] = useState('');
   const [qrModalVisible, setQrModalVisible] = useState(false);
   const { user } = useAuth();
   const currentUserId = user?.id || '';
-  const hasLoadedOnce = useRef(false);
+  const friendsQueryKey = useMemo(() => queryKeys.friends.home(currentUserId), [currentUserId]);
 
-  const loadFriends = useCallback(async (skipCache = false) => {
-    if (!currentUserId) return;
-    try {
-      setLoadError(null);
-      // 1. Load from cache first (instant)
-      if (!skipCache) {
-        const cached = await cacheService.get<UserWithBalance[]>(CACHE_KEYS.FRIENDS_LIST);
-        if (cached && cached.length > 0) {
-          setFriends(cached);
-          // Don't show loading if we have cached data
-          hasLoadedOnce.current = true;
-        }
-      }
-
-      // Only show loader on first load with no cache
-      if (!hasLoadedOnce.current) {
-        setLoading(true);
-        hasLoadedOnce.current = true;
-      }
-
+  const {
+    data: friends = [],
+    error,
+    isLoading,
+    refetch,
+  } = useQuery({
+    queryKey: friendsQueryKey,
+    enabled: !!currentUserId,
+    queryFn: async () => {
       await initDatabase();
+      return friendSummaryService.getHomeSummaries(currentUserId);
+    },
+  });
+  const loading = isLoading && friends.length === 0;
+  const loadError = error ? getFetchErrorMessage(error) : null;
 
-      // 2. Fetch fresh data from API
-      const friendIds = await friendshipService.getFriends(currentUserId);
-
-      const friendsData = await Promise.all(
-        friendIds.map(async (friendId) => {
-          const u = await userService.getById(friendId);
-          return u;
-        })
-      );
-
-      const friendsWithBalances = await Promise.all(
-        friendsData
-          .filter((u): u is User => u !== null)
-          .map(async (u: User) => {
-            const [balance, recentExpenses] = await Promise.all([
-              calculateFriendBalance(currentUserId, u.id),
-              getFriendRecentExpenses(currentUserId, u.id, 2)
-            ]);
-            return { ...u, balance, recentExpenses };
-          })
-      );
-
-      // 3. Update state and cache
-      setFriends(friendsWithBalances);
-      await cacheService.set(CACHE_KEYS.FRIENDS_LIST, friendsWithBalances);
-    } catch (error) {
-      console.error('Error loading friends:', error);
-      setLoadError(getFetchErrorMessage(error));
-    } finally {
-      setLoading(false);
-    }
-  }, [currentUserId]);
+  const loadFriends = useCallback(async () => {
+    await refetch();
+  }, [refetch]);
 
   useFocusEffect(
     useCallback(() => {
       loadFriends();
     }, [loadFriends])
   );
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await refetch();
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refetch]);
 
   // Real-time subscriptions
   useEffect(() => {
@@ -292,41 +265,52 @@ export default function FriendsScreen() {
       ) : loadError ? (
         <AsyncErrorState
           message={loadError}
-          onRetry={() => loadFriends(true)}
+          onRetry={loadFriends}
           title="Couldn't load friends"
         />
-      ) : friends.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <View style={[styles.emptyIconContainer, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.1)' : 'rgba(34, 197, 94, 0.1)' }]}>
-            <IconSymbol size={64} name="person.2" color={isDark ? '#2DD4BF' : colors.tint} />
-          </View>
-          <ThemedText type="subtitle" style={[styles.emptyTitle, { color: colors.text }]}>
-            No friends yet
-          </ThemedText>
-          <ThemedText style={[styles.emptyText, { color: colors.textSecondary }]}>
-            Add friends to start splitting expenses together
-          </ThemedText>
-          <TouchableOpacity
-            style={styles.createButton}
-            onPress={() => router.push('/add-friend')}>
-            <LinearGradient
-              colors={gradients.buttonPrimary}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.createButtonGradient}>
-              <ThemedText style={styles.createButtonText}>Add Friend</ThemedText>
-            </LinearGradient>
-          </TouchableOpacity>
-        </View>
       ) : (
         <FlatList
           data={friendsWithBalance}
           renderItem={renderFriendItem}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
+          contentInsetAdjustmentBehavior="automatic"
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor={colors.tint}
+              titleColor={colors.textSecondary}
+              colors={[colors.tint]}
+              progressBackgroundColor={colors.background}
+            />
+          }
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
-            settledFriends.length > 0 ? (
+            friends.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <View style={[styles.emptyIconContainer, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.1)' : 'rgba(34, 197, 94, 0.1)' }]}>
+                  <IconSymbol size={64} name="person.2" color={isDark ? '#2DD4BF' : colors.tint} />
+                </View>
+                <ThemedText type="subtitle" style={[styles.emptyTitle, { color: colors.text }]}>
+                  No friends yet
+                </ThemedText>
+                <ThemedText style={[styles.emptyText, { color: colors.textSecondary }]}>
+                  Add friends to start splitting expenses together
+                </ThemedText>
+                <TouchableOpacity
+                  style={styles.createButton}
+                  onPress={() => router.push('/add-friend')}>
+                  <LinearGradient
+                    colors={gradients.buttonPrimary}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.createButtonGradient}>
+                    <ThemedText style={styles.createButtonText}>Add Friend</ThemedText>
+                  </LinearGradient>
+                </TouchableOpacity>
+              </View>
+            ) : settledFriends.length > 0 ? (
               <View style={styles.allSettledContainer}>
                 <IconSymbol name="checkmark.seal.fill" size={48} color={colors.tint} />
                 <ThemedText type="subtitle" style={[styles.allSettledTitle, { color: colors.text }]}>
@@ -435,6 +419,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   listContent: {
+    flexGrow: 1,
     padding: 16,
     paddingBottom: 120,
   },

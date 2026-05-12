@@ -12,7 +12,7 @@ import { isEmailValid, normalizeEmail } from '@/utils/validation';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Alert,
   Animated,
@@ -35,11 +35,7 @@ export default function AddFriendScreen() {
   const [pendingInvites, setPendingInvites] = useState<any[]>([]);
   const [invitesLoadError, setInvitesLoadError] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadPendingInvites();
-  }, []);
-
-  async function loadPendingInvites() {
+  const loadPendingInvites = useCallback(async () => {
     try {
       setInvitesLoadError(null);
       const invites = await invitationService.getByInviter(currentUserId);
@@ -48,7 +44,11 @@ export default function AddFriendScreen() {
       console.error('Error loading pending invites:', error);
       setInvitesLoadError(getFetchErrorMessage(error));
     }
-  }
+  }, [currentUserId]);
+
+  useEffect(() => {
+    loadPendingInvites();
+  }, [loadPendingInvites]);
 
   async function handleDeleteInvite(inviteId: string) {
     Alert.alert(
@@ -94,7 +94,7 @@ export default function AddFriendScreen() {
         useNativeDriver: true,
       }),
     ]).start();
-  }, []);
+  }, [fadeAnim, slideAnim]);
 
   const isValid = isEmailValid(email);
 

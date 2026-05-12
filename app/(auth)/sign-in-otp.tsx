@@ -32,7 +32,7 @@ export default function SignInOTPScreen() {
   const { colors, isDark } = useThemeColors();
   const { refreshUser } = useAuth();
   const [step, setStep] = useState<Step>('contact');
-  const [contactMethod, setContactMethod] = useState<ContactMethod>('email');
+  const [contactMethod] = useState<ContactMethod>('email');
   
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');

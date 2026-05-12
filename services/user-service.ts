@@ -63,6 +63,29 @@ export const userService = {
     };
   },
 
+  async getByIds(ids: string[]): Promise<User[]> {
+    const uniqueIds = [...new Set(ids)].filter(Boolean);
+    if (uniqueIds.length === 0) return [];
+
+    const { data, error } = await supabase
+      .from('users')
+      .select('*')
+      .in('id', uniqueIds);
+
+    if (error) throw error;
+
+    return (data || []).map(r => ({
+      id: r.id,
+      name: r.name,
+      email: r.email || undefined,
+      phone: r.phone || undefined,
+      avatar: r.avatar || undefined,
+      pushToken: r.push_token || undefined,
+      isActive: r.is_active ?? true,
+      createdAt: new Date(r.created_at).getTime(),
+    }));
+  },
+
   async getByEmail(email: string): Promise<User | null> {
     const normalized = normalizeEmail(email);
     if (!normalized) return null;

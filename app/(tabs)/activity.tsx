@@ -48,7 +48,7 @@ export default function ActivityScreen() {
         }),
       ]).start();
     }
-  }, [loading, loadingMore]);
+  }, [fadeAnim, loading, loadingMore, slideAnim]);
 
   const loadActivities = useCallback(async (isInitial: boolean = false) => {
     if (!currentUserId) return;

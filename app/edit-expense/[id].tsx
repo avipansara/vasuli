@@ -8,10 +8,14 @@ import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { activityService } from '@/services/activity-service';
 import { expenseService, groupService, initDatabase, userService } from '@/services/api';
-import type { Group, User } from '@/types/database';
+import { CACHE_KEYS, cacheService } from '@/services/cache-service';
+import { createExpenseUpdatedNotification, notificationService } from '@/services/notification-service';
+import { queryKeys } from '@/services/query-keys';
+import type { Expense, ExpenseSplit, Group, User } from '@/types/database';
+import { useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   Animated,
@@ -43,11 +47,16 @@ const SPLIT_METHODS = [
   { id: SplitMethod.SHARES, label: 'Shares', icon: 'chart.pie' as const, description: 'By shares' },
 ];
 
+type HomeFriend = User & { balance: number; recentExpenses?: Expense[] };
+type EditableSplit = Pick<ExpenseSplit, 'userId' | 'amount' | 'splitType' | 'percentage'>;
+
 export default function EditExpenseScreen() {
   const { gradients, colors, isDark } = useThemeColors();
   const { user } = useAuth();
   const { id } = useLocalSearchParams<{ id: string }>();
   const currentUserId = user?.id || '';
+  const queryClient = useQueryClient();
+  const friendsHomeQueryKey = useMemo(() => queryKeys.friends.home(currentUserId), [currentUserId]);
 
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
@@ -65,6 +74,8 @@ export default function EditExpenseScreen() {
   const [customAmounts, setCustomAmounts] = useState<Record<string, string>>({});
   const [customPercentages, setCustomPercentages] = useState<Record<string, string>>({});
   const [customShares, setCustomShares] = useState<Record<string, string>>({});
+  const [originalExpense, setOriginalExpense] = useState<Expense | null>(null);
+  const [originalSplits, setOriginalSplits] = useState<ExpenseSplit[]>([]);
 
   // Animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -110,6 +121,7 @@ export default function EditExpenseScreen() {
 
       setDescription(expense.description);
       setAmount(expense.amount.toString());
+      setOriginalExpense(expense);
 
       if (expense.groupId) {
         setSplitType(SplitType.GROUP);
@@ -128,6 +140,7 @@ export default function EditExpenseScreen() {
         .map(split => split.userId)
         .filter(userId => userId !== currentUserId);
       setSelectedFriendIds(splitFriendIds);
+      setOriginalSplits(existingSplits);
 
       setGroups(groupsData);
       setFriends(userFriends);
@@ -150,7 +163,7 @@ export default function EditExpenseScreen() {
       setLoadError(getFetchErrorMessage(error));
       setDataLoading(false);
     }
-  }, [id, currentUserId, user?.id]);
+  }, [currentUserId, fadeAnim, id, slideAnim, user?.id]);
 
   useEffect(() => {
     loadExpenseData();
@@ -162,6 +175,45 @@ export default function EditExpenseScreen() {
     !isNaN(parseFloat(amount)) &&
     parseFloat(amount) > 0 &&
     (splitType === SplitType.GROUP ? selectedGroupId !== '' : selectedFriendIds.length > 0);
+
+  const getHomeBalanceDelta = useCallback((expense: Expense, splits: EditableSplit[], friendId: string) => {
+    const currentUserSplit = splits.find(split => split.userId === currentUserId);
+    const friendSplit = splits.find(split => split.userId === friendId);
+
+    if (!currentUserSplit || !friendSplit) return 0;
+    if (expense.paidBy === currentUserId) return friendSplit.amount;
+    if (expense.paidBy === friendId) return -currentUserSplit.amount;
+    return 0;
+  }, [currentUserId]);
+
+  const updateHomeFriendsForEditedExpense = useCallback((
+    previousExpense: Expense,
+    previousSplits: EditableSplit[],
+    nextExpense: Expense,
+    nextSplits: EditableSplit[]
+  ) => {
+    queryClient.setQueryData<HomeFriend[]>(
+      friendsHomeQueryKey,
+      current => current?.map(friend => {
+        const removePreviousDelta = -getHomeBalanceDelta(previousExpense, previousSplits, friend.id);
+        const addNextDelta = getHomeBalanceDelta(nextExpense, nextSplits, friend.id);
+        const netDelta = removePreviousDelta + addNextDelta;
+        const nextBalance = friend.balance + netDelta;
+        const recentExpenses = friend.recentExpenses?.filter(expense => expense.id !== previousExpense.id) ?? [];
+
+        return {
+          ...friend,
+          balance: Math.abs(nextBalance) < 0.01 ? 0 : nextBalance,
+          recentExpenses: addNextDelta === 0
+            ? recentExpenses
+            : [
+              { ...nextExpense, amount: Math.abs(addNextDelta) },
+              ...recentExpenses,
+            ].slice(0, 2),
+        };
+      })
+    );
+  }, [friendsHomeQueryKey, getHomeBalanceDelta, queryClient]);
 
   function calculateSplits(userIds: string[], totalAmount: number): { userId: string; amount: number; splitType: 'equal' | 'exact' | 'percentage' }[] | null {
     if (splitMethod === SplitMethod.EQUAL) {
@@ -232,12 +284,26 @@ export default function EditExpenseScreen() {
 
   const handleSubmit = async () => {
     if (!isValid) return;
+    if (!originalExpense) {
+      Alert.alert('Error', 'Expense not loaded yet');
+      return;
+    }
 
     setLoading(true);
+    let previousHomeFriends: HomeFriend[] | undefined;
+    let didOptimisticallyUpdate = false;
     try {
       await initDatabase();
 
       const newAmount = parseFloat(amount);
+      const trimmedDescription = description.trim();
+      const updatedExpense: Expense = {
+        ...originalExpense,
+        description: trimmedDescription,
+        amount: newAmount,
+        groupId: splitType === SplitType.GROUP ? selectedGroupId : undefined,
+        updatedAt: Date.now(),
+      };
 
       // Calculate splits based on split type and method
       let splits: { userId: string; amount: number; splitType: 'equal' | 'exact' | 'percentage' }[] | null = null;
@@ -246,8 +312,12 @@ export default function EditExpenseScreen() {
         const allParticipants = [currentUserId, ...selectedFriendIds];
         splits = calculateSplits(allParticipants, newAmount);
       } else {
-        const members = await groupService.getMembers(selectedGroupId);
-        splits = calculateSplits(members.map((m: { userId: string }) => m.userId), newAmount);
+        let memberIds = groupMembers;
+        if (memberIds.length === 0) {
+          const members = await groupService.getMembers(selectedGroupId);
+          memberIds = members.map((m: { userId: string }) => m.userId);
+        }
+        splits = calculateSplits(memberIds, newAmount);
       }
 
       if (!splits) {
@@ -255,26 +325,82 @@ export default function EditExpenseScreen() {
         return;
       }
 
+      await queryClient.cancelQueries({ queryKey: friendsHomeQueryKey });
+      previousHomeFriends = queryClient.getQueryData<HomeFriend[]>(friendsHomeQueryKey);
+      updateHomeFriendsForEditedExpense(originalExpense, originalSplits, updatedExpense, splits);
+      didOptimisticallyUpdate = true;
+      router.back();
+
       await expenseService.update(id, {
-        description: description.trim(),
+        description: trimmedDescription,
         amount: newAmount,
         groupId: splitType === SplitType.GROUP ? selectedGroupId : undefined,
       }, splits);
 
-      // Log the activity
-      const group = splitType === SplitType.GROUP ? groups.find(g => g.id === selectedGroupId) : undefined;
-      await activityService.logExpenseUpdated({
-        expenseId: id,
-        userId: currentUserId,
-        userName: user?.name || 'Someone',
-        description: description.trim(),
-        amount: newAmount,
-        groupId: group?.id,
-        groupName: group?.name,
-      });
+      try {
+        const group = splitType === SplitType.GROUP ? groups.find(g => g.id === selectedGroupId) : undefined;
+        await activityService.logExpenseUpdated({
+          expenseId: id,
+          userId: currentUserId,
+          userName: user?.name || 'Someone',
+          description: trimmedDescription,
+          amount: newAmount,
+          groupId: group?.id,
+          groupName: group?.name,
+        });
 
-      router.back();
+        const usersToNotify = await Promise.all(
+          Array.from(new Set([
+            ...originalSplits.map(split => split.userId),
+            ...splits.map(split => split.userId),
+          ]))
+            .filter(userId => userId !== currentUserId)
+            .map(userId => userService.getById(userId))
+        );
+        const pushTokens = usersToNotify
+          .filter((u) => u && u.pushToken)
+          .map((u) => u!.pushToken!);
+        if (pushTokens.length > 0) {
+          const notification = createExpenseUpdatedNotification(
+            trimmedDescription,
+            newAmount,
+            user?.name || 'Someone',
+            group?.name
+          );
+          await notificationService.sendNotificationToUsers(pushTokens, notification);
+        }
+      } catch (sideEffectError) {
+        console.warn('Expense updated, but follow-up work failed:', sideEffectError);
+      }
+
+      const affectedFriendIds = Array.from(new Set([
+        ...originalSplits.map(split => split.userId),
+        ...splits.map(split => split.userId),
+      ].filter(userId => userId !== currentUserId)));
+      const affectedGroupIds = Array.from(new Set([
+        originalExpense.groupId,
+        updatedExpense.groupId,
+      ].filter((groupId): groupId is string => !!groupId)));
+
+      await Promise.allSettled([
+        queryClient.invalidateQueries({ queryKey: friendsHomeQueryKey }),
+        ...affectedFriendIds.flatMap(friendId => [
+          cacheService.invalidate(CACHE_KEYS.FRIEND_DETAIL(friendId)),
+          cacheService.invalidate(CACHE_KEYS.FRIEND_EXPENSES(friendId)),
+        ]),
+        ...affectedGroupIds.flatMap(groupId => [
+          cacheService.invalidate(CACHE_KEYS.GROUP_DETAIL(groupId)),
+          cacheService.invalidate(CACHE_KEYS.GROUP_EXPENSES(groupId)),
+        ]),
+        cacheService.invalidate(CACHE_KEYS.GROUPS_LIST),
+      ]);
     } catch (error) {
+      if (previousHomeFriends) {
+        queryClient.setQueryData(friendsHomeQueryKey, previousHomeFriends);
+      }
+      if (didOptimisticallyUpdate) {
+        queryClient.invalidateQueries({ queryKey: friendsHomeQueryKey });
+      }
       console.error('Error updating expense:', error);
       Alert.alert('Error', 'Failed to update expense');
     } finally {

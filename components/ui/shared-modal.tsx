@@ -168,7 +168,7 @@ interface FormGroupProps {
 }
 
 export function FormGroup({ label, children }: FormGroupProps) {
-  const { colors, isDark } = useThemeColors();
+  const { colors } = useThemeColors();
 
   return (
     <View style={styles.formGroup}>
@@ -186,7 +186,7 @@ interface PrivacyNoteProps {
 }
 
 export function PrivacyNote({ children }: PrivacyNoteProps) {
-  const { colors, isDark } = useThemeColors();
+  const { colors } = useThemeColors();
 
   return (
     <ThemedText
