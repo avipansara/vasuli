@@ -17,8 +17,8 @@ import {
   groupService,
   userService
 } from '@/services/api';
-import { calculateGroupBalances } from '@/services/group-detail-service';
 import { friendshipService } from '@/services/friendship-service';
+import { calculateGroupBalances } from '@/services/group-detail-service';
 import { createExpenseDeletedNotification, createExpenseNotification, notificationService } from '@/services/notification-service';
 import { queryKeys } from '@/services/query-keys';
 import type { Expense, ExpenseSplit, Group, GroupMember, Settlement, User } from '@/types/database';
