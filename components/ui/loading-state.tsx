@@ -218,7 +218,7 @@ export function LoadingState({ message = 'Loading...' }: LoadingStateProps) {
       orb3Anim.stopAnimation();
       fadeAnim.stopAnimation();
     };
-  }, []);
+  }, [boardRotate, bodyRotate, bounceY, fadeAnim, lineAnim, orb1Anim, orb2Anim, orb3Anim, skateX]);
 
   const lineX = lineAnim.interpolate({
     inputRange: [0, 1],

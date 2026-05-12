@@ -6,19 +6,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
  */
 
 export const CACHE_KEYS = {
-    FRIENDS_LIST: 'cache:friends',
     GROUPS_LIST: 'cache:groups',
     FRIEND_DETAIL: (id: string) => `cache:friend:${id}`,
     FRIEND_EXPENSES: (friendId: string) => `cache:friend_expenses:${friendId}`,
     GROUP_DETAIL: (id: string) => `cache:group:${id}`,
     GROUP_EXPENSES: (groupId: string) => `cache:group_expenses:${groupId}`,
     USER_BALANCES: 'cache:user_balances',
-};
-
-// Patterns for bulk invalidation
-export const CACHE_PATTERNS = {
-    ALL_FRIENDS: 'cache:friend',
-    ALL_GROUPS: 'cache:group',
 };
 
 interface CacheEntry<T> {

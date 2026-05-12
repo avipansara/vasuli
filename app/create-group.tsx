@@ -62,7 +62,7 @@ export default function CreateGroupScreen() {
         useNativeDriver: true,
       }),
     ]).start();
-  }, []);
+  }, [fadeAnim, slideAnim]);
 
   const isValid = groupName.trim().length > 0;
 

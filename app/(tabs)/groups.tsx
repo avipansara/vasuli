@@ -99,7 +99,7 @@ export default function GroupsScreen() {
         }),
       ]).start();
     }
-  }, [loading]);
+  }, [fadeAnim, loading, slideAnim]);
 
   // Real-time subscriptions for group list
   useEffect(() => {

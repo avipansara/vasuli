@@ -114,7 +114,7 @@ export default function ProfileScreen() {
         useNativeDriver: true,
       }),
     ]).start();
-  }, []);
+  }, [fadeAnim, slideAnim]);
 
   function handleEditProfile() {
     router.push('/edit-profile');

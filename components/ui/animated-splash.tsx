@@ -307,7 +307,32 @@ export function AnimatedSplash() {
         ]),
       ])
     ).start();
-  }, []);
+  }, [
+    avatar1Opacity,
+    avatar1Pulse,
+    avatar1X,
+    avatar2Opacity,
+    avatar2Pulse,
+    avatar2X,
+    coin1Opacity,
+    coin1X,
+    coin1Y,
+    coin2Opacity,
+    coin2X,
+    coin2Y,
+    glowPulse,
+    moneyOpacity,
+    moneyRotate,
+    moneyScale,
+    particle1Opacity,
+    particle1Y,
+    particle2Opacity,
+    particle2Y,
+    particle3Opacity,
+    particle3Y,
+    textOpacity,
+    textSlide,
+  ]);
 
   const moneyRotation = moneyRotate.interpolate({
     inputRange: [0, 1],

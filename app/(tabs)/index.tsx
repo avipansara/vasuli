@@ -9,16 +9,17 @@ import { useAuth } from '@/contexts/auth-context-otp';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { supabase } from '@/lib/supabase';
 import { friendSummaryService, initDatabase } from '@/services/api';
-import { CACHE_KEYS, cacheService } from '@/services/cache-service';
 import { friendshipService } from '@/services/friendship-service';
 import { invitationService } from '@/services/invitation-service';
+import { queryKeys } from '@/services/query-keys';
 import type { User } from '@/types/database';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { isEmailValid, normalizeEmail } from '@/utils/validation';
 import { useFocusEffect } from '@react-navigation/native';
+import { useQuery } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, FlatList, Platform, RefreshControl, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 interface UserWithBalance extends User {
@@ -28,53 +29,34 @@ interface UserWithBalance extends User {
 
 export default function FriendsScreen() {
   const { gradients, colors, isDark } = useThemeColors();
-  const [friends, setFriends] = useState<UserWithBalance[]>([]);
-  const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [loadError, setLoadError] = useState<string | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [newFriendName, setNewFriendName] = useState('');
   const [newFriendEmail, setNewFriendEmail] = useState('');
   const [qrModalVisible, setQrModalVisible] = useState(false);
   const { user } = useAuth();
   const currentUserId = user?.id || '';
-  const hasLoadedOnce = useRef(false);
+  const friendsQueryKey = useMemo(() => queryKeys.friends.home(currentUserId), [currentUserId]);
 
-  const loadFriends = useCallback(async (skipCache = false) => {
-    if (!currentUserId) return;
-    try {
-      setLoadError(null);
-      // 1. Load from cache first (instant)
-      if (!skipCache) {
-        const cached = await cacheService.get<UserWithBalance[]>(CACHE_KEYS.FRIENDS_LIST);
-        if (cached && cached.length > 0) {
-          setFriends(cached);
-          // Don't show loading if we have cached data
-          hasLoadedOnce.current = true;
-        }
-      }
-
-      // Only show loader on first load with no cache
-      if (!hasLoadedOnce.current) {
-        setLoading(true);
-        hasLoadedOnce.current = true;
-      }
-
+  const {
+    data: friends = [],
+    error,
+    isLoading,
+    refetch,
+  } = useQuery({
+    queryKey: friendsQueryKey,
+    enabled: !!currentUserId,
+    queryFn: async () => {
       await initDatabase();
+      return friendSummaryService.getHomeSummaries(currentUserId);
+    },
+  });
+  const loading = isLoading && friends.length === 0;
+  const loadError = error ? getFetchErrorMessage(error) : null;
 
-      // 2. Fetch fresh data in batches, then compute all friend cards locally.
-      const friendsWithBalances = await friendSummaryService.getHomeSummaries(currentUserId);
-
-      // 3. Update state and cache
-      setFriends(friendsWithBalances);
-      await cacheService.set(CACHE_KEYS.FRIENDS_LIST, friendsWithBalances);
-    } catch (error) {
-      console.error('Error loading friends:', error);
-      setLoadError(getFetchErrorMessage(error));
-    } finally {
-      setLoading(false);
-    }
-  }, [currentUserId]);
+  const loadFriends = useCallback(async () => {
+    await refetch();
+  }, [refetch]);
 
   useFocusEffect(
     useCallback(() => {
@@ -85,11 +67,11 @@ export default function FriendsScreen() {
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      await loadFriends(true);
+      await refetch();
     } finally {
       setRefreshing(false);
     }
-  }, [loadFriends]);
+  }, [refetch]);
 
   // Real-time subscriptions
   useEffect(() => {
@@ -283,7 +265,7 @@ export default function FriendsScreen() {
       ) : loadError ? (
         <AsyncErrorState
           message={loadError}
-          onRetry={() => loadFriends(true)}
+          onRetry={loadFriends}
           title="Couldn't load friends"
         />
       ) : (
