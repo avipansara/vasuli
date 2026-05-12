@@ -8,6 +8,7 @@ import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { activityService } from '@/services/activity-service';
 import { expenseService, groupService, userService } from '@/services/api';
+import { createExpenseDeletedNotification, notificationService } from '@/services/notification-service';
 import type { Activity, Expense, ExpenseSplit, Group, User } from '@/types/database';
 import { useFocusEffect } from '@react-navigation/native';
 import { BlurView } from 'expo-blur';
@@ -146,6 +147,26 @@ export default function ExpenseDetailScreen() {
             try {
               setIsDeleting(true);
               await expenseService.delete(id, currentUserId, user?.name || 'Unknown');
+              if (expense) {
+                const usersToNotify = await Promise.all(
+                  splits
+                    .map(split => split.userId)
+                    .filter(userId => userId !== currentUserId)
+                    .map(userId => userService.getById(userId))
+                );
+                const pushTokens = usersToNotify
+                  .filter((u) => u && u.pushToken)
+                  .map((u) => u!.pushToken!);
+                if (pushTokens.length > 0) {
+                  const notification = createExpenseDeletedNotification(
+                    expense.description,
+                    expense.amount,
+                    user?.name || 'Someone',
+                    group?.name
+                  );
+                  await notificationService.sendNotificationToUsers(pushTokens, notification);
+                }
+              }
               router.back();
             } catch (error) {
               console.error('Error deleting expense:', error);

@@ -9,6 +9,7 @@ import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { activityService } from '@/services/activity-service';
 import { expenseService, groupService, initDatabase, userService } from '@/services/api';
 import { CACHE_KEYS, cacheService } from '@/services/cache-service';
+import { createExpenseUpdatedNotification, notificationService } from '@/services/notification-service';
 import { queryKeys } from '@/services/query-keys';
 import type { Expense, ExpenseSplit, Group, User } from '@/types/database';
 import { useQueryClient } from '@tanstack/react-query';
@@ -347,6 +348,27 @@ export default function EditExpenseScreen() {
           groupId: group?.id,
           groupName: group?.name,
         });
+
+        const usersToNotify = await Promise.all(
+          Array.from(new Set([
+            ...originalSplits.map(split => split.userId),
+            ...splits.map(split => split.userId),
+          ]))
+            .filter(userId => userId !== currentUserId)
+            .map(userId => userService.getById(userId))
+        );
+        const pushTokens = usersToNotify
+          .filter((u) => u && u.pushToken)
+          .map((u) => u!.pushToken!);
+        if (pushTokens.length > 0) {
+          const notification = createExpenseUpdatedNotification(
+            trimmedDescription,
+            newAmount,
+            user?.name || 'Someone',
+            group?.name
+          );
+          await notificationService.sendNotificationToUsers(pushTokens, notification);
+        }
       } catch (sideEffectError) {
         console.warn('Expense updated, but follow-up work failed:', sideEffectError);
       }

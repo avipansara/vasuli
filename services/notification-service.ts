@@ -5,7 +5,7 @@ import { Platform } from 'react-native';
 import { supabase } from '@/lib/supabase';
 
 export interface PushNotificationData {
-  type: 'expense_added' | 'expense_reminder' | 'group_created' | 'member_added' | 'invitation_sent' | 'invitation_accepted' | 'settlement_created';
+  type: 'expense_added' | 'expense_updated' | 'expense_deleted' | 'expense_reminder' | 'group_created' | 'member_added' | 'invitation_sent' | 'invitation_accepted' | 'settlement_created';
   title: string;
   body: string;
   data?: Record<string, any>;
@@ -178,6 +178,30 @@ export const createExpenseNotification = (
   title: '💸 New Expense Added',
   body: `${paidBy} added "${expenseName}" for $${amount.toFixed(2)}${groupName ? ` in ${groupName}` : ''}`,
   data: { expenseName, amount, paidBy, groupName },
+});
+
+export const createExpenseUpdatedNotification = (
+  expenseName: string,
+  amount: number,
+  updatedBy: string,
+  groupName?: string
+): PushNotificationData => ({
+  type: 'expense_updated',
+  title: 'Expense Updated',
+  body: `${updatedBy} updated "${expenseName}" to $${amount.toFixed(2)}${groupName ? ` in ${groupName}` : ''}`,
+  data: { expenseName, amount, updatedBy, groupName },
+});
+
+export const createExpenseDeletedNotification = (
+  expenseName: string,
+  amount: number,
+  deletedBy: string,
+  groupName?: string
+): PushNotificationData => ({
+  type: 'expense_deleted',
+  title: 'Expense Deleted',
+  body: `${deletedBy} deleted "${expenseName}" for $${amount.toFixed(2)}${groupName ? ` in ${groupName}` : ''}`,
+  data: { expenseName, amount, deletedBy, groupName },
 });
 
 export const createGroupNotification = (

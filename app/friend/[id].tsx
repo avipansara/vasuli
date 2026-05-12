@@ -11,7 +11,7 @@ import { activityService } from '@/services/activity-service';
 import { expenseService, friendDetailService, initDatabase, settlementService } from '@/services/api';
 import { CACHE_KEYS, cacheService } from '@/services/cache-service';
 import { friendshipService } from '@/services/friendship-service';
-import { notificationService } from '@/services/notification-service';
+import { createExpenseDeletedNotification, notificationService } from '@/services/notification-service';
 import { queryKeys } from '@/services/query-keys';
 import type { Expense, User } from '@/types/database';
 import { useFocusEffect } from '@react-navigation/native';
@@ -365,6 +365,15 @@ export default function FriendDetailScreen() {
               }
 
               await expenseService.delete(expenseId, currentUserId, user?.name || 'Unknown');
+
+              if (expenseToDelete && friend?.pushToken) {
+                const notification = createExpenseDeletedNotification(
+                  expenseToDelete.description,
+                  expenseToDelete.amount,
+                  user?.name || 'Someone'
+                );
+                await notificationService.sendPushNotification(friend.pushToken, notification);
+              }
 
               // Invalidate caches
               if (id) {
