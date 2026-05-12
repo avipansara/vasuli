@@ -123,7 +123,7 @@ export default function ExpenseDetailScreen() {
       setLoadError(getFetchErrorMessage(error));
       setLoading(false);
     }
-  }, [id]);
+  }, [fadeAnim, id, pulseAnim, slideAnim]);
 
   useFocusEffect(
     useCallback(() => {

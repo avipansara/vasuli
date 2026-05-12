@@ -8,16 +8,18 @@ import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { supabase } from '@/lib/supabase';
 import { activityService } from '@/services/activity-service';
-import { calculateFriendBalance, expenseService, initDatabase, settlementService, userService } from '@/services/api';
+import { expenseService, friendDetailService, initDatabase, settlementService } from '@/services/api';
 import { CACHE_KEYS, cacheService } from '@/services/cache-service';
 import { friendshipService } from '@/services/friendship-service';
 import { notificationService } from '@/services/notification-service';
-import type { Expense, ExpenseSplit, User } from '@/types/database';
+import { queryKeys } from '@/services/query-keys';
+import type { Expense, User } from '@/types/database';
 import { useFocusEffect } from '@react-navigation/native';
+import { useQueryClient } from '@tanstack/react-query';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Animated, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
@@ -45,6 +47,8 @@ export default function FriendDetailScreen() {
   const [deletingExpenseId, setDeletingExpenseId] = useState<string | null>(null);
   const { user } = useAuth();
   const currentUserId = user?.id || '';
+  const queryClient = useQueryClient();
+  const friendsHomeQueryKey = useMemo(() => queryKeys.friends.home(currentUserId), [currentUserId]);
   const swipeableRefs = useRef<Map<string, Swipeable>>(new Map());
   const hasLoadedOnce = useRef(false);
 
@@ -93,7 +97,7 @@ export default function FriendDetailScreen() {
         ).start();
       }
     }
-  }, [loading, friend]);
+  }, [fadeAnim, friend, loading, pulseAnim, scaleAnim, slideAnim]);
 
   const loadFriendData = useCallback(async (skipCache = false) => {
     if (!id) return;
@@ -127,50 +131,22 @@ export default function FriendDetailScreen() {
 
       await initDatabase();
 
-      // 2. Fetch fresh data from API
-      const friendData = await userService.getById(id);
+      // 2. Fetch fresh detail data in batches and compute the screen model locally.
+      const detail = await friendDetailService.getDetail(currentUserId, id);
 
-      if (!friendData) {
+      if (!detail) {
         Alert.alert('Error', 'Friend not found');
         router.back();
         return;
       }
 
-      const balance = await calculateFriendBalance(currentUserId, id);
-      const friendWithBalance = { ...friendData, balance };
-      setFriend(friendWithBalance);
+      setFriend(detail.friend);
       hasLoadedOnce.current = true;
-
-      // Get expenses involving both users
-      const allExpenses = await expenseService.getUserExpenses(currentUserId);
-      const allSplits = await Promise.all(
-        allExpenses.map(async (expense: Expense) => {
-          const splits = await expenseService.getSplits(expense.id);
-          return { expense, splits };
-        })
-      );
-
-      const sharedExpenses: ExpenseWithSplit[] = [];
-      for (const { expense, splits } of allSplits) {
-        const currentUserSplit = splits.find((s: ExpenseSplit) => s.userId === currentUserId);
-        const friendSplit = splits.find((s: ExpenseSplit) => s.userId === id);
-
-        if (currentUserSplit && friendSplit) {
-          sharedExpenses.push({
-            ...expense,
-            yourShare: currentUserSplit.amount,
-            friendShare: friendSplit.amount,
-            paidByName: expense.paidBy === currentUserId ? 'You' : friendData.name,
-          });
-        }
-      }
-
-      sharedExpenses.sort((a, b) => b.date - a.date);
-      setExpenses(sharedExpenses);
+      setExpenses(detail.expenses);
 
       // 3. Update cache
-      await cacheService.set(CACHE_KEYS.FRIEND_DETAIL(id), friendWithBalance);
-      await cacheService.set(CACHE_KEYS.FRIEND_EXPENSES(id), sharedExpenses);
+      await cacheService.set(CACHE_KEYS.FRIEND_DETAIL(id), detail.friend);
+      await cacheService.set(CACHE_KEYS.FRIEND_EXPENSES(id), detail.expenses);
     } catch (error) {
       console.error('Error loading friend data:', error);
       setLoadError(getFetchErrorMessage(error));
@@ -238,8 +214,36 @@ export default function FriendDetailScreen() {
   }, [currentUserId, id, loadFriendData]);
 
   const handleSettleUp = async (friendId: string, amount: number) => {
+    if (isSettlingUp) return;
+
+    const previousFriend = friend;
+    let previousHomeFriends: UserWithBalance[] | undefined;
     try {
       if (!friend || !user) return;
+
+      setIsSettlingUp(true);
+      const optimisticBalance = friend.balance > 0
+        ? friend.balance - amount
+        : friend.balance + amount;
+      const normalizedOptimisticBalance = Math.abs(optimisticBalance) < 0.01 ? 0 : optimisticBalance;
+
+      await queryClient.cancelQueries({ queryKey: friendsHomeQueryKey });
+      previousHomeFriends = queryClient.getQueryData<UserWithBalance[]>(friendsHomeQueryKey);
+      queryClient.setQueryData<UserWithBalance[]>(friendsHomeQueryKey, current => current?.map(homeFriend => (
+        homeFriend.id === friendId
+          ? {
+            ...homeFriend,
+            balance: normalizedOptimisticBalance,
+            recentExpenses: normalizedOptimisticBalance === 0 ? [] : homeFriend.recentExpenses,
+          }
+          : homeFriend
+      )));
+
+      setFriend({
+        ...friend,
+        balance: normalizedOptimisticBalance,
+      });
+      setSettleModalVisible(false);
 
       let settlement;
       if (friend.balance > 0) {
@@ -280,19 +284,23 @@ export default function FriendDetailScreen() {
         });
       }
 
-      setSettleModalVisible(false);
-
       // Invalidate caches
-      await cacheService.invalidate(CACHE_KEYS.FRIENDS_LIST);
       await cacheService.invalidate(CACHE_KEYS.FRIEND_DETAIL(friendId));
       await cacheService.invalidate(CACHE_KEYS.FRIEND_EXPENSES(friendId));
 
-      loadFriendData(true); // Skip cache, fetch fresh
+      await loadFriendData(true); // Skip cache, fetch fresh
     } catch (error) {
+      if (previousFriend) {
+        setFriend(previousFriend);
+      }
+      if (previousHomeFriends) {
+        queryClient.setQueryData(friendsHomeQueryKey, previousHomeFriends);
+      }
       console.error('Error settling up:', error);
       Alert.alert('Error', 'Failed to settle up');
     } finally {
       setIsSettlingUp(false);
+      queryClient.invalidateQueries({ queryKey: friendsHomeQueryKey });
     }
   };
 
@@ -316,12 +324,49 @@ export default function FriendDetailScreen() {
           text: 'Delete',
           style: 'destructive',
           onPress: async () => {
+            const expenseToDelete = expenses.find(expense => expense.id === expenseId);
+            const previousExpenses = expenses;
+            const previousFriend = friend;
+            let previousHomeFriends: UserWithBalance[] | undefined;
             try {
               setDeletingExpenseId(expenseId);
+              swipeableRefs.current.get(expenseId)?.close();
+
+              if (expenseToDelete) {
+                await queryClient.cancelQueries({ queryKey: friendsHomeQueryKey });
+                previousHomeFriends = queryClient.getQueryData<UserWithBalance[]>(friendsHomeQueryKey);
+
+                const balanceDelta = expenseToDelete.paidBy === currentUserId
+                  ? -expenseToDelete.friendShare
+                  : expenseToDelete.yourShare;
+
+                queryClient.setQueryData<UserWithBalance[]>(friendsHomeQueryKey, current => current?.map(homeFriend => {
+                  if (homeFriend.id !== id) return homeFriend;
+
+                  const nextBalance = homeFriend.balance + balanceDelta;
+                  return {
+                    ...homeFriend,
+                    balance: Math.abs(nextBalance) < 0.01 ? 0 : nextBalance,
+                    recentExpenses: homeFriend.recentExpenses?.filter(expense => expense.id !== expenseId),
+                  };
+                }));
+
+                setExpenses(current => current.filter(expense => expense.id !== expenseId));
+                setFriend(currentFriend => {
+                  if (!currentFriend) return currentFriend;
+
+                  const nextBalance = currentFriend.balance + balanceDelta;
+
+                  return {
+                    ...currentFriend,
+                    balance: Math.abs(nextBalance) < 0.01 ? 0 : nextBalance,
+                  };
+                });
+              }
+
               await expenseService.delete(expenseId, currentUserId, user?.name || 'Unknown');
 
               // Invalidate caches
-              await cacheService.invalidate(CACHE_KEYS.FRIENDS_LIST);
               if (id) {
                 await cacheService.invalidate(CACHE_KEYS.FRIEND_DETAIL(id));
                 await cacheService.invalidate(CACHE_KEYS.FRIEND_EXPENSES(id));
@@ -329,10 +374,18 @@ export default function FriendDetailScreen() {
 
               await loadFriendData(true);
             } catch (error) {
+              setExpenses(previousExpenses);
+              if (previousFriend) {
+                setFriend(previousFriend);
+              }
+              if (previousHomeFriends) {
+                queryClient.setQueryData(friendsHomeQueryKey, previousHomeFriends);
+              }
               console.error('Error deleting expense:', error);
               Alert.alert('Error', 'Failed to delete expense');
             } finally {
               setDeletingExpenseId(null);
+              queryClient.invalidateQueries({ queryKey: friendsHomeQueryKey });
             }
           },
         },

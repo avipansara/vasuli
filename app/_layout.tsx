@@ -3,7 +3,9 @@ import { RouteErrorBoundary } from '@/components/ui/route-error-boundary';
 import { AuthProvider, useAuth } from '@/contexts/auth-context-otp';
 import { ThemeProvider as AppThemeProvider, useTheme } from '@/contexts/theme-context';
 import { useNotifications } from '@/hooks/use-notifications';
+import { queryClient } from '@/lib/query-client';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { useFonts } from 'expo-font';
 import { buildInvitePath, parseInviteFromUrl } from '@/lib/invite-deeplink';
 import * as Linking from 'expo-linking';
@@ -187,11 +189,13 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <AppThemeProvider>
-        <AuthProvider>
-          <RootLayoutNav />
-        </AuthProvider>
-      </AppThemeProvider>
+      <QueryClientProvider client={queryClient}>
+        <AppThemeProvider>
+          <AuthProvider>
+            <RootLayoutNav />
+          </AuthProvider>
+        </AppThemeProvider>
+      </QueryClientProvider>
     </GestureHandlerRootView>
   );
 }

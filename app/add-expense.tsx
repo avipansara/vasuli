@@ -10,11 +10,13 @@ import { activityService } from '@/services/activity-service';
 import { expenseService, groupService, initDatabase, userService } from '@/services/api';
 import { CACHE_KEYS, cacheService } from '@/services/cache-service';
 import { createExpenseNotification, notificationService } from '@/services/notification-service';
-import type { Group, User } from '@/types/database';
+import { queryKeys } from '@/services/query-keys';
+import type { Expense, Group, User } from '@/types/database';
+import { useQueryClient } from '@tanstack/react-query';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   Animated,
@@ -46,11 +48,15 @@ const SPLIT_METHODS = [
   { id: SplitMethod.SHARES, label: 'Shares', icon: 'chart.pie' as const, description: 'By shares' },
 ];
 
+type HomeFriend = User & { balance: number; recentExpenses?: Expense[] };
+
 export default function AddExpenseScreen() {
   const { gradients, colors, isDark } = useThemeColors();
   const { user } = useAuth();
   const { groupId: preselectedGroupId, friendId: preselectedFriendId } = useLocalSearchParams<{ groupId?: string; friendId?: string }>();
   const currentUserId = user?.id || '';
+  const queryClient = useQueryClient();
+  const friendsHomeQueryKey = useMemo(() => queryKeys.friends.home(currentUserId), [currentUserId]);
 
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
@@ -77,7 +83,7 @@ export default function AddExpenseScreen() {
   const amountInputRef = useRef<TextInput>(null);
   const descriptionInputRef = useRef<TextInput>(null);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     if (!currentUserId) return;
     try {
       setDataLoadError(null);
@@ -94,7 +100,7 @@ export default function AddExpenseScreen() {
     } finally {
       setDataLoading(false);
     }
-  };
+  }, [currentUserId]);
 
   const loadGroupMembersForSelection = useCallback(async () => {
     if (!selectedGroupId) {
@@ -130,7 +136,7 @@ export default function AddExpenseScreen() {
         useNativeDriver: true,
       }),
     ]).start();
-  }, []);
+  }, [fadeAnim, loadData, slideAnim]);
 
   const toggleFriend = (friendId: string) => {
     if (selectedFriendIds.includes(friendId)) {
@@ -143,70 +149,152 @@ export default function AddExpenseScreen() {
   const isValid = description.trim() && amount.trim() && parseFloat(amount) > 0 &&
     (splitType === SplitType.GROUP ? selectedGroupId : selectedFriendIds.length > 0);
 
+  const updateHomeFriendsForCreatedExpense = useCallback((
+    expense: Expense,
+    splits: { userId: string; amount: number }[]
+  ) => {
+    queryClient.setQueryData<HomeFriend[]>(
+      friendsHomeQueryKey,
+      current => current?.map(friend => {
+        const currentUserSplit = splits.find(split => split.userId === currentUserId);
+        const friendSplit = splits.find(split => split.userId === friend.id);
+
+        if (!currentUserSplit || !friendSplit) return friend;
+
+        let balanceDelta = 0;
+        if (expense.paidBy === currentUserId) {
+          balanceDelta = friendSplit.amount;
+        } else if (expense.paidBy === friend.id) {
+          balanceDelta = -currentUserSplit.amount;
+        }
+
+        if (balanceDelta === 0) return friend;
+
+        const nextBalance = friend.balance + balanceDelta;
+        const recentExpense = {
+          ...expense,
+          amount: Math.abs(balanceDelta),
+        };
+
+        return {
+          ...friend,
+          balance: Math.abs(nextBalance) < 0.01 ? 0 : nextBalance,
+          recentExpenses: [recentExpense, ...(friend.recentExpenses ?? [])]
+            .filter((item, index, all) => all.findIndex(exp => exp.id === item.id) === index)
+            .slice(0, 2),
+        };
+      })
+    );
+  }, [currentUserId, friendsHomeQueryKey, queryClient]);
+
+  const replaceOptimisticHomeExpense = useCallback((optimisticId: string, savedExpense: Expense) => {
+    queryClient.setQueryData<HomeFriend[]>(
+      friendsHomeQueryKey,
+      current => current?.map(friend => ({
+        ...friend,
+        recentExpenses: friend.recentExpenses?.map(expense => (
+          expense.id === optimisticId
+            ? { ...savedExpense, amount: expense.amount }
+            : expense
+        )),
+      }))
+    );
+  }, [friendsHomeQueryKey, queryClient]);
+
   const handleSubmit = async () => {
     if (!isValid) return;
 
     setLoading(true);
+    let previousHomeFriends: HomeFriend[] | undefined;
+    let optimisticExpenseId: string | null = null;
     try {
       const amountNum = parseFloat(amount);
+      const trimmedDescription = description.trim();
+      const createdAt = Date.now();
+      const optimisticExpense: Expense = {
+        id: `optimistic:${createdAt}`,
+        groupId: splitType === SplitType.GROUP ? selectedGroupId : undefined,
+        description: trimmedDescription,
+        amount: amountNum,
+        currency: 'USD',
+        paidBy: currentUserId,
+        date: createdAt,
+        createdAt,
+        updatedAt: createdAt,
+      };
 
       if (splitType === SplitType.GROUP) {
-        const members = await groupService.getMembers(selectedGroupId);
-        const splits = calculateSplits(members.map((m: { userId: string }) => m.userId), amountNum);
+        let memberIds = groupMembers;
+        if (memberIds.length === 0) {
+          const members = await groupService.getMembers(selectedGroupId);
+          memberIds = members.map((m: { userId: string }) => m.userId);
+        }
+        const splits = calculateSplits(memberIds, amountNum);
 
         if (!splits) {
           setLoading(false);
           return;
         }
 
+        optimisticExpenseId = optimisticExpense.id;
+        await queryClient.cancelQueries({ queryKey: friendsHomeQueryKey });
+        previousHomeFriends = queryClient.getQueryData<HomeFriend[]>(friendsHomeQueryKey);
+        updateHomeFriendsForCreatedExpense(optimisticExpense, splits);
+        router.back();
+
         const expense = await expenseService.create(
           {
             groupId: selectedGroupId,
-            description: description.trim(),
+            description: trimmedDescription,
             amount: amountNum,
             currency: 'USD',
             paidBy: currentUserId,
-            date: Date.now(),
+            date: createdAt,
           },
           splits
         );
+        replaceOptimisticHomeExpense(optimisticExpenseId, expense);
 
-        // Log activity
-        const group = groups.find(g => g.id === selectedGroupId);
-        await activityService.logExpenseCreated({
-          expenseId: expense.id,
-          userId: currentUserId,
-          userName: user?.name || 'Someone',
-          description: description.trim(),
-          amount: amountNum,
-          groupId: selectedGroupId,
-          groupName: group?.name,
-        });
+        try {
+          const group = groups.find(g => g.id === selectedGroupId);
+          await activityService.logExpenseCreated({
+            expenseId: expense.id,
+            userId: currentUserId,
+            userName: user?.name || 'Someone',
+            description: trimmedDescription,
+            amount: amountNum,
+            groupId: selectedGroupId,
+            groupName: group?.name,
+          });
 
-        // Notify other group members when an expense is created via the Add Expense screen.
-        const usersToNotify = await Promise.all(
-          members
-            .filter((member: { userId: string }) => member.userId !== currentUserId)
-            .map((member: { userId: string }) => userService.getById(member.userId))
-        );
-        const pushTokens = usersToNotify
-          .filter((u) => u && u.pushToken)
-          .map((u) => u!.pushToken!);
-        if (pushTokens.length > 0) {
-          const notification = createExpenseNotification(
-            description.trim(),
-            amountNum,
-            user?.name || 'Someone',
-            group?.name
+          const usersToNotify = await Promise.all(
+            memberIds
+              .filter(memberId => memberId !== currentUserId)
+              .map(memberId => userService.getById(memberId))
           );
-          await notificationService.sendNotificationToUsers(pushTokens, notification);
+          const pushTokens = usersToNotify
+            .filter((u) => u && u.pushToken)
+            .map((u) => u!.pushToken!);
+          if (pushTokens.length > 0) {
+            const notification = createExpenseNotification(
+              trimmedDescription,
+              amountNum,
+              user?.name || 'Someone',
+              group?.name
+            );
+            await notificationService.sendNotificationToUsers(pushTokens, notification);
+          }
+
+        } catch (sideEffectError) {
+          console.warn('Expense created, but follow-up work failed:', sideEffectError);
         }
 
-        // Invalidate group cache and friends list (balances may change)
-        await cacheService.invalidate(CACHE_KEYS.GROUPS_LIST);
-        await cacheService.invalidate(CACHE_KEYS.GROUP_DETAIL(selectedGroupId));
-        await cacheService.invalidate(CACHE_KEYS.GROUP_EXPENSES(selectedGroupId));
-        await cacheService.invalidate(CACHE_KEYS.FRIENDS_LIST);
+        await Promise.allSettled([
+          queryClient.invalidateQueries({ queryKey: friendsHomeQueryKey }),
+          cacheService.invalidate(CACHE_KEYS.GROUPS_LIST),
+          cacheService.invalidate(CACHE_KEYS.GROUP_DETAIL(selectedGroupId)),
+          cacheService.invalidate(CACHE_KEYS.GROUP_EXPENSES(selectedGroupId)),
+        ]);
       } else {
         const allParticipants = [currentUserId, ...selectedFriendIds];
         const splits = calculateSplits(allParticipants, amountNum);
@@ -216,49 +304,64 @@ export default function AddExpenseScreen() {
           return;
         }
 
+        optimisticExpenseId = optimisticExpense.id;
+        await queryClient.cancelQueries({ queryKey: friendsHomeQueryKey });
+        previousHomeFriends = queryClient.getQueryData<HomeFriend[]>(friendsHomeQueryKey);
+        updateHomeFriendsForCreatedExpense(optimisticExpense, splits);
+        router.back();
+
         const expense = await expenseService.create(
           {
-            description: description.trim(),
+            description: trimmedDescription,
             amount: amountNum,
             currency: 'USD',
             paidBy: currentUserId,
-            date: Date.now(),
+            date: createdAt,
           },
           splits
         );
+        replaceOptimisticHomeExpense(optimisticExpenseId, expense);
 
-        // Log activity
-        await activityService.logExpenseCreated({
-          expenseId: expense.id,
-          userId: currentUserId,
-          userName: user?.name || 'Someone',
-          description: description.trim(),
-          amount: amountNum,
-        });
+        try {
+          await activityService.logExpenseCreated({
+            expenseId: expense.id,
+            userId: currentUserId,
+            userName: user?.name || 'Someone',
+            description: trimmedDescription,
+            amount: amountNum,
+          });
 
-        // Notify selected friends for direct (non-group) expenses.
-        const friendPushTokens = friends
-          .filter((friend) => selectedFriendIds.includes(friend.id) && friend.pushToken)
-          .map((friend) => friend.pushToken as string);
-        if (friendPushTokens.length > 0) {
-          const notification = createExpenseNotification(
-            description.trim(),
-            amountNum,
-            user?.name || 'Someone'
-          );
-          await notificationService.sendNotificationToUsers(friendPushTokens, notification);
+          const friendPushTokens = friends
+            .filter((friend) => selectedFriendIds.includes(friend.id) && friend.pushToken)
+            .map((friend) => friend.pushToken as string);
+          if (friendPushTokens.length > 0) {
+            const notification = createExpenseNotification(
+              trimmedDescription,
+              amountNum,
+              user?.name || 'Someone'
+            );
+            await notificationService.sendNotificationToUsers(friendPushTokens, notification);
+          }
+
+        } catch (sideEffectError) {
+          console.warn('Expense created, but follow-up work failed:', sideEffectError);
         }
 
-        // Invalidate caches for all involved friends
-        await cacheService.invalidate(CACHE_KEYS.FRIENDS_LIST);
-        for (const friendId of selectedFriendIds) {
-          await cacheService.invalidate(CACHE_KEYS.FRIEND_DETAIL(friendId));
-          await cacheService.invalidate(CACHE_KEYS.FRIEND_EXPENSES(friendId));
-        }
+        await Promise.allSettled([
+          queryClient.invalidateQueries({ queryKey: friendsHomeQueryKey }),
+          ...selectedFriendIds.flatMap(friendId => [
+            cacheService.invalidate(CACHE_KEYS.FRIEND_DETAIL(friendId)),
+            cacheService.invalidate(CACHE_KEYS.FRIEND_EXPENSES(friendId)),
+          ]),
+        ]);
       }
-
-      router.back();
     } catch (error) {
+      if (previousHomeFriends) {
+        queryClient.setQueryData(friendsHomeQueryKey, previousHomeFriends);
+      }
+      if (optimisticExpenseId) {
+        queryClient.invalidateQueries({ queryKey: friendsHomeQueryKey });
+      }
       console.error('Error creating expense:', error);
       Alert.alert('Error', 'Failed to create expense');
     } finally {

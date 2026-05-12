@@ -8,7 +8,7 @@ import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { groupService, initDatabase } from '@/services/api';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Alert,
   Animated,
@@ -38,11 +38,7 @@ export default function EditGroupScreen() {
   const groupNameInputRef = useRef<any>(null);
   const descriptionInputRef = useRef<any>(null);
 
-  useEffect(() => {
-    loadGroupData();
-  }, [id]);
-
-  async function loadGroupData() {
+  const loadGroupData = useCallback(async () => {
     try {
       setLoadError(null);
       const group = await groupService.getById(id);
@@ -72,7 +68,11 @@ export default function EditGroupScreen() {
       setLoadError(getFetchErrorMessage(error));
       setInitialLoading(false);
     }
-  }
+  }, [fadeAnim, id, slideAnim]);
+
+  useEffect(() => {
+    loadGroupData();
+  }, [loadGroupData]);
 
   const isValid = groupName.trim().length > 0;
 
