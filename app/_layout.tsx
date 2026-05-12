@@ -3,18 +3,17 @@ import { RouteErrorBoundary } from '@/components/ui/route-error-boundary';
 import { AuthProvider, useAuth } from '@/contexts/auth-context-otp';
 import { ThemeProvider as AppThemeProvider, useTheme } from '@/contexts/theme-context';
 import { useNotifications } from '@/hooks/use-notifications';
+import { buildInvitePath, parseInviteFromUrl } from '@/lib/invite-deeplink';
 import { queryClient } from '@/lib/query-client';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { useFonts } from 'expo-font';
-import { buildInvitePath, parseInviteFromUrl } from '@/lib/invite-deeplink';
 import * as Linking from 'expo-linking';
 import {
-  type Href,
   Stack,
   useRootNavigationState,
   useRouter,
-  useSegments,
+  useSegments, type Href
 } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
@@ -144,25 +143,25 @@ function RootLayoutNav() {
   return (
     <ThemeProvider value={isDark ? AmbientDarkTheme : AmbientLightTheme}>
       <RouteErrorBoundary homeHref="/(tabs)">
-      <Stack>
-        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-        <Stack.Screen name="group/[id]" options={{ headerShown: false }} />
-        <Stack.Screen name="friend/[id]" options={{ headerShown: false }} />
-        <Stack.Screen name="scan-qr" options={{ headerShown: false }} />
-        <Stack.Screen name="add-expense" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
-        <Stack.Screen name="create-group" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
-        <Stack.Screen name="add-friend" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
-        <Stack.Screen name="edit-group/[id]" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
-        <Stack.Screen name="edit-expense/[id]" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
-        <Stack.Screen name="edit-profile" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
-        <Stack.Screen name="privacy-policy" options={{ headerShown: false }} />
-        <Stack.Screen name="terms-conditions" options={{ headerShown: false }} />
-        <Stack.Screen name="help-support" options={{ headerShown: false }} />
-        <Stack.Screen name="invite/[id]" options={{ headerShown: false }} />
-        <Stack.Screen name="invitations" options={{ headerShown: false }} />
-      </Stack>
+        <Stack>
+          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+          <Stack.Screen name="group/[id]" options={{ headerShown: false }} />
+          <Stack.Screen name="friend/[id]" options={{ headerShown: false }} />
+          <Stack.Screen name="scan-qr" options={{ headerShown: false }} />
+          <Stack.Screen name="add-expense" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
+          <Stack.Screen name="create-group" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
+          <Stack.Screen name="add-friend" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
+          <Stack.Screen name="edit-group/[id]" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
+          <Stack.Screen name="edit-expense/[id]" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
+          <Stack.Screen name="edit-profile" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
+          <Stack.Screen name="privacy-policy" options={{ headerShown: false }} />
+          <Stack.Screen name="terms-conditions" options={{ headerShown: false }} />
+          <Stack.Screen name="help-support" options={{ headerShown: false }} />
+          <Stack.Screen name="invite/[id]" options={{ headerShown: false }} />
+          <Stack.Screen name="invitations" options={{ headerShown: false }} />
+        </Stack>
       </RouteErrorBoundary>
       <StatusBar style={isDark ? 'light' : 'dark'} />
     </ThemeProvider>
