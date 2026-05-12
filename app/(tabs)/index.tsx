@@ -8,7 +8,7 @@ import { LoadingState } from '@/components/ui/loading-state';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { supabase } from '@/lib/supabase';
-import { calculateFriendBalance, getFriendRecentExpenses, initDatabase, userService } from '@/services/api';
+import { friendSummaryService, initDatabase } from '@/services/api';
 import { CACHE_KEYS, cacheService } from '@/services/cache-service';
 import { friendshipService } from '@/services/friendship-service';
 import { invitationService } from '@/services/invitation-service';
@@ -62,27 +62,8 @@ export default function FriendsScreen() {
 
       await initDatabase();
 
-      // 2. Fetch fresh data from API
-      const friendIds = await friendshipService.getFriends(currentUserId);
-
-      const friendsData = await Promise.all(
-        friendIds.map(async (friendId) => {
-          const u = await userService.getById(friendId);
-          return u;
-        })
-      );
-
-      const friendsWithBalances = await Promise.all(
-        friendsData
-          .filter((u): u is User => u !== null)
-          .map(async (u: User) => {
-            const [balance, recentExpenses] = await Promise.all([
-              calculateFriendBalance(currentUserId, u.id),
-              getFriendRecentExpenses(currentUserId, u.id, 2)
-            ]);
-            return { ...u, balance, recentExpenses };
-          })
-      );
+      // 2. Fetch fresh data in batches, then compute all friend cards locally.
+      const friendsWithBalances = await friendSummaryService.getHomeSummaries(currentUserId);
 
       // 3. Update state and cache
       setFriends(friendsWithBalances);
