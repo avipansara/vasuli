@@ -186,6 +186,26 @@ export const expenseService = {
     }));
   },
 
+  async getSplitsForExpenses(expenseIds: string[]): Promise<ExpenseSplit[]> {
+    if (expenseIds.length === 0) return [];
+
+    const { data, error } = await supabase
+      .from('expense_splits')
+      .select('*')
+      .in('expense_id', expenseIds);
+
+    if (error) throw error;
+
+    return (data || []).map(r => ({
+      id: r.id,
+      expenseId: r.expense_id,
+      userId: r.user_id,
+      amount: r.amount,
+      splitType: r.split_type as 'equal' | 'exact' | 'percentage',
+      percentage: r.percentage || undefined,
+    }));
+  },
+
   async getUserExpenses(userId: string): Promise<Expense[]> {
     // Get expense IDs where user is involved (either paid or split with them)
     const { data: splitData, error: splitError } = await supabase
