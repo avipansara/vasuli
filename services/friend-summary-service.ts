@@ -8,6 +8,23 @@ export interface FriendSummary extends User {
   recentExpenses?: Expense[];
 }
 
+export function calculateFriendSummaryTotals(
+  friends: Pick<FriendSummary, 'balance'>[]
+): { totalOwed: number; totalOwing: number } {
+  return friends.reduce(
+    (totals, friend) => {
+      if (friend.balance > 0.01) {
+        totals.totalOwed += friend.balance;
+      } else if (friend.balance < -0.01) {
+        totals.totalOwing += Math.abs(friend.balance);
+      }
+
+      return totals;
+    },
+    { totalOwed: 0, totalOwing: 0 }
+  );
+}
+
 export function buildFriendSummaries(
   currentUserId: string,
   friends: User[],

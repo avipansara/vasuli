@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildFriendSummaries } from '@/services/friend-summary-service';
+import { buildFriendSummaries, calculateFriendSummaryTotals } from '@/services/friend-summary-service';
 import type { Expense, ExpenseSplit, Settlement, User } from '@/types/database';
 
 const currentUserId = 'user-current';
@@ -105,5 +105,20 @@ describe('buildFriendSummaries', () => {
 
     expect(summaries[0].balance).toBe(0);
     expect(summaries[0].recentExpenses).toEqual([]);
+  });
+});
+
+describe('calculateFriendSummaryTotals', () => {
+  it('splits cached friend balances into owed and owing totals', () => {
+    expect(calculateFriendSummaryTotals([
+      { balance: 42.5 },
+      { balance: -12.25 },
+      { balance: 0 },
+      { balance: 0.005 },
+      { balance: -0.005 },
+    ])).toEqual({
+      totalOwed: 42.5,
+      totalOwing: 12.25,
+    });
   });
 });

@@ -7,11 +7,13 @@ import { useTheme } from '@/contexts/theme-context';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getAppVersionLabel } from '@/lib/app-version';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
-import { calculateUserTotalBalance, initDatabase, userService } from '@/services/api';
-import { useFocusEffect } from '@react-navigation/native';
+import { friendSummaryService, initDatabase, userService } from '@/services/api';
+import { calculateFriendSummaryTotals } from '@/services/friend-summary-service';
+import { queryKeys } from '@/services/query-keys';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -31,6 +33,9 @@ export default function ProfileScreen() {
   const { toggleTheme } = useTheme();
   const { user: currentUser, signOut, refreshUser } = useAuth();
   const [notificationsEnabled, setNotificationsEnabled] = useState(!!currentUser?.pushToken);
+  const currentUserId = currentUser?.id || '';
+  const queryClient = useQueryClient();
+  const friendsHomeQueryKey = useMemo(() => queryKeys.friends.home(currentUserId), [currentUserId]);
 
   useEffect(() => {
     setNotificationsEnabled(!!currentUser?.pushToken);
@@ -66,10 +71,24 @@ export default function ProfileScreen() {
     }
   }
 
-  const [totalOwed, setTotalOwed] = useState(0);
-  const [totalOwing, setTotalOwing] = useState(0);
-  const [statsLoading, setStatsLoading] = useState(false);
-  const [statsError, setStatsError] = useState<string | null>(null);
+  const cachedFriends = queryClient.getQueryData<Awaited<ReturnType<typeof friendSummaryService.getHomeSummaries>>>(friendsHomeQueryKey);
+  const {
+    data: friends = [],
+    error: statsQueryError,
+    isLoading: statsLoading,
+    refetch: refetchStats,
+  } = useQuery({
+    queryKey: friendsHomeQueryKey,
+    enabled: !!currentUserId,
+    initialData: cachedFriends,
+    refetchOnMount: false,
+    queryFn: async () => {
+      await initDatabase();
+      return friendSummaryService.getHomeSummaries(currentUserId);
+    },
+  });
+  const { totalOwed, totalOwing } = useMemo(() => calculateFriendSummaryTotals(friends), [friends]);
+  const statsError = statsQueryError ? getFetchErrorMessage(statsQueryError) : null;
 
   const [playgroundVisible, setPlaygroundVisible] = useState(false);
 
@@ -77,29 +96,9 @@ export default function ProfileScreen() {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
 
-  const loadStats = useCallback(async () => {
-    if (!currentUser?.id) return;
-    setStatsError(null);
-    setStatsLoading(true);
-    try {
-      await initDatabase();
-      const { totalOwed: totalOwedAmount, totalOwing: totalOwingAmount } =
-        await calculateUserTotalBalance(currentUser.id);
-      setTotalOwed(totalOwedAmount);
-      setTotalOwing(totalOwingAmount);
-    } catch (error) {
-      console.error('Error loading stats:', error);
-      setStatsError(getFetchErrorMessage(error));
-    } finally {
-      setStatsLoading(false);
-    }
-  }, [currentUser?.id]);
-
-  useFocusEffect(
-    useCallback(() => {
-      loadStats();
-    }, [loadStats])
-  );
+  const loadStats = useCallback(() => {
+    refetchStats();
+  }, [refetchStats]);
 
   useEffect(() => {
     Animated.parallel([
