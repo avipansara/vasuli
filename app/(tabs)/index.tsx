@@ -6,9 +6,10 @@ import { AsyncErrorState } from '@/components/ui/async-error-state';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { LoadingState } from '@/components/ui/loading-state';
 import { useAuth } from '@/contexts/auth-context-otp';
+import { useDebouncedQueryInvalidation } from '@/hooks/use-debounced-query-invalidation';
+import { useRealtime } from '@/hooks/use-realtime';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
-import { supabase } from '@/lib/supabase';
 import { friendSummaryService, initDatabase } from '@/services/api';
 import { friendshipService } from '@/services/friendship-service';
 import { invitationService } from '@/services/invitation-service';
@@ -19,7 +20,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useQuery } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Alert, FlatList, Platform, RefreshControl, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 interface UserWithBalance extends User {
@@ -37,6 +38,7 @@ export default function FriendsScreen() {
   const { user } = useAuth();
   const currentUserId = user?.id || '';
   const friendsQueryKey = useMemo(() => queryKeys.friends.home(currentUserId), [currentUserId]);
+  const invalidateFriends = useDebouncedQueryInvalidation(friendsQueryKey, 500);
 
   const {
     data: friends = [],
@@ -73,80 +75,42 @@ export default function FriendsScreen() {
     }
   }, [refetch]);
 
-  // Real-time subscriptions
-  useEffect(() => {
-    if (!currentUserId) return;
-
-    console.log('[Realtime] Subscribing to friend list updates');
-
-    const subscription = supabase
-      .channel(`friends-list-${currentUserId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'friendships',
-          filter: `user_id_1=eq.${currentUserId}`,
-        },
-        () => setTimeout(() => loadFriends(), 500)
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'friendships',
-          filter: `user_id_2=eq.${currentUserId}`,
-        },
-        () => setTimeout(() => loadFriends(), 500)
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'expenses',
-        },
-        (payload) => {
-          console.log('[Realtime] Expenses change:', payload);
-          // Alert.alert('Debug', 'Expenses update received');
-          setTimeout(() => loadFriends(), 2000);
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'expense_splits',
-        },
-        (payload) => {
-          console.log('[Realtime] Splits change:', payload);
-          // Alert.alert('Debug', 'Splits update received');
-          setTimeout(() => loadFriends(), 2000);
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'settlements',
-        },
-        (payload) => {
-          console.log('[Realtime] Settlement change:', payload);
-          // Alert.alert('Debug', 'Settlement update received');
-          setTimeout(() => loadFriends(), 2000);
-        }
-      )
-      .subscribe();
-
-    return () => {
-      console.log('[Realtime] Unsubscribing from friend list updates');
-      supabase.removeChannel(subscription);
-    };
-  }, [currentUserId, loadFriends]);
+  useRealtime({
+    table: 'friendships',
+    filter: currentUserId ? `user_id_1=eq.${currentUserId}` : undefined,
+    onChange: invalidateFriends,
+    enabled: !!currentUserId,
+  });
+  useRealtime({
+    table: 'friendships',
+    filter: currentUserId ? `user_id_2=eq.${currentUserId}` : undefined,
+    onChange: invalidateFriends,
+    enabled: !!currentUserId,
+  });
+  useRealtime({
+    table: 'expenses',
+    filter: currentUserId ? `paid_by=eq.${currentUserId}` : undefined,
+    onChange: invalidateFriends,
+    enabled: !!currentUserId,
+  });
+  useRealtime({
+    table: 'expense_splits',
+    filter: currentUserId ? `user_id=eq.${currentUserId}` : undefined,
+    onChange: invalidateFriends,
+    enabled: !!currentUserId,
+  });
+  useRealtime({
+    table: 'settlements',
+    filter: currentUserId ? `from_user_id=eq.${currentUserId}` : undefined,
+    onChange: invalidateFriends,
+    enabled: !!currentUserId,
+  });
+  useRealtime({
+    table: 'settlements',
+    filter: currentUserId ? `to_user_id=eq.${currentUserId}` : undefined,
+    onChange: invalidateFriends,
+    enabled: !!currentUserId,
+  });
 
   const sendInvite = async () => {
     const contact = normalizeEmail(newFriendEmail);

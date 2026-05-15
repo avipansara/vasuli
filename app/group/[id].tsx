@@ -7,9 +7,10 @@ import { AsyncErrorState } from '@/components/ui/async-error-state';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { LoadingState } from '@/components/ui/loading-state';
 import { useAuth } from '@/contexts/auth-context-otp';
+import { useDebouncedQueryInvalidation } from '@/hooks/use-debounced-query-invalidation';
+import { useRealtime } from '@/hooks/use-realtime';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
-import { supabase } from '@/lib/supabase';
 import { activityService } from '@/services/activity-service';
 import {
   expenseService,
@@ -64,6 +65,7 @@ export default function GroupDetailScreen() {
   const queryClient = useQueryClient();
   const friendsHomeQueryKey = useMemo(() => queryKeys.friends.home(currentUserId), [currentUserId]);
   const groupDetailQueryKey = useMemo(() => queryKeys.groups.detail(currentUserId, id), [currentUserId, id]);
+  const invalidateGroupDetail = useDebouncedQueryInvalidation(groupDetailQueryKey, 500);
 
   const {
     data: groupDetail,
@@ -100,58 +102,30 @@ export default function GroupDetailScreen() {
     await refetch();
   }, [refetch]);
 
-  // Real-time subscriptions
-  useEffect(() => {
-    if (!id) return;
-
-    console.log('[Realtime] Subscribing to group updates:', id);
-
-    const subscription = supabase
-      .channel(`group-${id}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'group_members',
-        },
-        (payload) => {
-          console.log('[Realtime] Group member change detected:', payload);
-          loadGroupData();
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'expenses',
-        },
-        (payload) => {
-          console.log('[Realtime] Expense change detected:', payload);
-          loadGroupData();
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'groups',
-          filter: `id=eq.${id}`,
-        },
-        (payload) => {
-          console.log('[Realtime] Group details change detected:', payload);
-          loadGroupData();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      console.log('[Realtime] Unsubscribing from group updates:', id);
-      supabase.removeChannel(subscription);
-    };
-  }, [id, loadGroupData]);
+  useRealtime({
+    table: 'groups',
+    filter: id ? `id=eq.${id}` : undefined,
+    onChange: invalidateGroupDetail,
+    enabled: !!id,
+  });
+  useRealtime({
+    table: 'group_members',
+    filter: id ? `group_id=eq.${id}` : undefined,
+    onChange: invalidateGroupDetail,
+    enabled: !!id,
+  });
+  useRealtime({
+    table: 'expenses',
+    filter: id ? `group_id=eq.${id}` : undefined,
+    onChange: invalidateGroupDetail,
+    enabled: !!id,
+  });
+  useRealtime({
+    table: 'settlements',
+    filter: id ? `group_id=eq.${id}` : undefined,
+    onChange: invalidateGroupDetail,
+    enabled: !!id,
+  });
 
   useFocusEffect(
     useCallback(() => {

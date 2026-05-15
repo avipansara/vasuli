@@ -4,9 +4,10 @@ import { AsyncErrorState } from '@/components/ui/async-error-state';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { LoadingState } from '@/components/ui/loading-state';
 import { useAuth } from '@/contexts/auth-context-otp';
+import { useDebouncedQueryInvalidation } from '@/hooks/use-debounced-query-invalidation';
+import { useRealtime } from '@/hooks/use-realtime';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
-import { supabase } from '@/lib/supabase';
 import { calculateBalances, groupService, initDatabase, userService } from '@/services/api';
 import { queryKeys } from '@/services/query-keys';
 import type { GroupWithMembers } from '@/types/database';
@@ -26,6 +27,7 @@ export default function GroupsScreen() {
   const currentUserId = user?.id || '';
   const queryClient = useQueryClient();
   const groupsQueryKey = useMemo(() => queryKeys.groups.list(currentUserId), [currentUserId]);
+  const invalidateGroups = useDebouncedQueryInvalidation(groupsQueryKey, 500);
 
   // Animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -86,36 +88,12 @@ export default function GroupsScreen() {
     }
   }, [fadeAnim, loading, slideAnim]);
 
-  // Real-time subscriptions for group list
-  useEffect(() => {
-    if (!currentUserId) return;
-
-    console.log('[Realtime] Subscribing to membership updates for user:', currentUserId);
-
-    const subscription = supabase
-      .channel(`user-groups-${currentUserId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'group_members',
-          // Removed filter to rely on RLS and debug connectivity
-        },
-        (payload) => {
-          console.log('[Realtime] Membership change detected:', payload);
-          // Temporary Alert to verify event receipt
-          // Alert.alert('Debug', 'Realtime update received!'); 
-          loadGroups();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      console.log('[Realtime] Unsubscribing from membership updates');
-      supabase.removeChannel(subscription);
-    };
-  }, [currentUserId, loadGroups]);
+  useRealtime({
+    table: 'group_members',
+    filter: currentUserId ? `user_id=eq.${currentUserId}` : undefined,
+    onChange: invalidateGroups,
+    enabled: !!currentUserId,
+  });
 
   const renderGroupItem = useCallback(
     ({ item, index }: { item: GroupWithMembers; index: number }) => (
