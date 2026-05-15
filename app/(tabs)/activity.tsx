@@ -8,23 +8,17 @@ import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { activityService } from '@/services/activity-service';
 import { initDatabase } from '@/services/api';
+import { queryKeys } from '@/services/query-keys';
 import type { Activity } from '@/types/database';
 import { useFocusEffect } from '@react-navigation/native';
+import { useInfiniteQuery } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { Animated, Platform, SectionList, StyleSheet, View } from 'react-native';
 
 export default function ActivityScreen() {
   const { gradients, colors, isDark } = useThemeColors();
-  const [activities, setActivities] = useState<Activity[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [loadMoreError, setLoadMoreError] = useState<string | null>(null);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
-  const [offset, setOffset] = useState(0);
   const PAGE_SIZE = 20;
-  const hasLoadedOnce = useRef(false);
 
   // Animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -32,9 +26,36 @@ export default function ActivityScreen() {
 
   const { user } = useAuth();
   const currentUserId = user?.id || '';
+  const activityQueryKey = useMemo(() => queryKeys.activity.list(currentUserId), [currentUserId]);
+
+  const {
+    data,
+    error,
+    fetchNextPage,
+    hasNextPage,
+    isError,
+    isFetchingNextPage,
+    isLoading,
+    refetch,
+  } = useInfiniteQuery({
+    queryKey: activityQueryKey,
+    enabled: !!currentUserId,
+    initialPageParam: 0,
+    queryFn: async ({ pageParam }) => {
+      await initDatabase();
+      return activityService.getUserActivities(currentUserId, PAGE_SIZE, pageParam);
+    },
+    getNextPageParam: (lastPage, allPages) => {
+      if (lastPage.length < PAGE_SIZE) return undefined;
+      return allPages.reduce((count, page) => count + page.length, 0);
+    },
+  });
+  const activities = useMemo(() => data?.pages.flat() ?? [], [data]);
+  const loading = isLoading && activities.length === 0;
+  const loadError = isError ? getFetchErrorMessage(error) : null;
 
   useEffect(() => {
-    if (!loading && !loadingMore) {
+    if (!loading && !isFetchingNextPage) {
       Animated.parallel([
         Animated.timing(fadeAnim, {
           toValue: 1,
@@ -48,86 +69,24 @@ export default function ActivityScreen() {
         }),
       ]).start();
     }
-  }, [fadeAnim, loading, loadingMore, slideAnim]);
-
-  const loadActivities = useCallback(async (isInitial: boolean = false) => {
-    if (!currentUserId) return;
-    if (!isInitial && (!hasMore || loadingMore)) return;
-
-    try {
-      if (isInitial) {
-        setLoadError(null);
-        if (!hasLoadedOnce.current) {
-          setLoading(true);
-        }
-        setOffset(0);
-      } else {
-        setLoadMoreError(null);
-        setLoadingMore(true);
-      }
-
-      await initDatabase();
-      const currentOffset = isInitial ? 0 : offset;
-      const newActivities = await activityService.getUserActivities(currentUserId, PAGE_SIZE, currentOffset);
-
-      console.log(`[Activity] Loaded ${newActivities.length} activities (offset: ${currentOffset})`);
-
-      if (isInitial) {
-        setActivities(newActivities);
-        hasLoadedOnce.current = true;
-      } else {
-        setActivities(prev => [...prev, ...newActivities]);
-      }
-
-      setHasMore(newActivities.length === PAGE_SIZE);
-      setOffset(currentOffset + newActivities.length);
-    } catch (error) {
-      console.error('[Activity] Error loading activities:', error);
-      const msg = getFetchErrorMessage(error);
-      if (isInitial) {
-        setLoadError(msg);
-      } else {
-        setLoadMoreError(msg);
-      }
-    } finally {
-      setLoading(false);
-      setLoadingMore(false);
-    }
-  }, [currentUserId, offset, hasMore, loadingMore]);
+  }, [fadeAnim, loading, isFetchingNextPage, slideAnim]);
 
   useFocusEffect(
     useCallback(() => {
-      if (!hasLoadedOnce.current) {
-        loadActivities(true);
-      }
-    }, [loadActivities])
+      refetch();
+    }, [refetch])
   );
 
   const handleLoadMore = () => {
-    if (!loading && !loadingMore && hasMore) {
-      loadActivities(false);
+    if (!loading && !isFetchingNextPage && hasNextPage) {
+      fetchNextPage();
     }
   };
 
   const renderActivityItem = useCallback(({ item }: { item: Activity }) => <ActivityCard activity={item} />, []);
 
   const renderFooter = () => {
-    if (loadMoreError) {
-      return (
-        <View style={styles.footerError}>
-          <AsyncErrorState
-            variant="compact"
-            title="Couldn't load more"
-            message={loadMoreError}
-            onRetry={() => {
-              setLoadMoreError(null);
-              loadActivities(false);
-            }}
-          />
-        </View>
-      );
-    }
-    if (!loadingMore) return null;
+    if (!isFetchingNextPage) return null;
     return (
       <View style={styles.footerLoader}>
         <LoadingState message="Loading more..." />
@@ -171,11 +130,11 @@ export default function ActivityScreen() {
       {loading ? (
         <LoadingState message="Loading activity..." />
       ) : loadError ? (
-        <AsyncErrorState
-          message={loadError}
-          onRetry={() => loadActivities(true)}
-          title="Couldn't load activity"
-        />
+          <AsyncErrorState
+            message={loadError}
+            onRetry={refetch}
+            title="Couldn't load activity"
+          />
       ) : activities.length === 0 ? (
         <Animated.View style={[
           styles.emptyContainer,

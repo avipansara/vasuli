@@ -8,7 +8,6 @@ import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { activityService } from '@/services/activity-service';
 import { expenseService, groupService, initDatabase, userService } from '@/services/api';
-import { CACHE_KEYS, cacheService } from '@/services/cache-service';
 import { createExpenseNotification, notificationService } from '@/services/notification-service';
 import { queryKeys } from '@/services/query-keys';
 import type { Expense, Group, User } from '@/types/database';
@@ -291,9 +290,10 @@ export default function AddExpenseScreen() {
 
         await Promise.allSettled([
           queryClient.invalidateQueries({ queryKey: friendsHomeQueryKey }),
-          cacheService.invalidate(CACHE_KEYS.GROUPS_LIST),
-          cacheService.invalidate(CACHE_KEYS.GROUP_DETAIL(selectedGroupId)),
-          cacheService.invalidate(CACHE_KEYS.GROUP_EXPENSES(selectedGroupId)),
+          queryClient.invalidateQueries({ queryKey: queryKeys.groups.list(currentUserId) }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.groups.detail(currentUserId, selectedGroupId) }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.expenses.list(currentUserId) }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.activity.list(currentUserId) }),
         ]);
       } else {
         const allParticipants = [currentUserId, ...selectedFriendIds];
@@ -349,9 +349,10 @@ export default function AddExpenseScreen() {
 
         await Promise.allSettled([
           queryClient.invalidateQueries({ queryKey: friendsHomeQueryKey }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.expenses.list(currentUserId) }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.activity.list(currentUserId) }),
           ...selectedFriendIds.flatMap(friendId => [
-            cacheService.invalidate(CACHE_KEYS.FRIEND_DETAIL(friendId)),
-            cacheService.invalidate(CACHE_KEYS.FRIEND_EXPENSES(friendId)),
+            queryClient.invalidateQueries({ queryKey: queryKeys.friends.detail(currentUserId, friendId) }),
           ]),
         ]);
       }

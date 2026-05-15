@@ -8,7 +8,6 @@ import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { activityService } from '@/services/activity-service';
 import { expenseService, groupService, initDatabase, userService } from '@/services/api';
-import { CACHE_KEYS, cacheService } from '@/services/cache-service';
 import { createExpenseUpdatedNotification, notificationService } from '@/services/notification-service';
 import { queryKeys } from '@/services/query-keys';
 import type { Expense, ExpenseSplit, Group, User } from '@/types/database';
@@ -384,15 +383,15 @@ export default function EditExpenseScreen() {
 
       await Promise.allSettled([
         queryClient.invalidateQueries({ queryKey: friendsHomeQueryKey }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.expenses.list(currentUserId) }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.activity.list(currentUserId) }),
         ...affectedFriendIds.flatMap(friendId => [
-          cacheService.invalidate(CACHE_KEYS.FRIEND_DETAIL(friendId)),
-          cacheService.invalidate(CACHE_KEYS.FRIEND_EXPENSES(friendId)),
+          queryClient.invalidateQueries({ queryKey: queryKeys.friends.detail(currentUserId, friendId) }),
         ]),
         ...affectedGroupIds.flatMap(groupId => [
-          cacheService.invalidate(CACHE_KEYS.GROUP_DETAIL(groupId)),
-          cacheService.invalidate(CACHE_KEYS.GROUP_EXPENSES(groupId)),
+          queryClient.invalidateQueries({ queryKey: queryKeys.groups.detail(currentUserId, groupId) }),
         ]),
-        cacheService.invalidate(CACHE_KEYS.GROUPS_LIST),
+        queryClient.invalidateQueries({ queryKey: queryKeys.groups.list(currentUserId) }),
       ]);
     } catch (error) {
       if (previousHomeFriends) {

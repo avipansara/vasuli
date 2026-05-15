@@ -9,13 +9,12 @@ import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { supabase } from '@/lib/supabase';
 import { activityService } from '@/services/activity-service';
 import { expenseService, friendDetailService, initDatabase, settlementService } from '@/services/api';
-import { CACHE_KEYS, cacheService } from '@/services/cache-service';
 import { friendshipService } from '@/services/friendship-service';
 import { createExpenseDeletedNotification, notificationService } from '@/services/notification-service';
 import { queryKeys } from '@/services/query-keys';
 import type { Expense, User } from '@/types/database';
 import { useFocusEffect } from '@react-navigation/native';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -26,6 +25,7 @@ import Swipeable from 'react-native-gesture-handler/Swipeable';
 
 interface UserWithBalance extends User {
   balance: number;
+  recentExpenses?: Expense[];
 }
 
 interface ExpenseWithSplit extends Expense {
@@ -39,8 +39,6 @@ export default function FriendDetailScreen() {
   const { gradients, colors, isDark } = useThemeColors();
   const [friend, setFriend] = useState<UserWithBalance | null>(null);
   const [expenses, setExpenses] = useState<ExpenseWithSplit[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
   const [settleModalVisible, setSettleModalVisible] = useState(false);
   const [isRemovingFriend, setIsRemovingFriend] = useState(false);
   const [isSettlingUp, setIsSettlingUp] = useState(false);
@@ -49,14 +47,46 @@ export default function FriendDetailScreen() {
   const currentUserId = user?.id || '';
   const queryClient = useQueryClient();
   const friendsHomeQueryKey = useMemo(() => queryKeys.friends.home(currentUserId), [currentUserId]);
+  const friendDetailQueryKey = useMemo(() => queryKeys.friends.detail(currentUserId, id), [currentUserId, id]);
   const swipeableRefs = useRef<Map<string, Swipeable>>(new Map());
-  const hasLoadedOnce = useRef(false);
 
   // Animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
   const scaleAnim = useRef(new Animated.Value(0.9)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
+
+  const {
+    data: friendDetail,
+    error,
+    isLoading,
+    refetch,
+  } = useQuery({
+    queryKey: friendDetailQueryKey,
+    enabled: !!currentUserId && !!id,
+    queryFn: async () => {
+      await initDatabase();
+      return friendDetailService.getDetail(currentUserId, id);
+    },
+  });
+  const loading = isLoading && !friend;
+  const loadError = error ? getFetchErrorMessage(error) : null;
+
+  useEffect(() => {
+    if (friendDetail === undefined) return;
+    if (!friendDetail) {
+      Alert.alert('Error', 'Friend not found');
+      router.back();
+      return;
+    }
+
+    setFriend(friendDetail.friend);
+    setExpenses(friendDetail.expenses);
+  }, [friendDetail]);
+
+  const loadFriendData = useCallback(async () => {
+    await refetch();
+  }, [refetch]);
 
   useEffect(() => {
     if (!loading && friend) {
@@ -79,7 +109,6 @@ export default function FriendDetailScreen() {
         }),
       ]).start();
 
-      // Pulse animation for balance
       if (friend.balance !== 0) {
         Animated.loop(
           Animated.sequence([
@@ -98,62 +127,6 @@ export default function FriendDetailScreen() {
       }
     }
   }, [fadeAnim, friend, loading, pulseAnim, scaleAnim, slideAnim]);
-
-  const loadFriendData = useCallback(async (skipCache = false) => {
-    if (!id) return;
-
-    try {
-      setLoadError(null);
-      const shouldShowLoading = !hasLoadedOnce.current;
-
-      // 1. Load from cache first (instant)
-      if (!skipCache) {
-        const cachedFriend = await cacheService.get<UserWithBalance>(CACHE_KEYS.FRIEND_DETAIL(id));
-        const cachedExpenses = await cacheService.get<ExpenseWithSplit[]>(CACHE_KEYS.FRIEND_EXPENSES(id));
-
-        if (cachedFriend) {
-          setFriend(cachedFriend);
-          hasLoadedOnce.current = true;
-          setLoading(false);
-        }
-        if (cachedExpenses) {
-          setExpenses(cachedExpenses);
-        }
-        // If we have cached data, don't show loading
-        if (cachedFriend && cachedExpenses) {
-          // Continue to fetch fresh data in background
-        } else if (shouldShowLoading) {
-          setLoading(true);
-        }
-      } else if (shouldShowLoading) {
-        setLoading(true);
-      }
-
-      await initDatabase();
-
-      // 2. Fetch fresh detail data in batches and compute the screen model locally.
-      const detail = await friendDetailService.getDetail(currentUserId, id);
-
-      if (!detail) {
-        Alert.alert('Error', 'Friend not found');
-        router.back();
-        return;
-      }
-
-      setFriend(detail.friend);
-      hasLoadedOnce.current = true;
-      setExpenses(detail.expenses);
-
-      // 3. Update cache
-      await cacheService.set(CACHE_KEYS.FRIEND_DETAIL(id), detail.friend);
-      await cacheService.set(CACHE_KEYS.FRIEND_EXPENSES(id), detail.expenses);
-    } catch (error) {
-      console.error('Error loading friend data:', error);
-      setLoadError(getFetchErrorMessage(error));
-    } finally {
-      setLoading(false);
-    }
-  }, [id, currentUserId]);
 
   useFocusEffect(
     useCallback(() => {
@@ -284,11 +257,8 @@ export default function FriendDetailScreen() {
         });
       }
 
-      // Invalidate caches
-      await cacheService.invalidate(CACHE_KEYS.FRIEND_DETAIL(friendId));
-      await cacheService.invalidate(CACHE_KEYS.FRIEND_EXPENSES(friendId));
-
-      await loadFriendData(true); // Skip cache, fetch fresh
+      await queryClient.invalidateQueries({ queryKey: friendDetailQueryKey });
+      await refetch();
     } catch (error) {
       if (previousFriend) {
         setFriend(previousFriend);
@@ -375,13 +345,8 @@ export default function FriendDetailScreen() {
                 await notificationService.sendPushNotification(friend.pushToken, notification);
               }
 
-              // Invalidate caches
-              if (id) {
-                await cacheService.invalidate(CACHE_KEYS.FRIEND_DETAIL(id));
-                await cacheService.invalidate(CACHE_KEYS.FRIEND_EXPENSES(id));
-              }
-
-              await loadFriendData(true);
+              await queryClient.invalidateQueries({ queryKey: friendDetailQueryKey });
+              await refetch();
             } catch (error) {
               setExpenses(previousExpenses);
               if (previousFriend) {
@@ -483,7 +448,7 @@ export default function FriendDetailScreen() {
         </View>
         <AsyncErrorState
           message={loadError}
-          onRetry={() => loadFriendData(true)}
+          onRetry={loadFriendData}
           title="Couldn't load friend"
         />
       </View>

@@ -7,54 +7,67 @@ import { useAuth } from '@/contexts/auth-context-otp';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { expenseService, groupService, initDatabase } from '@/services/api';
+import { queryKeys } from '@/services/query-keys';
 import type { Expense, Group } from '@/types/database';
 import { useFocusEffect } from '@react-navigation/native';
+import { useQuery } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useMemo } from 'react';
 import { Platform, SectionList, StyleSheet, TouchableOpacity, View } from 'react-native';
+
+function getTimePeriod(timestamp: number): string {
+  const now = new Date();
+  const date = new Date(timestamp);
+  const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+
+  if (diffDays === 0 && date.toDateString() === now.toDateString()) return 'Today';
+  if (diffDays === 1 || (diffDays === 0 && date.toDateString() !== now.toDateString())) return 'Yesterday';
+  if (diffDays < 7) return 'This Week';
+  if (diffDays < 30) return 'This Month';
+  return 'Earlier';
+}
 
 export default function ExpensesScreen() {
   const { gradients, colors, isDark } = useThemeColors();
-  const [expenses, setExpenses] = useState<(Expense & { group?: Group })[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [loadError, setLoadError] = useState<string | null>(null);
   const { user } = useAuth();
   const currentUserId = user?.id || '';
-  const hasLoadedOnce = useRef(false);
+  const expensesQueryKey = useMemo(() => queryKeys.expenses.list(currentUserId), [currentUserId]);
 
-  const loadData = useCallback(async () => {
-    if (!currentUserId) return;
-    try {
-      setLoadError(null);
-      // Only show loader on first load
-      if (!hasLoadedOnce.current) {
-        setLoading(true);
-        hasLoadedOnce.current = true;
-      }
+  const {
+    data: expenses = [],
+    error,
+    isLoading,
+    refetch,
+  } = useQuery({
+    queryKey: expensesQueryKey,
+    enabled: !!currentUserId,
+    queryFn: async () => {
       await initDatabase();
-      const allGroups = await groupService.getUserGroups(currentUserId);
+      const [allGroups, allExpensesRaw] = await Promise.all([
+        groupService.getUserGroups(currentUserId),
+        expenseService.getUserExpenses(currentUserId),
+      ]);
 
-      // Fetch only expenses involving the current user
-      const allExpensesRaw = await expenseService.getUserExpenses(currentUserId);
       console.log('[Expenses] Raw expenses loaded:', allExpensesRaw.length);
 
-      // Map expenses to include group info where applicable
+      const groupsById = new Map(allGroups.map((group) => [group.id, group]));
       const allExpenses: (Expense & { group?: Group })[] = allExpensesRaw.map((e: Expense) => {
-        const group = e.groupId ? allGroups.find((g: Group) => g.id === e.groupId) : undefined;
+        const group = e.groupId ? groupsById.get(e.groupId) : undefined;
         return { ...e, group };
       });
 
       allExpenses.sort((a, b) => b.date - a.date);
       console.log('[Expenses] Final expenses to display:', allExpenses.length);
-      setExpenses(allExpenses);
-    } catch (error) {
-      console.error('[Expenses] Error loading expenses:', error);
-      setLoadError(getFetchErrorMessage(error));
-    } finally {
-      setLoading(false);
-    }
-  }, [currentUserId]);
+      return allExpenses;
+    },
+  });
+  const loading = isLoading && expenses.length === 0;
+  const loadError = error ? getFetchErrorMessage(error) : null;
+
+  const loadData = useCallback(async () => {
+    await refetch();
+  }, [refetch]);
 
   useFocusEffect(
     useCallback(() => {
@@ -79,22 +92,9 @@ export default function ExpensesScreen() {
   );
 
   // Calculate total spent
-  const totalSpent = expenses.reduce((sum, e) => sum + e.amount, 0);
+  const totalSpent = useMemo(() => expenses.reduce((sum, e) => sum + e.amount, 0), [expenses]);
 
-  // Group expenses by time period
-  function getTimePeriod(timestamp: number): string {
-    const now = new Date();
-    const date = new Date(timestamp);
-    const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
-
-    if (diffDays === 0 && date.toDateString() === now.toDateString()) return 'Today';
-    if (diffDays === 1 || (diffDays === 0 && date.toDateString() !== now.toDateString())) return 'Yesterday';
-    if (diffDays < 7) return 'This Week';
-    if (diffDays < 30) return 'This Month';
-    return 'Earlier';
-  }
-
-  const groupedExpenses = expenses.reduce((acc, expense) => {
+  const groupedExpenses = useMemo(() => expenses.reduce((acc, expense) => {
     const period = getTimePeriod(expense.date);
     const existing = acc.find(g => g.title === period);
     if (existing) {
@@ -103,7 +103,7 @@ export default function ExpensesScreen() {
       acc.push({ title: period, data: [expense] });
     }
     return acc;
-  }, [] as { title: string; data: (Expense & { group?: Group })[] }[]);
+  }, [] as { title: string; data: (Expense & { group?: Group })[] }[]), [expenses]);
 
   return (
     <LinearGradient
