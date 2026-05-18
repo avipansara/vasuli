@@ -7,9 +7,10 @@ import { AsyncErrorState } from '@/components/ui/async-error-state';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { LoadingState } from '@/components/ui/loading-state';
 import { useAuth } from '@/contexts/auth-context-otp';
+import { useDebouncedQueryInvalidation } from '@/hooks/use-debounced-query-invalidation';
+import { useRealtime } from '@/hooks/use-realtime';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
-import { supabase } from '@/lib/supabase';
 import { activityService } from '@/services/activity-service';
 import {
   expenseService,
@@ -23,7 +24,7 @@ import { createExpenseDeletedNotification, createExpenseNotification, notificati
 import { queryKeys } from '@/services/query-keys';
 import type { Expense, ExpenseSplit, Group, GroupMember, Settlement, User } from '@/types/database';
 import { useFocusEffect } from '@react-navigation/native';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -41,8 +42,6 @@ export default function GroupDetailScreen() {
   const [balances, setBalances] = useState<Map<string, number>>(new Map());
   const [expenseSplits, setExpenseSplits] = useState<ExpenseSplit[]>([]);
   const [settlements, setSettlements] = useState<Settlement[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
   const [expenseModalVisible, setExpenseModalVisible] = useState(false);
   const [isAddingExpense, setIsAddingExpense] = useState(false);
   const [isAddingMember, setIsAddingMember] = useState(false);
@@ -65,84 +64,68 @@ export default function GroupDetailScreen() {
   const currentUserId = user?.id || '';
   const queryClient = useQueryClient();
   const friendsHomeQueryKey = useMemo(() => queryKeys.friends.home(currentUserId), [currentUserId]);
+  const groupDetailQueryKey = useMemo(() => queryKeys.groups.detail(currentUserId, id), [currentUserId, id]);
+  const invalidateGroupDetail = useDebouncedQueryInvalidation(groupDetailQueryKey, 500);
+
+  const {
+    data: groupDetail,
+    error,
+    isLoading,
+    refetch,
+  } = useQuery({
+    queryKey: groupDetailQueryKey,
+    enabled: !!currentUserId && !!id,
+    queryFn: () => groupDetailService.getDetail(currentUserId, id),
+  });
+  const loading = isLoading && !group;
+  const loadError = error ? getFetchErrorMessage(error) : null;
+
+  useEffect(() => {
+    if (groupDetail === undefined) return;
+    if (!groupDetail) {
+      Alert.alert('Error', 'Group not found');
+      router.back();
+      return;
+    }
+
+    setGroup(groupDetail.group);
+    setExpenses(groupDetail.expenses);
+    setMembers(groupDetail.members);
+    setBalances(groupDetail.balances);
+    setAvailableUsers(groupDetail.availableUsers);
+    setFriendshipStatus(groupDetail.friendshipStatus);
+    setExpenseSplits(groupDetail.splits);
+    setSettlements(groupDetail.settlements);
+  }, [groupDetail]);
 
   const loadGroupData = useCallback(async () => {
-    try {
-      setLoadError(null);
-      const detail = await groupDetailService.getDetail(currentUserId, id);
-      if (!detail) {
-        Alert.alert('Error', 'Group not found');
-        router.back();
-        return;
-      }
-      setGroup(detail.group);
-      setExpenses(detail.expenses);
-      setMembers(detail.members);
-      setBalances(detail.balances);
-      setAvailableUsers(detail.availableUsers);
-      setFriendshipStatus(detail.friendshipStatus);
-      setExpenseSplits(detail.splits);
-      setSettlements(detail.settlements);
-    } catch (error) {
-      console.error('Error loading group data:', error);
-      setLoadError(getFetchErrorMessage(error));
-    } finally {
-      setLoading(false);
-    }
-  }, [id, currentUserId]);
+    await refetch();
+  }, [refetch]);
 
-  // Real-time subscriptions
-  useEffect(() => {
-    if (!id) return;
-
-    console.log('[Realtime] Subscribing to group updates:', id);
-
-    const subscription = supabase
-      .channel(`group-${id}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'group_members',
-        },
-        (payload) => {
-          console.log('[Realtime] Group member change detected:', payload);
-          loadGroupData();
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'expenses',
-        },
-        (payload) => {
-          console.log('[Realtime] Expense change detected:', payload);
-          loadGroupData();
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'groups',
-          filter: `id=eq.${id}`,
-        },
-        (payload) => {
-          console.log('[Realtime] Group details change detected:', payload);
-          loadGroupData();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      console.log('[Realtime] Unsubscribing from group updates:', id);
-      supabase.removeChannel(subscription);
-    };
-  }, [id, loadGroupData]);
+  useRealtime({
+    table: 'groups',
+    filter: id ? `id=eq.${id}` : undefined,
+    onChange: invalidateGroupDetail,
+    enabled: !!id,
+  });
+  useRealtime({
+    table: 'group_members',
+    filter: id ? `group_id=eq.${id}` : undefined,
+    onChange: invalidateGroupDetail,
+    enabled: !!id,
+  });
+  useRealtime({
+    table: 'expenses',
+    filter: id ? `group_id=eq.${id}` : undefined,
+    onChange: invalidateGroupDetail,
+    enabled: !!id,
+  });
+  useRealtime({
+    table: 'settlements',
+    filter: id ? `group_id=eq.${id}` : undefined,
+    onChange: invalidateGroupDetail,
+    enabled: !!id,
+  });
 
   useFocusEffect(
     useCallback(() => {

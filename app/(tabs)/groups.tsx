@@ -4,58 +4,48 @@ import { AsyncErrorState } from '@/components/ui/async-error-state';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { LoadingState } from '@/components/ui/loading-state';
 import { useAuth } from '@/contexts/auth-context-otp';
+import { useDebouncedQueryInvalidation } from '@/hooks/use-debounced-query-invalidation';
+import { useRealtime } from '@/hooks/use-realtime';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
-import { supabase } from '@/lib/supabase';
 import { calculateBalances, groupService, initDatabase, userService } from '@/services/api';
-import { CACHE_KEYS, cacheService } from '@/services/cache-service';
+import { queryKeys } from '@/services/query-keys';
 import type { GroupWithMembers } from '@/types/database';
 import { useFocusEffect } from '@react-navigation/native';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Animated, FlatList, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 export default function GroupsScreen() {
   const { colors, gradients, isDark } = useThemeColors();
-  const [groups, setGroups] = useState<GroupWithMembers[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [loadError, setLoadError] = useState<string | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
   const [newGroupDescription, setNewGroupDescription] = useState('');
   const { user } = useAuth();
   const currentUserId = user?.id || '';
-  const hasLoadedOnce = useRef(false);
+  const queryClient = useQueryClient();
+  const groupsQueryKey = useMemo(() => queryKeys.groups.list(currentUserId), [currentUserId]);
+  const invalidateGroups = useDebouncedQueryInvalidation(groupsQueryKey, 500);
 
   // Animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
 
-  const loadGroups = useCallback(async (skipCache = false) => {
-    if (!currentUserId) return;
-    try {
-      setLoadError(null);
-      // 1. Load from cache first (instant)
-      if (!skipCache) {
-        const cached = await cacheService.get<GroupWithMembers[]>(CACHE_KEYS.GROUPS_LIST);
-        if (cached && cached.length > 0) {
-          setGroups(cached);
-          hasLoadedOnce.current = true;
-        }
-      }
-
-      // Only show loader if we don't have data yet
-      if (!hasLoadedOnce.current) {
-        setLoading(true);
-        hasLoadedOnce.current = true;
-      }
+  const {
+    data: groups = [],
+    error,
+    isLoading,
+    refetch,
+  } = useQuery({
+    queryKey: groupsQueryKey,
+    enabled: !!currentUserId,
+    queryFn: async () => {
       await initDatabase();
-
-      // 2. Fetch fresh data from API
       const allGroups = await groupService.getUserGroups(currentUserId);
 
-      const groupsWithData = await Promise.all(
+      return Promise.all(
         allGroups.map(async (group) => {
           const balances = await calculateBalances(group.id);
           const yourBalance = balances.get(currentUserId) || 0;
@@ -66,17 +56,14 @@ export default function GroupsScreen() {
           };
         })
       );
+    },
+  });
+  const loading = isLoading && groups.length === 0;
+  const loadError = error ? getFetchErrorMessage(error) : null;
 
-      // 3. Update state and cache
-      setGroups(groupsWithData);
-      await cacheService.set(CACHE_KEYS.GROUPS_LIST, groupsWithData);
-    } catch (error) {
-      console.error('Error loading groups:', error);
-      setLoadError(getFetchErrorMessage(error));
-    } finally {
-      setLoading(false);
-    }
-  }, [currentUserId]);
+  const loadGroups = useCallback(async () => {
+    await refetch();
+  }, [refetch]);
 
   useFocusEffect(
     useCallback(() => {
@@ -101,36 +88,12 @@ export default function GroupsScreen() {
     }
   }, [fadeAnim, loading, slideAnim]);
 
-  // Real-time subscriptions for group list
-  useEffect(() => {
-    if (!currentUserId) return;
-
-    console.log('[Realtime] Subscribing to membership updates for user:', currentUserId);
-
-    const subscription = supabase
-      .channel(`user-groups-${currentUserId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'group_members',
-          // Removed filter to rely on RLS and debug connectivity
-        },
-        (payload) => {
-          console.log('[Realtime] Membership change detected:', payload);
-          // Temporary Alert to verify event receipt
-          // Alert.alert('Debug', 'Realtime update received!'); 
-          loadGroups();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      console.log('[Realtime] Unsubscribing from membership updates');
-      supabase.removeChannel(subscription);
-    };
-  }, [currentUserId, loadGroups]);
+  useRealtime({
+    table: 'group_members',
+    filter: currentUserId ? `user_id=eq.${currentUserId}` : undefined,
+    onChange: invalidateGroups,
+    enabled: !!currentUserId,
+  });
 
   const renderGroupItem = useCallback(
     ({ item, index }: { item: GroupWithMembers; index: number }) => (
@@ -165,7 +128,7 @@ export default function GroupsScreen() {
       setNewGroupName('');
       setNewGroupDescription('');
       setModalVisible(false);
-      loadGroups();
+      queryClient.invalidateQueries({ queryKey: groupsQueryKey });
     } catch (error) {
       console.error('Error creating group:', error);
       Alert.alert('Error', 'Failed to create group');
@@ -197,7 +160,7 @@ export default function GroupsScreen() {
       ) : loadError ? (
         <AsyncErrorState
           message={loadError}
-          onRetry={() => loadGroups(true)}
+          onRetry={loadGroups}
           title="Couldn't load groups"
         />
       ) : groups.length === 0 ? (
