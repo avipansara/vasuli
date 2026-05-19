@@ -23,6 +23,7 @@ const MAPPING: IconMapping = {
   'xmark.circle.fill': 'cancel',
   'arrow.left': 'arrow-back',
   'arrow.right': 'arrow-forward',
+  'magnifyingglass': 'search',
   
   // Actions
   'plus': 'add',

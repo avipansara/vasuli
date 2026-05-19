@@ -11,6 +11,7 @@ import { expenseService, groupService, initDatabase, userService } from '@/servi
 import { createExpenseNotification, notificationService } from '@/services/notification-service';
 import { queryKeys } from '@/services/query-keys';
 import type { Expense, Group, User } from '@/types/database';
+import { filterFriendsForExpenseSearch } from '@/utils/friend-search';
 import { useQueryClient } from '@tanstack/react-query';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -62,6 +63,7 @@ export default function AddExpenseScreen() {
   const [splitType, setSplitType] = useState<SplitType>(preselectedFriendId ? SplitType.FRIENDS : (preselectedGroupId ? SplitType.GROUP : SplitType.GROUP));
   const [groups, setGroups] = useState<Group[]>([]);
   const [friends, setFriends] = useState<User[]>([]);
+  const [friendSearchQuery, setFriendSearchQuery] = useState('');
   const [selectedGroupId, setSelectedGroupId] = useState(preselectedGroupId || '');
   const [selectedFriendIds, setSelectedFriendIds] = useState<string[]>(preselectedFriendId ? [preselectedFriendId] : []);
   const [groupMembers, setGroupMembers] = useState<string[]>([]);
@@ -81,6 +83,14 @@ export default function AddExpenseScreen() {
   // Input refs for focus management
   const amountInputRef = useRef<TextInput>(null);
   const descriptionInputRef = useRef<TextInput>(null);
+
+  const visibleFriends = useMemo(() => {
+    if (preselectedFriendId) {
+      return friends.filter(friend => friend.id === preselectedFriendId);
+    }
+
+    return filterFriendsForExpenseSearch(friends, friendSearchQuery);
+  }, [friends, friendSearchQuery, preselectedFriendId]);
 
   const loadData = useCallback(async () => {
     if (!currentUserId) return;
@@ -542,7 +552,10 @@ export default function AddExpenseScreen() {
                     splitType === SplitType.GROUP && styles.toggleButtonActive,
                     !isDark && splitType !== SplitType.GROUP && { backgroundColor: colors.card, borderColor: colors.border },
                   ]}
-                  onPress={() => setSplitType(SplitType.GROUP)}>
+                  onPress={() => {
+                    setFriendSearchQuery('');
+                    setSplitType(SplitType.GROUP);
+                  }}>
                   <IconSymbol
                     name="person.3.fill"
                     size={18}
@@ -709,11 +722,70 @@ export default function AddExpenseScreen() {
                       No friends yet
                     </ThemedText>
                   </View>
+                ) : visibleFriends.length === 0 ? (
+                  <>
+                    {!preselectedFriendId && (
+                      <View style={[styles.searchContainer, {
+                        backgroundColor: isDark ? 'rgba(30, 41, 59, 0.6)' : 'rgba(241, 245, 249, 0.9)',
+                        borderColor: isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(34, 197, 94, 0.2)',
+                      }]}>
+                        <IconSymbol name="magnifyingglass" size={18} color={isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'} />
+                        <TextInput
+                          style={[styles.searchInput, { color: isDark ? '#fff' : colors.text }]}
+                          value={friendSearchQuery}
+                          onChangeText={setFriendSearchQuery}
+                          placeholder="Search friends"
+                          placeholderTextColor={isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'}
+                          autoCapitalize="none"
+                          autoCorrect={false}
+                          returnKeyType="search"
+                        />
+                        {friendSearchQuery.length > 0 && (
+                          <TouchableOpacity
+                            accessibilityLabel="Clear friend search"
+                            onPress={() => setFriendSearchQuery('')}
+                            style={styles.clearSearchButton}>
+                            <IconSymbol name="xmark.circle.fill" size={18} color={isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.35)'} />
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    )}
+                    <View style={styles.emptyState}>
+                      <IconSymbol name="magnifyingglass" size={32} color={isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)'} />
+                      <ThemedText style={[styles.emptyText, { color: colors.textSecondary }]}>
+                        No matching friends
+                      </ThemedText>
+                    </View>
+                  </>
                 ) : (
-                  friends.map(friend => {
-                    // If preselected from friend screen, only show that friend and make it non-interactive
-                    if (preselectedFriendId && friend.id !== preselectedFriendId) return null;
-
+                  <>
+                    {!preselectedFriendId && (
+                      <View style={[styles.searchContainer, {
+                        backgroundColor: isDark ? 'rgba(30, 41, 59, 0.6)' : 'rgba(241, 245, 249, 0.9)',
+                        borderColor: isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(34, 197, 94, 0.2)',
+                      }]}>
+                        <IconSymbol name="magnifyingglass" size={18} color={isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'} />
+                        <TextInput
+                          style={[styles.searchInput, { color: isDark ? '#fff' : colors.text }]}
+                          value={friendSearchQuery}
+                          onChangeText={setFriendSearchQuery}
+                          placeholder="Search friends"
+                          placeholderTextColor={isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'}
+                          autoCapitalize="none"
+                          autoCorrect={false}
+                          returnKeyType="search"
+                        />
+                        {friendSearchQuery.length > 0 && (
+                          <TouchableOpacity
+                            accessibilityLabel="Clear friend search"
+                            onPress={() => setFriendSearchQuery('')}
+                            style={styles.clearSearchButton}>
+                            <IconSymbol name="xmark.circle.fill" size={18} color={isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.35)'} />
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    )}
+                    {visibleFriends.map(friend => {
                     const isSelected = selectedFriendIds.includes(friend.id);
                     return (
                       <TouchableOpacity
@@ -749,7 +821,8 @@ export default function AddExpenseScreen() {
                         )}
                       </TouchableOpacity>
                     );
-                  })
+                    })}
+                  </>
                 )}
               </View>
             )}
@@ -1210,6 +1283,25 @@ const styles = StyleSheet.create({
   },
   optionsList: {
     gap: 10,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    gap: 10,
+  },
+  searchInput: {
+    flex: 1,
+    height: 46,
+    fontSize: 15,
+  },
+  clearSearchButton: {
+    width: 32,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   optionCard: {
     flexDirection: 'row',
