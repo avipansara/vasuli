@@ -1,9 +1,11 @@
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol, IconSymbolName } from '@/components/ui/icon-symbol';
 import { useThemeColors } from '@/hooks/use-theme-colors';
+import { ActivityType } from '@/types/database';
 import type { Activity as DbActivity } from '@/types/database';
+import { router } from 'expo-router';
 import React, { memo } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, TouchableOpacity, View } from 'react-native';
 
 interface ActivityItem {
   id: string;
@@ -48,7 +50,8 @@ function areActivityCardPropsEqual(prev: ActivityCardProps, next: ActivityCardPr
     a.description === b.description &&
     a.amount === b.amount &&
     a.createdAt === b.createdAt &&
-    a.groupName === b.groupName
+    a.groupName === b.groupName &&
+    a.targetId === b.targetId
   );
 }
 
@@ -64,6 +67,9 @@ function ActivityCardInner({ activity }: ActivityCardProps) {
   });
 
   const isDeleted = item.isDeleted || item.description.startsWith('Deleted:');
+  const canOpenDetails =
+    !isDeleted &&
+    (activity.type === ActivityType.EXPENSE_CREATED || activity.type === ActivityType.EXPENSE_UPDATED);
 
   const iconName: IconSymbolName =
     isDeleted
@@ -92,12 +98,8 @@ function ActivityCardInner({ activity }: ActivityCardProps) {
           ? 'rgba(16, 185, 129, 0.15)'
           : 'rgba(167, 139, 250, 0.15)';
 
-  return (
-    <View
-      style={[
-        styles.card,
-        !isDark && { backgroundColor: colors.card, borderColor: colors.border },
-      ]}>
+  const cardContent = (
+    <>
       <View style={[styles.icon, { backgroundColor: iconBgColor }]}>
         <IconSymbol size={20} name={iconName} color={iconColor} />
       </View>
@@ -136,6 +138,31 @@ function ActivityCardInner({ activity }: ActivityCardProps) {
           {item.type === 'settlement' ? '+' : ''}${item.amount.toFixed(2)}
         </ThemedText>
       )}
+    </>
+  );
+
+  if (canOpenDetails) {
+    return (
+      <TouchableOpacity
+        activeOpacity={0.75}
+        onPress={() => router.push(`/expense-detail/${activity.targetId}` as any)}
+        testID={`activity-${activity.id}`}
+        style={[
+          styles.card,
+          !isDark && { backgroundColor: colors.card, borderColor: colors.border },
+        ]}>
+        {cardContent}
+      </TouchableOpacity>
+    );
+  }
+
+  return (
+    <View
+      style={[
+        styles.card,
+        !isDark && { backgroundColor: colors.card, borderColor: colors.border },
+      ]}>
+      {cardContent}
     </View>
   );
 }

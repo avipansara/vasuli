@@ -728,38 +728,44 @@ export default function FriendDetailScreen() {
                       transform: [{ translateY: Animated.multiply(slideAnim, new Animated.Value((index + 1) * 0.2)) }],
                     }
                   ]}>
-                  <View style={[
-                    styles.expenseIcon,
-                    { backgroundColor: item.paidBy === currentUserId ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)' }
-                  ]}>
-                    <IconSymbol
-                      size={18}
-                      name={item.paidBy === currentUserId ? 'arrow.up.right' : 'arrow.down.left'}
-                      color={item.paidBy === currentUserId ? '#10b981' : '#ef4444'}
-                    />
-                  </View>
-                  <View style={styles.expenseInfo}>
-                    <ThemedText style={[styles.expenseDescription, !isDark && { color: colors.text }]}>
-                      {item.description}
-                    </ThemedText>
-                    <ThemedText style={[styles.expenseDate, !isDark && { color: colors.textSecondary }]}>
-                      {formatDate(item.date)} • {item.paidByName} paid
-                    </ThemedText>
-                  </View>
-                  <View style={styles.expenseAmounts}>
-                    <ThemedText style={[styles.expenseTotal, !isDark && { color: colors.textSecondary }]}>
-                      ${item.amount.toFixed(2)}
-                    </ThemedText>
-                    <ThemedText
-                      style={[
-                        styles.expenseShare,
-                        { color: item.paidBy === currentUserId ? '#10b981' : '#ef4444' },
-                      ]}>
-                      {item.paidBy === currentUserId
-                        ? `+$${item.friendShare.toFixed(2)}`
-                        : `-$${item.yourShare.toFixed(2)}`}
-                    </ThemedText>
-                  </View>
+                  <TouchableOpacity
+                    activeOpacity={0.75}
+                    onPress={() => router.push(`/expense-detail/${item.id}` as any)}
+                    style={styles.expenseCardContent}
+                    testID={`friend-expense-${item.id}`}>
+                    <View style={[
+                      styles.expenseIcon,
+                      { backgroundColor: item.paidBy === currentUserId ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)' }
+                    ]}>
+                      <IconSymbol
+                        size={18}
+                        name={item.paidBy === currentUserId ? 'arrow.up.right' : 'arrow.down.left'}
+                        color={item.paidBy === currentUserId ? '#10b981' : '#ef4444'}
+                      />
+                    </View>
+                    <View style={styles.expenseInfo}>
+                      <ThemedText style={[styles.expenseDescription, !isDark && { color: colors.text }]}>
+                        {item.description}
+                      </ThemedText>
+                      <ThemedText style={[styles.expenseDate, !isDark && { color: colors.textSecondary }]}>
+                        {formatDate(item.date)} • {item.paidByName} paid
+                      </ThemedText>
+                    </View>
+                    <View style={styles.expenseAmounts}>
+                      <ThemedText style={[styles.expenseTotal, !isDark && { color: colors.textSecondary }]}>
+                        ${item.amount.toFixed(2)}
+                      </ThemedText>
+                      <ThemedText
+                        style={[
+                          styles.expenseShare,
+                          { color: item.paidBy === currentUserId ? '#10b981' : '#ef4444' },
+                        ]}>
+                        {item.paidBy === currentUserId
+                          ? `+$${item.friendShare.toFixed(2)}`
+                          : `-$${item.yourShare.toFixed(2)}`}
+                      </ThemedText>
+                    </View>
+                  </TouchableOpacity>
                 </Animated.View>
               </Swipeable>
             ))
@@ -1055,12 +1061,14 @@ const styles = StyleSheet.create({
     paddingBottom: 100,
   },
   expenseCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
     padding: 14,
     marginBottom: 10,
     borderRadius: 14,
     backgroundColor: 'rgba(20, 35, 38, 0.6)',
+  },
+  expenseCardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   expenseIcon: {
     width: 40,
