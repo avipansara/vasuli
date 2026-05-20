@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildFriendshipStatus, buildGroupDetailData, calculateGroupBalances } from '@/services/group-detail-service';
+import { isGroupSettled } from '@/services/group-balance';
 import type { Expense, ExpenseSplit, Group, GroupMember, Settlement, User } from '@/types/database';
 import type { Friendship } from '@/services/friendship-service';
 
@@ -81,6 +82,50 @@ describe('group detail builders', () => {
     expect(balances.get(currentUserId)).toBe(50);
     expect(balances.get('friend-a')).toBe(-20);
     expect(balances.get('friend-b')).toBe(-30);
+  });
+
+  it('detects a group as settled when settlements clear every balance', () => {
+    const expenses = [expense('meal', currentUserId, 90)];
+    const splits = [
+      split('s1', 'meal', currentUserId, 30),
+      split('s2', 'meal', 'friend-a', 30),
+      split('s3', 'meal', 'friend-b', 30),
+    ];
+    const settlements = [
+      settlement('settle-a', 'friend-a', currentUserId, 30),
+      settlement('settle-b', 'friend-b', currentUserId, 30),
+    ];
+
+    expect(isGroupSettled(expenses, splits, settlements)).toBe(true);
+  });
+
+  it('detects a group as unsettled while any member still has a balance', () => {
+    const expenses = [expense('meal', currentUserId, 90)];
+    const splits = [
+      split('s1', 'meal', currentUserId, 30),
+      split('s2', 'meal', 'friend-a', 30),
+      split('s3', 'meal', 'friend-b', 30),
+    ];
+    const settlements = [
+      settlement('settle-a', 'friend-a', currentUserId, 30),
+    ];
+
+    expect(isGroupSettled(expenses, splits, settlements)).toBe(false);
+  });
+
+  it('treats tiny rounding balances as settled', () => {
+    const expenses = [expense('meal', currentUserId, 100)];
+    const splits = [
+      split('s1', 'meal', currentUserId, 33.333),
+      split('s2', 'meal', 'friend-a', 33.333),
+      split('s3', 'meal', 'friend-b', 33.333),
+    ];
+    const settlements = [
+      settlement('settle-a', 'friend-a', currentUserId, 33.333),
+      settlement('settle-b', 'friend-b', currentUserId, 33.333),
+    ];
+
+    expect(isGroupSettled(expenses, splits, settlements)).toBe(true);
   });
 
   it('builds hydrated group detail data from batched inputs', () => {

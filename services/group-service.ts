@@ -1,5 +1,8 @@
 import { supabase } from '@/lib/supabase';
 import type { Group, GroupMember } from '@/types/database';
+import { isGroupSettled } from './group-balance';
+import { expenseService } from './expense-service';
+import { settlementService } from './settlement-service';
 
 export const groupService = {
   async create(group: Omit<Group, 'id' | 'createdAt' | 'updatedAt'>): Promise<Group> {
@@ -106,6 +109,16 @@ export const groupService = {
   },
 
   async delete(id: string): Promise<void> {
+    const expenses = await expenseService.getByGroup(id);
+    const [splits, settlements] = await Promise.all([
+      expenseService.getSplitsForExpenses(expenses.map(expense => expense.id)),
+      settlementService.getByGroup(id),
+    ]);
+
+    if (!isGroupSettled(expenses, splits, settlements)) {
+      throw new Error('Group cannot be deleted until all balances are settled.');
+    }
+
     const { error } = await supabase
       .from('groups')
       .delete()
