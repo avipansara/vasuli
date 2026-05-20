@@ -19,7 +19,7 @@ import {
   userService
 } from '@/services/api';
 import { friendshipService } from '@/services/friendship-service';
-import { calculateGroupBalances } from '@/services/group-detail-service';
+import { areGroupBalancesSettled, calculateGroupBalances } from '@/services/group-balance';
 import { createExpenseDeletedNotification, createExpenseNotification, notificationService } from '@/services/notification-service';
 import { queryKeys } from '@/services/query-keys';
 import type { Expense, ExpenseSplit, Group, GroupMember, Settlement, User } from '@/types/database';
@@ -46,6 +46,7 @@ export default function GroupDetailScreen() {
   const [isAddingExpense, setIsAddingExpense] = useState(false);
   const [isAddingMember, setIsAddingMember] = useState(false);
   const [deletingExpenseId, setDeletingExpenseId] = useState<string | null>(null);
+  const [isDeletingGroup, setIsDeletingGroup] = useState(false);
   const [removingMemberId, setRemovingMemberId] = useState<string | null>(null);
   const expenseSwipeableRefs = useRef<Map<string, Swipeable>>(new Map());
   const memberSwipeableRefs = useRef<Map<string, Swipeable>>(new Map());
@@ -266,6 +267,45 @@ export default function GroupDetailScreen() {
 
   function handleSettleUp() {
     router.push(`/group/settle/${id}`);
+  }
+
+  function handleDeleteGroup() {
+    if (isDeletingGroup || !group) return;
+
+    if (!areGroupBalancesSettled(balances)) {
+      Alert.alert(
+        'Settle Group First',
+        'This group still has outstanding balances. Settle all expenses before deleting it.'
+      );
+      return;
+    }
+
+    Alert.alert(
+      'Delete Group',
+      `Delete "${group.name}"? This will remove the group and its expenses for everyone.`,
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setIsDeletingGroup(true);
+              await groupService.delete(id);
+              router.replace('/groups' as any);
+            } catch (error) {
+              console.error('Error deleting group:', error);
+              Alert.alert('Error', error instanceof Error ? error.message : 'Failed to delete group');
+            } finally {
+              setIsDeletingGroup(false);
+            }
+          },
+        },
+      ]
+    );
   }
 
   function handleEditExpense(expenseId: string) {
@@ -675,6 +715,7 @@ export default function GroupDetailScreen() {
   }
 
   const currentUserBalance = balances.get(currentUserId) || 0;
+  const groupIsSettled = areGroupBalancesSettled(balances);
   const balanceColor = currentUserBalance > 0 ? '#10b981' : currentUserBalance < 0 ? '#ef4444' : '#2DD4BF';
   const balanceGradient = currentUserBalance > 0
     ? ['rgba(16, 185, 129, 0.2)', 'rgba(16, 185, 129, 0.05)']
@@ -810,6 +851,29 @@ export default function GroupDetailScreen() {
               <ThemedText style={styles.quickActionText}>Settle Up</ThemedText>
             </LinearGradient>
           </TouchableOpacity>
+        </View>
+
+        <View style={styles.deleteGroupSection}>
+          <TouchableOpacity
+            activeOpacity={0.75}
+            onPress={handleDeleteGroup}
+            testID="delete-group-button"
+            style={[
+              styles.deleteGroupButton,
+              !groupIsSettled && styles.deleteGroupButtonUnavailable,
+              isDeletingGroup && styles.deleteGroupButtonUnavailable,
+              !isDark && { backgroundColor: 'rgba(239, 68, 68, 0.08)', borderColor: 'rgba(239, 68, 68, 0.28)' },
+            ]}>
+            <IconSymbol size={18} name="trash" color="#ef4444" />
+            <ThemedText style={styles.deleteGroupButtonText}>
+              {isDeletingGroup ? 'Deleting...' : 'Delete Group'}
+            </ThemedText>
+          </TouchableOpacity>
+          {!groupIsSettled && (
+            <ThemedText style={[styles.deleteGroupHint, !isDark && { color: colors.textSecondary }]}>
+              Available after all member balances are settled.
+            </ThemedText>
+          )}
         </View>
 
         {/* Members Section */}
@@ -1097,6 +1161,35 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '600',
     fontSize: 14,
+  },
+  deleteGroupSection: {
+    paddingHorizontal: 16,
+    marginBottom: 20,
+    gap: 8,
+  },
+  deleteGroupButton: {
+    minHeight: 48,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.35)',
+    backgroundColor: 'rgba(239, 68, 68, 0.12)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  deleteGroupButtonUnavailable: {
+    opacity: 0.55,
+  },
+  deleteGroupButtonText: {
+    color: '#ef4444',
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  deleteGroupHint: {
+    fontSize: 12,
+    opacity: 0.7,
+    textAlign: 'center',
   },
   section: {
     paddingHorizontal: 16,

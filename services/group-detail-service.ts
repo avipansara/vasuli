@@ -1,4 +1,5 @@
 import type { Expense, ExpenseSplit, Group, GroupMember, Settlement, User } from '@/types/database';
+import { calculateGroupBalances } from './group-balance';
 import type { Friendship } from './friendship-service';
 import { expenseService } from './expense-service';
 import { friendshipService } from './friendship-service';
@@ -27,41 +28,7 @@ export interface GroupDetailData {
   settlements: Settlement[];
 }
 
-export function calculateGroupBalances(
-  expenses: Expense[],
-  splits: ExpenseSplit[],
-  settlements: Settlement[]
-): Map<string, number> {
-  const balances = new Map<string, number>();
-  const splitsByExpenseId = new Map<string, ExpenseSplit[]>();
-
-  for (const split of splits) {
-    const expenseSplits = splitsByExpenseId.get(split.expenseId) ?? [];
-    expenseSplits.push(split);
-    splitsByExpenseId.set(split.expenseId, expenseSplits);
-  }
-
-  for (const expense of expenses) {
-    balances.set(expense.paidBy, (balances.get(expense.paidBy) ?? 0) + expense.amount);
-
-    for (const split of splitsByExpenseId.get(expense.id) ?? []) {
-      balances.set(split.userId, (balances.get(split.userId) ?? 0) - split.amount);
-    }
-  }
-
-  for (const settlement of settlements) {
-    balances.set(settlement.fromUserId, (balances.get(settlement.fromUserId) ?? 0) + settlement.amount);
-    balances.set(settlement.toUserId, (balances.get(settlement.toUserId) ?? 0) - settlement.amount);
-  }
-
-  for (const [userId, balance] of balances) {
-    if (Math.abs(balance) < 0.01) {
-      balances.set(userId, 0);
-    }
-  }
-
-  return balances;
-}
+export { calculateGroupBalances };
 
 export function buildFriendshipStatus(
   currentUserId: string,
