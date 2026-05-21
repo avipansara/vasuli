@@ -12,7 +12,7 @@ import { isEmailValid, normalizeEmail } from '@/utils/validation';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState, useRef } from 'react';
 import {
   Alert,
   Animated,
@@ -74,8 +74,8 @@ export default function AddFriendScreen() {
   }
 
   // Animations
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(30)).current;
+  const [fadeAnim] = useState(() => new Animated.Value(0));
+  const [slideAnim] = useState(() => new Animated.Value(30));
 
   // Input refs for focus management
   const nameInputRef = useRef<TextInput>(null);

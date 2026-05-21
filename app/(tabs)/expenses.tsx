@@ -9,7 +9,7 @@ import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { expenseService, groupService, initDatabase } from '@/services/api';
 import { queryKeys } from '@/services/query-keys';
 import type { Expense, Group } from '@/types/database';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect } from 'expo-router/react-navigation';
 import { useQuery } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';

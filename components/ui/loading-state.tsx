@@ -1,7 +1,7 @@
 import { ThemedText } from '@/components/themed-text';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useEffect, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { Animated, Easing, StyleSheet, View } from 'react-native';
 
 interface LoadingStateProps {
@@ -12,15 +12,15 @@ export function LoadingState({ message = 'Loading...' }: LoadingStateProps) {
   const { gradients, colors, isDark } = useThemeColors();
   
   // Skateboard character animation values
-  const skateX = useRef(new Animated.Value(0)).current;
-  const bounceY = useRef(new Animated.Value(0)).current;
-  const bodyRotate = useRef(new Animated.Value(12)).current;
-  const boardRotate = useRef(new Animated.Value(0)).current;
-  const lineAnim = useRef(new Animated.Value(0)).current;
-  const orb1Anim = useRef(new Animated.Value(0)).current;
-  const orb2Anim = useRef(new Animated.Value(0)).current;
-  const orb3Anim = useRef(new Animated.Value(0)).current;
-  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const [skateX] = useState(() => new Animated.Value(0));
+  const [bounceY] = useState(() => new Animated.Value(0));
+  const [bodyRotate] = useState(() => new Animated.Value(12));
+  const [boardRotate] = useState(() => new Animated.Value(0));
+  const [lineAnim] = useState(() => new Animated.Value(0));
+  const [orb1Anim] = useState(() => new Animated.Value(0));
+  const [orb2Anim] = useState(() => new Animated.Value(0));
+  const [orb3Anim] = useState(() => new Animated.Value(0));
+  const [fadeAnim] = useState(() => new Animated.Value(0));
 
   useEffect(() => {
     // Skateboard trick animation sequence
@@ -387,7 +387,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   orbContainer: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     overflow: 'hidden',
   },
   orb: {

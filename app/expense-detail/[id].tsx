@@ -10,7 +10,7 @@ import { activityService } from '@/services/activity-service';
 import { expenseService, groupService, userService } from '@/services/api';
 import { createExpenseDeletedNotification, notificationService } from '@/services/notification-service';
 import type { Activity, Expense, ExpenseSplit, Group, User } from '@/types/database';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect } from 'expo-router/react-navigation';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
@@ -43,9 +43,9 @@ export default function ExpenseDetailScreen() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(30)).current;
-  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const [fadeAnim] = useState(() => new Animated.Value(0));
+  const [slideAnim] = useState(() => new Animated.Value(30));
+  const [pulseAnim] = useState(() => new Animated.Value(1));
   const hasLoadedOnce = useRef(false);
 
   const loadExpenseDetails = useCallback(async () => {
@@ -575,7 +575,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   amountGradient: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
   },
   amountContent: {
     padding: 32,
@@ -670,7 +670,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   summaryGradient: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
   },
   summaryContent: {
     padding: 24,
@@ -691,7 +691,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   orbContainer: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     overflow: 'hidden',
   },
   orb: {

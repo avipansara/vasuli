@@ -8,7 +8,7 @@ import { useThemeColors } from '@/hooks/use-theme-colors';
 import { initDatabase, userService } from '@/services/api';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import {
     Alert,
     Animated,
@@ -26,8 +26,8 @@ export default function EditProfileScreen() {
   const [loading, setLoading] = useState(false);
 
   // Animations
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(30)).current;
+  const [fadeAnim] = useState(() => new Animated.Value(0));
+  const [slideAnim] = useState(() => new Animated.Value(30));
 
   // Input refs
   const nameInputRef = useRef<any>(null);

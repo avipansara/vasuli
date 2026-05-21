@@ -14,7 +14,7 @@ import type { Expense, ExpenseSplit, Group, User } from '@/types/database';
 import { useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import {
   Alert,
   Animated,
@@ -77,8 +77,8 @@ export default function EditExpenseScreen() {
   const [originalSplits, setOriginalSplits] = useState<ExpenseSplit[]>([]);
 
   // Animations
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(30)).current;
+  const [fadeAnim] = useState(() => new Animated.Value(0));
+  const [slideAnim] = useState(() => new Animated.Value(30));
 
   // Input refs
   const amountInputRef = useRef<TextInput>(null);
