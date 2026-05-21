@@ -11,11 +11,11 @@ import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { calculateBalances, groupService, initDatabase, userService } from '@/services/api';
 import { queryKeys } from '@/services/query-keys';
 import type { GroupWithMembers } from '@/types/database';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect } from 'expo-router/react-navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Animated, FlatList, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 export default function GroupsScreen() {
@@ -30,8 +30,8 @@ export default function GroupsScreen() {
   const invalidateGroups = useDebouncedQueryInvalidation(groupsQueryKey, 500);
 
   // Animations
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(30)).current;
+  const [fadeAnim] = useState(() => new Animated.Value(0));
+  const [slideAnim] = useState(() => new Animated.Value(30));
 
   const {
     data: groups = [],

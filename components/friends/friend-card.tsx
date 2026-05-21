@@ -17,6 +17,12 @@ interface FriendCardProps {
   onDelete?: (friend: UserWithBalance) => void;
 }
 
+const SETTLED_BALANCE_THRESHOLD = 0.01;
+
+function normalizeDisplayBalance(balance: number) {
+  return Math.abs(balance) < SETTLED_BALANCE_THRESHOLD ? 0 : balance;
+}
+
 function areFriendCardPropsEqual(prev: FriendCardProps, next: FriendCardProps): boolean {
   if (prev.onPress !== next.onPress || prev.onDelete !== next.onDelete) {
     return false;
@@ -44,7 +50,7 @@ function areFriendCardPropsEqual(prev: FriendCardProps, next: FriendCardProps): 
 
 function FriendCardInner({ friend, onPress, onDelete }: FriendCardProps) {
   const { colors, isDark } = useThemeColors();
-  const balance = friend.balance;
+  const balance = normalizeDisplayBalance(friend.balance);
   const balanceColor =
     balance > 0
       ? colors.success

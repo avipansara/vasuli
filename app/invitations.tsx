@@ -11,7 +11,7 @@ import { invitationService } from '@/services/invitation-service';
 import { userService } from '@/services/user-service';
 import { normalizeEmail } from '@/utils/validation';
 import type { Invitation } from '@/types/database';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect } from 'expo-router/react-navigation';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, Stack } from 'expo-router';

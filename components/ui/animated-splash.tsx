@@ -1,6 +1,6 @@
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useEffect, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { Animated, Dimensions, Easing, StyleSheet, View } from 'react-native';
 
 const { width, height } = Dimensions.get('window');
@@ -9,43 +9,43 @@ export function AnimatedSplash() {
   const { isDark } = useThemeColors();
 
   // Avatar animations
-  const avatar1X = useRef(new Animated.Value(-width / 2)).current;
-  const avatar2X = useRef(new Animated.Value(width / 2)).current;
-  const avatar1Opacity = useRef(new Animated.Value(0)).current;
-  const avatar2Opacity = useRef(new Animated.Value(0)).current;
-  const avatar1Pulse = useRef(new Animated.Value(1)).current;
-  const avatar2Pulse = useRef(new Animated.Value(1)).current;
+  const [avatar1X] = useState(() => new Animated.Value(-width / 2));
+  const [avatar2X] = useState(() => new Animated.Value(width / 2));
+  const [avatar1Opacity] = useState(() => new Animated.Value(0));
+  const [avatar2Opacity] = useState(() => new Animated.Value(0));
+  const [avatar1Pulse] = useState(() => new Animated.Value(1));
+  const [avatar2Pulse] = useState(() => new Animated.Value(1));
 
   // Central money icon
-  const moneyScale = useRef(new Animated.Value(0)).current;
-  const moneyOpacity = useRef(new Animated.Value(0)).current;
-  const moneyRotate = useRef(new Animated.Value(0)).current;
+  const [moneyScale] = useState(() => new Animated.Value(0));
+  const [moneyOpacity] = useState(() => new Animated.Value(0));
+  const [moneyRotate] = useState(() => new Animated.Value(0));
 
   // Splitting coins
-  const coin1X = useRef(new Animated.Value(0)).current;
-  const coin1Y = useRef(new Animated.Value(0)).current;
-  const coin1Opacity = useRef(new Animated.Value(0)).current;
-  const coin1Scale = useRef(new Animated.Value(1)).current;
+  const [coin1X] = useState(() => new Animated.Value(0));
+  const [coin1Y] = useState(() => new Animated.Value(0));
+  const [coin1Opacity] = useState(() => new Animated.Value(0));
+  const [coin1Scale] = useState(() => new Animated.Value(1));
 
-  const coin2X = useRef(new Animated.Value(0)).current;
-  const coin2Y = useRef(new Animated.Value(0)).current;
-  const coin2Opacity = useRef(new Animated.Value(0)).current;
-  const coin2Scale = useRef(new Animated.Value(1)).current;
+  const [coin2X] = useState(() => new Animated.Value(0));
+  const [coin2Y] = useState(() => new Animated.Value(0));
+  const [coin2Opacity] = useState(() => new Animated.Value(0));
+  const [coin2Scale] = useState(() => new Animated.Value(1));
 
   // Text animations
-  const textOpacity = useRef(new Animated.Value(0)).current;
-  const textSlide = useRef(new Animated.Value(30)).current;
+  const [textOpacity] = useState(() => new Animated.Value(0));
+  const [textSlide] = useState(() => new Animated.Value(30));
 
   // Background particles
-  const particle1Y = useRef(new Animated.Value(0)).current;
-  const particle1Opacity = useRef(new Animated.Value(0)).current;
-  const particle2Y = useRef(new Animated.Value(0)).current;
-  const particle2Opacity = useRef(new Animated.Value(0)).current;
-  const particle3Y = useRef(new Animated.Value(0)).current;
-  const particle3Opacity = useRef(new Animated.Value(0)).current;
+  const [particle1Y] = useState(() => new Animated.Value(0));
+  const [particle1Opacity] = useState(() => new Animated.Value(0));
+  const [particle2Y] = useState(() => new Animated.Value(0));
+  const [particle2Opacity] = useState(() => new Animated.Value(0));
+  const [particle3Y] = useState(() => new Animated.Value(0));
+  const [particle3Opacity] = useState(() => new Animated.Value(0));
 
   // Glow effect
-  const glowPulse = useRef(new Animated.Value(0)).current;
+  const [glowPulse] = useState(() => new Animated.Value(0));
 
   useEffect(() => {
     // Main animation sequence

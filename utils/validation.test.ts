@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { getEmailErrorMessage, isEmailValid, normalizeEmail, validateAndFormatEmail } from './validation'
+import { getEmailErrorMessage, isEmailValid, normalizeCurrencyInput, normalizeEmail, validateAndFormatEmail } from './validation'
 
 describe('isEmailValid', () => {
   it('returns false for empty or non-string', () => {
@@ -50,5 +50,23 @@ describe('getEmailErrorMessage', () => {
 
   it('mentions @ when missing', () => {
     expect(getEmailErrorMessage('userexample.com')).toContain('@')
+  })
+})
+
+describe('normalizeCurrencyInput', () => {
+  it('keeps at most two decimal places', () => {
+    expect(normalizeCurrencyInput('12.345')).toBe('12.34')
+    expect(normalizeCurrencyInput('0.999')).toBe('0.99')
+  })
+
+  it('removes extra decimal separators and non-numeric characters', () => {
+    expect(normalizeCurrencyInput('$1,234.567')).toBe('1234.56')
+    expect(normalizeCurrencyInput('12.3.4')).toBe('12.34')
+  })
+
+  it('allows in-progress currency input', () => {
+    expect(normalizeCurrencyInput('')).toBe('')
+    expect(normalizeCurrencyInput('.')).toBe('.')
+    expect(normalizeCurrencyInput('12.')).toBe('12.')
   })
 })

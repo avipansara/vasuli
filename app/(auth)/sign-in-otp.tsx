@@ -7,7 +7,7 @@ import { isEmailValid, normalizeEmail } from '@/utils/validation';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Link, router, type Href } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import {
   Alert,
   Animated,
@@ -43,10 +43,10 @@ export default function SignInOTPScreen() {
   const [resendTimer, setResendTimer] = useState(0);
 
   // Animations
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(30)).current;
-  const floatAnim = useRef(new Animated.Value(0)).current;
-  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const [fadeAnim] = useState(() => new Animated.Value(0));
+  const [slideAnim] = useState(() => new Animated.Value(30));
+  const [floatAnim] = useState(() => new Animated.Value(0));
+  const [pulseAnim] = useState(() => new Animated.Value(1));
 
   useEffect(() => {
     Animated.parallel([

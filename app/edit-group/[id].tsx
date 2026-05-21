@@ -8,7 +8,7 @@ import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { groupService, initDatabase } from '@/services/api';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState, useRef } from 'react';
 import {
   Alert,
   Animated,
@@ -31,8 +31,8 @@ export default function EditGroupScreen() {
   const [loadError, setLoadError] = useState<string | null>(null);
 
   // Animations
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(30)).current;
+  const [fadeAnim] = useState(() => new Animated.Value(0));
+  const [slideAnim] = useState(() => new Animated.Value(30));
 
   // Input refs for focus management
   const groupNameInputRef = useRef<any>(null);

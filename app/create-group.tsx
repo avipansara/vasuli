@@ -9,7 +9,7 @@ import { groupService, initDatabase } from '@/services/api';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import {
   Alert,
   Animated,
@@ -42,8 +42,8 @@ export default function CreateGroupScreen() {
   const [loading, setLoading] = useState(false);
 
   // Animations
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(30)).current;
+  const [fadeAnim] = useState(() => new Animated.Value(0));
+  const [slideAnim] = useState(() => new Animated.Value(30));
 
   // Input refs for focus management
   const groupNameInputRef = useRef<any>(null);

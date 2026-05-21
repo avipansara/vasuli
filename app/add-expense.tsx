@@ -12,11 +12,12 @@ import { createExpenseNotification, notificationService } from '@/services/notif
 import { queryKeys } from '@/services/query-keys';
 import type { Expense, Group, User } from '@/types/database';
 import { filterFriendsForExpenseSearch } from '@/utils/friend-search';
+import { normalizeCurrencyInput } from '@/utils/validation';
 import { useQueryClient } from '@tanstack/react-query';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import {
   Alert,
   Animated,
@@ -77,8 +78,8 @@ export default function AddExpenseScreen() {
   const [customShares, setCustomShares] = useState<Record<string, string>>({});
 
   // Animations
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(30)).current;
+  const [fadeAnim] = useState(() => new Animated.Value(0));
+  const [slideAnim] = useState(() => new Animated.Value(30));
 
   // Input refs for focus management
   const amountInputRef = useRef<TextInput>(null);
@@ -505,7 +506,7 @@ export default function AddExpenseScreen() {
                 ref={amountInputRef}
                 style={[styles.amountInput, { color: isDark ? '#fff' : colors.text }]}
                 value={amount}
-                onChangeText={setAmount}
+                onChangeText={(text) => setAmount(normalizeCurrencyInput(text))}
                 placeholder="0.00"
                 placeholderTextColor={isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)'}
                 keyboardType="decimal-pad"
@@ -891,7 +892,7 @@ export default function AddExpenseScreen() {
                     }]}
                     value={splitMethod === SplitMethod.UNEQUAL ? customAmounts[currentUserId] : splitMethod === SplitMethod.PERCENTAGE ? customPercentages[currentUserId] : customShares[currentUserId]}
                     onChangeText={(text) => {
-                      if (splitMethod === SplitMethod.UNEQUAL) setCustomAmounts(prev => ({ ...prev, [currentUserId]: text }));
+                      if (splitMethod === SplitMethod.UNEQUAL) setCustomAmounts(prev => ({ ...prev, [currentUserId]: normalizeCurrencyInput(text) }));
                       else if (splitMethod === SplitMethod.PERCENTAGE) setCustomPercentages(prev => ({ ...prev, [currentUserId]: text }));
                       else setCustomShares(prev => ({ ...prev, [currentUserId]: text }));
                     }}
@@ -948,7 +949,7 @@ export default function AddExpenseScreen() {
                         }]}
                         value={splitMethod === SplitMethod.UNEQUAL ? customAmounts[friendId] : splitMethod === SplitMethod.PERCENTAGE ? customPercentages[friendId] : customShares[friendId]}
                         onChangeText={(text) => {
-                          if (splitMethod === SplitMethod.UNEQUAL) setCustomAmounts(prev => ({ ...prev, [friendId]: text }));
+                          if (splitMethod === SplitMethod.UNEQUAL) setCustomAmounts(prev => ({ ...prev, [friendId]: normalizeCurrencyInput(text) }));
                           else if (splitMethod === SplitMethod.PERCENTAGE) setCustomPercentages(prev => ({ ...prev, [friendId]: text }));
                           else setCustomShares(prev => ({ ...prev, [friendId]: text }));
                         }}
@@ -1007,7 +1008,7 @@ export default function AddExpenseScreen() {
                         }]}
                         value={splitMethod === SplitMethod.UNEQUAL ? customAmounts[memberId] : splitMethod === SplitMethod.PERCENTAGE ? customPercentages[memberId] : customShares[memberId]}
                         onChangeText={(text) => {
-                          if (splitMethod === SplitMethod.UNEQUAL) setCustomAmounts(prev => ({ ...prev, [memberId]: text }));
+                          if (splitMethod === SplitMethod.UNEQUAL) setCustomAmounts(prev => ({ ...prev, [memberId]: normalizeCurrencyInput(text) }));
                           else if (splitMethod === SplitMethod.PERCENTAGE) setCustomPercentages(prev => ({ ...prev, [memberId]: text }));
                           else setCustomShares(prev => ({ ...prev, [memberId]: text }));
                         }}

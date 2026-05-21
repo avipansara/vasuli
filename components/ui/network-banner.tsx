@@ -1,13 +1,13 @@
 import { useNetworkStatus } from '@/hooks/use-network-status';
 import { useThemeColors } from '@/hooks/use-theme-colors';
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Animated, Platform, StyleSheet, Text, View } from 'react-native';
 import { IconSymbol } from './icon-symbol';
 
 export function NetworkBanner() {
   const { isConnected, isInternetReachable } = useNetworkStatus();
   const { isDark } = useThemeColors();
-  const slideAnim = useRef(new Animated.Value(-60)).current;
+  const [slideAnim] = useState(() => new Animated.Value(-60));
   
   const isOffline = !isConnected || isInternetReachable === false;
 

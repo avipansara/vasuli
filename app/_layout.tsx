@@ -5,7 +5,7 @@ import { ThemeProvider as AppThemeProvider, useTheme } from '@/contexts/theme-co
 import { useNotifications } from '@/hooks/use-notifications';
 import { buildInvitePath, parseInviteFromUrl } from '@/lib/invite-deeplink';
 import { queryClient } from '@/lib/query-client';
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router/react-navigation';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { useFonts } from 'expo-font';
 import * as Linking from 'expo-linking';

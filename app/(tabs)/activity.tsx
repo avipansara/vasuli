@@ -10,10 +10,10 @@ import { activityService } from '@/services/activity-service';
 import { initDatabase } from '@/services/api';
 import { queryKeys } from '@/services/query-keys';
 import type { Activity } from '@/types/database';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect } from 'expo-router/react-navigation';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Animated, Platform, SectionList, StyleSheet, View } from 'react-native';
 
 export default function ActivityScreen() {
@@ -21,8 +21,8 @@ export default function ActivityScreen() {
   const PAGE_SIZE = 20;
 
   // Animations
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(30)).current;
+  const [fadeAnim] = useState(() => new Animated.Value(0));
+  const [slideAnim] = useState(() => new Animated.Value(30));
 
   const { user } = useAuth();
   const currentUserId = user?.id || '';
