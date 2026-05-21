@@ -61,6 +61,9 @@ vi.mock('react-native', async () => {
     StyleSheet: {
       create: (s: Record<string, unknown>) => s,
     },
+    Appearance: {
+      setColorScheme: vi.fn(),
+    },
     useColorScheme: () => 'light' as const,
     Platform: {
       OS: 'web',

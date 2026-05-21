@@ -8,7 +8,6 @@
     "scheme": "vasuli",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "newArchEnabled": true,
       "supportsTablet": true,
       "bundleIdentifier": "com.avipansara.vasuli",
       "buildNumber": "11",
@@ -21,7 +20,6 @@
       ]
     },
     "android": {
-      "edgeToEdgeEnabled": true,
       "icon": "./assets/images/icon.png",
       "adaptiveIcon": {
         "backgroundColor": "#0E2A1F",
@@ -87,7 +85,8 @@
         }
       ],
       "expo-sqlite",
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-image"
     ],
     "experiments": {
       "typedRoutes": true,

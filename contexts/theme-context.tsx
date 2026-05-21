@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useState } from 'react';
-import { useColorScheme as useSystemColorScheme } from 'react-native';
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { Appearance, useColorScheme as useSystemColorScheme } from 'react-native';
 
 type ColorScheme = 'light' | 'dark';
 
@@ -24,6 +24,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const newScheme = colorScheme === 'dark' ? 'light' : 'dark';
     setTheme(newScheme);
   }
+
+  useEffect(() => {
+    Appearance?.setColorScheme?.(colorScheme);
+  }, [colorScheme]);
 
   const value: ThemeContextType = {
     colorScheme,
