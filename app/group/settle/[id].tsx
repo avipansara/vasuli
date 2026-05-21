@@ -10,6 +10,7 @@ import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { activityService } from '@/services/activity-service';
 import { calculateBalances, groupService, settlementService, userService } from '@/services/api';
 import type { Group, GroupMember, User } from '@/types/database';
+import { normalizeCurrencyInput } from '@/utils/validation';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
@@ -324,7 +325,7 @@ export default function GroupSettleScreen() {
                   <TextInput
                     style={[styles.amountInput, { color: isDark ? '#fff' : colors.text }]}
                     value={amount}
-                    onChangeText={setAmount}
+                    onChangeText={(text) => setAmount(normalizeCurrencyInput(text))}
                     placeholder="0.00"
                     placeholderTextColor={isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)'}
                     keyboardType="decimal-pad"

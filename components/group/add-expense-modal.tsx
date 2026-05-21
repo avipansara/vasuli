@@ -1,5 +1,6 @@
 import { FormInput } from '@/components/ui/form-input';
 import { FormGroup, PrivacyNote, SharedModal } from '@/components/ui/shared-modal';
+import { normalizeCurrencyInput } from '@/utils/validation';
 import React from 'react';
 
 interface AddExpenseModalProps {
@@ -48,7 +49,7 @@ export function AddExpenseModal({
         <FormInput
           placeholder="0.00"
           value={amount}
-          onChangeText={setAmount}
+          onChangeText={(value) => setAmount(normalizeCurrencyInput(value))}
           keyboardType="decimal-pad"
           returnKeyType="done"
         />

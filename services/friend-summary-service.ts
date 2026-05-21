@@ -8,6 +8,12 @@ export interface FriendSummary extends User {
   recentExpenses?: Expense[];
 }
 
+const SETTLED_BALANCE_THRESHOLD = 0.01;
+
+function normalizeBalance(balance: number) {
+  return Math.abs(balance) < SETTLED_BALANCE_THRESHOLD ? 0 : balance;
+}
+
 export function calculateFriendSummaryTotals(
   friends: Pick<FriendSummary, 'balance'>[]
 ): { totalOwed: number; totalOwing: number } {
@@ -84,8 +90,8 @@ export function buildFriendSummaries(
   }
 
   for (const { friendId, expense, amount } of balanceImpacts) {
-    const balance = balances.get(friendId) ?? 0;
-    if (Math.abs(balance) < 0.01) continue;
+    const balance = normalizeBalance(balances.get(friendId) ?? 0);
+    if (balance === 0) continue;
     if ((balance > 0 && amount <= 0) || (balance < 0 && amount >= 0)) continue;
 
     const expensesForFriend = recentByFriend.get(friendId) ?? [];
@@ -99,7 +105,7 @@ export function buildFriendSummaries(
 
   return friends.map(friend => ({
     ...friend,
-    balance: balances.get(friend.id) ?? 0,
+    balance: normalizeBalance(balances.get(friend.id) ?? 0),
     recentExpenses: (recentByFriend.get(friend.id) ?? []).slice(0, recentLimit),
   }));
 }

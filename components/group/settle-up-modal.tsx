@@ -3,6 +3,7 @@ import { SelectableOption, SelectableOptionList } from '@/components/ui/selectab
 import { FormGroup, PrivacyNote, SharedModal } from '@/components/ui/shared-modal';
 import { BG_ICON_SUCCESS_DARK, SUCCESS_DARK } from '@/constants/theme';
 import type { GroupMember, User } from '@/types/database';
+import { normalizeCurrencyInput } from '@/utils/validation';
 import React from 'react';
 
 interface SettleUpModalProps {
@@ -61,7 +62,7 @@ export function SettleUpModal({
         <FormInput
           placeholder="0.00"
           value={settleAmount}
-          onChangeText={setSettleAmount}
+          onChangeText={(value) => setSettleAmount(normalizeCurrencyInput(value))}
           keyboardType="decimal-pad"
           returnKeyType="done"
         />

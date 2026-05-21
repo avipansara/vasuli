@@ -106,6 +106,22 @@ describe('buildFriendSummaries', () => {
     expect(summaries[0].balance).toBe(0);
     expect(summaries[0].recentExpenses).toEqual([]);
   });
+
+  it('normalizes sub-cent residual balances as settled', () => {
+    const summaries = buildFriendSummaries(
+      currentUserId,
+      [friend('friend-a', 'Asha')],
+      [expense('current-paid', currentUserId, 20, 1)],
+      [
+        split('s1', 'current-paid', currentUserId, 10),
+        split('s2', 'current-paid', 'friend-a', 10),
+      ],
+      [settlement('settle-a', 'friend-a', currentUserId, 9.996)]
+    );
+
+    expect(summaries[0].balance).toBe(0);
+    expect(summaries[0].recentExpenses).toEqual([]);
+  });
 });
 
 describe('calculateFriendSummaryTotals', () => {

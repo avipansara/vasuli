@@ -1,6 +1,7 @@
 import { ThemedText } from '@/components/themed-text';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import type { User } from '@/types/database';
+import { normalizeCurrencyInput } from '@/utils/validation';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect, useState } from 'react';
 import {
@@ -41,11 +42,7 @@ export function SettleUpModal({ visible, onClose, friend, onConfirm }: SettleUpM
   if (!friend) return null;
 
   const handleAmountChange = (text: string) => {
-    const cleaned = text.replace(/[^0-9.]/g, '');
-    const parts = cleaned.split('.');
-    if (parts.length > 2) return;
-    if (parts[1] && parts[1].length > 2) return;
-    setEditableAmount(cleaned);
+    setEditableAmount(normalizeCurrencyInput(text));
   };
 
   const currentAmount = parseFloat(editableAmount) || 0;

@@ -61,3 +61,27 @@ export function getEmailErrorMessage(email: string): string {
   }
   return 'Please enter a valid email address';
 }
+
+export function normalizeCurrencyInput(value: string): string {
+  let normalized = '';
+  let hasDecimal = false;
+
+  for (const char of value) {
+    if (char >= '0' && char <= '9') {
+      normalized += char;
+      continue;
+    }
+
+    if (char === '.' && !hasDecimal) {
+      normalized += char;
+      hasDecimal = true;
+    }
+  }
+
+  const [whole, fractional] = normalized.split('.');
+  if (fractional == null) {
+    return whole;
+  }
+
+  return `${whole}.${fractional.slice(0, 2)}`;
+}
