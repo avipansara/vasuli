@@ -3,7 +3,7 @@ import { useAuth } from '@/contexts/auth-context-otp';
 import { PENDING_INVITE_PATH_KEY } from '@/lib/invite-deeplink';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { otpService } from '@/services/otp-service';
-import { isEmailValid, normalizeEmail } from '@/utils/validation';
+import { getPersonNameErrorMessage, isEmailValid, normalizeEmail, normalizePersonName } from '@/utils/validation';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Link, router, type Href } from 'expo-router';
@@ -109,7 +109,7 @@ export default function SignUpOTPScreen() {
   }, [resendTimer]);
 
   const isContactValid = () => {
-    if (!name.trim()) return false;
+    if (!normalizePersonName(name)) return false;
     if (contactMethod === 'email') {
       return isEmailValid(email);
     }
@@ -117,8 +117,9 @@ export default function SignUpOTPScreen() {
   };
 
   async function handleSendCode() {
-    if (!name.trim()) {
-      Alert.alert('Error', 'Please enter your name');
+    const normalizedName = normalizePersonName(name);
+    if (!normalizedName) {
+      Alert.alert('Invalid Name', getPersonNameErrorMessage(name));
       return;
     }
     
@@ -135,7 +136,7 @@ export default function SignUpOTPScreen() {
     setLoading(true);
     try {
       const result = await otpService.sendSignUpCode({
-        name: name.trim(),
+        name: normalizedName,
         email: contactMethod === 'email' ? normalizeEmail(email) : undefined,
         phone: contactMethod === 'phone' ? phone.trim() : undefined,
       });
@@ -157,11 +158,16 @@ export default function SignUpOTPScreen() {
   async function handleVerifyCode() {
     const code = otp.join('');
     if (code.length !== 6) return;
+    const normalizedName = normalizePersonName(name);
+    if (!normalizedName) {
+      Alert.alert('Invalid Name', getPersonNameErrorMessage(name));
+      return;
+    }
 
     setLoading(true);
     try {
       const result = await otpService.verifySignUpCode({
-        name: name.trim(),
+        name: normalizedName,
         email: contactMethod === 'email' ? normalizeEmail(email) : undefined,
         phone: contactMethod === 'phone' ? phone.trim() : undefined,
         code,
@@ -255,11 +261,16 @@ export default function SignUpOTPScreen() {
 
   async function handleResendCode() {
     if (resendTimer > 0) return;
+    const normalizedName = normalizePersonName(name);
+    if (!normalizedName) {
+      Alert.alert('Invalid Name', getPersonNameErrorMessage(name));
+      return;
+    }
     
     setLoading(true);
     try {
       const result = await otpService.sendSignUpCode({
-        name: name.trim(),
+        name: normalizedName,
         email: contactMethod === 'email' ? normalizeEmail(email) : undefined,
         phone: contactMethod === 'phone' ? phone.trim() : undefined,
       });

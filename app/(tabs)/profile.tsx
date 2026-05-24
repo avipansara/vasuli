@@ -1,7 +1,6 @@
 import { ThemedText } from '@/components/themed-text';
 import { AsyncErrorState } from '@/components/ui/async-error-state';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { LoadingState } from '@/components/ui/loading-state';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useTheme } from '@/contexts/theme-context';
 import { useThemeColors } from '@/hooks/use-theme-colors';
@@ -18,13 +17,11 @@ import {
   ActivityIndicator,
   Alert,
   Animated,
-  Modal,
   Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Switch,
-  TouchableOpacity,
   View,
 } from 'react-native';
 
@@ -32,41 +29,33 @@ export default function ProfileScreen() {
   const { gradients, isDark, colors } = useThemeColors();
   const { toggleTheme } = useTheme();
   const { user: currentUser, signOut, refreshUser } = useAuth();
-  const [notificationsEnabled, setNotificationsEnabled] = useState(!!currentUser?.pushToken);
+  const [notificationOverride, setNotificationOverride] = useState<boolean | null>(null);
   const currentUserId = currentUser?.id || '';
   const queryClient = useQueryClient();
   const friendsHomeQueryKey = useMemo(() => queryKeys.friends.home(currentUserId), [currentUserId]);
-
-  useEffect(() => {
-    setNotificationsEnabled(!!currentUser?.pushToken);
-  }, [currentUser?.pushToken]);
+  const notificationsEnabled = notificationOverride ?? !!currentUser?.pushToken;
 
   async function handleToggleNotifications(value: boolean) {
-    setNotificationsEnabled(value); // Optimistic update
+    setNotificationOverride(value);
     try {
       if (value) {
-        // Enable: Register and save token
         const { notificationService } = await import('@/services/notification-service');
         const token = await notificationService.registerForPushNotificationsAsync();
         if (token && currentUser?.id) {
           await userService.updatePushToken(currentUser.id, token);
-          // Refresh user to update session in AsyncStorage
           await refreshUser();
         } else {
-          // If permission denied or no token, revert switch
-          setNotificationsEnabled(false);
+          setNotificationOverride(false);
         }
       } else {
-        // Disable: Clear token from DB
         if (currentUser?.id) {
           await userService.updatePushToken(currentUser.id, null);
-          // Refresh user to update session in AsyncStorage
           await refreshUser();
         }
       }
     } catch (error) {
       console.error('Error toggling notifications:', error);
-      setNotificationsEnabled(!value); // Revert on error
+      setNotificationOverride(!value);
       Alert.alert('Error', 'Failed to update notification settings');
     }
   }
@@ -89,8 +78,6 @@ export default function ProfileScreen() {
   });
   const { totalOwed, totalOwing } = useMemo(() => calculateFriendSummaryTotals(friends), [friends]);
   const statsError = statsQueryError ? getFetchErrorMessage(statsQueryError) : null;
-
-  const [playgroundVisible, setPlaygroundVisible] = useState(false);
 
   // Animations
   const [fadeAnim] = useState(() => new Animated.Value(0));
@@ -182,22 +169,46 @@ export default function ProfileScreen() {
 
   return (
     <LinearGradient colors={gradients.screenBackground} style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <View style={styles.header} />
-        <View style={styles.profileSection}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        contentInsetAdjustmentBehavior="automatic"
+        showsVerticalScrollIndicator={false}>
+        <View style={styles.header}>
+          <ThemedText style={[styles.headerLabel, { color: colors.textSecondary }]}>Account</ThemedText>
+        </View>
+
+        <View
+          style={[
+            styles.profileCard,
+            !isDark && { backgroundColor: colors.card, borderColor: colors.border },
+          ]}>
           <View style={[styles.avatarLarge, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)' }]}>
             <ThemedText style={[styles.avatarLargeText, { color: isDark ? '#2DD4BF' : colors.tint }]}>
               {currentUser?.name?.charAt(0).toUpperCase() || 'U'}
             </ThemedText>
           </View>
-          <ThemedText type="title" style={[styles.userName, !isDark && { color: colors.text }]}>
-            {currentUser?.name || 'User'}
-          </ThemedText>
-          <ThemedText style={[styles.userEmail, { color: colors.textSecondary }]}>
-            {currentUser?.email || 'No email set'}
-          </ThemedText>
-          <Pressable style={styles.editButton} onPress={handleEditProfile}>
-            <ThemedText style={styles.editButtonText}>Edit Profile</ThemedText>
+          <View style={styles.profileInfo}>
+            <ThemedText type="subtitle" style={[styles.userName, { color: colors.text }]} numberOfLines={1}>
+              {currentUser?.name || 'User'}
+            </ThemedText>
+            <ThemedText style={[styles.userEmail, { color: colors.textSecondary }]} numberOfLines={1}>
+              {currentUser?.email || 'No email set'}
+            </ThemedText>
+          </View>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Edit profile"
+            hitSlop={10}
+            style={({ pressed }) => [
+              styles.editButton,
+              {
+                backgroundColor: isDark ? 'rgba(45, 212, 191, 0.14)' : 'rgba(34, 197, 94, 0.1)',
+                borderColor: isDark ? 'rgba(45, 212, 191, 0.26)' : 'rgba(34, 197, 94, 0.22)',
+              },
+              pressed && styles.pressed,
+            ]}
+            onPress={handleEditProfile}>
+            <IconSymbol name="pencil" size={18} color={isDark ? '#2DD4BF' : colors.tint} />
           </Pressable>
         </View>
 
@@ -221,17 +232,17 @@ export default function ProfileScreen() {
           ) : (
             <>
               <View style={styles.statItem}>
-                <ThemedText style={[styles.statValue, !isDark && { color: colors.text }]}>
+                <ThemedText style={[styles.statValue, { color: isDark ? '#2DD4BF' : colors.tint }]}>
                   ${totalOwed.toFixed(2)}
                 </ThemedText>
-                <ThemedText style={[styles.statLabel, { color: colors.textSecondary }]}>Total Owed</ThemedText>
+                <ThemedText style={[styles.statLabel, { color: colors.textSecondary }]}>You are owed</ThemedText>
               </View>
               <View style={[styles.statDivider, !isDark && { backgroundColor: colors.border }]} />
               <View style={styles.statItem}>
-                <ThemedText style={[styles.statValue, !isDark && { color: colors.text }]}>
+                <ThemedText style={[styles.statValue, { color: isDark ? '#F87171' : '#DC2626' }]}>
                   ${totalOwing.toFixed(2)}
                 </ThemedText>
-                <ThemedText style={[styles.statLabel, { color: colors.textSecondary }]}>Total Owing</ThemedText>
+                <ThemedText style={[styles.statLabel, { color: colors.textSecondary }]}>You owe</ThemedText>
               </View>
             </>
           )}
@@ -239,92 +250,56 @@ export default function ProfileScreen() {
 
         <View style={styles.settingsSection}>
           <ThemedText style={[styles.sectionTitle, { color: colors.textSecondary }]}>Settings</ThemedText>
-          {settingsItems.map((item, index) => (
-            <Pressable
-              key={index}
-              style={[styles.settingItem, !isDark && { backgroundColor: colors.card, borderColor: colors.border }]}
-              onPress={item.onPress}
-              disabled={item.hasSwitch}>
-              <View style={styles.settingLeft}>
-                <View style={[styles.settingIcon, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)' }]}>
-                  <IconSymbol name={item.icon as any} size={20} color={isDark ? '#2DD4BF' : colors.tint} />
+          <View style={[styles.settingsList, !isDark && { backgroundColor: colors.card, borderColor: colors.border }]}>
+            {settingsItems.map((item, index) => (
+              <Pressable
+                key={item.title}
+                style={({ pressed }) => [
+                  styles.settingItem,
+                  index < settingsItems.length - 1 && [
+                    styles.settingItemBorder,
+                    { borderBottomColor: isDark ? 'rgba(255,255,255,0.06)' : colors.border },
+                  ],
+                  pressed && !item.hasSwitch && styles.pressed,
+                ]}
+                onPress={item.onPress}
+                disabled={item.hasSwitch}>
+                <View style={styles.settingLeft}>
+                  <View style={[styles.settingIcon, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.12)' : 'rgba(34, 197, 94, 0.08)' }]}>
+                    <IconSymbol name={item.icon as any} size={19} color={isDark ? '#2DD4BF' : colors.tint} />
+                  </View>
+                  <ThemedText style={[styles.settingTitle, { color: colors.text }]}>{item.title}</ThemedText>
                 </View>
-                <ThemedText style={[styles.settingTitle, !isDark && { color: colors.text }]}>{item.title}</ThemedText>
-              </View>
-              {item.hasSwitch ? (
-                <Switch
-                  value={item.value}
-                  onValueChange={item.onToggle}
-                  trackColor={{ false: isDark ? '#333' : '#D4D4D4', true: isDark ? 'rgba(45, 212, 191, 0.4)' : 'rgba(34, 197, 94, 0.4)' }}
-                  thumbColor={item.value ? (isDark ? '#2DD4BF' : colors.tint) : (isDark ? '#666' : '#999')}
-                />
-              ) : (
-                <IconSymbol name="chevron.right" size={16} color={isDark ? 'rgba(255,255,255,0.4)' : colors.textSecondary} />
-              )}
-            </Pressable>
-          ))}
+                {item.hasSwitch ? (
+                  <Switch
+                    value={item.value}
+                    onValueChange={item.onToggle}
+                    trackColor={{ false: isDark ? '#333' : '#D4D4D4', true: isDark ? 'rgba(45, 212, 191, 0.4)' : 'rgba(34, 197, 94, 0.4)' }}
+                    thumbColor={item.value ? (isDark ? '#2DD4BF' : colors.tint) : (isDark ? '#666' : '#999')}
+                  />
+                ) : (
+                  <IconSymbol name="chevron.right" size={16} color={isDark ? 'rgba(255,255,255,0.35)' : colors.textSecondary} />
+                )}
+              </Pressable>
+            ))}
+          </View>
         </View>
 
-        <Pressable style={styles.logoutButton} onPress={handleLogout}>
-          <IconSymbol name="rectangle.portrait.and.arrow.right" size={20} color="#EF4444" />
-          <ThemedText style={styles.logoutText}>Logout</ThemedText>
-        </Pressable>
+        <View style={styles.accountActions}>
+          <Pressable style={({ pressed }) => [styles.logoutButton, pressed && styles.pressed]} onPress={handleLogout}>
+            <IconSymbol name="rectangle.portrait.and.arrow.right" size={19} color="#EF4444" />
+            <ThemedText style={styles.logoutText}>Log out</ThemedText>
+          </Pressable>
 
-        <Pressable style={[styles.logoutButton, styles.deleteButton]} onPress={handleDeleteAccount}>
-          <IconSymbol name="trash.fill" size={20} color="#DC2626" />
-          <ThemedText style={[styles.logoutText, styles.deleteText]}>Delete Account</ThemedText>
-        </Pressable>
+          <Pressable style={({ pressed }) => [styles.deleteButton, pressed && styles.pressed]} onPress={handleDeleteAccount}>
+            <ThemedText style={styles.deleteText}>Delete Account</ThemedText>
+          </Pressable>
+        </View>
 
         <ThemedText style={[styles.versionText, !isDark && { color: colors.textSecondary }]}>
           {getAppVersionLabel()}
         </ThemedText>
       </ScrollView>
-
-      {/* Loading Playground Modal */}
-      <Modal
-        visible={playgroundVisible}
-        animationType="slide"
-        presentationStyle="fullScreen"
-        onRequestClose={() => setPlaygroundVisible(false)}>
-        <LinearGradient colors={gradients.screenBackground} style={styles.playgroundContainer}>
-          {/* Header */}
-          <View style={styles.playgroundHeader}>
-            <TouchableOpacity
-              onPress={() => setPlaygroundVisible(false)}
-              style={[styles.closeButton, {
-                backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)',
-                borderColor: isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(34, 197, 94, 0.3)'
-              }]}>
-              <IconSymbol size={20} name="xmark" color={isDark ? '#2DD4BF' : colors.tint} />
-            </TouchableOpacity>
-            <ThemedText type="title" style={[styles.playgroundTitle, !isDark && { color: colors.text }]}>
-              Loading Playground
-            </ThemedText>
-            <View style={{ width: 40 }} />
-          </View>
-
-          {/* Instructions */}
-          <View style={[styles.instructionsCard, {
-            backgroundColor: isDark ? 'rgba(45, 212, 191, 0.1)' : 'rgba(34, 197, 94, 0.1)',
-            borderColor: isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(34, 197, 94, 0.2)'
-          }]}>
-            <ThemedText style={[styles.instructionsTitle, !isDark && { color: colors.text }]}>
-              🎮 How to Play
-            </ThemedText>
-            <ThemedText style={[styles.instructionsText, !isDark && { color: colors.textSecondary }]}>
-              • Swipe left/right to move the skateboard{"\n"}
-              • Double tap to perform a jump trick{"\n"}
-              • Shake your device for a jump{"\n"}
-              • Release to auto-play
-            </ThemedText>
-          </View>
-
-          {/* Loading Animation */}
-          <View style={styles.playgroundContent}>
-            <LoadingState message="Try the controls!" />
-          </View>
-        </LinearGradient>
-      </Modal>
     </LinearGradient>
   );
 }
@@ -337,62 +312,75 @@ const styles = StyleSheet.create({
     paddingBottom: 120,
   },
   header: {
-    padding: 20,
-    paddingTop: Platform.OS === 'ios' ? 60 : 54,
+    paddingHorizontal: 20,
+    paddingTop: Platform.OS === 'ios' ? 58 : 52,
+    paddingBottom: 10,
   },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#fff',
+  headerLabel: {
+    fontSize: 15,
+    fontWeight: '500',
   },
-  profileSection: {
+  profileCard: {
     alignItems: 'center',
-    paddingVertical: 20,
+    backgroundColor: 'rgba(20, 35, 38, 0.6)',
+    borderColor: 'rgba(45, 212, 191, 0.12)',
+    borderRadius: 16,
+    borderWidth: 1,
+    flexDirection: 'row',
+    marginHorizontal: 16,
+    marginBottom: 14,
+    padding: 16,
   },
   avatarLarge: {
-    width: 80,
-    height: 80,
-    borderRadius: 16,
+    width: 58,
+    height: 58,
+    borderRadius: 15,
     backgroundColor: 'rgba(45, 212, 191, 0.15)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 16,
+    marginRight: 14,
   },
   avatarLargeText: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: 'bold',
     color: '#2DD4BF',
-    lineHeight: 32,
+    lineHeight: 28,
+  },
+  profileInfo: {
+    flex: 1,
+    minWidth: 0,
   },
   userName: {
-    fontSize: 24,
+    fontSize: 17,
     color: '#fff',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   userEmail: {
-    fontSize: 14,
-    marginBottom: 16,
+    fontSize: 13,
   },
   editButton: {
-    paddingHorizontal: 24,
-    paddingVertical: 10,
-    borderRadius: 20,
+    alignItems: 'center',
     backgroundColor: 'rgba(45, 212, 191, 0.15)',
-    borderWidth: 1,
     borderColor: 'rgba(45, 212, 191, 0.3)',
+    borderRadius: 12,
+    borderWidth: 1,
+    height: 42,
+    justifyContent: 'center',
+    width: 42,
   },
-  editButtonText: {
-    color: '#2DD4BF',
-    fontSize: 14,
-    fontWeight: '600',
+  pressed: {
+    opacity: 0.72,
   },
   statsSection: {
     flexDirection: 'row',
     marginHorizontal: 16,
-    padding: 20,
-    borderRadius: 12,
+    paddingVertical: 18,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(45, 212, 191, 0.12)',
     backgroundColor: 'rgba(20, 35, 38, 0.6)',
-    marginBottom: 24,
+    marginBottom: 22,
   },
   statsSectionStack: {
     flexDirection: 'column',
@@ -407,13 +395,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   statValue: {
-    fontSize: 18,
+    fontSize: 19,
     fontWeight: 'bold',
     color: '#2DD4BF',
     marginBottom: 4,
+    fontVariant: ['tabular-nums'],
   },
   statLabel: {
     fontSize: 12,
+    fontWeight: '600',
   },
   statDivider: {
     width: 1,
@@ -421,30 +411,43 @@ const styles = StyleSheet.create({
   },
   settingsSection: {
     marginHorizontal: 16,
-    marginBottom: 24,
+    marginBottom: 20,
   },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 12,
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 0.4,
+    marginBottom: 10,
     marginLeft: 4,
+    textTransform: 'uppercase',
+  },
+  settingsList: {
+    backgroundColor: 'rgba(20, 35, 38, 0.6)',
+    borderColor: 'rgba(45, 212, 191, 0.12)',
+    borderRadius: 16,
+    borderWidth: 1,
+    overflow: 'hidden',
   },
   settingItem: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 14,
-    borderRadius: 12,
-    backgroundColor: 'rgba(20, 35, 38, 0.6)',
-    marginBottom: 8,
+    minHeight: 58,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  settingItemBorder: {
+    borderBottomWidth: 1,
   },
   settingLeft: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
+    minWidth: 0,
   },
   settingIcon: {
-    width: 36,
-    height: 36,
+    width: 34,
+    height: 34,
     borderRadius: 10,
     backgroundColor: 'rgba(45, 212, 191, 0.1)',
     justifyContent: 'center',
@@ -453,16 +456,23 @@ const styles = StyleSheet.create({
   },
   settingTitle: {
     fontSize: 15,
+    fontWeight: '600',
     color: '#fff',
   },
+  accountActions: {
+    gap: 10,
+    marginHorizontal: 16,
+    marginBottom: 6,
+  },
   logoutButton: {
+    borderColor: 'rgba(239, 68, 68, 0.22)',
+    borderRadius: 14,
+    borderWidth: 1,
+    backgroundColor: 'rgba(239, 68, 68, 0.08)',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginHorizontal: 16,
     padding: 14,
-    borderRadius: 12,
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
     gap: 8,
   },
   logoutText: {
@@ -471,10 +481,13 @@ const styles = StyleSheet.create({
     color: '#EF4444',
   },
   deleteButton: {
-    marginTop: 8,
-    backgroundColor: 'rgba(220, 38, 38, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
   },
   deleteText: {
+    fontSize: 14,
+    fontWeight: '600',
     color: '#DC2626',
   },
   versionText: {
@@ -483,49 +496,5 @@ const styles = StyleSheet.create({
     color: '#fff',
     opacity: 0.5,
     marginTop: 20,
-  },
-  playgroundContainer: {
-    flex: 1,
-  },
-  playgroundHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'ios' ? 60 : 54,
-    paddingBottom: 20,
-  },
-  closeButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    borderWidth: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  playgroundTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  instructionsCard: {
-    marginHorizontal: 20,
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    marginBottom: 20,
-  },
-  instructionsTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 8,
-  },
-  instructionsText: {
-    fontSize: 14,
-    lineHeight: 22,
-  },
-  playgroundContent: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
 });
