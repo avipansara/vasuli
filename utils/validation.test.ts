@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest'
 
-import { getEmailErrorMessage, isEmailValid, normalizeCurrencyInput, normalizeEmail, validateAndFormatEmail } from './validation'
+import {
+  getEmailErrorMessage,
+  getPersonNameErrorMessage,
+  isEmailValid,
+  normalizeCurrencyInput,
+  normalizeEmail,
+  normalizePersonName,
+  validateAndFormatEmail,
+} from './validation'
 
 describe('isEmailValid', () => {
   it('returns false for empty or non-string', () => {
@@ -50,6 +58,36 @@ describe('getEmailErrorMessage', () => {
 
   it('mentions @ when missing', () => {
     expect(getEmailErrorMessage('userexample.com')).toContain('@')
+  })
+})
+
+describe('normalizePersonName', () => {
+  it('trims and collapses repeated whitespace', () => {
+    expect(normalizePersonName('  Ada    Lovelace  ')).toBe('Ada Lovelace')
+    expect(normalizePersonName('Grace\tHopper')).toBe('Grace Hopper')
+  })
+
+  it('accepts common punctuation and non-English letters', () => {
+    expect(normalizePersonName("  José O'Connor-Singh  ")).toBe("José O'Connor-Singh")
+  })
+
+  it('returns null for names shorter than two characters after normalization', () => {
+    expect(normalizePersonName('A')).toBe(null)
+    expect(normalizePersonName('   ')).toBe(null)
+  })
+
+  it('returns null for names over fifty characters or with control characters', () => {
+    expect(normalizePersonName('A'.repeat(51))).toBe(null)
+    expect(normalizePersonName('Ada\nLovelace')).toBe(null)
+  })
+})
+
+describe('getPersonNameErrorMessage', () => {
+  it('describes empty, short, long, and control-character names', () => {
+    expect(getPersonNameErrorMessage('')).toContain('enter')
+    expect(getPersonNameErrorMessage('A')).toContain('at least 2')
+    expect(getPersonNameErrorMessage('A'.repeat(51))).toContain('50')
+    expect(getPersonNameErrorMessage('Ada\nLovelace')).toContain('line breaks')
   })
 })
 

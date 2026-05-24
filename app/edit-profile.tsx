@@ -6,6 +6,7 @@ import { ThemedInput } from '@/components/ui/themed-input';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { initDatabase, userService } from '@/services/api';
+import { getPersonNameErrorMessage, normalizePersonName } from '@/utils/validation';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useEffect, useState, useRef } from 'react';
@@ -49,15 +50,20 @@ export default function EditProfileScreen() {
     ]).start();
   }, [fadeAnim, slideAnim, user?.name]);
 
-  const isValid = name.trim().length > 0;
+  const normalizedName = normalizePersonName(name);
+  const isValid = normalizedName != null;
 
   async function handleSubmit() {
-    if (!isValid || !user) return;
+    if (!normalizedName) {
+      Alert.alert('Invalid Name', getPersonNameErrorMessage(name));
+      return;
+    }
+    if (!user) return;
 
     setLoading(true);
     try {
       await initDatabase();
-      await userService.update(user.id, { name: name.trim() });
+      await userService.update(user.id, { name: normalizedName });
       
       // Refresh user data in auth context
       await refreshUser();
