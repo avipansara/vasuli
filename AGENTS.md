@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-This is an Expo/React Native mobile application (**Expo SDK 54**, React Native 0.81, React 19.1). Prioritize mobile-first patterns, performance, and cross-platform compatibility.
+This is an Expo/React Native mobile application (**Expo SDK 56**, React Native 0.85, React 19.2). Prioritize mobile-first patterns, performance, and cross-platform compatibility.
 
 After changing the `expo` version, run `npx expo install --fix` and `npx expo-doctor`. Manual `eas update` requires `--environment` (e.g. `production`, `preview`); EAS Workflow update jobs in this repo set `environment` explicitly.
 
@@ -30,9 +30,12 @@ These documentation files are specifically formatted for AI agents and should be
 /
 ├── app/                   # Expo Router file-based routing
 │   ├── (tabs)/            # Tab-based navigation screens
-│   │   ├── index.tsx      # Home screen
-│   │   ├── explore.tsx    # Explore screen
-│   │   └── _layout.tsx    # Tabs layout
+│   │   ├── index.tsx      # Friends screen
+│   │   ├── groups.tsx     # Groups screen
+│   │   ├── activity.tsx   # Global activity/history feed
+│   │   ├── profile.tsx    # Profile and settings screen
+│   │   ├── _layout.tsx    # Native tabs layout
+│   │   └── _layout.web.tsx # Web tabs layout
 │   ├── _layout.tsx        # Root layout with theme provider
 │   └── modal.tsx          # Modal screen example
 ├── components/            # Reusable React components
@@ -65,7 +68,7 @@ npm run reset-project           # Reset to blank template
 ### Building & Testing
 
 ```bash
-npx expo doctor      # Check project health and dependencies
+npx expo-doctor      # Check project health and dependencies
 npx expo lint        # Run ESLint
 npm test             # Run unit tests (Vitest)
 npm run test:watch   # Vitest in watch mode

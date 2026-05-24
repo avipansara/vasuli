@@ -1,9 +1,11 @@
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol, IconSymbolName } from '@/components/ui/icon-symbol';
 import { useThemeColors } from '@/hooks/use-theme-colors';
+import { getActivityHref } from '@/lib/activity-link';
 import type { Activity as DbActivity } from '@/types/database';
+import { router } from 'expo-router';
 import React, { memo } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, TouchableOpacity, View } from 'react-native';
 
 interface ActivityItem {
   id: string;
@@ -17,6 +19,7 @@ interface ActivityItem {
 
 interface ActivityCardProps {
   activity: DbActivity;
+  currentUserId?: string;
 }
 
 function mapDbActivityToItem(activity: DbActivity): ActivityItem {
@@ -48,13 +51,15 @@ function areActivityCardPropsEqual(prev: ActivityCardProps, next: ActivityCardPr
     a.description === b.description &&
     a.amount === b.amount &&
     a.createdAt === b.createdAt &&
-    a.groupName === b.groupName
+    a.groupName === b.groupName &&
+    prev.currentUserId === next.currentUserId
   );
 }
 
-function ActivityCardInner({ activity }: ActivityCardProps) {
+function ActivityCardInner({ activity, currentUserId }: ActivityCardProps) {
   const { colors, isDark } = useThemeColors();
   const item = mapDbActivityToItem(activity);
+  const href = getActivityHref(activity, currentUserId);
   const date = new Date(item.date);
   const dateStr = date.toLocaleDateString('en-US', {
     month: 'short',
@@ -92,12 +97,8 @@ function ActivityCardInner({ activity }: ActivityCardProps) {
           ? 'rgba(16, 185, 129, 0.15)'
           : 'rgba(167, 139, 250, 0.15)';
 
-  return (
-    <View
-      style={[
-        styles.card,
-        !isDark && { backgroundColor: colors.card, borderColor: colors.border },
-      ]}>
+  const content = (
+    <>
       <View style={[styles.icon, { backgroundColor: iconBgColor }]}>
         <IconSymbol size={20} name={iconName} color={iconColor} />
       </View>
@@ -136,6 +137,33 @@ function ActivityCardInner({ activity }: ActivityCardProps) {
           {item.type === 'settlement' ? '+' : ''}${item.amount.toFixed(2)}
         </ThemedText>
       )}
+    </>
+  );
+
+  const cardStyle = [
+    styles.card,
+    !isDark && { backgroundColor: colors.card, borderColor: colors.border },
+  ];
+
+  if (href) {
+    return (
+      <TouchableOpacity
+        activeOpacity={0.72}
+        accessibilityRole="button"
+        onPress={() => router.push(href)}
+        style={cardStyle}>
+        {content}
+      </TouchableOpacity>
+    );
+  }
+
+  return (
+    <View
+      style={[
+        styles.card,
+        !isDark && { backgroundColor: colors.card, borderColor: colors.border },
+      ]}>
+      {content}
     </View>
   );
 }
