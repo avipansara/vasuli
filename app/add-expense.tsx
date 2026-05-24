@@ -497,34 +497,45 @@ export default function AddExpenseScreen() {
         <Animated.View style={[styles.content, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
           {/* Amount Input - Hero Style */}
           <View style={styles.amountSection}>
-            <ThemedText style={[styles.amountLabel, { color: colors.textSecondary }]}>
-              How much?
-            </ThemedText>
-            <View style={styles.amountInputRow}>
-              <Text style={[styles.currencySymbol, { color: isDark ? '#2DD4BF' : colors.tint }]}>$</Text>
-              <TextInput
-                ref={amountInputRef}
-                style={[styles.amountInput, { color: isDark ? '#fff' : colors.text }]}
-                value={amount}
-                onChangeText={(text) => setAmount(normalizeCurrencyInput(text))}
-                placeholder="0.00"
-                placeholderTextColor={isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)'}
-                keyboardType="decimal-pad"
-                returnKeyType="next"
-                onSubmitEditing={() => descriptionInputRef.current?.focus()}
-                blurOnSubmit={false}
-              />
+            <View
+              style={[
+                styles.amountCard,
+                {
+                  backgroundColor: isDark ? 'rgba(20, 35, 38, 0.72)' : colors.card,
+                  borderColor: colors.border,
+                },
+              ]}>
+              <View style={styles.amountHeader}>
+                <ThemedText style={[styles.amountLabel, { color: colors.textSecondary }]}>
+                  Amount
+                </ThemedText>
+              </View>
+              <View style={styles.amountInputRow}>
+                <Text style={[styles.currencySymbol, { color: isDark ? '#2DD4BF' : colors.tint }]}>$</Text>
+                <TextInput
+                  ref={amountInputRef}
+                  style={[styles.amountInput, { color: colors.text }]}
+                  value={amount}
+                  onChangeText={(text) => setAmount(normalizeCurrencyInput(text))}
+                  placeholder="0.00"
+                  placeholderTextColor={isDark ? 'rgba(225,245,239,0.26)' : 'rgba(15,23,42,0.28)'}
+                  keyboardType="decimal-pad"
+                  returnKeyType="next"
+                  onSubmitEditing={() => descriptionInputRef.current?.focus()}
+                  blurOnSubmit={false}
+                />
+              </View>
             </View>
           </View>
 
           {/* Description Input */}
           <View style={styles.inputSection}>
             <ThemedText style={[styles.inputLabel, { color: colors.textSecondary }]}>
-              What&apos;s it for?
+              Description
             </ThemedText>
             <View style={[styles.inputContainer, {
-              backgroundColor: isDark ? 'rgba(30, 41, 59, 0.6)' : 'rgba(241, 245, 249, 0.9)',
-              borderColor: isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(34, 197, 94, 0.2)',
+              backgroundColor: isDark ? 'rgba(20, 35, 38, 0.66)' : colors.card,
+              borderColor: colors.border,
             }]}>
               <IconSymbol name="doc.text" size={20} color={isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'} />
               <TextInput
@@ -546,12 +557,28 @@ export default function AddExpenseScreen() {
               <ThemedText style={[styles.inputLabel, { color: colors.textSecondary }]}>
                 Split with
               </ThemedText>
-              <View style={styles.toggleContainer}>
+              <View
+                style={[
+                  styles.toggleContainer,
+                  {
+                    backgroundColor: isDark ? 'rgba(20, 35, 38, 0.45)' : 'rgba(241, 245, 249, 0.9)',
+                    borderColor: colors.border,
+                  },
+                ]}>
                 <TouchableOpacity
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: splitType === SplitType.GROUP }}
                   style={[
                     styles.toggleButton,
                     splitType === SplitType.GROUP && styles.toggleButtonActive,
-                    !isDark && splitType !== SplitType.GROUP && { backgroundColor: colors.card, borderColor: colors.border },
+                    {
+                      backgroundColor: splitType === SplitType.GROUP
+                        ? (isDark ? 'rgba(45, 212, 191, 0.14)' : 'rgba(34, 197, 94, 0.08)')
+                        : 'transparent',
+                      borderColor: splitType === SplitType.GROUP
+                        ? (isDark ? '#2DD4BF' : colors.tint)
+                        : 'transparent',
+                    },
                   ]}
                   onPress={() => {
                     setFriendSearchQuery('');
@@ -559,33 +586,42 @@ export default function AddExpenseScreen() {
                   }}>
                   <IconSymbol
                     name="person.3.fill"
-                    size={18}
-                    color={splitType === SplitType.GROUP ? '#0A0A0F' : (isDark ? '#2DD4BF' : colors.tint)}
+                    size={17}
+                    color={splitType === SplitType.GROUP ? (isDark ? '#2DD4BF' : colors.tint) : colors.textSecondary}
                   />
                   <ThemedText style={[
                     styles.toggleText,
                     splitType === SplitType.GROUP && styles.toggleTextActive,
-                    !isDark && splitType !== SplitType.GROUP && { color: colors.text },
+                    { color: splitType === SplitType.GROUP ? (isDark ? '#2DD4BF' : colors.tint) : colors.textSecondary },
                   ]}>
                     Group
                   </ThemedText>
                 </TouchableOpacity>
                 <TouchableOpacity
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: splitType === SplitType.FRIENDS }}
                   style={[
                     styles.toggleButton,
                     splitType === SplitType.FRIENDS && styles.toggleButtonActive,
-                    !isDark && splitType !== SplitType.FRIENDS && { backgroundColor: colors.card, borderColor: colors.border },
+                    {
+                      backgroundColor: splitType === SplitType.FRIENDS
+                        ? (isDark ? 'rgba(45, 212, 191, 0.14)' : 'rgba(34, 197, 94, 0.08)')
+                        : 'transparent',
+                      borderColor: splitType === SplitType.FRIENDS
+                        ? (isDark ? '#2DD4BF' : colors.tint)
+                        : 'transparent',
+                    },
                   ]}
                   onPress={() => setSplitType(SplitType.FRIENDS)}>
                   <IconSymbol
                     name="person.2.fill"
-                    size={18}
-                    color={splitType === SplitType.FRIENDS ? '#0A0A0F' : (isDark ? '#2DD4BF' : colors.tint)}
+                    size={17}
+                    color={splitType === SplitType.FRIENDS ? (isDark ? '#2DD4BF' : colors.tint) : colors.textSecondary}
                   />
                   <ThemedText style={[
                     styles.toggleText,
                     splitType === SplitType.FRIENDS && styles.toggleTextActive,
-                    !isDark && splitType !== SplitType.FRIENDS && { color: colors.text },
+                    { color: splitType === SplitType.FRIENDS ? (isDark ? '#2DD4BF' : colors.tint) : colors.textSecondary },
                   ]}>
                     Friends
                   </ThemedText>
@@ -597,7 +633,7 @@ export default function AddExpenseScreen() {
           {/* Split Method Selection */}
           <View style={styles.inputSection}>
             <ThemedText style={[styles.inputLabel, { color: colors.textSecondary }]}>
-              How to split?
+              Split method
             </ThemedText>
             <View style={styles.splitMethodContainer}>
               {SPLIT_METHODS
@@ -610,33 +646,39 @@ export default function AddExpenseScreen() {
                 })
                 .map(method => {
                   const isActive = splitMethod === method.id;
+                  const compactLabel = method.id === SplitMethod.PERCENTAGE ? 'Percent' : method.label;
                   return (
                     <TouchableOpacity
                       key={method.id}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: isActive }}
                       style={[
                         styles.splitMethodButton,
                         isActive && styles.splitMethodButtonActive,
                         {
                           backgroundColor: isActive
-                            ? (isDark ? '#2DD4BF' : colors.tint)
-                            : (isDark ? 'rgba(30, 41, 59, 0.6)' : 'rgba(241, 245, 249, 0.9)'),
+                            ? (isDark ? 'rgba(45, 212, 191, 0.14)' : 'rgba(34, 197, 94, 0.08)')
+                            : (isDark ? 'rgba(20, 35, 38, 0.66)' : colors.card),
                           borderColor: isActive
                             ? (isDark ? '#2DD4BF' : colors.tint)
-                            : (isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(34, 197, 94, 0.2)'),
+                            : colors.border,
                         },
                       ]}
                       onPress={() => setSplitMethod(method.id)}>
                       <IconSymbol
                         name={method.icon}
                         size={18}
-                        color={isActive ? '#0A0A0F' : (isDark ? '#2DD4BF' : colors.tint)}
+                        color={isDark ? '#2DD4BF' : colors.tint}
                       />
-                      <ThemedText style={[
-                        styles.splitMethodText,
-                        isActive && styles.splitMethodTextActive,
-                        !isDark && !isActive && { color: colors.text },
-                      ]}>
-                        {method.label}
+                      <ThemedText
+                        numberOfLines={1}
+                        adjustsFontSizeToFit
+                        minimumFontScale={0.82}
+                        style={[
+                          styles.splitMethodText,
+                          { color: isActive ? (isDark ? '#2DD4BF' : colors.tint) : colors.text },
+                        ]}>
+                        {compactLabel}
                       </ThemedText>
                     </TouchableOpacity>
                   );
@@ -1111,32 +1153,47 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 18,
     paddingBottom: 120,
   },
   content: {
     flex: 1,
   },
   amountSection: {
+    marginBottom: 22,
+  },
+  amountCard: {
+    borderRadius: 18,
+    borderWidth: 1,
+    padding: 18,
+  },
+  amountHeader: {
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 32,
-    marginBottom: 24,
+    justifyContent: 'space-between',
+    gap: 12,
+    marginBottom: 10,
   },
   amountLabel: {
-    fontSize: 16,
-    marginBottom: 12,
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   amountInputRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
   },
   currencySymbol: {
-    fontSize: 48,
+    fontSize: 44,
     fontWeight: '700',
     marginRight: 4,
   },
   amountInput: {
-    fontSize: 48,
+    flexShrink: 1,
+    fontSize: 44,
     fontWeight: '700',
     minWidth: 120,
     textAlign: 'center',
@@ -1145,8 +1202,11 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   inputLabel: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
     marginBottom: 10,
   },
   inputContainer: {
@@ -1164,58 +1224,57 @@ const styles = StyleSheet.create({
   },
   toggleContainer: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 6,
+    padding: 4,
+    borderRadius: 14,
+    borderWidth: 1,
   },
   toggleButton: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 14,
-    borderRadius: 14,
-    backgroundColor: 'rgba(20, 35, 38, 0.6)',
+    gap: 6,
+    minHeight: 44,
+    borderRadius: 10,
     borderWidth: 1,
-    borderColor: 'rgba(45, 212, 191, 0.2)',
   },
   toggleButtonActive: {
-    backgroundColor: '#2DD4BF',
-    borderColor: '#2DD4BF',
+    borderWidth: 1,
   },
   toggleText: {
-    fontSize: 15,
-    fontWeight: '600',
+    fontSize: 14,
+    lineHeight: 18,
+    fontWeight: '700',
     color: '#fff',
   },
   toggleTextActive: {
-    color: '#0A0A0F',
+    color: '#2DD4BF',
   },
   splitMethodContainer: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
+    gap: 8,
   },
   splitMethodButton: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
+    gap: 5,
+    minHeight: 44,
+    paddingHorizontal: 8,
     borderRadius: 12,
     borderWidth: 1,
-    minWidth: '22%',
   },
   splitMethodButtonActive: {
     borderWidth: 1.5,
   },
   splitMethodText: {
-    fontSize: 13,
-    fontWeight: '600',
+    flexShrink: 1,
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: '700',
     color: '#fff',
-  },
-  splitMethodTextActive: {
-    color: '#0A0A0F',
   },
   customSplitSection: {
     marginBottom: 16,

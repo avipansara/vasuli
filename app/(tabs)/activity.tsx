@@ -14,10 +14,23 @@ import { useFocusEffect } from 'expo-router/react-navigation';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Animated, Platform, SectionList, StyleSheet, View } from 'react-native';
+import { Animated, Platform, RefreshControl, SectionList, StyleSheet, View } from 'react-native';
+
+function getTimePeriod(timestamp: number): string {
+  const now = new Date();
+  const date = new Date(timestamp);
+  const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+
+  if (diffDays === 0 && date.toDateString() === now.toDateString()) return 'Today';
+  if (diffDays === 1 || (diffDays === 0 && date.toDateString() !== now.toDateString())) return 'Yesterday';
+  if (diffDays < 7) return 'This Week';
+  if (diffDays < 30) return 'This Month';
+  return 'Earlier';
+}
 
 export default function ActivityScreen() {
   const { gradients, colors, isDark } = useThemeColors();
+  const [refreshing, setRefreshing] = useState(false);
   const PAGE_SIZE = 20;
 
   // Animations
@@ -83,6 +96,15 @@ export default function ActivityScreen() {
     }
   };
 
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await refetch();
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refetch]);
+
   const renderActivityItem = useCallback(
     ({ item }: { item: Activity }) => <ActivityCard activity={item} currentUserId={currentUserId} />,
     [currentUserId]
@@ -97,29 +119,19 @@ export default function ActivityScreen() {
     );
   };
 
-  // Group activities by time period
-  const getTimePeriod = (timestamp: number): string => {
-    const now = new Date();
-    const date = new Date(timestamp);
-    const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
-
-    if (diffDays === 0 && date.toDateString() === now.toDateString()) return 'Today';
-    if (diffDays === 1 || (diffDays === 0 && date.toDateString() !== now.toDateString())) return 'Yesterday';
-    if (diffDays < 7) return 'This Week';
-    if (diffDays < 30) return 'This Month';
-    return 'Earlier';
-  }
-
-  const groupedActivities = activities.reduce((acc, activity) => {
-    const period = getTimePeriod(activity.createdAt);
-    const existing = acc.find((g: { title: string }) => g.title === period);
-    if (existing) {
-      existing.data.push(activity);
-    } else {
-      acc.push({ title: period, data: [activity] });
-    }
-    return acc;
-  }, [] as { title: string; data: Activity[] }[]);
+  const groupedActivities = useMemo(
+    () => activities.reduce((acc, activity) => {
+      const period = getTimePeriod(activity.createdAt);
+      const existing = acc.find((g: { title: string }) => g.title === period);
+      if (existing) {
+        existing.data.push(activity);
+      } else {
+        acc.push({ title: period, data: [activity] });
+      }
+      return acc;
+    }, [] as { title: string; data: Activity[] }[]),
+    [activities]
+  );
 
   return (
     <LinearGradient
@@ -133,11 +145,11 @@ export default function ActivityScreen() {
       {loading ? (
         <LoadingState message="Loading activity..." />
       ) : loadError ? (
-          <AsyncErrorState
-            message={loadError}
-            onRetry={refetch}
-            title="Couldn't load activity"
-          />
+        <AsyncErrorState
+          message={loadError}
+          onRetry={refetch}
+          title="Couldn't load activity"
+        />
       ) : activities.length === 0 ? (
         <Animated.View style={[
           styles.emptyContainer,
@@ -170,6 +182,17 @@ export default function ActivityScreen() {
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
           stickySectionHeadersEnabled={false}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor={colors.tint}
+              titleColor={colors.textSecondary}
+              colors={[colors.tint]}
+              progressBackgroundColor={colors.background}
+            />
+          }
         />
       )}
     </LinearGradient>
@@ -179,24 +202,6 @@ export default function ActivityScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingSpinner: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: 'rgba(45, 212, 191, 0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  loadingText: {
-    fontSize: 16,
-    opacity: 0.7,
   },
   header: {
     flexDirection: 'column',
@@ -226,54 +231,6 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
-  activityCard: {
-    flexDirection: 'row',
-    padding: 14,
-    borderRadius: 12,
-    marginBottom: 10,
-    backgroundColor: 'rgba(20, 35, 38, 0.6)',
-  },
-  activityIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  activityInfo: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  activityDescription: {
-    fontSize: 16,
-    marginBottom: 4,
-  },
-  activityDetails: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 2,
-  },
-  groupName: {
-    fontSize: 12,
-    opacity: 0.6,
-  },
-  activityDate: {
-    fontSize: 12,
-    opacity: 0.6,
-  },
-  paidBy: {
-    fontSize: 11,
-    opacity: 0.5,
-  },
-  amountContainer: {
-    alignItems: 'flex-end',
-    justifyContent: 'center',
-  },
-  amount: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -301,9 +258,5 @@ const styles = StyleSheet.create({
   footerLoader: {
     paddingVertical: 20,
     alignItems: 'center',
-  },
-  footerError: {
-    paddingVertical: 8,
-    paddingHorizontal: 8,
   },
 });
