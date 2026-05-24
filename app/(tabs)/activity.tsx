@@ -83,7 +83,10 @@ export default function ActivityScreen() {
     }
   };
 
-  const renderActivityItem = useCallback(({ item }: { item: Activity }) => <ActivityCard activity={item} />, []);
+  const renderActivityItem = useCallback(
+    ({ item }: { item: Activity }) => <ActivityCard activity={item} currentUserId={currentUserId} />,
+    [currentUserId]
+  );
 
   const renderFooter = () => {
     if (!isFetchingNextPage) return null;
