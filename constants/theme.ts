@@ -109,6 +109,51 @@ export const Colors = {
   },
 };
 
+export const ExpenseDetailTheme = {
+  light: {
+    accent: ACCENT_GREEN,
+    onAccent: BG_DARK,
+    surface: BG_CARD_LIGHT,
+    surfaceBorder: BORDER_LIGHT,
+    mutedSurface: 'rgba(250, 250, 250, 0.96)',
+    mutedSurfaceBorder: BORDER_LIGHT,
+    accentSurface: BG_ICON_LIGHT,
+    accentSurfaceBorder: 'rgba(34, 197, 94, 0.22)',
+    selectedSurface: BG_ICON_LIGHT,
+    avatarSurface: 'rgba(34, 197, 94, 0.12)',
+    danger: ERROR_COLOR,
+    dangerSurface: 'rgba(239, 68, 68, 0.1)',
+    dangerBorder: 'rgba(239, 68, 68, 0.22)',
+    warning: '#F59E0B',
+    neutralPillSurface: 'rgba(107, 114, 128, 0.1)',
+    divider: 'rgba(156, 163, 175, 0.35)',
+    backgroundAccentTop: 'rgba(34, 197, 94, 0.08)',
+    backgroundAccentMiddle: 'rgba(167, 139, 250, 0.06)',
+    backgroundAccentBottom: 'rgba(45, 212, 191, 0.05)',
+  },
+  dark: {
+    accent: ACCENT_TEAL,
+    onAccent: BG_DARK,
+    surface: 'rgba(20, 35, 38, 0.82)',
+    surfaceBorder: 'rgba(45, 212, 191, 0.16)',
+    mutedSurface: 'rgba(18, 18, 26, 0.72)',
+    mutedSurfaceBorder: 'rgba(45, 212, 191, 0.14)',
+    accentSurface: 'rgba(45, 212, 191, 0.12)',
+    accentSurfaceBorder: 'rgba(45, 212, 191, 0.24)',
+    selectedSurface: 'rgba(45, 212, 191, 0.12)',
+    avatarSurface: 'rgba(45, 212, 191, 0.14)',
+    danger: ERROR_COLOR,
+    dangerSurface: 'rgba(239, 68, 68, 0.14)',
+    dangerBorder: 'rgba(239, 68, 68, 0.22)',
+    warning: '#F59E0B',
+    neutralPillSurface: 'rgba(156, 163, 175, 0.12)',
+    divider: 'rgba(156, 163, 175, 0.35)',
+    backgroundAccentTop: 'rgba(45, 212, 191, 0.08)',
+    backgroundAccentMiddle: 'rgba(167, 139, 250, 0.06)',
+    backgroundAccentBottom: 'rgba(45, 212, 191, 0.05)',
+  },
+};
+
 // Gradient presets for liquid glass effects - Dark mode
 export const Gradients = {
   dark: {
