@@ -16,7 +16,6 @@ import { queryKeys } from '@/services/query-keys';
 import type { Expense, User } from '@/types/database';
 import { useFocusEffect } from 'expo-router/react-navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -35,9 +34,11 @@ interface ExpenseWithSplit extends Expense {
   paidByName: string;
 }
 
+const MIN_TOUCH_HIT_SLOP = { top: 8, right: 8, bottom: 8, left: 8 };
+
 export default function FriendDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { gradients, colors, isDark } = useThemeColors();
+  const { gradients, colors, friendDetail: friendDetailTheme } = useThemeColors();
   const [friend, setFriend] = useState<UserWithBalance | null>(null);
   const [expenses, setExpenses] = useState<ExpenseWithSplit[]>([]);
   const [settleModalVisible, setSettleModalVisible] = useState(false);
@@ -55,8 +56,7 @@ export default function FriendDetailScreen() {
   // Animations
   const [fadeAnim] = useState(() => new Animated.Value(0));
   const [slideAnim] = useState(() => new Animated.Value(30));
-  const [scaleAnim] = useState(() => new Animated.Value(0.9));
-  const [pulseAnim] = useState(() => new Animated.Value(1));
+  const [scaleAnim] = useState(() => new Animated.Value(0.98));
 
   const {
     data: friendDetail,
@@ -111,24 +111,8 @@ export default function FriendDetailScreen() {
         }),
       ]).start();
 
-      if (friend.balance !== 0) {
-        Animated.loop(
-          Animated.sequence([
-            Animated.timing(pulseAnim, {
-              toValue: 1.05,
-              duration: 1500,
-              useNativeDriver: true,
-            }),
-            Animated.timing(pulseAnim, {
-              toValue: 1,
-              duration: 1500,
-              useNativeDriver: true,
-            }),
-          ])
-        ).start();
-      }
     }
-  }, [fadeAnim, friend, loading, pulseAnim, scaleAnim, slideAnim]);
+  }, [fadeAnim, friend, loading, scaleAnim, slideAnim]);
 
   useFocusEffect(
     useCallback(() => {
@@ -444,10 +428,10 @@ export default function FriendDetailScreen() {
           <TouchableOpacity
             onPress={() => router.back()}
             style={[styles.backButtonRect, {
-              backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)',
-              borderColor: isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(34, 197, 94, 0.3)'
+              backgroundColor: friendDetailTheme.actionSurface,
+              borderColor: friendDetailTheme.actionBorder,
             }]}>
-            <IconSymbol size={20} name="chevron.left" color={isDark ? '#2DD4BF' : colors.tint} />
+            <IconSymbol size={20} name="chevron.left" color={friendDetailTheme.actionIcon} />
           </TouchableOpacity>
         </View>
         <AsyncErrorState
@@ -464,50 +448,84 @@ export default function FriendDetailScreen() {
   }
 
   const balance = friend.balance;
-  const balanceColor = balance > 0 ? '#10b981' : balance < 0 ? '#ef4444' : '#2DD4BF';
-  const balanceGradient = balance > 0
-    ? ['rgba(16, 185, 129, 0.2)', 'rgba(16, 185, 129, 0.05)']
-    : balance < 0
-      ? ['rgba(239, 68, 68, 0.2)', 'rgba(239, 68, 68, 0.05)']
-      : ['rgba(45, 212, 191, 0.2)', 'rgba(45, 212, 191, 0.05)'];
+  const isOwed = balance > 0;
+  const isOwing = balance < 0;
+  const balanceColor = isOwed
+    ? friendDetailTheme.positive
+    : isOwing
+      ? friendDetailTheme.negative
+      : friendDetailTheme.actionIcon;
+  const balanceSurface = isOwed
+    ? friendDetailTheme.positiveSurface
+    : isOwing
+      ? friendDetailTheme.negativeSurface
+      : friendDetailTheme.settledSurface;
+  const balanceCopy = isOwed
+    ? `${friend.name.split(' ')[0]} owes you`
+    : isOwing
+      ? `You owe ${friend.name.split(' ')[0]}`
+      : 'All settled up';
+  const balanceAccessibilityValue = `${balanceCopy}, $${Math.abs(balance).toFixed(2)}`;
 
   return (
     <View style={styles.container}>
       <LinearGradient colors={gradients.screenBackground} style={StyleSheet.absoluteFill} />
 
-      {/* Animated background orbs */}
-      <View style={styles.orbContainer}>
-        <Animated.View style={[styles.orb, styles.orb1, { transform: [{ scale: pulseAnim }] }]} />
-        <Animated.View style={[styles.orb, styles.orb2]} />
-        <View style={[styles.orb, styles.orb3]} />
+      <View
+        pointerEvents="none"
+        accessible={false}
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+        style={styles.ambientLayer}>
+        <View style={[styles.ambientShape, styles.ambientTop, { backgroundColor: friendDetailTheme.backgroundAccentTop }]} />
+        <View style={[styles.ambientShape, styles.ambientMiddle, { backgroundColor: friendDetailTheme.backgroundAccentMiddle }]} />
+        <View style={[styles.ambientShape, styles.ambientBottom, { backgroundColor: friendDetailTheme.backgroundAccentBottom }]} />
       </View>
 
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity
           onPress={() => router.back()}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+          accessibilityHint="Returns to the previous screen"
+          hitSlop={MIN_TOUCH_HIT_SLOP}
           style={[styles.backButtonRect, {
-            backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)',
-            borderColor: isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(34, 197, 94, 0.3)'
+            backgroundColor: friendDetailTheme.actionSurface,
+            borderColor: friendDetailTheme.actionBorder,
           }]}>
-          <IconSymbol size={20} name="chevron.left" color={isDark ? '#2DD4BF' : colors.tint} />
+          <IconSymbol size={20} name="chevron.left" color={friendDetailTheme.actionIcon} />
         </TouchableOpacity>
         <View style={styles.headerActions}>
           <TouchableOpacity
             onPress={handleRemind}
+            disabled={balance === 0}
+            accessibilityRole="button"
+            accessibilityLabel={`Remind ${friend.name}`}
+            accessibilityHint="Sends a reminder about this balance"
+            accessibilityState={{ disabled: balance === 0 }}
+            hitSlop={MIN_TOUCH_HIT_SLOP}
             style={[styles.headerActionButton, {
-              backgroundColor: isDark ? 'rgba(245, 158, 11, 0.15)' : 'rgba(251, 191, 36, 0.15)',
-              borderColor: isDark ? 'rgba(245, 158, 11, 0.3)' : 'rgba(251, 191, 36, 0.3)'
+              backgroundColor: friendDetailTheme.warningSurface,
+              borderColor: friendDetailTheme.warningBorder,
+              opacity: balance === 0 ? 0.45 : 1,
             }]}>
-            <IconSymbol size={18} name="bell.fill" color="#f59e0b" />
+            <IconSymbol size={18} name="bell.fill" color={friendDetailTheme.warning} />
           </TouchableOpacity>
           <TouchableOpacity
             onPress={handleRemoveFriend}
+            disabled={isRemovingFriend}
+            accessibilityRole="button"
+            accessibilityLabel={`Remove ${friend.name}`}
+            accessibilityHint="Removes this person from your friends"
+            accessibilityState={{ busy: isRemovingFriend, disabled: isRemovingFriend }}
+            hitSlop={MIN_TOUCH_HIT_SLOP}
             style={[styles.headerActionButton, {
-              backgroundColor: 'rgba(239, 68, 68, 0.15)',
-              borderColor: 'rgba(239, 68, 68, 0.3)'
+              backgroundColor: friendDetailTheme.dangerSurface,
+              borderColor: friendDetailTheme.dangerBorder,
+              opacity: isRemovingFriend ? 0.5 : 1,
             }]}>
-            <IconSymbol size={18} name="trash" color="#ef4444" />
+            <IconSymbol size={18} name="trash" color={friendDetailTheme.danger} />
           </TouchableOpacity>
         </View>
       </View>
@@ -517,7 +535,6 @@ export default function FriendDetailScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}>
 
-        {/* Profile Hero Section */}
         <Animated.View style={[
           styles.heroSection,
           {
@@ -525,35 +542,35 @@ export default function FriendDetailScreen() {
             transform: [{ translateY: slideAnim }, { scale: scaleAnim }],
           }
         ]}>
-          {/* Large Avatar with glow effect */}
-          <View style={styles.avatarWrapper}>
-            <LinearGradient
-              colors={isDark ? ['#2DD4BF', '#14B8A6'] : ['#22c55e', '#16a34a']}
-              style={styles.avatarGlow}
-            />
-            <View style={[styles.avatar, { backgroundColor: isDark ? '#0A0A0F' : '#fff' }]}>
-              <LinearGradient
-                colors={isDark ? ['rgba(45, 212, 191, 0.3)', 'rgba(45, 212, 191, 0.1)'] : ['rgba(34, 197, 94, 0.3)', 'rgba(34, 197, 94, 0.1)']}
-                style={styles.avatarInner}>
-                <ThemedText style={[styles.avatarText, { color: isDark ? '#2DD4BF' : colors.tint }]}>
-                  {friend.name.charAt(0).toUpperCase()}
+          <View
+            accessible
+            accessibilityRole="summary"
+            accessibilityLabel={`${friend.name}${friend.email ? `, ${friend.email}` : ''}`}
+            style={[styles.profileCard, {
+              backgroundColor: friendDetailTheme.surface,
+              borderColor: friendDetailTheme.surfaceBorder,
+            }]}>
+            <View style={[styles.avatar, {
+              backgroundColor: friendDetailTheme.avatarSurface,
+              borderColor: friendDetailTheme.avatarBorder,
+            }]}>
+              <ThemedText style={[styles.avatarText, { color: friendDetailTheme.actionIcon }]}>
+                {friend.name.charAt(0).toUpperCase()}
+              </ThemedText>
+            </View>
+            <View style={styles.profileInfo}>
+              <ThemedText type="title" numberOfLines={1} style={[styles.friendName, { color: colors.text }]}>
+                {friend.name}
+              </ThemedText>
+              {friend.email && (
+                <ThemedText numberOfLines={1} style={[styles.friendEmail, { color: colors.textSecondary }]}>
+                  {friend.email}
                 </ThemedText>
-              </LinearGradient>
+              )}
             </View>
           </View>
-
-          {/* Name and email */}
-          <ThemedText type="title" style={[styles.friendName, !isDark && { color: colors.text }]}>
-            {friend.name}
-          </ThemedText>
-          {friend.email && (
-            <ThemedText style={[styles.friendEmail, !isDark && { color: colors.textSecondary }]}>
-              {friend.email}
-            </ThemedText>
-          )}
         </Animated.View>
 
-        {/* Balance Card with glassmorphism */}
         <Animated.View style={[
           styles.balanceCardWrapper,
           {
@@ -561,73 +578,58 @@ export default function FriendDetailScreen() {
             transform: [{ translateY: slideAnim }],
           }
         ]}>
-          <BlurView intensity={isDark ? 40 : 80} tint={isDark ? 'dark' : 'light'} style={styles.balanceCard}>
-            <LinearGradient
-              colors={balanceGradient as [string, string]}
-              style={styles.balanceGradientOverlay}
-            />
-            <View style={styles.balanceContent}>
-              {balance !== 0 ? (
-                <>
-                  <View style={styles.balanceHeader}>
-                    <View style={[styles.balanceIndicator, { backgroundColor: balanceColor }]} />
-                    <ThemedText style={[styles.balanceLabel, !isDark && { color: colors.textSecondary }]}>
-                      {balance > 0 ? `${friend.name.split(' ')[0]} owes you` : `You owe ${friend.name.split(' ')[0]}`}
-                    </ThemedText>
-                  </View>
-                  <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-                    <ThemedText style={[styles.balanceAmount, { color: balanceColor }]}>
-                      ${Math.abs(balance).toFixed(2)}
-                    </ThemedText>
-                  </Animated.View>
-                </>
-              ) : (
-                <View style={styles.settledContainer}>
-                  <View style={styles.settledIconWrapper}>
-                    <LinearGradient
-                      colors={isDark ? ['#2DD4BF', '#14B8A6'] : ['#22c55e', '#16a34a']}
-                      style={styles.settledIcon}>
-                      <IconSymbol size={28} name="checkmark" color="#fff" />
-                    </LinearGradient>
-                  </View>
-                  <ThemedText style={[styles.settledText, !isDark && { color: colors.text }]}>
-                    All settled up!
-                  </ThemedText>
-                  <ThemedText style={[styles.settledSubtext, !isDark && { color: colors.textSecondary }]}>
-                    No outstanding balance with {friend.name.split(' ')[0]}
-                  </ThemedText>
-                </View>
-              )}
+          <View
+            accessible
+            accessibilityRole="summary"
+            accessibilityLabel={balanceAccessibilityValue}
+            accessibilityLiveRegion="polite"
+            style={[styles.balanceCard, {
+              backgroundColor: balanceSurface,
+              borderColor: friendDetailTheme.surfaceBorder,
+            }]}>
+            <View style={styles.balanceHeader}>
+              <View style={[styles.balanceIndicator, { backgroundColor: balanceColor }]} />
+              <ThemedText style={[styles.balanceLabel, { color: colors.textSecondary }]}>
+                {balanceCopy}
+              </ThemedText>
             </View>
-          </BlurView>
+            <ThemedText style={[styles.balanceAmount, { color: balanceColor }]}>
+              ${Math.abs(balance).toFixed(2)}
+            </ThemedText>
+          </View>
         </Animated.View>
 
         {/* Quick Actions */}
         <View style={styles.quickActions}>
           <TouchableOpacity
             style={styles.quickActionButton}
+            accessibilityRole="button"
+            accessibilityLabel={`Add expense with ${friend.name}`}
+            accessibilityHint="Opens the add expense screen for this friend"
             onPress={() => router.push({ pathname: '/add-expense', params: { friendId: id } })}>
             <LinearGradient
               colors={gradients.buttonPrimary}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.quickActionGradient}>
-              <IconSymbol size={20} name="plus.circle.fill" color="#0A0A0F" />
-              <ThemedText style={[styles.quickActionTextDark, { color: '#0A0A0F' }]}>Add Expense</ThemedText>
+              <IconSymbol size={18} name="plus.circle.fill" color={friendDetailTheme.onPrimary} />
+              <ThemedText style={[styles.quickActionTextDark, { color: friendDetailTheme.onPrimary }]}>Add Expense</ThemedText>
             </LinearGradient>
           </TouchableOpacity>
           {balance !== 0 && (
             <TouchableOpacity
-              style={styles.quickActionButton}
+              style={[styles.quickActionButton, styles.secondaryQuickActionButton, {
+                backgroundColor: friendDetailTheme.positiveSurface,
+                borderColor: friendDetailTheme.positiveBorder,
+              }]}
+              accessibilityRole="button"
+              accessibilityLabel={`Settle up with ${friend.name}`}
+              accessibilityHint="Opens the settlement form for this balance"
+              accessibilityState={{ disabled: isSettlingUp, busy: isSettlingUp }}
+              disabled={isSettlingUp}
               onPress={() => setSettleModalVisible(true)}>
-              <LinearGradient
-                colors={['#10b981', '#059669']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.quickActionGradient}>
-                <IconSymbol size={20} name="checkmark.circle.fill" color="#fff" />
-                <ThemedText style={styles.quickActionTextDark}>Settle Up</ThemedText>
-              </LinearGradient>
+              <IconSymbol size={18} name="checkmark.circle.fill" color={friendDetailTheme.positive} />
+              <ThemedText style={[styles.quickActionTextDark, { color: friendDetailTheme.positive }]}>Settle Up</ThemedText>
             </TouchableOpacity>
           )}
         </View>
@@ -635,23 +637,23 @@ export default function FriendDetailScreen() {
         {/* Expense History */}
         <View style={styles.historySection}>
           <View style={styles.sectionHeader}>
-            <ThemedText type="subtitle" style={[styles.sectionTitle, !isDark && { color: colors.text }]}>
+            <ThemedText type="subtitle" style={[styles.sectionTitle, { color: colors.text }]}>
               Activity
             </ThemedText>
-            <ThemedText style={[styles.expenseCount, !isDark && { color: colors.textSecondary }]}>
+            <ThemedText style={[styles.expenseCount, { color: colors.textSecondary }]}>
               {expenses.length} {expenses.length === 1 ? 'expense' : 'expenses'}
             </ThemedText>
           </View>
 
           {expenses.length === 0 ? (
             <View style={styles.emptyHistory}>
-              <View style={[styles.emptyIconWrapper, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.1)' : 'rgba(34, 197, 94, 0.1)' }]}>
-                <IconSymbol size={32} name="doc.text" color={isDark ? '#2DD4BF' : colors.tint} />
+              <View style={[styles.emptyIconWrapper, { backgroundColor: friendDetailTheme.avatarSurface }]}>
+                <IconSymbol size={32} name="doc.text" color={friendDetailTheme.actionIcon} />
               </View>
-              <ThemedText style={[styles.emptyTitle, !isDark && { color: colors.text }]}>
+              <ThemedText style={[styles.emptyTitle, { color: colors.text }]}>
                 No expenses yet
               </ThemedText>
-              <ThemedText style={[styles.emptyText, !isDark && { color: colors.textSecondary }]}>
+              <ThemedText style={[styles.emptyText, { color: colors.textSecondary }]}>
                 Add an expense to start tracking with {friend.name.split(' ')[0]}
               </ThemedText>
             </View>
@@ -667,18 +669,35 @@ export default function FriendDetailScreen() {
                   }
                 }}
                 renderLeftActions={(progress, dragX) => (
-                  <Animated.View style={[styles.swipeActionLeft, { opacity: dragX.interpolate({ inputRange: [0, 80], outputRange: [0, 1], extrapolate: 'clamp' }) }]}>
-                    <TouchableOpacity onPress={() => handleEditExpense(item.id)} style={styles.swipeActionButton}>
-                      <IconSymbol name="pencil" size={20} color="#fff" />
-                      <ThemedText style={styles.swipeActionText}>Edit</ThemedText>
+                  <Animated.View style={[styles.swipeActionLeft, {
+                    backgroundColor: friendDetailTheme.actionSurface,
+                    opacity: dragX.interpolate({ inputRange: [0, 80], outputRange: [0, 1], extrapolate: 'clamp' })
+                  }]}>
+                    <TouchableOpacity
+                      onPress={() => handleEditExpense(item.id)}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Edit ${item.description}`}
+                      accessibilityHint="Opens the edit expense screen"
+                      style={styles.swipeActionButton}>
+                      <IconSymbol name="pencil" size={20} color={friendDetailTheme.actionIcon} />
+                      <ThemedText style={[styles.swipeActionText, { color: friendDetailTheme.actionIcon }]}>Edit</ThemedText>
                     </TouchableOpacity>
                   </Animated.View>
                 )}
                 renderRightActions={item.paidBy === currentUserId ? (progress, dragX) => (
-                  <Animated.View style={[styles.swipeActionRight, { opacity: dragX.interpolate({ inputRange: [-80, 0], outputRange: [1, 0], extrapolate: 'clamp' }) }]}>
-                    <TouchableOpacity onPress={() => handleDeleteExpense(item.id)} style={styles.swipeActionButton}>
-                      <IconSymbol name="trash" size={20} color="#fff" />
-                      <ThemedText style={styles.swipeActionText}>Delete</ThemedText>
+                  <Animated.View style={[styles.swipeActionRight, {
+                    backgroundColor: friendDetailTheme.dangerSurface,
+                    opacity: dragX.interpolate({ inputRange: [-80, 0], outputRange: [1, 0], extrapolate: 'clamp' })
+                  }]}>
+                    <TouchableOpacity
+                      onPress={() => handleDeleteExpense(item.id)}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Delete ${item.description}`}
+                      accessibilityHint="Deletes this expense after confirmation"
+                      accessibilityState={{ busy: deletingExpenseId === item.id }}
+                      style={styles.swipeActionButton}>
+                      <IconSymbol name="trash" size={20} color={friendDetailTheme.danger} />
+                      <ThemedText style={[styles.swipeActionText, { color: friendDetailTheme.danger }]}>Delete</ThemedText>
                     </TouchableOpacity>
                   </Animated.View>
                 ) : undefined}
@@ -689,12 +708,18 @@ export default function FriendDetailScreen() {
                 enableTrackpadTwoFingerGesture
                 containerStyle={{ overflow: 'visible' }}>
                 <TouchableOpacity
+                  accessibilityRole="button"
+                  accessibilityLabel={`${item.description}, ${formatDate(item.date)}, ${item.paidByName} paid $${item.amount.toFixed(2)}, ${item.paidBy === currentUserId ? `you are owed $${item.friendShare.toFixed(2)}` : `you owe $${item.yourShare.toFixed(2)}`}`}
+                  accessibilityHint="Opens expense details"
                   activeOpacity={0.7}
                   onPress={() => handleOpenExpense(item.id)}>
                   <Animated.View
                     style={[
                       styles.expenseCard,
-                      !isDark && { backgroundColor: colors.card },
+                      {
+                        backgroundColor: friendDetailTheme.surface,
+                        borderColor: friendDetailTheme.surfaceBorder,
+                      },
                       {
                         opacity: fadeAnim,
                         transform: [{ translateY: Animated.multiply(slideAnim, new Animated.Value((index + 1) * 0.2)) }],
@@ -702,30 +727,30 @@ export default function FriendDetailScreen() {
                     ]}>
                     <View style={[
                       styles.expenseIcon,
-                      { backgroundColor: item.paidBy === currentUserId ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)' }
+                      { backgroundColor: item.paidBy === currentUserId ? friendDetailTheme.positiveSurface : friendDetailTheme.negativeSurface }
                     ]}>
                       <IconSymbol
                         size={18}
                         name={item.paidBy === currentUserId ? 'arrow.up.right' : 'arrow.down.left'}
-                        color={item.paidBy === currentUserId ? '#10b981' : '#ef4444'}
+                        color={item.paidBy === currentUserId ? friendDetailTheme.positive : friendDetailTheme.negative}
                       />
                     </View>
                     <View style={styles.expenseInfo}>
-                      <ThemedText style={[styles.expenseDescription, !isDark && { color: colors.text }]}>
+                      <ThemedText style={[styles.expenseDescription, { color: colors.text }]}>
                         {item.description}
                       </ThemedText>
-                      <ThemedText style={[styles.expenseDate, !isDark && { color: colors.textSecondary }]}>
+                      <ThemedText style={[styles.expenseDate, { color: colors.textSecondary }]}>
                         {formatDate(item.date)} • {item.paidByName} paid
                       </ThemedText>
                     </View>
                     <View style={styles.expenseAmounts}>
-                      <ThemedText style={[styles.expenseTotal, !isDark && { color: colors.textSecondary }]}>
+                      <ThemedText style={[styles.expenseTotal, { color: colors.textSecondary }]}>
                         ${item.amount.toFixed(2)}
                       </ThemedText>
                       <ThemedText
                         style={[
                           styles.expenseShare,
-                          { color: item.paidBy === currentUserId ? '#10b981' : '#ef4444' },
+                          { color: item.paidBy === currentUserId ? friendDetailTheme.positive : friendDetailTheme.negative },
                         ]}>
                         {item.paidBy === currentUserId
                           ? `+$${item.friendShare.toFixed(2)}`
@@ -755,52 +780,34 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  orbContainer: {
+  ambientLayer: {
     ...StyleSheet.absoluteFill,
     overflow: 'hidden',
   },
-  orb: {
+  ambientShape: {
     position: 'absolute',
     borderRadius: 999,
   },
-  orb1: {
-    width: 300,
-    height: 300,
-    backgroundColor: 'rgba(45, 212, 191, 0.15)',
-    top: -100,
-    right: -100,
+  ambientTop: {
+    width: 360,
+    height: 360,
+    borderRadius: 180,
+    top: -104,
+    right: -150,
   },
-  orb2: {
-    width: 200,
-    height: 200,
-    backgroundColor: 'rgba(139, 92, 246, 0.1)',
-    bottom: 200,
-    left: -50,
+  ambientMiddle: {
+    width: 310,
+    height: 310,
+    borderRadius: 155,
+    left: -170,
+    top: 360,
   },
-  orb3: {
-    width: 150,
-    height: 150,
-    backgroundColor: 'rgba(45, 212, 191, 0.08)',
-    bottom: 50,
-    right: -30,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingSpinner: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: 'rgba(45, 212, 191, 0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  loadingText: {
-    fontSize: 16,
-    opacity: 0.7,
+  ambientBottom: {
+    width: 280,
+    height: 280,
+    borderRadius: 140,
+    right: -150,
+    top: 650,
   },
   header: {
     flexDirection: 'row',
@@ -831,72 +838,58 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   heroSection: {
-    alignItems: 'center',
     paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 20,
+    paddingTop: 6,
+    paddingBottom: 10,
   },
-  avatarWrapper: {
-    position: 'relative',
-    marginBottom: 16,
-  },
-  avatarGlow: {
-    position: 'absolute',
-    width: 100,
-    height: 100,
-    borderRadius: 20,
-    opacity: 0.3,
-    top: -4,
-    left: -4,
+  profileCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 12,
   },
   avatar: {
-    width: 92,
-    height: 92,
-    borderRadius: 16,
+    width: 54,
+    height: 54,
+    borderRadius: 14,
+    borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    overflow: 'hidden',
+    marginRight: 12,
   },
-  avatarInner: {
-    width: '100%',
-    height: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
+  profileInfo: {
+    flex: 1,
+    minWidth: 0,
   },
   avatarText: {
-    fontSize: 36,
+    fontSize: 24,
     fontWeight: '700',
-    lineHeight: 42,
+    lineHeight: 28,
   },
   friendName: {
-    fontSize: 24,
-    color: '#fff',
-    marginBottom: 4,
+    fontSize: 20,
+    fontWeight: '700',
+    lineHeight: 25,
   },
   friendEmail: {
     fontSize: 14,
+    lineHeight: 18,
+    marginTop: 2,
   },
   balanceCardWrapper: {
     marginHorizontal: 16,
-    marginBottom: 16,
+    marginBottom: 12,
   },
   balanceCard: {
-    borderRadius: 20,
-    overflow: 'hidden',
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  balanceGradientOverlay: {
-    ...StyleSheet.absoluteFill,
-  },
-  balanceContent: {
-    padding: 24,
-    alignItems: 'center',
+    padding: 14,
   },
   balanceHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 4,
   },
   balanceIndicator: {
     width: 8,
@@ -905,75 +898,41 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   balanceLabel: {
-    fontSize: 14,
+    fontSize: 13,
+    fontWeight: '600',
   },
   balanceAmount: {
-    fontSize: 48,
+    fontSize: 34,
     fontWeight: '700',
-    lineHeight: 56,
-    marginBottom: 20,
-  },
-  settleButtonContainer: {
-    width: '100%',
-  },
-  settleButton: {
-    flexDirection: 'row',
-    paddingVertical: 16,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  settleButtonText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#fff',
-  },
-  settledContainer: {
-    alignItems: 'center',
-    paddingVertical: 8,
-  },
-  settledIconWrapper: {
-    marginBottom: 12,
-  },
-  settledIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  settledText: {
-    fontSize: 20,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  settledSubtext: {
-    fontSize: 14,
+    lineHeight: 40,
   },
   quickActions: {
     flexDirection: 'row',
     paddingHorizontal: 16,
-    gap: 12,
-    marginBottom: 20,
+    gap: 10,
+    marginBottom: 18,
   },
   quickActionButton: {
     flex: 1,
     borderRadius: 12,
     overflow: 'hidden',
   },
+  secondaryQuickActionButton: {
+    borderWidth: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    gap: 8,
+  },
   quickActionGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
+    paddingVertical: 12,
     gap: 8,
   },
-  quickActionText: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
   quickActionTextDark: {
-    color: '#fff',
     fontWeight: '600',
     fontSize: 14,
   },
@@ -981,7 +940,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 100,
+    paddingBottom: 96,
   },
   historySection: {
     paddingHorizontal: 16,
@@ -994,9 +953,8 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '600',
-    color: '#fff',
   },
   expenseCount: {
     fontSize: 13,
@@ -1030,15 +988,15 @@ const styles = StyleSheet.create({
   expenseCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 14,
-    marginBottom: 10,
-    borderRadius: 14,
-    backgroundColor: 'rgba(20, 35, 38, 0.6)',
+    padding: 12,
+    marginBottom: 8,
+    borderRadius: 12,
+    borderWidth: 1,
   },
   expenseIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+    width: 36,
+    height: 36,
+    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -1048,8 +1006,7 @@ const styles = StyleSheet.create({
   },
   expenseDescription: {
     fontSize: 15,
-    fontWeight: '500',
-    color: '#fff',
+    fontWeight: '600',
     marginBottom: 3,
   },
   expenseDate: {
@@ -1067,20 +1024,18 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   swipeActionLeft: {
-    backgroundColor: '#3b82f6',
     justifyContent: 'center',
     alignItems: 'flex-start',
     width: 80,
-    borderRadius: 14,
-    marginBottom: 10,
+    borderRadius: 12,
+    marginBottom: 8,
   },
   swipeActionRight: {
-    backgroundColor: '#ef4444',
     justifyContent: 'center',
     alignItems: 'flex-end',
     width: 80,
-    borderRadius: 14,
-    marginBottom: 10,
+    borderRadius: 12,
+    marginBottom: 8,
   },
   swipeActionButton: {
     justifyContent: 'center',
@@ -1090,7 +1045,6 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   swipeActionText: {
-    color: '#fff',
     fontSize: 12,
     fontWeight: '600',
   },

@@ -1,4 +1,4 @@
-import { Colors, ExpenseDetailTheme, Gradients } from '@/constants/theme';
+import { Colors, ExpenseDetailTheme, FriendDetailTheme, FriendsTheme, Gradients } from '@/constants/theme';
 import { useTheme } from '@/contexts/theme-context';
 
 export function useThemeColors() {
@@ -6,11 +6,15 @@ export function useThemeColors() {
   const colors = Colors[colorScheme];
   const gradients = Gradients[colorScheme];
   const expenseDetail = ExpenseDetailTheme[colorScheme];
+  const friends = FriendsTheme[colorScheme];
+  const friendDetail = FriendDetailTheme[colorScheme];
 
   return {
     colors,
     gradients,
     expenseDetail,
+    friends,
+    friendDetail,
     colorScheme,
     isDark,
   };

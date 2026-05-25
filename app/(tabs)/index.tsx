@@ -29,7 +29,7 @@ interface UserWithBalance extends User {
 }
 
 export default function FriendsScreen() {
-  const { gradients, colors, isDark } = useThemeColors();
+  const { gradients, colors, friends: friendsTheme } = useThemeColors();
   const [refreshing, setRefreshing] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [newFriendName, setNewFriendName] = useState('');
@@ -195,6 +195,10 @@ export default function FriendsScreen() {
   // Accordion state for settled friends
   const [settledExpanded, setSettledExpanded] = useState(false);
   const balanceColor = netBalance > 0 ? colors.success : netBalance < 0 ? colors.error : colors.tint;
+  const actionButtonStyle = {
+    backgroundColor: friendsTheme.actionSurface,
+    borderColor: friendsTheme.actionBorder,
+  };
 
   return (
     <LinearGradient
@@ -203,23 +207,23 @@ export default function FriendsScreen() {
       <View style={styles.header}>
         <View style={{ flexDirection: 'column', gap: 6 }}>
           <ThemedText style={[styles.headerLabel, { color: colors.textSecondary }]}>{balanceLabel}</ThemedText>
-          <ThemedText type="header" style={[styles.headerAmount, { color: balanceColor }]}>${Math.abs(netBalance).toFixed(2)}</ThemedText>
+          <ThemedText type="header" style={{ color: balanceColor }}>${Math.abs(netBalance).toFixed(2)}</ThemedText>
         </View>
         <View style={styles.headerButtons}>
           <TouchableOpacity
-            style={[styles.addButtonRect, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)', borderColor: isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(34, 197, 94, 0.3)' }]}
+            style={[styles.addButtonRect, actionButtonStyle]}
             onPress={() => setQrModalVisible(true)}>
-            <IconSymbol size={20} name="qrcode" color={isDark ? '#2DD4BF' : colors.tint} />
+            <IconSymbol size={20} name="qrcode" color={friendsTheme.actionIcon} />
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.addButtonRect, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)', borderColor: isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(34, 197, 94, 0.3)' }]}
+            style={[styles.addButtonRect, actionButtonStyle]}
             onPress={() => router.push('/scan-qr')}>
-            <IconSymbol size={20} name="qrcode.viewfinder" color={isDark ? '#2DD4BF' : colors.tint} />
+            <IconSymbol size={20} name="qrcode.viewfinder" color={friendsTheme.actionIcon} />
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.addButtonRect, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)', borderColor: isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(34, 197, 94, 0.3)' }]}
+            style={[styles.addButtonRect, actionButtonStyle]}
             onPress={() => router.push('/add-friend')}>
-            <IconSymbol size={20} name="person.badge.plus" color={isDark ? '#2DD4BF' : colors.tint} />
+            <IconSymbol size={20} name="person.badge.plus" color={friendsTheme.actionIcon} />
           </TouchableOpacity>
         </View>
       </View>
@@ -253,8 +257,8 @@ export default function FriendsScreen() {
           ListEmptyComponent={
             friends.length === 0 ? (
               <View style={styles.emptyContainer}>
-                <View style={[styles.emptyIconContainer, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.1)' : 'rgba(34, 197, 94, 0.1)' }]}>
-                  <IconSymbol size={64} name="person.2" color={isDark ? '#2DD4BF' : colors.tint} />
+                <View style={[styles.emptyIconContainer, { backgroundColor: friendsTheme.emptyIconSurface }]}>
+                  <IconSymbol size={64} name="person.2" color={friendsTheme.actionIcon} />
                 </View>
                 <ThemedText type="subtitle" style={[styles.emptyTitle, { color: colors.text }]}>
                   No friends yet
@@ -270,7 +274,9 @@ export default function FriendsScreen() {
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
                     style={styles.createButtonGradient}>
-                    <ThemedText style={styles.createButtonText}>Add Friend</ThemedText>
+                    <ThemedText style={[styles.createButtonText, { color: friendsTheme.primaryButtonText }]}>
+                      Add Friend
+                    </ThemedText>
                   </LinearGradient>
                 </TouchableOpacity>
               </View>
@@ -290,7 +296,7 @@ export default function FriendsScreen() {
             settledFriends.length > 0 ? (
               <View style={[styles.settledSection, { borderTopColor: colors.border, borderTopWidth: friendsWithBalance.length > 0 ? 1 : 0 }]}>
                 <TouchableOpacity
-                  style={[styles.accordionHeader, { backgroundColor: isDark ? 'rgba(20, 35, 38, 0.4)' : 'rgba(0,0,0,0.03)' }]}
+                  style={[styles.accordionHeader, { backgroundColor: friendsTheme.settledSurface }]}
                   onPress={() => setSettledExpanded(!settledExpanded)}
                   activeOpacity={0.7}>
                   <View style={styles.accordionTitleRow}>
@@ -362,80 +368,10 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '500',
   },
-  headerAmount: {
-    color: '#fff',
-  },
-  addButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  addButtonCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: 'rgba(45, 212, 191, 0.15)',
-    borderWidth: 1,
-    borderColor: 'rgba(45, 212, 191, 0.3)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   listContent: {
     flexGrow: 1,
     padding: 16,
     paddingBottom: 120,
-  },
-  friendCard: {
-    flexDirection: 'row',
-    padding: 14,
-    borderRadius: 12,
-    marginBottom: 10,
-    backgroundColor: 'rgba(20, 35, 38, 0.6)',
-  },
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    backgroundColor: 'rgba(45, 212, 191, 0.15)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  avatarText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#2DD4BF',
-  },
-  friendInfo: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  friendName: {
-    fontSize: 14,
-    marginBottom: 2,
-  },
-  friendEmail: {
-    fontSize: 11,
-    opacity: 0.6,
-  },
-  balanceContainer: {
-    alignItems: 'flex-end',
-    justifyContent: 'center',
-  },
-  balanceAmount: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 2,
-  },
-  balanceLabel: {
-    fontSize: 10,
-    opacity: 0.6,
-  },
-  settledText: {
-    fontSize: 11,
-    opacity: 0.6,
   },
   emptyContainer: {
     flex: 1,
@@ -460,93 +396,13 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   createButtonText: {
-    color: '#0A0A0F',
     fontWeight: '600',
     fontSize: 14,
-  },
-  modalContainer: {
-    flex: 1,
-    backgroundColor: 'transparent',
-  },
-  modalContent: {
-    flex: 1,
-    paddingTop: Platform.OS === 'ios' ? 20 : 0,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-    padding: 20,
-    paddingTop: Platform.OS === 'ios' ? 60 : 40,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  closeButton: {
-    padding: 4,
-  },
-  closeButtonRect: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalScrollContent: {
-    padding: 24,
-    paddingTop: 0,
-    flexGrow: 1,
-  },
-  formGroup: {
-    marginBottom: 24,
-  },
-  label: {
-    fontSize: 12,
-    fontWeight: '600',
-    marginBottom: 6,
-    opacity: 0.7,
-  },
-  modalFooter: {
-    padding: 24,
-    paddingBottom: Platform.OS === 'ios' ? 40 : 24,
-    borderTopWidth: 1,
-  },
-  input: {
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: 14,
-    fontSize: 14,
-  },
-  submitButton: {
-    padding: 14,
-    borderRadius: 14,
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  disabledButton: {
-    opacity: 0.5,
-  },
-  submitButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  addButtonGradient: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   emptyIconContainer: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: 'rgba(45, 212, 191, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
@@ -556,97 +412,16 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 20,
   },
-  glassInput: {
-    backgroundColor: 'rgba(26, 26, 36, 0.8)',
-    color: '#f4f4f5',
-    borderColor: 'rgba(45, 212, 191, 0.2)',
-  },
-  modalKeyboard: {
-    flex: 1,
-  },
-  inviteHeader: {
-    alignItems: 'center',
-    marginBottom: 32,
-  },
-  inviteIconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 16,
-    backgroundColor: 'rgba(45, 212, 191, 0.15)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  inviteTitle: {
-    color: '#fff',
-    marginBottom: 8,
-    lineHeight: 32,
-  },
-  inviteSubtitle: {
-    color: 'rgba(255,255,255,0.6)',
-    textAlign: 'center',
-  },
-  methodToggle: {
-    flexDirection: 'row',
-    backgroundColor: 'rgba(20, 35, 38, 0.6)',
-    borderRadius: 12,
-    padding: 4,
-    marginBottom: 24,
-  },
-  methodButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    borderRadius: 10,
-    gap: 8,
-  },
-  methodButtonActive: {
-    backgroundColor: '#2DD4BF',
-  },
-  methodButtonText: {
-    color: '#2DD4BF',
-    fontWeight: '600',
-  },
-  methodButtonTextActive: {
-    color: '#0A0A0F',
-  },
-  privacyNote: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.5)',
-    textAlign: 'center',
-    marginTop: 8,
-    lineHeight: 18,
-  },
   headerButtons: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
   },
-  addExpenseButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 12,
-    backgroundColor: 'rgba(45, 212, 191, 0.15)',
-    borderWidth: 1,
-    borderColor: 'rgba(45, 212, 191, 0.3)',
-    gap: 6,
-  },
-  addExpenseText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#2DD4BF',
-  },
   addButtonRect: {
     width: 44,
     height: 44,
     borderRadius: 12,
-    backgroundColor: 'rgba(45, 212, 191, 0.15)',
     borderWidth: 1,
-    borderColor: 'rgba(45, 212, 191, 0.3)',
     justifyContent: 'center',
     alignItems: 'center',
   },
