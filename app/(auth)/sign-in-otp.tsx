@@ -25,17 +25,14 @@ import {
 
 const { width, height } = Dimensions.get('window');
 
-type ContactMethod = 'email' | 'phone';
 type Step = 'contact' | 'otp';
 
 export default function SignInOTPScreen() {
   const { colors, isDark } = useThemeColors();
   const { refreshUser } = useAuth();
   const [step, setStep] = useState<Step>('contact');
-  const [contactMethod] = useState<ContactMethod>('email');
   
   const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const otpInputs = useRef<(TextInput | null)[]>([]);
   
@@ -107,29 +104,18 @@ export default function SignInOTPScreen() {
     }
   }, [resendTimer]);
 
-  const isContactValid = () => {
-    if (contactMethod === 'email') {
-      return isEmailValid(email);
-    }
-    return phone.trim().length >= 10;
-  };
+  const isContactValid = () => isEmailValid(email);
 
   async function handleSendCode() {
-    if (contactMethod === 'email' && !isEmailValid(email)) {
+    if (!isEmailValid(email)) {
       Alert.alert('Invalid Email', 'Please enter a valid email address');
-      return;
-    }
-    
-    if (contactMethod === 'phone' && phone.trim().length < 10) {
-      Alert.alert('Invalid Phone', 'Please enter a valid phone number');
       return;
     }
 
     setLoading(true);
     try {
       const result = await otpService.sendSignInCode({
-        email: contactMethod === 'email' ? normalizeEmail(email) : undefined,
-        phone: contactMethod === 'phone' ? phone.trim() : undefined,
+        email: normalizeEmail(email),
       });
 
       if (result.success) {
@@ -153,8 +139,7 @@ export default function SignInOTPScreen() {
     setLoading(true);
     try {
       const result = await otpService.verifySignInCode({
-        email: contactMethod === 'email' ? normalizeEmail(email) : undefined,
-        phone: contactMethod === 'phone' ? phone.trim() : undefined,
+        email: normalizeEmail(email),
         code,
       });
 
@@ -250,8 +235,7 @@ export default function SignInOTPScreen() {
     setLoading(true);
     try {
       const result = await otpService.sendSignInCode({
-        email: contactMethod === 'email' ? normalizeEmail(email) : undefined,
-        phone: contactMethod === 'phone' ? phone.trim() : undefined,
+        email: normalizeEmail(email),
       });
 
       if (result.success) {
@@ -289,61 +273,10 @@ export default function SignInOTPScreen() {
         </Text>
       </View>
 
-      {/* Method Toggle */}
-      {/* <View style={styles.toggleContainer}>
-        <Pressable
-          onPress={() => setContactMethod('email')}
-          style={styles.toggleButton}>
-          {contactMethod === 'email' ? (
-            <LinearGradient
-              colors={isDark ? ['#2DD4BF', '#14B8A6'] : ['#22C55E', '#10B981']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.toggleButtonGradient}>
-              <IconSymbol name="envelope.fill" size={18} color="#fff" />
-              <Text style={[styles.toggleText, { color: '#fff' }]}>Email</Text>
-            </LinearGradient>
-          ) : (
-            <View style={[styles.toggleButtonInactive, { 
-              backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)',
-              borderWidth: 1,
-              borderColor: isDark ? 'rgba(45, 212, 191, 0.25)' : 'rgba(34, 197, 94, 0.2)',
-            }]}>
-              <IconSymbol name="envelope.fill" size={18} color={isDark ? 'rgba(45, 212, 191, 0.6)' : 'rgba(34, 197, 94, 0.6)'} />
-              <Text style={[styles.toggleText, { color: isDark ? 'rgba(45, 212, 191, 0.7)' : 'rgba(34, 197, 94, 0.7)' }]}>Email</Text>
-            </View>
-          )}
-        </Pressable>
-
-        <Pressable
-          onPress={() => setContactMethod('phone')}
-          style={styles.toggleButton}>
-          {contactMethod === 'phone' ? (
-            <LinearGradient
-              colors={isDark ? ['#2DD4BF', '#14B8A6'] : ['#22C55E', '#10B981']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.toggleButtonGradient}>
-              <IconSymbol name="phone.fill" size={18} color="#fff" />
-              <Text style={[styles.toggleText, { color: '#fff' }]}>Phone</Text>
-            </LinearGradient>
-          ) : (
-            <View style={[styles.toggleButtonInactive, { 
-              backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)',
-              borderWidth: 1,
-              borderColor: isDark ? 'rgba(45, 212, 191, 0.25)' : 'rgba(34, 197, 94, 0.2)',
-            }]}>
-              <IconSymbol name="phone.fill" size={18} color={isDark ? 'rgba(45, 212, 191, 0.6)' : 'rgba(34, 197, 94, 0.6)'} />
-              <Text style={[styles.toggleText, { color: isDark ? 'rgba(45, 212, 191, 0.7)' : 'rgba(34, 197, 94, 0.7)' }]}>Phone</Text>
-            </View>
-          )}
-        </Pressable>
-      </View> */}
-
       {/* Input */}
       <View style={styles.inputSection}>
         <Text style={[styles.inputLabel, { color: isDark ? 'rgba(255,255,255,0.7)' : colors.textSecondary }]}>
-          {contactMethod === 'email' ? 'Email address' : 'Phone number'}
+          Email address
         </Text>
         <View
           style={[styles.inputContainer, { 
@@ -351,17 +284,17 @@ export default function SignInOTPScreen() {
             borderColor: isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(34, 197, 94, 0.3)',
             paddingVertical: Platform.OS === 'android' ? 12 : 16,
           }]}><IconSymbol
-            name={contactMethod === 'email' ? 'envelope.fill' : 'phone.fill'}
+            name="envelope.fill"
             size={20}
             color={isDark ? '#2DD4BF' : '#22C55E'}
           />
           <TextInput
             style={[styles.input, { color: isDark ? '#fff' : colors.text }]}
-            placeholder={contactMethod === 'email' ? 'you@example.com' : '+1 (555) 000-0000'}
+            placeholder="you@example.com"
             placeholderTextColor={isDark ? '#6B7280' : '#9CA3AF'}
-            value={contactMethod === 'email' ? email : phone}
-            onChangeText={contactMethod === 'email' ? setEmail : setPhone}
-            keyboardType={contactMethod === 'email' ? 'email-address' : 'phone-pad'}
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
             autoCapitalize="none"
             autoCorrect={false}
           />
@@ -442,7 +375,7 @@ export default function SignInOTPScreen() {
             {"We've sent a 6-digit code to"}
           </Text>
           <Text style={[styles.contactHighlight, { color: isDark ? '#fff' : colors.text }]}>
-            {contactMethod === 'email' ? email : phone}
+            {email}
           </Text>
         </View>
 

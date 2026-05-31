@@ -4,7 +4,6 @@ const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')
 
 interface OTPRequest {
   email?: string
-  phone?: string
   code: string
   name: string
   type: 'signup' | 'signin'
@@ -24,28 +23,19 @@ serve(async (req: Request) => {
 
   try {
     // Parse request body
-    const { email, phone, code, name, type }: OTPRequest = await req.json()
+    const { email, code, name, type }: OTPRequest = await req.json()
 
-    if (!email && !phone) {
-      throw new Error('Email or phone is required')
+    if (!email) {
+      throw new Error('Email is required')
     }
 
     if (!code || !name || !type) {
       throw new Error('Missing required fields: code, name, type')
     }
 
-    // Send OTP via email if email is provided
-    if (email) {
-      const emailSent = await sendEmailOTP({ email, code, name, type })
-      if (!emailSent) {
-        throw new Error('Failed to send email OTP')
-      }
-    }
-
-    // Send OTP via SMS if phone is provided
-    if (phone) {
-      // TODO: Implement SMS sending with Twilio or similar
-      console.log(`SMS OTP not implemented yet. Code: ${code} to ${phone}`)
+    const emailSent = await sendEmailOTP({ email, code, name, type })
+    if (!emailSent) {
+      throw new Error('Failed to send email OTP')
     }
 
     return new Response(
