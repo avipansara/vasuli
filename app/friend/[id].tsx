@@ -217,46 +217,34 @@ export default function FriendDetailScreen() {
       });
       setSettleModalVisible(false);
 
-      let settlement;
-      if (friend.balance > 0) {
-        // Friend owes current user
-        settlement = await settlementService.create({
-          fromUserId: friendId,
-          toUserId: currentUserId,
-          amount,
-          currency: 'USD',
-          date: Date.now(),
-        });
+      const settlements = await settlementService.createPairSettlements({
+        currentUserId,
+        friendId,
+        amount: Math.abs(amount),
+        currency: 'USD',
+        date: Date.now(),
+      });
 
-        // Log activity
+      for (const settlement of settlements) {
+        const currentUserPaid = settlement.fromUserId === currentUserId;
         await activityService.logSettlementCreated({
           settlementId: settlement.id,
-          fromUserId: friendId,
-          fromUserName: friend.name,
-          toUserName: user.name,
-          amount,
-        });
-      } else {
-        // Current user owes friend
-        settlement = await settlementService.create({
-          fromUserId: currentUserId,
-          toUserId: friendId,
-          amount: Math.abs(amount),
-          currency: 'USD',
-          date: Date.now(),
-        });
-
-        // Log activity
-        await activityService.logSettlementCreated({
-          settlementId: settlement.id,
-          fromUserId: currentUserId,
-          fromUserName: user.name,
-          toUserName: friend.name,
-          amount: Math.abs(amount),
+          fromUserId: settlement.fromUserId,
+          fromUserName: currentUserPaid ? user.name : friend.name,
+          toUserName: currentUserPaid ? friend.name : user.name,
+          amount: settlement.amount,
+          groupId: settlement.groupId,
         });
       }
 
-      await queryClient.invalidateQueries({ queryKey: friendDetailQueryKey });
+      const settledGroupIds = [...new Set(settlements.flatMap(settlement => settlement.groupId ? [settlement.groupId] : []))];
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: friendDetailQueryKey }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.groups.list(currentUserId) }),
+        ...settledGroupIds.map(groupId => queryClient.invalidateQueries({
+          queryKey: queryKeys.groups.detail(currentUserId, groupId),
+        })),
+      ]);
       await refetch();
     } catch (error) {
       if (previousFriend) {
