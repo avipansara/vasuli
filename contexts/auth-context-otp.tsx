@@ -26,8 +26,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const session = await otpService.getSession();
       if (session) {
-        setUser(session.user);
+        const reconciledSession = await otpService.syncSupabaseAuthSessionToAppProfile(session.user.email);
+        setUser(reconciledSession?.user ?? session.user);
       } else {
+        const reconciledSession = await otpService.syncSupabaseAuthSessionToAppProfile();
+        if (reconciledSession) {
+          setUser(reconciledSession.user);
+          return;
+        }
+
         // Explicitly clear if no session found to prevent stale data issues
         await otpService.clearSession();
       }

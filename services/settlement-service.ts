@@ -71,6 +71,21 @@ export function buildPairSettlementAllocations({
   );
   if (totalBalance === 0) return [];
 
+  const isFullNetSettlement = normalizeAmount(Math.abs(amount) - Math.abs(totalBalance)) === 0;
+  if (isFullNetSettlement) {
+    return Array.from(balancesByGroupId.entries()).flatMap(([groupId, rawBalance]) => {
+      const balance = normalizeAmount(rawBalance);
+      if (balance === 0) return [];
+
+      return [{
+        groupId,
+        fromUserId: balance > 0 ? friendId : currentUserId,
+        toUserId: balance > 0 ? currentUserId : friendId,
+        amount: Math.abs(balance),
+      }];
+    });
+  }
+
   const settlesPositiveBalance = totalBalance > 0;
   let remaining = Math.abs(amount);
   const allocations: PairSettlementAllocation[] = [];

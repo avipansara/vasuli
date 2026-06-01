@@ -78,4 +78,33 @@ describe('buildPairSettlementAllocations', () => {
       { groupId: 'group-1', fromUserId: friendId, toUserId: currentUserId, amount: 30 },
     ]);
   });
+
+  it('settles every group bucket when the friend settlement equals the net pair balance', () => {
+    const expenses = [
+      expense('personal-current-paid', currentUserId, 40),
+      expense('group-current-paid', currentUserId, 60, 'group-1'),
+      expense('group-friend-paid', friendId, 20, 'group-2'),
+    ];
+    const splits = [
+      split('s1', 'personal-current-paid', currentUserId, 20),
+      split('s2', 'personal-current-paid', friendId, 20),
+      split('s3', 'group-current-paid', currentUserId, 30),
+      split('s4', 'group-current-paid', friendId, 30),
+      split('s5', 'group-friend-paid', currentUserId, 10),
+      split('s6', 'group-friend-paid', friendId, 10),
+    ];
+
+    expect(buildPairSettlementAllocations({
+      currentUserId,
+      friendId,
+      amount: 40,
+      expenses,
+      splits,
+      settlements: [],
+    })).toEqual([
+      { fromUserId: friendId, toUserId: currentUserId, amount: 20 },
+      { groupId: 'group-1', fromUserId: friendId, toUserId: currentUserId, amount: 30 },
+      { groupId: 'group-2', fromUserId: currentUserId, toUserId: friendId, amount: 10 },
+    ]);
+  });
 });

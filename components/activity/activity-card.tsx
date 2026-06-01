@@ -21,6 +21,7 @@ interface ActivityItem {
 interface ActivityCardProps {
   activity: DbActivity;
   currentUserId?: string;
+  deletedExpenseTargetIds?: ReadonlySet<string>;
 }
 
 function formatActivityDate(timestamp: number): string {
@@ -70,14 +71,15 @@ function areActivityCardPropsEqual(prev: ActivityCardProps, next: ActivityCardPr
     a.groupName === b.groupName &&
     a.userId === b.userId &&
     a.userName === b.userName &&
-    prev.currentUserId === next.currentUserId
+    prev.currentUserId === next.currentUserId &&
+    prev.deletedExpenseTargetIds === next.deletedExpenseTargetIds
   );
 }
 
-function ActivityCardInner({ activity, currentUserId }: ActivityCardProps) {
+function ActivityCardInner({ activity, currentUserId, deletedExpenseTargetIds }: ActivityCardProps) {
   const { colors, isDark } = useThemeColors();
   const item = mapDbActivityToItem(activity);
-  const href = getActivityHref(activity, currentUserId);
+  const href = getActivityHref(activity, currentUserId, deletedExpenseTargetIds);
   const dateStr = formatActivityDate(item.date);
 
   const isDeleted = item.isDeleted || item.description.startsWith('Deleted:');

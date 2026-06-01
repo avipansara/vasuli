@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildFriendshipStatus, buildGroupDetailData, calculateGroupBalances } from '@/services/group-detail-service';
+import { applySettlementsToGroupDetailData, buildFriendshipStatus, buildGroupDetailData, calculateGroupBalances } from '@/services/group-detail-service';
 import { isGroupSettled } from '@/services/group-balance';
 import type { Expense, ExpenseSplit, Group, GroupMember, Settlement, User } from '@/types/database';
 import type { Friendship } from '@/services/friendship-service';
@@ -158,6 +158,31 @@ describe('group detail builders', () => {
     expect(detail.availableUsers).toMatchObject([{ id: 'available' }]);
     expect(detail.friendshipStatus.get('friend-a')).toBe('accepted');
     expect(detail.friendshipStatus.get('friend-b')).toBe('pending_sent');
+  });
+
+  it('applies new settlement rows to cached group detail balances', () => {
+    const detail = buildGroupDetailData({
+      currentUserId,
+      group,
+      expenses: [expense('meal', currentUserId, 60)],
+      members: [member('m1', currentUserId), member('m2', 'friend-a')],
+      users: [user(currentUserId, 'You'), user('friend-a', 'Asha')],
+      userFriends: [],
+      friendships: [],
+      splits: [
+        split('s1', 'meal', currentUserId, 30),
+        split('s2', 'meal', 'friend-a', 30),
+      ],
+      settlements: [],
+    });
+
+    const updated = applySettlementsToGroupDetailData(detail, [
+      settlement('settle-a', 'friend-a', currentUserId, 30),
+    ]);
+
+    expect(updated.settlements).toHaveLength(1);
+    expect(updated.balances.get(currentUserId)).toBe(0);
+    expect(updated.balances.get('friend-a')).toBe(0);
   });
 
   it('marks pending received friendships by direction', () => {

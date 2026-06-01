@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
 const supabaseKey = process.env.EXPO_PUBLIC_SUPABASE_KEY || 'placeholder-key';
+const isTestEnvironment = process.env.NODE_ENV === 'test';
 
 if (!process.env.EXPO_PUBLIC_SUPABASE_URL || !process.env.EXPO_PUBLIC_SUPABASE_KEY) {
   if (process.env.NODE_ENV !== 'test') {
@@ -16,8 +17,8 @@ export const supabase = createClient(
   {
     auth: {
       storage: AsyncStorage,
-      autoRefreshToken: false, // Disabled - using custom OTP auth
-      persistSession: false,   // Disabled - using custom OTP auth
+      autoRefreshToken: !isTestEnvironment,
+      persistSession: !isTestEnvironment,
       detectSessionInUrl: false,
     },
   })

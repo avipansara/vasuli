@@ -143,7 +143,7 @@ CREATE TABLE public.activities (
   user_id UUID NOT NULL REFERENCES public.users(id),
   user_name TEXT,
   target_id UUID NOT NULL,
-  group_id UUID REFERENCES public.groups(id),
+  group_id UUID REFERENCES public.groups(id) ON DELETE SET NULL,
   group_name TEXT,
   description TEXT NOT NULL,
   amount DECIMAL(10, 2),
