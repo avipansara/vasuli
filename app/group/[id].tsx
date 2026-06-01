@@ -789,7 +789,24 @@ export default function GroupDetailScreen() {
           }]}>
           <IconSymbol size={20} name="chevron.left" color={friendDetailTheme.actionIcon} />
         </TouchableOpacity>
-        <View style={styles.headerSpacer} />
+        <View style={styles.headerActions}>
+          <TouchableOpacity
+            onPress={handleDeleteGroup}
+            disabled={isDeletingGroup}
+            accessibilityRole="button"
+            accessibilityLabel={`Delete ${group.name}`}
+            accessibilityHint={groupIsSettled ? 'Deletes this group after confirmation' : 'Shows why this group needs settlement before deletion'}
+            accessibilityState={{ busy: isDeletingGroup, disabled: isDeletingGroup }}
+            hitSlop={MIN_TOUCH_HIT_SLOP}
+            testID="delete-group-button"
+            style={[styles.headerActionButton, {
+              backgroundColor: friendDetailTheme.dangerSurface,
+              borderColor: friendDetailTheme.dangerBorder,
+              opacity: isDeletingGroup ? 0.5 : 1,
+            }]}>
+            <IconSymbol size={18} name="trash" color={friendDetailTheme.danger} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView
@@ -909,34 +926,6 @@ export default function GroupDetailScreen() {
             <IconSymbol size={18} name="checkmark.circle.fill" color={friendDetailTheme.positive} />
             <ThemedText style={[styles.quickActionText, { color: friendDetailTheme.positive }]}>Settle Up</ThemedText>
           </TouchableOpacity>
-        </View>
-
-        <View style={styles.deleteGroupSection}>
-          <TouchableOpacity
-            activeOpacity={0.75}
-            onPress={handleDeleteGroup}
-            accessibilityRole="button"
-            accessibilityLabel={`Delete ${group.name}`}
-            accessibilityHint={groupIsSettled ? 'Deletes this group after confirmation' : 'Available after all member balances are settled'}
-            accessibilityState={{ disabled: !groupIsSettled || isDeletingGroup, busy: isDeletingGroup }}
-            hitSlop={MIN_TOUCH_HIT_SLOP}
-            testID="delete-group-button"
-            style={[
-              styles.deleteGroupButton,
-              !groupIsSettled && styles.deleteGroupButtonUnavailable,
-              isDeletingGroup && styles.deleteGroupButtonUnavailable,
-              !isDark && { backgroundColor: 'rgba(239, 68, 68, 0.08)', borderColor: 'rgba(239, 68, 68, 0.28)' },
-            ]}>
-            <IconSymbol size={18} name="trash" color={friendDetailTheme.danger} />
-            <ThemedText style={[styles.deleteGroupButtonText, { color: friendDetailTheme.danger }]}>
-              {isDeletingGroup ? 'Deleting...' : 'Delete Group'}
-            </ThemedText>
-          </TouchableOpacity>
-          {!groupIsSettled && (
-            <ThemedText style={[styles.deleteGroupHint, !isDark && { color: colors.textSecondary }]}>
-              Available after all member balances are settled.
-            </ThemedText>
-          )}
         </View>
 
         {/* Members Section */}
@@ -1079,6 +1068,18 @@ const styles = StyleSheet.create({
   },
   headerSpacer: {
     width: 40,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  headerActionButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   content: {
     flex: 1,
@@ -1224,34 +1225,6 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '600',
     fontSize: 14,
-  },
-  deleteGroupSection: {
-    paddingHorizontal: 16,
-    marginBottom: 16,
-    gap: 6,
-  },
-  deleteGroupButton: {
-    minHeight: 42,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.3)',
-    backgroundColor: 'rgba(239, 68, 68, 0.15)',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  deleteGroupButtonUnavailable: {
-    opacity: 0.55,
-  },
-  deleteGroupButtonText: {
-    fontWeight: '700',
-    fontSize: 14,
-  },
-  deleteGroupHint: {
-    fontSize: 12,
-    opacity: 0.7,
-    textAlign: 'center',
   },
   section: {
     paddingHorizontal: 16,
