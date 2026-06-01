@@ -1,34 +1,51 @@
 # Expenses RLS (Supabase)
 
-## Why this matters
+## Current model
 
-Expense **saves** (`INSERT`/`UPDATE` on `expenses`, `INSERT`/`UPDATE`/`DELETE` on `expense_splits`) should only be allowed for the right users: typically the **payer** and, for group expenses, **group members**.
+Expenses still reference app-domain users through `public.users.id` (`paid_by`,
+`expense_splits.user_id`, settlement participants, group members). Supabase Auth
+sessions identify callers through `auth.uid()`. Migration
+`009_bridge_auth_rls_policies.sql` connects those worlds through:
 
-## Constraint: `auth.uid()` and custom OTP
+```sql
+public.users.auth_user_id -> auth.users.id
+```
 
-Same as [`RLS_INVITATIONS.md`](./RLS_INVITATIONS.md): **`auth.uid()` is only set when the client has a Supabase Auth JWT.** This app’s OTP flow often uses the **anon** key without `supabase.auth.setSession`, so **`auth.uid()` is NULL** for those requests.
+Migration `009_bridge_auth_rls_policies.sql` dropped the older broad public
+policies and added authenticated policies that resolve the caller to their app
+user ID before checking expense, split, settlement, friendship, group, and
+activity rows. Migration `011_remove_anon_transition_policies.sql` removed the
+temporary anon policies, and `012_revoke_anon_app_table_grants.sql` revoked anon
+table grants, so database access now requires a Supabase Auth JWT.
+Migration `013_allow_email_matched_auth_bridge.sql` keeps strict JWT-backed
+access but allows legacy public user rows with the same normalized email as the
+Supabase Auth user.
 
-- **Path A (production):** Use a Supabase session whose `sub` equals `public.users.id`, then **`authenticated`** policies apply and rows are enforced in Postgres.
-- **Path B (current OTP + anon):** Migration **`004_expenses_rls_policies.sql`** adds **`anon`** policies that allow reads/writes (same risk as permissive RLS until Path A). Tight rules live under **`TO authenticated`**.
+## Policy summary
 
-Do **not** remove anon policies until the app sends an authenticated JWT for Supabase.
+| Table | Authenticated access |
+| --- | --- |
+| `expenses` | Visible to the payer, split participants, or members of the expense group. Writes are payer-only. |
+| `expense_splits` | Visible when the parent expense is visible. Writes are payer-only. |
+| `settlements` | Visible/writable by participants; group admins can update/delete group settlements. |
+| `groups` | Readable to authenticated app users so group creation can return the inserted row; updates/deletes require group admin. |
+| `group_members` | Visible to group members. Inserts require group admin, except the first self-membership when a group is created. |
 
-## Policy summary (authenticated role)
+Postgres requires a matching `SELECT` policy for `UPDATE ... RETURNING` and
+PostgREST `.select()` calls after writes, so insert-returning flows are covered
+explicitly.
 
-| Table           | SELECT | INSERT | UPDATE | DELETE |
-|-----------------|--------|--------|--------|--------|
-| `expenses`      | Group members (for group expenses), or payer / split participants for friend-only (`group_id IS NULL`) | `paid_by` = `auth.uid()`, group membership if `group_id` set | Payer only, same group rules | Payer only |
-| `expense_splits`| If parent expense is visible | Payer of parent expense | Payer of parent expense | Payer of parent expense |
+## Operational requirements
 
-**UPDATE** on `expenses` requires a matching **SELECT** policy (Postgres RLS).
-
-## Applying the migration
-
-1. Open **Supabase Dashboard → SQL Editor**.
-2. Run `supabase/migrations/004_expenses_rls_policies.sql`.
-3. If you use **Path A**, test create/update expense from the app with a real Supabase session.
-4. If you still use **anon only**, confirm list/add expense still works (anon policies should allow it).
+- Every active app user needs `public.users.auth_user_id` linked to their
+  `auth.users.id`.
+- Existing data must continue using the linked `public.users.id`; do not create
+  a new public user row when an email already exists.
+- Legacy duplicate public user rows are temporarily authorized by matching their
+  normalized email to the Supabase Auth JWT email.
+- App Review/demo accounts must be real Supabase Auth users, because anon writes
+  are no longer allowed.
 
 ## References
 
-- [Row Level Security](https://supabase.com/docs/guides/database/postgres/row-level-security)
+- [Supabase Row Level Security](https://supabase.com/docs/guides/database/postgres/row-level-security)

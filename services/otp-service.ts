@@ -42,31 +42,6 @@ function getTestAccountOTP(email?: string): string {
   return normalizeEmail(email) === APP_REVIEWER_EMAIL ? APP_REVIEWER_OTP : TEST_ACCOUNT_OTP;
 }
 
-async function findUserByEmail(email: string) {
-  const { data: user, error } = await supabase
-    .from('users')
-    .select('*')
-    .eq('email', email)
-    .single();
-
-  return { user, error };
-}
-
-async function createTestAccountUser(email: string) {
-  const { data: user, error } = await supabase
-    .from('users')
-    .insert({
-      name: normalizeEmail(email) === APP_REVIEWER_EMAIL ? APP_REVIEWER_NAME : 'Test Account',
-      email,
-      email_verified: !!email,
-      phone_verified: false,
-    })
-    .select()
-    .single();
-
-  return { user, error };
-}
-
 export interface User {
   id: string;
   name: string;
@@ -110,23 +85,9 @@ export async function sendSignUpCode(params: {
       return { success: true };
     }
 
-    // Test account mode - skip email sending
+    // Test accounts are real Supabase Auth password users for strict RLS.
     if (isTestAccount(email)) {
-      console.log(`[TEST ACCOUNT] Sign up code for ${email}. Use code: ${TEST_ACCOUNT_OTP}`);
-      // Store pending signup info for verification
-      await AsyncStorage.setItem('pending_signup', JSON.stringify({ name, email }));
-      return { success: true };
-    }
-
-    // Check if user already exists
-    const { data: existingUser } = await supabase
-      .from('users')
-      .select('id, name, is_active')
-      .eq('email', email)
-      .single();
-
-    if (existingUser && existingUser.is_active !== false) {
-      return { success: false, error: 'User already exists. Please sign in instead.' };
+      return { success: false, error: 'Test accounts must use sign in.' };
     }
 
     const { error: authError } = await supabase.auth.signInWithOtp({
@@ -238,48 +199,9 @@ export async function verifySignUpCode(params: {
       return { success: true, session };
     }
 
-    // Test account mode - auto-verify with code 
+    // Test accounts are real Supabase Auth password users for strict RLS.
     if (isTestAccount(email)) {
-      if (code !== getTestAccountOTP(email)) {
-        return { success: false, error: 'Invalid verification code. Use code for test account.' };
-      }
-
-      // Check if test user already exists
-      const { data: existingUser } = await supabase
-        .from('users')
-        .select('*')
-        .eq('email', email)
-        .single();
-
-      if (existingUser) {
-        // User exists, create session
-        const session = await createSession(existingUser);
-        await saveSession(session);
-        console.log('[TEST ACCOUNT] Sign up successful (existing user)!');
-        return { success: true, session };
-      }
-
-      // Create new test user
-      const { data: newUser, error: userError } = await supabase
-        .from('users')
-        .insert({
-          name,
-          email,
-          email_verified: !!email,
-          phone_verified: false,
-        })
-        .select()
-        .single();
-
-      if (userError) {
-        console.error('[TEST ACCOUNT] Error creating user:', userError);
-        return { success: false, error: 'Failed to create test user account' };
-      }
-
-      const session = await createSession(newUser);
-      await saveSession(session);
-      console.log('[TEST ACCOUNT] Sign up successful (new user)!');
-      return { success: true, session };
+      return { success: false, error: 'Test accounts must use sign in.' };
     }
 
     const { data, error: authError } = await supabase.auth.verifyOtp({
@@ -356,26 +278,32 @@ export async function verifySignInCode(params: {
         return { success: false, error: 'Invalid verification code. Use test account credentials.' };
       }
 
-      // Find test user
-      let { user, error: userError } = await findUserByEmail(email);
+      const { data, error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password: code,
+      });
 
-      if (userError || !user) {
-        const created = await createTestAccountUser(email);
-        user = created.user;
-        userError = created.error;
+      if (authError || !data.user) {
+        console.error('[TEST ACCOUNT] Supabase Auth password sign-in failed:', authError);
+        return {
+          success: false,
+          error: 'Test account is not configured in Supabase Auth',
+        };
       }
 
-      if (userError || !user) {
-        return { success: false, error: 'Failed to create test account' };
-      }
+      const profile = await linkAuthUserToProfile({
+        authUserId: data.user.id,
+        email,
+        name: normalizeEmail(email) === APP_REVIEWER_EMAIL ? APP_REVIEWER_NAME : 'Test Account',
+      });
 
       try {
-        await ensureAppReviewDemoData(user);
+        await ensureAppReviewDemoData(profile);
       } catch (seedError) {
         console.error('[TEST ACCOUNT] Failed to seed app review demo data:', seedError);
       }
 
-      const session = await createSession(user);
+      const session = await createSessionFromProfile(profile);
       await saveSession(session);
       console.log('[TEST ACCOUNT] Sign in successful!');
       return { success: true, session };
@@ -404,6 +332,35 @@ export async function verifySignInCode(params: {
     console.error('Error in verifySignInCode:', error);
     return { success: false, error: error.message || 'Failed to verify code' };
   }
+}
+
+/**
+ * Reconcile the local app session with the persisted Supabase Auth session.
+ *
+ * This is important for users who verified OTP before the RLS bridge migration
+ * was applied: the Supabase session may exist, but public.users.auth_user_id may
+ * still be empty until we link it here.
+ */
+export async function syncSupabaseAuthSessionToAppProfile(expectedEmail?: string): Promise<AuthSession | null> {
+  const { data: { session } } = await supabase.auth.getSession();
+  const authUser = session?.user;
+  const email = normalizeEmail(authUser?.email);
+  const expected = normalizeEmail(expectedEmail);
+
+  if (!authUser?.id || !email) return null;
+  if (expected && expected !== email) {
+    await supabase.auth.signOut();
+    return null;
+  }
+
+  const profile = await linkAuthUserToProfile({
+    authUserId: authUser.id,
+    email,
+    name: typeof authUser.user_metadata?.name === 'string' ? authUser.user_metadata.name : undefined,
+  });
+  const appSession = await createSessionFromProfile(profile);
+  await saveSession(appSession);
+  return appSession;
 }
 
 /**
@@ -518,6 +475,7 @@ export const otpService = {
   sendSignInCode,
   verifySignUpCode,
   verifySignInCode,
+  syncSupabaseAuthSessionToAppProfile,
   getSession,
   clearSession,
   signOut,

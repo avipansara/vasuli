@@ -8,6 +8,9 @@ import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { activityService } from '@/services/activity-service';
 import { expenseService, groupService, initDatabase, userService } from '@/services/api';
+import type { FriendDetailData } from '@/services/friend-detail-service';
+import { calculateGroupBalances } from '@/services/group-balance';
+import type { GroupDetailData } from '@/services/group-detail-service';
 import { createExpenseNotification, notificationService } from '@/services/notification-service';
 import { queryKeys } from '@/services/query-keys';
 import type { Expense, Group, User } from '@/types/database';
@@ -211,11 +214,148 @@ export default function AddExpenseScreen() {
     );
   }, [friendsHomeQueryKey, queryClient]);
 
+  const buildCachedSplits = useCallback((
+    expenseId: string,
+    splits: { userId: string; amount: number; splitType: 'equal' | 'exact' | 'percentage' }[]
+  ) => splits.map((split, index) => ({
+    id: `optimistic-split:${expenseId}:${index}`,
+    expenseId,
+    userId: split.userId,
+    amount: split.amount,
+    splitType: split.splitType,
+  })), []);
+
+  const updateFriendDetailsForCreatedExpense = useCallback((
+    expense: Expense,
+    splits: { userId: string; amount: number }[],
+    friendIds: string[]
+  ) => {
+    const currentUserSplit = splits.find(split => split.userId === currentUserId);
+    if (!currentUserSplit) return;
+
+    for (const friendId of friendIds) {
+      const friendSplit = splits.find(split => split.userId === friendId);
+      const friend = friends.find(item => item.id === friendId);
+      if (!friendSplit || !friend) continue;
+
+      const balanceDelta = expense.paidBy === currentUserId
+        ? friendSplit.amount
+        : -currentUserSplit.amount;
+      const expenseWithSplit = {
+        ...expense,
+        yourShare: currentUserSplit.amount,
+        friendShare: friendSplit.amount,
+        paidByName: expense.paidBy === currentUserId ? 'You' : friend.name,
+      };
+
+      queryClient.setQueryData<FriendDetailData | null>(
+        queryKeys.friends.detail(currentUserId, friendId),
+        current => current ? {
+          ...current,
+          friend: {
+            ...current.friend,
+            balance: Math.abs(current.friend.balance + balanceDelta) < 0.01 ? 0 : current.friend.balance + balanceDelta,
+          },
+          expenses: [
+            expenseWithSplit,
+            ...current.expenses.filter(item => item.id !== expense.id),
+          ],
+        } : current
+      );
+    }
+  }, [currentUserId, friends, queryClient]);
+
+  const replaceOptimisticFriendDetailExpense = useCallback((
+    optimisticId: string,
+    savedExpense: Expense,
+    friendIds: string[]
+  ) => {
+    for (const friendId of friendIds) {
+      queryClient.setQueryData<FriendDetailData | null>(
+        queryKeys.friends.detail(currentUserId, friendId),
+        current => current ? {
+          ...current,
+          expenses: current.expenses.map(expense => (
+            expense.id === optimisticId
+              ? { ...expense, ...savedExpense }
+              : expense
+          )),
+        } : current
+      );
+    }
+  }, [currentUserId, queryClient]);
+
+  const updateGroupDetailForCreatedExpense = useCallback((
+    groupId: string,
+    expense: Expense,
+    splits: { userId: string; amount: number; splitType: 'equal' | 'exact' | 'percentage' }[]
+  ) => {
+    const cachedSplits = buildCachedSplits(expense.id, splits);
+
+    queryClient.setQueryData<GroupDetailData | null>(
+      queryKeys.groups.detail(currentUserId, groupId),
+      current => {
+        if (!current) return current;
+
+        const nextExpenses = [
+          { ...expense, paidByUser: user || undefined },
+          ...current.expenses.filter(item => item.id !== expense.id),
+        ];
+        const nextSplits = [
+          ...cachedSplits,
+          ...current.splits.filter(split => split.expenseId !== expense.id),
+        ];
+
+        return {
+          ...current,
+          expenses: nextExpenses,
+          splits: nextSplits,
+          balances: calculateGroupBalances(nextExpenses, nextSplits, current.settlements),
+        };
+      }
+    );
+  }, [buildCachedSplits, currentUserId, queryClient, user]);
+
+  const replaceOptimisticGroupDetailExpense = useCallback((
+    groupId: string,
+    optimisticId: string,
+    savedExpense: Expense,
+    splits: { userId: string; amount: number; splitType: 'equal' | 'exact' | 'percentage' }[]
+  ) => {
+    const cachedSplits = buildCachedSplits(savedExpense.id, splits);
+
+    queryClient.setQueryData<GroupDetailData | null>(
+      queryKeys.groups.detail(currentUserId, groupId),
+      current => {
+        if (!current) return current;
+
+        const nextExpenses = current.expenses.map(expense => (
+          expense.id === optimisticId
+            ? { ...expense, ...savedExpense }
+            : expense
+        ));
+        const nextSplits = [
+          ...cachedSplits,
+          ...current.splits.filter(split => split.expenseId !== optimisticId && split.expenseId !== savedExpense.id),
+        ];
+
+        return {
+          ...current,
+          expenses: nextExpenses,
+          splits: nextSplits,
+          balances: calculateGroupBalances(nextExpenses, nextSplits, current.settlements),
+        };
+      }
+    );
+  }, [buildCachedSplits, currentUserId, queryClient]);
+
   const handleSubmit = async () => {
     if (!isValid) return;
 
     setLoading(true);
     let previousHomeFriends: HomeFriend[] | undefined;
+    let previousGroupDetail: GroupDetailData | null | undefined;
+    const previousFriendDetails = new Map<string, FriendDetailData | null | undefined>();
     let optimisticExpenseId: string | null = null;
     try {
       const amountNum = parseFloat(amount);
@@ -247,9 +387,15 @@ export default function AddExpenseScreen() {
         }
 
         optimisticExpenseId = optimisticExpense.id;
-        await queryClient.cancelQueries({ queryKey: friendsHomeQueryKey });
+        const groupDetailQueryKey = queryKeys.groups.detail(currentUserId, selectedGroupId);
+        await Promise.all([
+          queryClient.cancelQueries({ queryKey: friendsHomeQueryKey }),
+          queryClient.cancelQueries({ queryKey: groupDetailQueryKey }),
+        ]);
         previousHomeFriends = queryClient.getQueryData<HomeFriend[]>(friendsHomeQueryKey);
+        previousGroupDetail = queryClient.getQueryData<GroupDetailData | null>(groupDetailQueryKey);
         updateHomeFriendsForCreatedExpense(optimisticExpense, splits);
+        updateGroupDetailForCreatedExpense(selectedGroupId, optimisticExpense, splits);
         router.back();
 
         const expense = await expenseService.create(
@@ -264,6 +410,7 @@ export default function AddExpenseScreen() {
           splits
         );
         replaceOptimisticHomeExpense(optimisticExpenseId, expense);
+        replaceOptimisticGroupDetailExpense(selectedGroupId, optimisticExpenseId, expense, splits);
 
         try {
           const group = groups.find(g => g.id === selectedGroupId);
@@ -316,9 +463,20 @@ export default function AddExpenseScreen() {
         }
 
         optimisticExpenseId = optimisticExpense.id;
-        await queryClient.cancelQueries({ queryKey: friendsHomeQueryKey });
+        const friendDetailQueryKeys = selectedFriendIds.map(friendId => queryKeys.friends.detail(currentUserId, friendId));
+        await Promise.all([
+          queryClient.cancelQueries({ queryKey: friendsHomeQueryKey }),
+          ...friendDetailQueryKeys.map(queryKey => queryClient.cancelQueries({ queryKey })),
+        ]);
         previousHomeFriends = queryClient.getQueryData<HomeFriend[]>(friendsHomeQueryKey);
+        for (const friendId of selectedFriendIds) {
+          previousFriendDetails.set(
+            friendId,
+            queryClient.getQueryData<FriendDetailData | null>(queryKeys.friends.detail(currentUserId, friendId))
+          );
+        }
         updateHomeFriendsForCreatedExpense(optimisticExpense, splits);
+        updateFriendDetailsForCreatedExpense(optimisticExpense, splits, selectedFriendIds);
         router.back();
 
         const expense = await expenseService.create(
@@ -332,6 +490,7 @@ export default function AddExpenseScreen() {
           splits
         );
         replaceOptimisticHomeExpense(optimisticExpenseId, expense);
+        replaceOptimisticFriendDetailExpense(optimisticExpenseId, expense, selectedFriendIds);
 
         try {
           await activityService.logExpenseCreated({
@@ -370,6 +529,14 @@ export default function AddExpenseScreen() {
     } catch (error) {
       if (previousHomeFriends) {
         queryClient.setQueryData(friendsHomeQueryKey, previousHomeFriends);
+      }
+      if (previousGroupDetail !== undefined) {
+        queryClient.setQueryData(queryKeys.groups.detail(currentUserId, selectedGroupId), previousGroupDetail);
+      }
+      for (const [friendId, previousFriendDetail] of previousFriendDetails) {
+        if (previousFriendDetail !== undefined) {
+          queryClient.setQueryData(queryKeys.friends.detail(currentUserId, friendId), previousFriendDetail);
+        }
       }
       if (optimisticExpenseId) {
         queryClient.invalidateQueries({ queryKey: friendsHomeQueryKey });

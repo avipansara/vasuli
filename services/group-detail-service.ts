@@ -81,6 +81,22 @@ export function buildGroupDetailData(params: {
   };
 }
 
+export function applySettlementsToGroupDetailData(
+  detail: GroupDetailData,
+  settlements: Settlement[]
+): GroupDetailData {
+  const nextSettlements = [
+    ...settlements,
+    ...detail.settlements.filter(existing => !settlements.some(settlement => settlement.id === existing.id)),
+  ];
+
+  return {
+    ...detail,
+    settlements: nextSettlements,
+    balances: calculateGroupBalances(detail.expenses, detail.splits, nextSettlements),
+  };
+}
+
 export const groupDetailService = {
   async getDetail(currentUserId: string, groupId: string): Promise<GroupDetailData | null> {
     const group = await groupService.getById(groupId);

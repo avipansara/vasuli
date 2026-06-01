@@ -9,11 +9,20 @@ import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { activityService } from '@/services/activity-service';
 import { calculateBalances, groupService, settlementService, userService } from '@/services/api';
+import { applySettlementsToGroupDetailData, type GroupDetailData } from '@/services/group-detail-service';
+import { queryKeys } from '@/services/query-keys';
 import type { Group, GroupMember, User } from '@/types/database';
+import {
+  canSubmitGroupSettlement,
+  getDefaultGroupSettleMember,
+  getGroupSettleAmount,
+  isSettleableGroupBalance,
+} from '@/utils/group-settle-selection';
 import { normalizeCurrencyInput } from '@/utils/validation';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
+import { useQueryClient } from '@tanstack/react-query';
 import React, { memo, useCallback, useEffect, useState } from 'react';
 import {
   Alert,
@@ -54,12 +63,15 @@ const SettleMemberRow = memo(function SettleMemberRow({ item, isSelected, onSele
   const balance = item.balance;
   const owesYou = balance < 0;
   const youOwe = balance > 0;
+  const isSettleable = isSettleableGroupBalance(balance);
 
   return (
     <TouchableOpacity
       onPress={() => onSelect(item)}
+      disabled={!isSettleable}
       style={[
         styles.memberCard,
+        !isSettleable && styles.memberCardDisabled,
         isSelected && {
           borderColor: isDark ? '#2DD4BF' : colors.tint,
           borderWidth: 2,
@@ -126,6 +138,7 @@ export default function GroupSettleScreen() {
   const { user } = useAuth();
   const { gradients, colors, isDark } = useThemeColors();
   const currentUserId = user?.id || '';
+  const queryClient = useQueryClient();
 
   const [group, setGroup] = useState<Group | null>(null);
   const [members, setMembers] = useState<MemberWithBalance[]>([]);
@@ -135,10 +148,33 @@ export default function GroupSettleScreen() {
   const [amount, setAmount] = useState('');
   const [settling, setSettling] = useState(false);
 
+  const applyGroupDetail = useCallback((groupDetail: GroupDetailData) => {
+    const membersWithBalances = groupDetail.members
+      .filter(member => member.userId !== currentUserId)
+      .map(member => ({
+        ...member,
+        balance: groupDetail.balances.get(member.userId) || 0,
+      }));
+    const defaultMember = getDefaultGroupSettleMember(membersWithBalances);
+
+    setGroup(groupDetail.group);
+    setMembers(membersWithBalances);
+    setSelectedMember(defaultMember);
+    setAmount(defaultMember ? getGroupSettleAmount(defaultMember.balance) : '');
+  }, [currentUserId]);
+
   const loadData = useCallback(async () => {
     try {
       setLoadError(null);
-      setLoading(true);
+      const groupDetailQueryKey = queryKeys.groups.detail(currentUserId, id);
+      const cachedGroupDetail = queryClient.getQueryData<GroupDetailData | null>(groupDetailQueryKey);
+
+      if (cachedGroupDetail) {
+        applyGroupDetail(cachedGroupDetail);
+        setLoading(false);
+      } else {
+        setLoading(true);
+      }
 
       // Load group
       const groupData = await groupService.getById(id);
@@ -171,15 +207,18 @@ export default function GroupSettleScreen() {
           user: member.user || undefined,
           balance: balances.get(member.userId) || 0,
         }));
+      const defaultMember = getDefaultGroupSettleMember(membersWithBalances);
 
       setMembers(membersWithBalances);
+      setSelectedMember(defaultMember);
+      setAmount(defaultMember ? getGroupSettleAmount(defaultMember.balance) : '');
     } catch (error) {
       console.error('Error loading data:', error);
       setLoadError(getFetchErrorMessage(error));
     } finally {
       setLoading(false);
     }
-  }, [id, currentUserId]);
+  }, [applyGroupDetail, currentUserId, id, queryClient]);
 
   useEffect(() => {
     loadData();
@@ -220,18 +259,29 @@ export default function GroupSettleScreen() {
         currency: 'USD',
         date: Date.now(),
       });
+      const groupDetailQueryKey = queryKeys.groups.detail(currentUserId, id);
+      queryClient.setQueryData<GroupDetailData | null>(
+        groupDetailQueryKey,
+        current => current ? applySettlementsToGroupDetailData(current, [settlement]) : current
+      );
+      queryClient.invalidateQueries({ queryKey: groupDetailQueryKey });
+      queryClient.invalidateQueries({ queryKey: queryKeys.groups.list(currentUserId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.friends.home(currentUserId) });
 
-      // Log activity
       if (group && user && selectedMember.user) {
-        await activityService.logSettlementCreated({
-          settlementId: settlement.id,
-          fromUserId,
-          fromUserName: isReceiving ? selectedMember.user.name : user.name,
-          toUserName: isReceiving ? user.name : selectedMember.user.name,
-          amount: amountNum,
-          groupId: id,
-          groupName: group.name,
-        });
+        try {
+          await activityService.logSettlementCreated({
+            settlementId: settlement.id,
+            fromUserId,
+            fromUserName: isReceiving ? selectedMember.user.name : user.name,
+            toUserName: isReceiving ? user.name : selectedMember.user.name,
+            amount: amountNum,
+            groupId: id,
+            groupName: group.name,
+          });
+        } catch {
+          // Activity logging should not block a completed settlement.
+        }
       }
 
       Alert.alert('Success', `Settled $${amountNum.toFixed(2)} with ${selectedMember.user?.name}`);
@@ -245,14 +295,17 @@ export default function GroupSettleScreen() {
   }
 
   const handleSelectMember = useCallback((item: MemberWithBalance) => {
-    setSelectedMember(item);
-    const balance = item.balance;
-    if (Math.abs(balance) > 0) {
-      setAmount(Math.abs(balance).toFixed(2));
-    } else {
-      setAmount('');
+    if (!isSettleableGroupBalance(item.balance)) {
+      return;
     }
+    setSelectedMember(item);
   }, []);
+
+  useEffect(() => {
+    setAmount(selectedMember ? getGroupSettleAmount(selectedMember.balance) : '');
+  }, [selectedMember]);
+
+  const canSubmitSettlement = canSubmitGroupSettlement(selectedMember, amount, settling);
 
   const renderMember = useCallback(
     ({ item }: { item: MemberWithBalance }) => (
@@ -365,12 +418,12 @@ export default function GroupSettleScreen() {
               {/* Settle Button */}
               <TouchableOpacity
                 onPress={handleSettle}
-                disabled={!selectedMember || !amount.trim() || settling}
+                disabled={!canSubmitSettlement}
                 style={[
                   styles.settleButton,
                   {
                     backgroundColor:
-                      selectedMember && amount.trim() && !settling
+                      canSubmitSettlement
                         ? isDark
                           ? '#2DD4BF'
                           : '#22C55E'
@@ -384,7 +437,7 @@ export default function GroupSettleScreen() {
                     styles.settleButtonText,
                     {
                       color:
-                        selectedMember && amount.trim() && !settling
+                        canSubmitSettlement
                           ? '#0A0A0F'
                           : isDark
                             ? '#9CA3AF'
@@ -466,6 +519,9 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  memberCardDisabled: {
+    opacity: 0.55,
   },
   memberContent: {
     flexDirection: 'row',

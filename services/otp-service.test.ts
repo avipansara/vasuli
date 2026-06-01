@@ -22,7 +22,9 @@ const mocks = vi.hoisted(() => {
   const usersInsertSingle = vi.fn()
   const from = vi.fn()
   const signInWithOtp = vi.fn()
+  const signInWithPassword = vi.fn()
   const verifyOtp = vi.fn()
+  const getSession = vi.fn()
   const signOut = vi.fn()
   const ensureAppReviewDemoData = vi.fn()
   const linkAuthUserToProfile = vi.fn()
@@ -35,7 +37,9 @@ const mocks = vi.hoisted(() => {
     usersInsertSingle,
     from,
     signInWithOtp,
+    signInWithPassword,
     verifyOtp,
+    getSession,
     signOut,
     ensureAppReviewDemoData,
     linkAuthUserToProfile,
@@ -58,7 +62,9 @@ vi.mock('@/lib/supabase', () => ({
     },
     auth: {
       signInWithOtp: mocks.signInWithOtp,
+      signInWithPassword: mocks.signInWithPassword,
       verifyOtp: mocks.verifyOtp,
+      getSession: mocks.getSession,
       signOut: mocks.signOut,
     },
   },
@@ -81,6 +87,17 @@ describe('otpService App Review account', () => {
     mocks.removeItem.mockResolvedValue(undefined)
     mocks.ensureAppReviewDemoData.mockResolvedValue(undefined)
     mocks.signInWithOtp.mockResolvedValue({ data: {}, error: null })
+    mocks.signInWithPassword.mockResolvedValue({
+      data: {
+        user: {
+          id: 'apple-reviewer-auth-id',
+          email: 'apple.reviewer@vasuli.app',
+          user_metadata: { name: 'Apple Reviewer' },
+        },
+      },
+      error: null,
+    })
+    mocks.getSession.mockResolvedValue({ data: { session: null } })
     mocks.verifyOtp.mockResolvedValue({
       data: {
         user: { id: 'auth-user-id', email: 'existing@example.com' },
@@ -128,24 +145,44 @@ describe('otpService App Review account', () => {
   })
 
   it('verifies the built-in Apple reviewer OTP and saves a session', async () => {
+    mocks.linkAuthUserToProfile.mockResolvedValueOnce({
+      id: 'apple-reviewer-user-id',
+      name: 'Apple Reviewer',
+      email: 'apple.reviewer@vasuli.app',
+      isActive: true,
+      createdAt: 1,
+    })
+
     const result = await otpService.verifySignInCode({
       email: 'apple.reviewer@vasuli.app',
       code: '123456',
     })
 
     expect(result.success).toBe(true)
+    expect(mocks.signInWithPassword).toHaveBeenCalledWith({
+      email: 'apple.reviewer@vasuli.app',
+      password: '123456',
+    })
+    expect(mocks.linkAuthUserToProfile).toHaveBeenCalledWith({
+      authUserId: 'apple-reviewer-auth-id',
+      email: 'apple.reviewer@vasuli.app',
+      name: 'Apple Reviewer',
+    })
     expect(result.session?.user.email).toBe('apple.reviewer@vasuli.app')
-    expect(mocks.ensureAppReviewDemoData).toHaveBeenCalledWith(reviewerUser)
+    expect(mocks.ensureAppReviewDemoData).toHaveBeenCalledWith(expect.objectContaining({
+      id: 'apple-reviewer-user-id',
+      email: 'apple.reviewer@vasuli.app',
+    }))
     expect(mocks.setItem).toHaveBeenCalledWith(
       'auth_session',
       expect.stringContaining('"email":"apple.reviewer@vasuli.app"')
     )
   })
 
-  it('creates the Apple reviewer user if it does not exist yet', async () => {
-    mocks.usersSingle.mockResolvedValueOnce({
-      data: null,
-      error: { code: 'PGRST116', message: 'No rows' },
+  it('rejects the Apple reviewer OTP when the Supabase Auth password user is missing', async () => {
+    mocks.signInWithPassword.mockResolvedValueOnce({
+      data: { user: null },
+      error: { message: 'Invalid login credentials' },
     })
 
     const result = await otpService.verifySignInCode({
@@ -153,9 +190,11 @@ describe('otpService App Review account', () => {
       code: '123456',
     })
 
-    expect(result.success).toBe(true)
-    expect(mocks.usersInsertSingle).toHaveBeenCalled()
-    expect(result.session?.user.name).toBe('Apple Reviewer')
+    expect(result).toEqual({
+      success: false,
+      error: 'Test account is not configured in Supabase Auth',
+    })
+    expect(mocks.ensureAppReviewDemoData).not.toHaveBeenCalled()
   })
 
   it('rejects an incorrect Apple reviewer OTP', async () => {
@@ -304,6 +343,53 @@ describe('otpService App Review account', () => {
       authUserId: 'auth-user-id',
       email: 'existing@example.com',
     })
+  })
+
+  it('syncs a persisted Supabase Auth session back to the app profile', async () => {
+    mocks.getSession.mockResolvedValueOnce({
+      data: {
+        session: {
+          user: {
+            id: 'auth-user-id',
+            email: 'Existing@Example.com',
+            user_metadata: { name: 'Existing User' },
+          },
+        },
+      },
+    })
+
+    const session = await otpService.syncSupabaseAuthSessionToAppProfile(' existing@example.com ')
+
+    expect(session?.user.id).toBe('existing-public-user-id')
+    expect(mocks.linkAuthUserToProfile).toHaveBeenCalledWith({
+      authUserId: 'auth-user-id',
+      email: 'existing@example.com',
+      name: 'Existing User',
+    })
+    expect(mocks.setItem).toHaveBeenCalledWith(
+      'auth_session',
+      expect.stringContaining('"id":"existing-public-user-id"')
+    )
+  })
+
+  it('does not sync a Supabase Auth session for a different local email', async () => {
+    mocks.getSession.mockResolvedValueOnce({
+      data: {
+        session: {
+          user: {
+            id: 'auth-user-id',
+            email: 'other@example.com',
+            user_metadata: {},
+          },
+        },
+      },
+    })
+
+    const session = await otpService.syncSupabaseAuthSessionToAppProfile('existing@example.com')
+
+    expect(session).toBeNull()
+    expect(mocks.signOut).toHaveBeenCalled()
+    expect(mocks.linkAuthUserToProfile).not.toHaveBeenCalled()
   })
 
   it('rejects phone-only sign-in verification before touching Supabase', async () => {
