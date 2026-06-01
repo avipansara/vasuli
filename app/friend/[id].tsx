@@ -826,7 +826,7 @@ export default function FriendDetailScreen() {
         showsVerticalScrollIndicator={false}>
 
         <Animated.View style={[
-          styles.heroSection,
+          styles.summarySection,
           {
             opacity: fadeAnim,
             transform: [{ translateY: slideAnim }, { scale: scaleAnim }],
@@ -835,49 +835,33 @@ export default function FriendDetailScreen() {
           <View
             accessible
             accessibilityRole="summary"
-            accessibilityLabel={`${friend.name}${friend.email ? `, ${friend.email}` : ''}`}
-            style={[styles.profileCard, {
-              backgroundColor: friendDetailTheme.surface,
-              borderColor: friendDetailTheme.surfaceBorder,
-            }]}>
-            <View style={[styles.avatar, {
-              backgroundColor: friendDetailTheme.avatarSurface,
-              borderColor: friendDetailTheme.avatarBorder,
-            }]}>
-              <ThemedText style={[styles.avatarText, { color: friendDetailTheme.actionIcon }]}>
-                {friend.name.charAt(0).toUpperCase()}
-              </ThemedText>
-            </View>
-            <View style={styles.profileInfo}>
-              <ThemedText type="title" numberOfLines={1} style={[styles.friendName, { color: colors.text }]}>
-                {friend.name}
-              </ThemedText>
-              {friend.email && (
-                <ThemedText numberOfLines={1} style={[styles.friendEmail, { color: colors.textSecondary }]}>
-                  {friend.email}
-                </ThemedText>
-              )}
-            </View>
-          </View>
-        </Animated.View>
-
-        <Animated.View style={[
-          styles.balanceCardWrapper,
-          {
-            opacity: fadeAnim,
-            transform: [{ translateY: slideAnim }],
-          }
-        ]}>
-          <View
-            accessible
-            accessibilityRole="summary"
-            accessibilityLabel={balanceAccessibilityValue}
+            accessibilityLabel={`${friend.name}${friend.email ? `, ${friend.email}` : ''}, ${balanceAccessibilityValue}`}
             accessibilityLiveRegion="polite"
-            style={[styles.balanceCard, {
+            style={[styles.summaryCard, {
               backgroundColor: balanceSurface,
               borderColor: friendDetailTheme.surfaceBorder,
             }]}>
-            <View style={styles.balanceHeader}>
+            <View style={styles.summaryTopRow}>
+              <View style={[styles.summaryAvatar, {
+                backgroundColor: friendDetailTheme.avatarSurface,
+                borderColor: friendDetailTheme.avatarBorder,
+              }]}>
+                <ThemedText style={[styles.summaryAvatarText, { color: friendDetailTheme.actionIcon }]}>
+                  {friend.name.charAt(0).toUpperCase()}
+                </ThemedText>
+              </View>
+              <View style={styles.summaryIdentity}>
+                <ThemedText type="title" numberOfLines={1} style={[styles.summaryName, { color: colors.text }]}>
+                  {friend.name}
+                </ThemedText>
+                {friend.email && (
+                  <ThemedText numberOfLines={1} style={[styles.summaryEmail, { color: colors.textSecondary }]}>
+                    {friend.email}
+                  </ThemedText>
+                )}
+              </View>
+            </View>
+            <View style={styles.summaryBalanceRow}>
               <View style={[styles.balanceIndicator, { backgroundColor: balanceColor }]} />
               <ThemedText style={[styles.balanceLabel, { color: colors.textSecondary }]}>
                 {balanceCopy}
@@ -1070,56 +1054,50 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  heroSection: {
+  summarySection: {
     paddingHorizontal: 16,
     paddingTop: 6,
-    paddingBottom: 10,
+    paddingBottom: 12,
   },
-  profileCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  summaryCard: {
     borderRadius: 14,
     borderWidth: 1,
-    padding: 12,
+    padding: 14,
   },
-  avatar: {
-    width: 54,
-    height: 54,
-    borderRadius: 14,
+  summaryTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  summaryAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 13,
     borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
   },
-  profileInfo: {
+  summaryIdentity: {
     flex: 1,
     minWidth: 0,
   },
-  avatarText: {
-    fontSize: 24,
+  summaryAvatarText: {
+    fontSize: 22,
     fontWeight: '700',
-    lineHeight: 28,
+    lineHeight: 26,
   },
-  friendName: {
-    fontSize: 20,
+  summaryName: {
+    fontSize: 19,
     fontWeight: '700',
-    lineHeight: 25,
+    lineHeight: 24,
   },
-  friendEmail: {
+  summaryEmail: {
     fontSize: 14,
     lineHeight: 18,
     marginTop: 2,
   },
-  balanceCardWrapper: {
-    marginHorizontal: 16,
-    marginBottom: 12,
-  },
-  balanceCard: {
-    borderRadius: 14,
-    borderWidth: 1,
-    padding: 14,
-  },
-  balanceHeader: {
+  summaryBalanceRow: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 4,
