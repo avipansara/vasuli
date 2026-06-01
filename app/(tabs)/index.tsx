@@ -16,7 +16,6 @@ import { invitationService } from '@/services/invitation-service';
 import { queryKeys } from '@/services/query-keys';
 import type { Expense, User } from '@/types/database';
 import { isEmailValid, normalizeEmail } from '@/utils/validation';
-import { useFocusEffect } from 'expo-router/react-navigation';
 import { useQuery } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
@@ -59,12 +58,6 @@ export default function FriendsScreen() {
   const loadFriends = useCallback(async () => {
     await refetch();
   }, [refetch]);
-
-  useFocusEffect(
-    useCallback(() => {
-      loadFriends();
-    }, [loadFriends])
-  );
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);

@@ -1,5 +1,25 @@
 import { supabase } from '@/lib/supabase';
+import { linkAuthUserToProfile } from '@/services/auth-profile-service';
 import type { Expense, ExpenseSplit } from '@/types/database';
+
+async function prepareExpenseWriteSession(expectedAppUserId: string): Promise<void> {
+  const { data: { session } } = await supabase.auth.getSession();
+  const authUser = session?.user;
+
+  if (!authUser?.id || !authUser.email) {
+    throw new Error('A Supabase Auth session is required to create expenses.');
+  }
+
+  const profile = await linkAuthUserToProfile({
+    authUserId: authUser.id,
+    email: authUser.email,
+    name: typeof authUser.user_metadata?.name === 'string' ? authUser.user_metadata.name : undefined,
+  });
+
+  if (profile.id !== expectedAppUserId) {
+    throw new Error('Supabase Auth session does not match the current app user.');
+  }
+}
 
 export const expenseService = {
   async create(
@@ -7,6 +27,7 @@ export const expenseService = {
     splits: Omit<ExpenseSplit, 'id' | 'expenseId'>[]
   ): Promise<Expense> {
     const now = new Date().toISOString();
+    await prepareExpenseWriteSession(expense.paidBy);
 
     const { data, error } = await supabase
       .from('expenses')

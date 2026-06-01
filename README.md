@@ -32,7 +32,7 @@ cp .env.example .env
 # Edit .env, then restart the dev server (Expo reads EXPO_PUBLIC_* on startup).
 ```
 
-This app targets **Expo SDK 54**, which matches the **App Store** [Expo Go](https://expo.dev/go) client for day-to-day development on a physical device.
+This app targets **Expo SDK 56**, which matches the **App Store** [Expo Go](https://expo.dev/go) client for day-to-day development on a physical device.
 
 For **custom native code** or modules Expo Go does not include, use a **development build** and the dev-client bundler:
 
@@ -47,6 +47,28 @@ eas build --profile development --platform ios
 ```
 
 A terminal line like `[redirect middleware]: Unable to determine redirect location for runtime 'custom' and platform 'ios'` usually means the CLI could not open a matching dev client — fixing the install fixes the flow.
+
+#### Development build troubleshooting
+
+If `npx expo start --dev-client` reports `No development build (...) for this project is installed`, install a development build first. The dev-client server connects to an existing native app; it does not create that native app by itself.
+
+For iOS simulator builds, `xcodebuild` error code `70` with `Unable to find a destination matching the provided destination specifier` usually means Expo/Xcode is holding a stale simulator UDID. Pick a currently available simulator or build against the generic simulator destination:
+
+```bash
+xcrun simctl list devices available
+npx expo run:ios --device generic --no-bundler
+```
+
+If a native compile fails in `expo-sqlite` with missing `exsqlite3_*` symbols, refresh pods and do a clean native rebuild:
+
+```bash
+cd ios
+pod install
+cd ..
+npx expo run:ios --device generic --no-bundler --no-build-cache
+```
+
+Also keep the bundle identifier aligned between [`app.json`](./app.json) and the native iOS project. A mismatch can make Expo look for a different installed dev client than the one Xcode built.
 
 In the dev server output, you'll find options to open the app in:
 

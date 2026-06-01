@@ -6,6 +6,7 @@ import { LoadingState } from '@/components/ui/loading-state';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
+import { getDeletedExpenseTargetIds } from '@/lib/activity-link';
 import { activityService } from '@/services/activity-service';
 import { initDatabase } from '@/services/api';
 import { queryKeys } from '@/services/query-keys';
@@ -64,6 +65,7 @@ export default function ActivityScreen() {
     },
   });
   const activities = useMemo(() => data?.pages.flat() ?? [], [data]);
+  const deletedExpenseTargetIds = useMemo(() => getDeletedExpenseTargetIds(activities), [activities]);
   const loading = isLoading && activities.length === 0;
   const loadError = isError ? getFetchErrorMessage(error) : null;
 
@@ -106,8 +108,14 @@ export default function ActivityScreen() {
   }, [refetch]);
 
   const renderActivityItem = useCallback(
-    ({ item }: { item: Activity }) => <ActivityCard activity={item} currentUserId={currentUserId} />,
-    [currentUserId]
+    ({ item }: { item: Activity }) => (
+      <ActivityCard
+        activity={item}
+        currentUserId={currentUserId}
+        deletedExpenseTargetIds={deletedExpenseTargetIds}
+      />
+    ),
+    [currentUserId, deletedExpenseTargetIds]
   );
 
   const renderFooter = () => {

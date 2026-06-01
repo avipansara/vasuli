@@ -10,11 +10,12 @@ import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { activityService } from '@/services/activity-service';
 import { expenseService, friendDetailService, initDatabase, settlementService } from '@/services/api';
+import type { FriendDetailData } from '@/services/friend-detail-service';
+import { applySettlementsToGroupDetailData, type GroupDetailData } from '@/services/group-detail-service';
 import { friendshipService } from '@/services/friendship-service';
 import { createExpenseDeletedNotification, notificationService } from '@/services/notification-service';
 import { queryKeys } from '@/services/query-keys';
 import type { Expense, User } from '@/types/database';
-import { useFocusEffect } from 'expo-router/react-navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -114,12 +115,6 @@ export default function FriendDetailScreen() {
     }
   }, [fadeAnim, friend, loading, scaleAnim, slideAnim]);
 
-  useFocusEffect(
-    useCallback(() => {
-      loadFriendData();
-    }, [loadFriendData])
-  );
-
   useRealtime({
     table: 'expenses',
     filter: currentUserId ? `paid_by=eq.${currentUserId}` : undefined,
@@ -201,46 +196,46 @@ export default function FriendDetailScreen() {
       });
       setSettleModalVisible(false);
 
-      let settlement;
-      if (friend.balance > 0) {
-        // Friend owes current user
-        settlement = await settlementService.create({
-          fromUserId: friendId,
-          toUserId: currentUserId,
-          amount,
-          currency: 'USD',
-          date: Date.now(),
-        });
+      const settlements = await settlementService.createPairSettlements({
+        currentUserId,
+        friendId,
+        amount: Math.abs(amount),
+        currency: 'USD',
+        date: Date.now(),
+      });
 
-        // Log activity
-        await activityService.logSettlementCreated({
-          settlementId: settlement.id,
-          fromUserId: friendId,
-          fromUserName: friend.name,
-          toUserName: user.name,
-          amount,
-        });
-      } else {
-        // Current user owes friend
-        settlement = await settlementService.create({
-          fromUserId: currentUserId,
-          toUserId: friendId,
-          amount: Math.abs(amount),
-          currency: 'USD',
-          date: Date.now(),
-        });
-
-        // Log activity
-        await activityService.logSettlementCreated({
-          settlementId: settlement.id,
-          fromUserId: currentUserId,
-          fromUserName: user.name,
-          toUserName: friend.name,
-          amount: Math.abs(amount),
-        });
+      try {
+        for (const settlement of settlements) {
+          const currentUserPaid = settlement.fromUserId === currentUserId;
+          await activityService.logSettlementCreated({
+            settlementId: settlement.id,
+            fromUserId: settlement.fromUserId,
+            fromUserName: currentUserPaid ? user.name : friend.name,
+            toUserName: currentUserPaid ? friend.name : user.name,
+            amount: settlement.amount,
+            groupId: settlement.groupId,
+          });
+        }
+      } catch {
+        // Activity logging should not block a completed settlement.
       }
 
-      await queryClient.invalidateQueries({ queryKey: friendDetailQueryKey });
+      const settledGroupIds = [...new Set(settlements.flatMap(settlement => settlement.groupId ? [settlement.groupId] : []))];
+      for (const groupId of settledGroupIds) {
+        const groupSettlements = settlements.filter(settlement => settlement.groupId === groupId);
+        queryClient.setQueryData<GroupDetailData | null>(
+          queryKeys.groups.detail(currentUserId, groupId),
+          current => current ? applySettlementsToGroupDetailData(current, groupSettlements) : current
+        );
+      }
+
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: friendDetailQueryKey }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.groups.list(currentUserId) }),
+        ...settledGroupIds.map(groupId => queryClient.invalidateQueries({
+          queryKey: queryKeys.groups.detail(currentUserId, groupId),
+        })),
+      ]);
       await refetch();
     } catch (error) {
       if (previousFriend) {
@@ -320,6 +315,14 @@ export default function FriendDetailScreen() {
                     balance: Math.abs(nextBalance) < 0.01 ? 0 : nextBalance,
                   };
                 });
+                queryClient.setQueryData<FriendDetailData | null>(friendDetailQueryKey, current => current ? {
+                  ...current,
+                  friend: {
+                    ...current.friend,
+                    balance: Math.abs(current.friend.balance + balanceDelta) < 0.01 ? 0 : current.friend.balance + balanceDelta,
+                  },
+                  expenses: current.expenses.filter(expense => expense.id !== expenseId),
+                } : current);
               }
 
               await expenseService.delete(expenseId, currentUserId, user?.name || 'Unknown');
@@ -333,8 +336,7 @@ export default function FriendDetailScreen() {
                 await notificationService.sendPushNotification(friend.pushToken, notification);
               }
 
-              await queryClient.invalidateQueries({ queryKey: friendDetailQueryKey });
-              await refetch();
+              queryClient.invalidateQueries({ queryKey: friendDetailQueryKey });
             } catch (error) {
               setExpenses(previousExpenses);
               if (previousFriend) {

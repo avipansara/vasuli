@@ -19,11 +19,11 @@ import {
   userService
 } from '@/services/api';
 import { friendshipService } from '@/services/friendship-service';
+import type { GroupDetailData } from '@/services/group-detail-service';
 import { areGroupBalancesSettled, calculateGroupBalances } from '@/services/group-balance';
 import { createExpenseDeletedNotification, createExpenseNotification, notificationService } from '@/services/notification-service';
 import { queryKeys } from '@/services/query-keys';
 import type { Expense, ExpenseSplit, Group, GroupMember, Settlement, User } from '@/types/database';
-import { useFocusEffect } from 'expo-router/react-navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -127,14 +127,6 @@ export default function GroupDetailScreen() {
     onChange: invalidateGroupDetail,
     enabled: !!id,
   });
-
-  useFocusEffect(
-    useCallback(() => {
-      if (id) {
-        loadGroupData();
-      }
-    }, [id, loadGroupData])
-  );
 
   const addExpense = async () => {
     if (isAddingExpense) return;
@@ -339,9 +331,16 @@ export default function GroupDetailScreen() {
 
               const nextExpenses = expenses.filter(expense => expense.id !== expenseId);
               const nextSplits = expenseSplits.filter(split => split.expenseId !== expenseId);
+              const nextBalances = calculateGroupBalances(nextExpenses, nextSplits, settlements);
               setExpenses(nextExpenses);
               setExpenseSplits(nextSplits);
-              setBalances(calculateGroupBalances(nextExpenses, nextSplits, settlements));
+              setBalances(nextBalances);
+              queryClient.setQueryData<GroupDetailData | null>(groupDetailQueryKey, current => current ? {
+                ...current,
+                expenses: nextExpenses,
+                splits: nextSplits,
+                balances: nextBalances,
+              } : current);
 
               if (expenseToDelete) {
                 const deletedExpenseSplits = expenseSplits.filter(split => split.expenseId === expenseId);
@@ -398,7 +397,7 @@ export default function GroupDetailScreen() {
                   await notificationService.sendNotificationToUsers(pushTokens, notification);
                 }
               }
-              await loadGroupData();
+              queryClient.invalidateQueries({ queryKey: groupDetailQueryKey });
             } catch (error) {
               setExpenses(previousExpenses);
               setBalances(previousBalances);

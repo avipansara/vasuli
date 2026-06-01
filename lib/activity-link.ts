@@ -23,8 +23,24 @@ const groupTypes = new Set<ActivityType>([
   ActivityType.MEMBER_REMOVED,
 ]);
 
-export function getActivityHref(activity: Activity, currentUserId?: string): ActivityHref | null {
+export function getDeletedExpenseTargetIds(activities: Activity[]): ReadonlySet<string> {
+  return new Set(
+    activities
+      .filter((activity) => activity.type === ActivityType.EXPENSE_DELETED)
+      .map((activity) => activity.targetId)
+  );
+}
+
+export function getActivityHref(
+  activity: Activity,
+  currentUserId?: string,
+  deletedExpenseTargetIds?: ReadonlySet<string>
+): ActivityHref | null {
   if (expenseDetailTypes.has(activity.type)) {
+    if (deletedExpenseTargetIds?.has(activity.targetId)) {
+      return activity.groupId ? `/group/${activity.groupId}` : null;
+    }
+
     return `/expense-detail/${activity.targetId}`;
   }
 

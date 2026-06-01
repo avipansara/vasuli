@@ -1,5 +1,3 @@
-# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
-
 # dependencies
 node_modules/
 
@@ -17,6 +15,8 @@ expo-env.d.ts
 *.p12
 *.key
 *.mobileprovision
+/ios
+/android
 
 # Metro
 .metro-health-check*
@@ -42,10 +42,14 @@ app-example
 # Supabase CLI
 supabase/.temp/
 
-# generated native folders
-/ios
-/android
+# Local agent/editor state
+/.agents
+/.codex
+/.cursor
 
-.cursor
-.codex
-marketing/
+# Local marketing workspace and generated assets
+/marketing
+
+# Tests are not needed for the native build archive
+*.test.ts
+*.test.tsx
