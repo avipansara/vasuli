@@ -629,14 +629,15 @@ export default function FriendDetailScreen() {
             <View style={[
               styles.expenseIcon,
               {
-                backgroundColor: friendDetailTheme.actionSurface,
-                borderColor: friendDetailTheme.actionBorder,
+                backgroundColor: expense.paidBy === currentUserId
+                  ? friendDetailTheme.positiveSurface
+                  : friendDetailTheme.negativeSurface,
               }
             ]}>
               <IconSymbol
                 size={16}
                 name={expense.groupId ? 'person.2.fill' : 'arrow.up.right'}
-                color={friendDetailTheme.actionIcon}
+                color={expense.paidBy === currentUserId ? friendDetailTheme.positive : friendDetailTheme.negative}
               />
             </View>
             <View style={styles.expenseInfo}>
@@ -664,6 +665,12 @@ export default function FriendDetailScreen() {
                   : `-$${expense.yourShare.toFixed(2)}`}
               </ThemedText>
             </View>
+            <IconSymbol
+              size={17}
+              name="chevron.right"
+              color={colors.textSecondary}
+              style={styles.expenseChevron}
+            />
           </Animated.View>
         </TouchableOpacity>
       </Swipeable>
@@ -1221,7 +1228,7 @@ const styles = StyleSheet.create({
   },
   expenseCard: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     paddingHorizontal: 12,
     paddingVertical: 10,
     marginBottom: 8,
@@ -1244,14 +1251,12 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   expenseIcon: {
-    width: 34,
-    height: 34,
+    width: 38,
+    height: 38,
     borderRadius: 10,
-    borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 10,
-    marginTop: 1,
   },
   expenseInfo: {
     flex: 1,
@@ -1316,7 +1321,7 @@ const styles = StyleSheet.create({
   expenseAmounts: {
     alignItems: 'flex-end',
     marginLeft: 8,
-    minWidth: 64,
+    minWidth: 62,
   },
   expenseTotal: {
     fontSize: 11,
@@ -1332,8 +1337,11 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   expenseShare: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '700',
+  },
+  expenseChevron: {
+    marginLeft: 8,
   },
   swipeActionLeft: {
     justifyContent: 'center',
