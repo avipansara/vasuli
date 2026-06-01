@@ -90,6 +90,7 @@ export default function GroupDetailScreen() {
       return;
     }
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Query data is mirrored so optimistic local mutations can update immediately.
     setGroup(groupDetail.group);
     setExpenses(groupDetail.expenses);
     setMembers(groupDetail.members);

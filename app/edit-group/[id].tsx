@@ -71,6 +71,7 @@ export default function EditGroupScreen() {
   }, [fadeAnim, id, slideAnim]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Initial async load hydrates local editable group state.
     loadGroupData();
   }, [loadGroupData]);
 

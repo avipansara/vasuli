@@ -132,10 +132,12 @@ export default function AddExpenseScreen() {
   }, [selectedGroupId]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Fetching members here intentionally syncs selected group state into the form.
     void loadGroupMembersForSelection();
   }, [loadGroupMembersForSelection]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Initial async screen load hydrates local editable form state.
     loadData();
     Animated.parallel([
       Animated.timing(fadeAnim, {
@@ -360,6 +362,7 @@ export default function AddExpenseScreen() {
     try {
       const amountNum = parseFloat(amount);
       const trimmedDescription = description.trim();
+      // eslint-disable-next-line react-hooks/purity -- This timestamp is created from a submit event for optimistic cache data.
       const createdAt = Date.now();
       const optimisticExpense: Expense = {
         id: `optimistic:${createdAt}`,

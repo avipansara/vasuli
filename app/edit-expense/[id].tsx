@@ -102,6 +102,7 @@ export default function EditExpenseScreen() {
   }, [selectedGroupId]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Fetching members here intentionally syncs selected group state into the form.
     void loadGroupMembersForSelection();
   }, [loadGroupMembersForSelection]);
 
@@ -131,7 +132,7 @@ export default function EditExpenseScreen() {
       }
 
       const [groupsData, userFriends, existingSplits] = await Promise.all([
-        groupService.getUserGroups(user?.id || ''),
+        groupService.getUserGroups(currentUserId),
         userService.getUserFriends(currentUserId),
         expenseService.getSplits(id),
       ]);
@@ -163,9 +164,10 @@ export default function EditExpenseScreen() {
       setLoadError(getFetchErrorMessage(error));
       setDataLoading(false);
     }
-  }, [currentUserId, fadeAnim, id, slideAnim, user?.id]);
+  }, [currentUserId, fadeAnim, id, slideAnim]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Initial async load hydrates local editable expense state.
     loadExpenseData();
   }, [loadExpenseData]);
 

@@ -40,9 +40,11 @@ export default function InvitationsScreen() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [noEmailForInvites, setNoEmailForInvites] = useState(false);
   const hasLoadedOnce = useRef(false);
+  const userId = user?.id;
+  const userName = user?.name;
 
   const loadInvitations = useCallback(async () => {
-    if (!user?.id) return;
+    if (!userId) return;
 
     try {
       setLoadError(null);
@@ -53,10 +55,10 @@ export default function InvitationsScreen() {
       }
 
       await refreshUser();
-      const profile = await userService.getById(user.id);
+      const profile = await userService.getById(userId);
       const email = normalizeEmail(profile?.email);
 
-      const sent = await invitationService.getByInviter(user.id);
+      const sent = await invitationService.getByInviter(userId);
       setSentInvitations(sent);
 
       if (!email) {
@@ -74,7 +76,7 @@ export default function InvitationsScreen() {
     } finally {
       setLoading(false);
     }
-  }, [user?.id, refreshUser]);
+  }, [userId, refreshUser]);
 
   useFocusEffect(
     useCallback(() => {
@@ -88,8 +90,8 @@ export default function InvitationsScreen() {
       await invitationService.updateStatus(invitation.id, 'accepted');
 
       // Create friendship
-      if (user?.id) {
-        await friendshipService.createAccepted(user.id, invitation.inviterId);
+      if (userId) {
+        await friendshipService.createAccepted(userId, invitation.inviterId);
       }
 
       Alert.alert('Success', 'Invitation accepted!');
@@ -100,7 +102,7 @@ export default function InvitationsScreen() {
     } finally {
       setActionLoading(null);
     }
-  }, [user?.id, loadInvitations]);
+  }, [userId, loadInvitations]);
 
   const handleDecline = useCallback(async (invitation: InvitationWithDetails) => {
     Alert.alert(
@@ -132,7 +134,7 @@ export default function InvitationsScreen() {
   const handleResend = useCallback(async (invitation: InvitationWithDetails) => {
     setActionLoading(invitation.id);
     try {
-      await invitationService.resend(invitation.id, user?.name);
+      await invitationService.resend(invitation.id, userName);
       Alert.alert('Success', 'Invitation resent!');
       loadInvitations();
     } catch (error) {
@@ -141,7 +143,7 @@ export default function InvitationsScreen() {
     } finally {
       setActionLoading(null);
     }
-  }, [user?.name, loadInvitations]);
+  }, [userName, loadInvitations]);
 
   const handleCancel = useCallback(async (invitation: InvitationWithDetails) => {
     Alert.alert(

@@ -47,6 +47,7 @@ export default function AddFriendScreen() {
   }, [currentUserId]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Initial async load populates the pending invitation list.
     loadPendingInvites();
   }, [loadPendingInvites]);
 
