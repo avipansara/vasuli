@@ -79,4 +79,52 @@ describe('friend detail builders', () => {
       ]
     )).toBe(7);
   });
+
+  it('builds a chronological friend activity timeline with expenses and settlements', () => {
+    const expenses = [
+      expense('dinner', currentUserId, 80, 2),
+      expense('coffee', friendId, 30, 4),
+    ];
+    const splits = [
+      split('s1', 'dinner', currentUserId, 40),
+      split('s2', 'dinner', friendId, 40),
+      split('s3', 'coffee', currentUserId, 15),
+      split('s4', 'coffee', friendId, 15),
+    ];
+    const settlements = [
+      settlement('settle-older', currentUserId, friendId, 10),
+      settlement('settle-newer', friendId, currentUserId, 5),
+    ];
+    settlements[0].date = 3;
+    settlements[1].date = 5;
+
+    const detail = buildFriendDetailData(currentUserId, friend, expenses, splits, settlements);
+
+    expect(detail.activity).toMatchObject([
+      {
+        id: 'settlement:settle-newer',
+        type: 'settlement',
+        amount: 5,
+        direction: 'friend_paid_you',
+        settlementId: 'settle-newer',
+      },
+      {
+        id: 'expense:coffee',
+        type: 'expense',
+        expense: { id: 'coffee', paidByName: 'Asha' },
+      },
+      {
+        id: 'settlement:settle-older',
+        type: 'settlement',
+        amount: 10,
+        direction: 'you_paid_friend',
+        settlementId: 'settle-older',
+      },
+      {
+        id: 'expense:dinner',
+        type: 'expense',
+        expense: { id: 'dinner', paidByName: 'You' },
+      },
+    ]);
+  });
 });

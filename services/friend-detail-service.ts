@@ -13,9 +13,31 @@ export interface FriendExpenseWithSplit extends Expense {
   paidByName: string;
 }
 
+export type FriendSettlementDirection = 'you_paid_friend' | 'friend_paid_you';
+
+export type FriendActivityItem =
+  | {
+    id: string;
+    type: 'expense';
+    date: number;
+    expense: FriendExpenseWithSplit;
+  }
+  | {
+    id: string;
+    type: 'settlement';
+    date: number;
+    settlementId: string;
+    amount: number;
+    currency: string;
+    direction: FriendSettlementDirection;
+    groupId?: string;
+    notes?: string;
+  };
+
 export interface FriendDetailData {
   friend: FriendWithBalance;
   expenses: FriendExpenseWithSplit[];
+  activity: FriendActivityItem[];
 }
 
 export function calculatePairBalance(
@@ -93,12 +115,42 @@ export function buildFriendDetailData(
 
   sharedExpenses.sort((a, b) => b.date - a.date);
 
+  const pairSettlements = settlements.flatMap((settlement): FriendActivityItem[] => {
+    const isCurrentUserPayer = settlement.fromUserId === currentUserId && settlement.toUserId === friend.id;
+    const isFriendPayer = settlement.fromUserId === friend.id && settlement.toUserId === currentUserId;
+
+    if (!isCurrentUserPayer && !isFriendPayer) return [];
+
+    return [{
+      id: `settlement:${settlement.id}`,
+      type: 'settlement',
+      date: settlement.date,
+      settlementId: settlement.id,
+      amount: settlement.amount,
+      currency: settlement.currency,
+      direction: isCurrentUserPayer ? 'you_paid_friend' : 'friend_paid_you',
+      groupId: settlement.groupId,
+      notes: settlement.notes,
+    }];
+  });
+
+  const activity: FriendActivityItem[] = [
+    ...sharedExpenses.map((expense): FriendActivityItem => ({
+      id: `expense:${expense.id}`,
+      type: 'expense',
+      date: expense.date,
+      expense,
+    })),
+    ...pairSettlements,
+  ].sort((a, b) => b.date - a.date);
+
   return {
     friend: {
       ...friend,
       balance: calculatePairBalance(currentUserId, friend.id, expenses, splits, settlements),
     },
     expenses: sharedExpenses,
+    activity,
   };
 }
 

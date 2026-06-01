@@ -10,7 +10,7 @@ import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { activityService } from '@/services/activity-service';
 import { expenseService, friendDetailService, initDatabase, settlementService } from '@/services/api';
-import type { FriendDetailData } from '@/services/friend-detail-service';
+import type { FriendActivityItem, FriendDetailData } from '@/services/friend-detail-service';
 import { applySettlementsToGroupDetailData, type GroupDetailData } from '@/services/group-detail-service';
 import { friendshipService } from '@/services/friendship-service';
 import { createExpenseDeletedNotification, notificationService } from '@/services/notification-service';
@@ -42,6 +42,7 @@ export default function FriendDetailScreen() {
   const { gradients, colors, friendDetail: friendDetailTheme } = useThemeColors();
   const [friend, setFriend] = useState<UserWithBalance | null>(null);
   const [expenses, setExpenses] = useState<ExpenseWithSplit[]>([]);
+  const [activity, setActivity] = useState<FriendActivityItem[]>([]);
   const [settleModalVisible, setSettleModalVisible] = useState(false);
   const [isRemovingFriend, setIsRemovingFriend] = useState(false);
   const [isSettlingUp, setIsSettlingUp] = useState(false);
@@ -86,6 +87,7 @@ export default function FriendDetailScreen() {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- Query data is mirrored so optimistic local mutations can update immediately.
     setFriend(friendDetail.friend);
     setExpenses(friendDetail.expenses);
+    setActivity(friendDetail.activity);
   }, [friendDetail]);
 
   const loadFriendData = useCallback(async () => {
@@ -280,6 +282,7 @@ export default function FriendDetailScreen() {
           onPress: async () => {
             const expenseToDelete = expenses.find(expense => expense.id === expenseId);
             const previousExpenses = expenses;
+            const previousActivity = activity;
             const previousFriend = friend;
             let previousHomeFriends: UserWithBalance[] | undefined;
             try {
@@ -306,6 +309,9 @@ export default function FriendDetailScreen() {
                 }));
 
                 setExpenses(current => current.filter(expense => expense.id !== expenseId));
+                setActivity(current => current.filter(activityItem => (
+                  activityItem.type !== 'expense' || activityItem.expense.id !== expenseId
+                )));
                 setFriend(currentFriend => {
                   if (!currentFriend) return currentFriend;
 
@@ -323,6 +329,9 @@ export default function FriendDetailScreen() {
                     balance: Math.abs(current.friend.balance + balanceDelta) < 0.01 ? 0 : current.friend.balance + balanceDelta,
                   },
                   expenses: current.expenses.filter(expense => expense.id !== expenseId),
+                  activity: current.activity.filter(activityItem => (
+                    activityItem.type !== 'expense' || activityItem.expense.id !== expenseId
+                  )),
                 } : current);
               }
 
@@ -340,6 +349,7 @@ export default function FriendDetailScreen() {
               queryClient.invalidateQueries({ queryKey: friendDetailQueryKey });
             } catch (error) {
               setExpenses(previousExpenses);
+              setActivity(previousActivity);
               if (previousFriend) {
                 setFriend(previousFriend);
               }
@@ -469,6 +479,178 @@ export default function FriendDetailScreen() {
       ? `You owe ${friend.name.split(' ')[0]}`
       : 'All settled up';
   const balanceAccessibilityValue = `${balanceCopy}, $${Math.abs(balance).toFixed(2)}`;
+  const expenseActivityCount = activity.filter(item => item.type === 'expense').length;
+  const settlementActivityCount = activity.length - expenseActivityCount;
+  const activityCountLabel = settlementActivityCount > 0
+    ? `${expenseActivityCount} ${expenseActivityCount === 1 ? 'expense' : 'expenses'} • ${settlementActivityCount} ${settlementActivityCount === 1 ? 'settlement' : 'settlements'}`
+    : `${expenseActivityCount} ${expenseActivityCount === 1 ? 'expense' : 'expenses'}`;
+
+  const renderSettlementActivity = (item: Extract<FriendActivityItem, { type: 'settlement' }>, index: number) => {
+    const youPaid = item.direction === 'you_paid_friend';
+    const title = youPaid
+      ? `You paid ${friend.name.split(' ')[0]}`
+      : `${friend.name.split(' ')[0]} paid you`;
+    const subtitle = item.groupId
+      ? `${formatDate(item.date)} • Group settlement`
+      : `${formatDate(item.date)} • Settlement`;
+    const amountPrefix = youPaid ? '-' : '+';
+    const amountColor = youPaid ? friendDetailTheme.negative : friendDetailTheme.positive;
+
+    return (
+      <Animated.View
+        key={item.id}
+        accessible
+        accessibilityRole="text"
+        accessibilityLabel={`${title}, ${formatDate(item.date)}, ${youPaid ? 'you paid' : 'you received'} $${item.amount.toFixed(2)}`}
+        style={[
+          styles.expenseCard,
+          styles.settlementCard,
+          {
+            backgroundColor: friendDetailTheme.surface,
+            borderColor: friendDetailTheme.surfaceBorder,
+          },
+          {
+            opacity: fadeAnim,
+            transform: [{ translateY: Animated.multiply(slideAnim, new Animated.Value((index + 1) * 0.2)) }],
+          }
+        ]}>
+        <View style={[
+          styles.expenseIcon,
+          { backgroundColor: youPaid ? friendDetailTheme.negativeSurface : friendDetailTheme.positiveSurface }
+        ]}>
+          <IconSymbol
+            size={18}
+            name="checkmark.circle.fill"
+            color={amountColor}
+          />
+        </View>
+        <View style={styles.expenseInfo}>
+          <ThemedText style={[styles.expenseDescription, { color: colors.text }]} numberOfLines={1}>
+            {title}
+          </ThemedText>
+          <ThemedText style={[styles.expenseDate, { color: colors.textSecondary }]} numberOfLines={1}>
+            {subtitle}
+          </ThemedText>
+        </View>
+        <View style={styles.expenseAmounts}>
+          <ThemedText style={[styles.settlementLabel, { color: colors.textSecondary }]}>
+            settled
+          </ThemedText>
+          <ThemedText style={[styles.expenseShare, { color: amountColor }]}>
+            {amountPrefix}${item.amount.toFixed(2)}
+          </ThemedText>
+        </View>
+      </Animated.View>
+    );
+  };
+
+  const renderExpenseActivity = (item: Extract<FriendActivityItem, { type: 'expense' }>, index: number) => {
+    const expense = item.expense;
+
+    return (
+      <Swipeable
+        key={item.id}
+        ref={(ref) => {
+          if (ref) {
+            swipeableRefs.current.set(expense.id, ref);
+          } else {
+            swipeableRefs.current.delete(expense.id);
+          }
+        }}
+        renderLeftActions={(progress, dragX) => (
+          <Animated.View style={[styles.swipeActionLeft, {
+            backgroundColor: friendDetailTheme.actionSurface,
+            opacity: dragX.interpolate({ inputRange: [0, 80], outputRange: [0, 1], extrapolate: 'clamp' })
+          }]}>
+            <TouchableOpacity
+              onPress={() => handleEditExpense(expense.id)}
+              accessibilityRole="button"
+              accessibilityLabel={`Edit ${expense.description}`}
+              accessibilityHint="Opens the edit expense screen"
+              style={styles.swipeActionButton}>
+              <IconSymbol name="pencil" size={20} color={friendDetailTheme.actionIcon} />
+              <ThemedText style={[styles.swipeActionText, { color: friendDetailTheme.actionIcon }]}>Edit</ThemedText>
+            </TouchableOpacity>
+          </Animated.View>
+        )}
+        renderRightActions={expense.paidBy === currentUserId ? (progress, dragX) => (
+          <Animated.View style={[styles.swipeActionRight, {
+            backgroundColor: friendDetailTheme.dangerSurface,
+            opacity: dragX.interpolate({ inputRange: [-80, 0], outputRange: [1, 0], extrapolate: 'clamp' })
+          }]}>
+            <TouchableOpacity
+              onPress={() => handleDeleteExpense(expense.id)}
+              accessibilityRole="button"
+              accessibilityLabel={`Delete ${expense.description}`}
+              accessibilityHint="Deletes this expense after confirmation"
+              accessibilityState={{ busy: deletingExpenseId === expense.id }}
+              style={styles.swipeActionButton}>
+              <IconSymbol name="trash" size={20} color={friendDetailTheme.danger} />
+              <ThemedText style={[styles.swipeActionText, { color: friendDetailTheme.danger }]}>Delete</ThemedText>
+            </TouchableOpacity>
+          </Animated.View>
+        ) : undefined}
+        overshootLeft={false}
+        overshootRight={false}
+        friction={2}
+        overshootFriction={8}
+        enableTrackpadTwoFingerGesture
+        containerStyle={{ overflow: 'visible' }}>
+        <TouchableOpacity
+          accessibilityRole="button"
+          accessibilityLabel={`${expense.description}, ${formatDate(expense.date)}, ${expense.paidByName} paid $${expense.amount.toFixed(2)}, ${expense.paidBy === currentUserId ? `you are owed $${expense.friendShare.toFixed(2)}` : `you owe $${expense.yourShare.toFixed(2)}`}`}
+          accessibilityHint="Opens expense details"
+          activeOpacity={0.7}
+          onPress={() => handleOpenExpense(expense.id)}>
+          <Animated.View
+            style={[
+              styles.expenseCard,
+              {
+                backgroundColor: friendDetailTheme.surface,
+                borderColor: friendDetailTheme.surfaceBorder,
+              },
+              {
+                opacity: fadeAnim,
+                transform: [{ translateY: Animated.multiply(slideAnim, new Animated.Value((index + 1) * 0.2)) }],
+              }
+            ]}>
+            <View style={[
+              styles.expenseIcon,
+              { backgroundColor: expense.paidBy === currentUserId ? friendDetailTheme.positiveSurface : friendDetailTheme.negativeSurface }
+            ]}>
+              <IconSymbol
+                size={18}
+                name={expense.paidBy === currentUserId ? 'arrow.up.right' : 'arrow.down.left'}
+                color={expense.paidBy === currentUserId ? friendDetailTheme.positive : friendDetailTheme.negative}
+              />
+            </View>
+            <View style={styles.expenseInfo}>
+              <ThemedText style={[styles.expenseDescription, { color: colors.text }]} numberOfLines={1}>
+                {expense.description}
+              </ThemedText>
+              <ThemedText style={[styles.expenseDate, { color: colors.textSecondary }]} numberOfLines={1}>
+                {formatDate(expense.date)} • {expense.paidByName} paid
+              </ThemedText>
+            </View>
+            <View style={styles.expenseAmounts}>
+              <ThemedText style={[styles.expenseTotal, { color: colors.textSecondary }]}>
+                ${expense.amount.toFixed(2)}
+              </ThemedText>
+              <ThemedText
+                style={[
+                  styles.expenseShare,
+                  { color: expense.paidBy === currentUserId ? friendDetailTheme.positive : friendDetailTheme.negative },
+                ]}>
+                {expense.paidBy === currentUserId
+                  ? `+$${expense.friendShare.toFixed(2)}`
+                  : `-$${expense.yourShare.toFixed(2)}`}
+              </ThemedText>
+            </View>
+          </Animated.View>
+        </TouchableOpacity>
+      </Swipeable>
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -644,11 +826,11 @@ export default function FriendDetailScreen() {
               Activity
             </ThemedText>
             <ThemedText style={[styles.expenseCount, { color: colors.textSecondary }]}>
-              {expenses.length} {expenses.length === 1 ? 'expense' : 'expenses'}
+              {activityCountLabel}
             </ThemedText>
           </View>
 
-          {expenses.length === 0 ? (
+          {activity.length === 0 ? (
             <View style={styles.emptyHistory}>
               <View style={[styles.emptyIconWrapper, { backgroundColor: friendDetailTheme.avatarSurface }]}>
                 <IconSymbol size={32} name="doc.text" color={friendDetailTheme.actionIcon} />
@@ -661,108 +843,10 @@ export default function FriendDetailScreen() {
               </ThemedText>
             </View>
           ) : (
-            expenses.map((item, index) => (
-              <Swipeable
-                key={item.id}
-                ref={(ref) => {
-                  if (ref) {
-                    swipeableRefs.current.set(item.id, ref);
-                  } else {
-                    swipeableRefs.current.delete(item.id);
-                  }
-                }}
-                renderLeftActions={(progress, dragX) => (
-                  <Animated.View style={[styles.swipeActionLeft, {
-                    backgroundColor: friendDetailTheme.actionSurface,
-                    opacity: dragX.interpolate({ inputRange: [0, 80], outputRange: [0, 1], extrapolate: 'clamp' })
-                  }]}>
-                    <TouchableOpacity
-                      onPress={() => handleEditExpense(item.id)}
-                      accessibilityRole="button"
-                      accessibilityLabel={`Edit ${item.description}`}
-                      accessibilityHint="Opens the edit expense screen"
-                      style={styles.swipeActionButton}>
-                      <IconSymbol name="pencil" size={20} color={friendDetailTheme.actionIcon} />
-                      <ThemedText style={[styles.swipeActionText, { color: friendDetailTheme.actionIcon }]}>Edit</ThemedText>
-                    </TouchableOpacity>
-                  </Animated.View>
-                )}
-                renderRightActions={item.paidBy === currentUserId ? (progress, dragX) => (
-                  <Animated.View style={[styles.swipeActionRight, {
-                    backgroundColor: friendDetailTheme.dangerSurface,
-                    opacity: dragX.interpolate({ inputRange: [-80, 0], outputRange: [1, 0], extrapolate: 'clamp' })
-                  }]}>
-                    <TouchableOpacity
-                      onPress={() => handleDeleteExpense(item.id)}
-                      accessibilityRole="button"
-                      accessibilityLabel={`Delete ${item.description}`}
-                      accessibilityHint="Deletes this expense after confirmation"
-                      accessibilityState={{ busy: deletingExpenseId === item.id }}
-                      style={styles.swipeActionButton}>
-                      <IconSymbol name="trash" size={20} color={friendDetailTheme.danger} />
-                      <ThemedText style={[styles.swipeActionText, { color: friendDetailTheme.danger }]}>Delete</ThemedText>
-                    </TouchableOpacity>
-                  </Animated.View>
-                ) : undefined}
-                overshootLeft={false}
-                overshootRight={false}
-                friction={2}
-                overshootFriction={8}
-                enableTrackpadTwoFingerGesture
-                containerStyle={{ overflow: 'visible' }}>
-                <TouchableOpacity
-                  accessibilityRole="button"
-                  accessibilityLabel={`${item.description}, ${formatDate(item.date)}, ${item.paidByName} paid $${item.amount.toFixed(2)}, ${item.paidBy === currentUserId ? `you are owed $${item.friendShare.toFixed(2)}` : `you owe $${item.yourShare.toFixed(2)}`}`}
-                  accessibilityHint="Opens expense details"
-                  activeOpacity={0.7}
-                  onPress={() => handleOpenExpense(item.id)}>
-                  <Animated.View
-                    style={[
-                      styles.expenseCard,
-                      {
-                        backgroundColor: friendDetailTheme.surface,
-                        borderColor: friendDetailTheme.surfaceBorder,
-                      },
-                      {
-                        opacity: fadeAnim,
-                        transform: [{ translateY: Animated.multiply(slideAnim, new Animated.Value((index + 1) * 0.2)) }],
-                      }
-                    ]}>
-                    <View style={[
-                      styles.expenseIcon,
-                      { backgroundColor: item.paidBy === currentUserId ? friendDetailTheme.positiveSurface : friendDetailTheme.negativeSurface }
-                    ]}>
-                      <IconSymbol
-                        size={18}
-                        name={item.paidBy === currentUserId ? 'arrow.up.right' : 'arrow.down.left'}
-                        color={item.paidBy === currentUserId ? friendDetailTheme.positive : friendDetailTheme.negative}
-                      />
-                    </View>
-                    <View style={styles.expenseInfo}>
-                      <ThemedText style={[styles.expenseDescription, { color: colors.text }]} numberOfLines={1}>
-                        {item.description}
-                      </ThemedText>
-                      <ThemedText style={[styles.expenseDate, { color: colors.textSecondary }]} numberOfLines={1}>
-                        {formatDate(item.date)} • {item.paidByName} paid
-                      </ThemedText>
-                    </View>
-                    <View style={styles.expenseAmounts}>
-                      <ThemedText style={[styles.expenseTotal, { color: colors.textSecondary }]}>
-                        ${item.amount.toFixed(2)}
-                      </ThemedText>
-                      <ThemedText
-                        style={[
-                          styles.expenseShare,
-                          { color: item.paidBy === currentUserId ? friendDetailTheme.positive : friendDetailTheme.negative },
-                        ]}>
-                        {item.paidBy === currentUserId
-                          ? `+$${item.friendShare.toFixed(2)}`
-                          : `-$${item.yourShare.toFixed(2)}`}
-                      </ThemedText>
-                    </View>
-                  </Animated.View>
-                </TouchableOpacity>
-              </Swipeable>
+            activity.map((item, index) => (
+              item.type === 'expense'
+                ? renderExpenseActivity(item, index)
+                : renderSettlementActivity(item, index)
             ))
           )}
         </View>
@@ -996,6 +1080,9 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
   },
+  settlementCard: {
+    borderStyle: 'dashed',
+  },
   expenseIcon: {
     width: 36,
     height: 36,
@@ -1019,6 +1106,10 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   expenseTotal: {
+    fontSize: 12,
+    marginBottom: 2,
+  },
+  settlementLabel: {
     fontSize: 12,
     marginBottom: 2,
   },
