@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { getActivityHref } from '@/lib/activity-link';
+import { getActivityHref, getDeletedExpenseTargetIds } from '@/lib/activity-link';
 import { ActivityType, type Activity } from '@/types/database';
 
 function activity(overrides: Partial<Activity>): Activity {
@@ -47,6 +47,21 @@ describe('getActivityHref', () => {
       getActivityHref(
         activity({ type: ActivityType.SETTLEMENT_CREATED, userId: 'current-user', targetId: 'settlement-1' }),
         'current-user'
+      )
+    ).toBeNull();
+  });
+
+  it('does not link stale expense activities after the expense has been deleted', () => {
+    const deletedExpenseIds = getDeletedExpenseTargetIds([
+      activity({ id: 'activity-1', type: ActivityType.EXPENSE_CREATED, targetId: 'expense-1' }),
+      activity({ id: 'activity-2', type: ActivityType.EXPENSE_DELETED, targetId: 'expense-1' }),
+    ]);
+
+    expect(
+      getActivityHref(
+        activity({ type: ActivityType.EXPENSE_CREATED, targetId: 'expense-1' }),
+        'current-user',
+        deletedExpenseIds
       )
     ).toBeNull();
   });
