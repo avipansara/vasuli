@@ -738,10 +738,10 @@ export default function FriendDetailScreen() {
                       />
                     </View>
                     <View style={styles.expenseInfo}>
-                      <ThemedText style={[styles.expenseDescription, { color: colors.text }]}>
+                      <ThemedText style={[styles.expenseDescription, { color: colors.text }]} numberOfLines={1}>
                         {item.description}
                       </ThemedText>
-                      <ThemedText style={[styles.expenseDate, { color: colors.textSecondary }]}>
+                      <ThemedText style={[styles.expenseDate, { color: colors.textSecondary }]} numberOfLines={1}>
                         {formatDate(item.date)} • {item.paidByName} paid
                       </ThemedText>
                     </View>
