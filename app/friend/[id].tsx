@@ -498,7 +498,7 @@ export default function FriendDetailScreen() {
     ? `${expenseActivityCount} ${expenseActivityCount === 1 ? 'expense' : 'expenses'}`
     : activityFilter === 'updates'
       ? `${updateActivityCount} ${updateActivityCount === 1 ? 'update' : 'updates'}`
-      : `${expenseActivityCount} ${expenseActivityCount === 1 ? 'expense' : 'expenses'} • ${updateActivityCount} ${updateActivityCount === 1 ? 'update' : 'updates'}`;
+      : `${filteredActivity.length} items`;
 
   const renderSettlementActivity = (item: Extract<FriendActivityItem, { type: 'settlement' }>, index: number) => {
     const youPaid = item.direction === 'you_paid_friend';
@@ -520,7 +520,7 @@ export default function FriendDetailScreen() {
         style={[
           styles.updateRow,
           {
-            backgroundColor: friendDetailTheme.settledSurface,
+            backgroundColor: friendDetailTheme.surface,
             borderColor: friendDetailTheme.surfaceBorder,
           },
           {
@@ -688,7 +688,7 @@ export default function FriendDetailScreen() {
         style={[
           styles.updateRow,
           {
-            backgroundColor: isDeleted ? friendDetailTheme.dangerSurface : friendDetailTheme.warningSurface,
+            backgroundColor: friendDetailTheme.surface,
             borderColor: friendDetailTheme.surfaceBorder,
           },
           {
@@ -945,16 +945,14 @@ export default function FriendDetailScreen() {
                 style={[
                   styles.segmentedOption,
                   isSelected && {
-                    backgroundColor: friendDetailTheme.actionIcon,
-                    shadowColor: friendDetailTheme.actionIcon,
-                    shadowOpacity: 0.18,
-                    elevation: 2,
+                    backgroundColor: friendDetailTheme.actionSurface,
+                    borderColor: friendDetailTheme.actionBorder,
                   },
                 ]}>
                 <ThemedText
                   style={[
                     styles.segmentedLabel,
-                    { color: isSelected ? friendDetailTheme.onPrimary : colors.textSecondary },
+                    { color: isSelected ? friendDetailTheme.actionIcon : colors.textSecondary },
                   ]}>
                   {filter.label}
                 </ThemedText>
@@ -1174,27 +1172,25 @@ const styles = StyleSheet.create({
   segmentedControl: {
     flexDirection: 'row',
     marginHorizontal: 16,
-    marginBottom: 18,
-    borderRadius: 16,
+    marginBottom: 14,
+    borderRadius: 12,
     borderWidth: 1,
-    padding: 4,
-    gap: 4,
+    padding: 3,
+    gap: 3,
   },
   segmentedOption: {
     flex: 1,
-    minHeight: 44,
-    borderRadius: 12,
+    minHeight: 36,
+    borderRadius: 9,
+    borderWidth: 1,
+    borderColor: 'transparent',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 8,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0,
-    shadowRadius: 10,
-    elevation: 0,
+    paddingHorizontal: 6,
   },
   segmentedLabel: {
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: 13,
+    fontWeight: '650',
   },
   content: {
     flex: 1,
@@ -1210,7 +1206,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 10,
   },
   sectionTitle: {
     fontSize: 17,
@@ -1248,7 +1244,7 @@ const styles = StyleSheet.create({
   expenseCard: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    padding: 14,
+    padding: 13,
     marginBottom: 10,
     borderRadius: 12,
     borderWidth: 1,
@@ -1256,16 +1252,16 @@ const styles = StyleSheet.create({
   updateRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    marginBottom: 8,
-    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    marginBottom: 7,
+    borderRadius: 10,
     borderWidth: 1,
-    gap: 10,
+    gap: 9,
   },
   updateMarker: {
-    width: 4,
-    height: 34,
+    width: 3,
+    height: 28,
     borderRadius: 999,
   },
   expenseIcon: {
@@ -1288,29 +1284,29 @@ const styles = StyleSheet.create({
   },
   updateTitle: {
     flexShrink: 1,
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '650',
   },
   updateMeta: {
-    fontSize: 12,
-    marginTop: 3,
+    fontSize: 11,
+    marginTop: 2,
   },
   updateAmountBlock: {
     alignItems: 'flex-end',
-    minWidth: 64,
+    minWidth: 58,
   },
   updateStatus: {
-    fontSize: 11,
+    fontSize: 10,
     marginBottom: 1,
   },
   updateAmount: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '700',
   },
   updateIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: 8,
+    width: 26,
+    height: 26,
+    borderRadius: 7,
     alignItems: 'center',
     justifyContent: 'center',
   },
