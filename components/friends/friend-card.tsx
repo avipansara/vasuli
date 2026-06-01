@@ -49,7 +49,7 @@ function areFriendCardPropsEqual(prev: FriendCardProps, next: FriendCardProps): 
 }
 
 function FriendCardInner({ friend, onPress, onDelete }: FriendCardProps) {
-  const { colors, isDark } = useThemeColors();
+  const { colors, friends: friendsTheme } = useThemeColors();
   const balance = normalizeDisplayBalance(friend.balance);
   const balanceColor =
     balance > 0
@@ -59,17 +59,15 @@ function FriendCardInner({ friend, onPress, onDelete }: FriendCardProps) {
         : colors.tint;
 
   const cardStyle = useMemo(
-    () =>
-      isDark
-        ? { backgroundColor: 'rgba(20, 35, 38, 0.6)' }
-        : {
-            backgroundColor: colors.card,
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 1 },
-            shadowOpacity: 0.08,
-            elevation: 2,
-          },
-    [colors.card, isDark]
+    () => ({
+      backgroundColor: friendsTheme.cardSurface,
+      borderColor: friendsTheme.cardBorder,
+      shadowColor: friendsTheme.cardShadow,
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: friendsTheme.cardShadowOpacity,
+      elevation: friendsTheme.cardShadowOpacity > 0 ? 2 : 0,
+    }),
+    [friendsTheme]
   );
 
   const renderRightActions = (progress: Animated.AnimatedInterpolation<number>, dragX: Animated.AnimatedInterpolation<number>) => {
@@ -80,12 +78,12 @@ function FriendCardInner({ friend, onPress, onDelete }: FriendCardProps) {
     });
 
     return (
-      <Animated.View style={[styles.swipeActionRight, { opacity }]}>
+      <Animated.View style={[styles.swipeActionRight, { backgroundColor: friendsTheme.dangerSurface, opacity }]}>
         <TouchableOpacity
           onPress={() => onDelete?.(friend)}
           style={styles.swipeActionButton}>
-          <IconSymbol name="trash" size={20} color="#fff" />
-          <ThemedText style={styles.swipeActionText}>Delete</ThemedText>
+          <IconSymbol name="trash" size={20} color={friendsTheme.onDanger} />
+          <ThemedText style={[styles.swipeActionText, { color: friendsTheme.onDanger }]}>Delete</ThemedText>
         </TouchableOpacity>
       </Animated.View>
     );
@@ -103,11 +101,7 @@ function FriendCardInner({ friend, onPress, onDelete }: FriendCardProps) {
         <View
           style={[
             styles.avatar,
-            {
-              backgroundColor: isDark
-                ? 'rgba(45, 212, 191, 0.15)'
-                : 'rgba(34, 197, 94, 0.12)',
-            },
+            { backgroundColor: friendsTheme.avatarSurface },
           ]}>
           <ThemedText style={[styles.avatarText, { color: colors.tint }]}>
             {friend.name.charAt(0).toUpperCase()}
@@ -129,12 +123,12 @@ function FriendCardInner({ friend, onPress, onDelete }: FriendCardProps) {
                         style={[
                           styles.vLine,
                           {
-                            backgroundColor: colors.success,
+                            backgroundColor: friendsTheme.branch,
                             height: index === (friend.recentExpenses?.length ?? 0) - 1 ? '50%' : '100%'
                           }
                         ]}
                       />
-                      <View style={[styles.hLine, { backgroundColor: colors.success }]} />
+                      <View style={[styles.hLine, { backgroundColor: friendsTheme.branch }]} />
                     </View>
                     <ThemedText
                       numberOfLines={1}
@@ -146,8 +140,8 @@ function FriendCardInner({ friend, onPress, onDelete }: FriendCardProps) {
               ) : (
                 <View style={styles.expenseBranchItem}>
                   <View style={styles.branchGraphics}>
-                    <View style={[styles.vLine, { backgroundColor: colors.success, height: '50%' }]} />
-                    <View style={[styles.hLine, { backgroundColor: colors.success }]} />
+                    <View style={[styles.vLine, { backgroundColor: friendsTheme.branch, height: '50%' }]} />
+                    <View style={[styles.hLine, { backgroundColor: friendsTheme.branch }]} />
                   </View>
                   <ThemedText style={[styles.noExpenses, { color: colors.textSecondary }]}>
                     No pending expenses
@@ -188,20 +182,22 @@ const styles = StyleSheet.create({
   card: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
-    marginBottom: 10,
-    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    marginBottom: 8,
+    borderRadius: 12,
+    borderWidth: 1,
   },
   avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
+    width: 42,
+    height: 42,
+    borderRadius: 11,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 14,
+    marginRight: 12,
   },
   avatarText: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '700',
     lineHeight: 22,
   },
@@ -275,10 +271,9 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   swipeActionRight: {
-    backgroundColor: '#ef4444',
     justifyContent: 'center',
     alignItems: 'flex-end',
-    paddingRight: 20,
+    paddingRight: 16,
     marginBottom: 8,
     borderTopRightRadius: 12,
     borderBottomRightRadius: 12,
@@ -290,7 +285,6 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   swipeActionText: {
-    color: '#fff',
     fontSize: 12,
     fontWeight: '600',
     marginTop: 4,

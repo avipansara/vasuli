@@ -10,10 +10,9 @@ import { activityService } from '@/services/activity-service';
 import { expenseService, groupService, userService } from '@/services/api';
 import { createExpenseDeletedNotification, notificationService } from '@/services/notification-service';
 import type { Activity, Expense, ExpenseSplit, Group, User } from '@/types/database';
-import { useFocusEffect } from 'expo-router/react-navigation';
-import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
+import { useFocusEffect } from 'expo-router/react-navigation';
 import { useCallback, useRef, useState } from 'react';
 import {
   Alert,
@@ -29,7 +28,7 @@ interface ExpenseSplitWithUser extends ExpenseSplit {
 }
 
 export default function ExpenseDetailScreen() {
-  const { gradients, colors, isDark } = useThemeColors();
+  const { gradients, colors, expenseDetail } = useThemeColors();
   const { user } = useAuth();
   const { id } = useLocalSearchParams<{ id: string }>();
   const currentUserId = user?.id || '';
@@ -43,9 +42,8 @@ export default function ExpenseDetailScreen() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const [fadeAnim] = useState(() => new Animated.Value(0));
-  const [slideAnim] = useState(() => new Animated.Value(30));
-  const [pulseAnim] = useState(() => new Animated.Value(1));
+  const [fadeAnim] = useState(() => new Animated.Value(1));
+  const [slideAnim] = useState(() => new Animated.Value(0));
   const hasLoadedOnce = useRef(false);
 
   const loadExpenseDetails = useCallback(async () => {
@@ -103,28 +101,12 @@ export default function ExpenseDetailScreen() {
           useNativeDriver: true,
         }),
       ]).start();
-
-      // Pulse animation for orbs
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(pulseAnim, {
-            toValue: 1.05,
-            duration: 1500,
-            useNativeDriver: true,
-          }),
-          Animated.timing(pulseAnim, {
-            toValue: 1,
-            duration: 1500,
-            useNativeDriver: true,
-          }),
-        ])
-      ).start();
     } catch (error) {
       console.error('Error loading expense details:', error);
       setLoadError(getFetchErrorMessage(error));
       setLoading(false);
     }
-  }, [fadeAnim, id, pulseAnim, slideAnim]);
+  }, [fadeAnim, id, slideAnim]);
 
   useFocusEffect(
     useCallback(() => {
@@ -210,30 +192,38 @@ export default function ExpenseDetailScreen() {
 
   const date = new Date(expense.date);
   const dateStr = date.toLocaleDateString('en-US', {
-    month: 'long',
+    month: 'short',
     day: 'numeric',
     year: 'numeric',
     hour: 'numeric',
     minute: '2-digit',
   });
 
-  const userSplit = splits.find(s => s.userId === currentUserId);
   const isPayer = expense.paidBy === currentUserId;
+  const payerName = isPayer ? 'You' : payer?.name || 'Unknown';
+  const surfaceStyle = {
+    backgroundColor: expenseDetail.surface,
+    borderColor: expenseDetail.surfaceBorder,
+  };
+  const mutedSurfaceStyle = {
+    backgroundColor: expenseDetail.mutedSurface,
+    borderColor: expenseDetail.mutedSurfaceBorder,
+  };
+
 
   return (
     <View style={styles.container}>
       <Stack.Screen options={{ headerShown: false }} />
       <LinearGradient colors={gradients.screenBackground} style={StyleSheet.absoluteFill} />
 
-      {/* Animated background orbs */}
-      <View style={styles.orbContainer}>
-        <Animated.View style={[styles.orb, styles.orb1, { transform: [{ scale: pulseAnim }] }]} />
-        <Animated.View style={[styles.orb, styles.orb2]} />
-        <View style={[styles.orb, styles.orb3]} />
+      <View pointerEvents="none" style={styles.ambientLayer}>
+        <View style={[styles.ambientShape, styles.ambientTop, { backgroundColor: expenseDetail.backgroundAccentTop }]} />
+        <View style={[styles.ambientShape, styles.ambientMiddle, { backgroundColor: expenseDetail.backgroundAccentMiddle }]} />
+        <View style={[styles.ambientShape, styles.ambientBottom, { backgroundColor: expenseDetail.backgroundAccentBottom }]} />
       </View>
 
       <NavigationHeader
-        title="Expense Details"
+        title="Expense"
         onBack={() => router.back()}
         rightAction={
           <View style={styles.headerActions}>
@@ -241,23 +231,27 @@ export default function ExpenseDetailScreen() {
               onPress={() => router.push(`/edit-expense/${id}` as any)}
               disabled={isDeleting}
               style={[styles.actionButton, {
-                backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)',
+                backgroundColor: expenseDetail.accentSurface,
+                borderColor: expenseDetail.accentSurfaceBorder,
                 opacity: isDeleting ? 0.5 : 1,
-              }]}>
-              <IconSymbol name="pencil" size={18} color={isDark ? '#2DD4BF' : colors.tint} />
+              }]}
+              accessibilityLabel="Edit expense">
+              <IconSymbol name="pencil" size={18} color={expenseDetail.accent} />
             </TouchableOpacity>
             {isPayer && (
               <TouchableOpacity
                 onPress={handleDelete}
                 disabled={isDeleting}
                 style={[styles.actionButton, {
-                  backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                  backgroundColor: expenseDetail.dangerSurface,
+                  borderColor: expenseDetail.dangerBorder,
                   opacity: isDeleting ? 0.5 : 1,
-                }]}>
+                }]}
+                accessibilityLabel="Delete expense">
                 {isDeleting ? (
-                  <ThemedText style={{ fontSize: 18 }}>⏳</ThemedText>
+                  <IconSymbol name="clock" size={18} color={expenseDetail.danger} />
                 ) : (
-                  <IconSymbol name="trash" size={18} color="#ef4444" />
+                  <IconSymbol name="trash" size={18} color={expenseDetail.danger} />
                 )}
               </TouchableOpacity>
             )}
@@ -271,164 +265,121 @@ export default function ExpenseDetailScreen() {
         showsVerticalScrollIndicator={false}>
 
         <Animated.View style={[styles.mainContent, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-          {/* Amount Card */}
-          <BlurView intensity={isDark ? 40 : 80} tint={isDark ? 'dark' : 'light'} style={styles.amountCard}>
-            <LinearGradient
-              colors={isDark ? ['rgba(45, 212, 191, 0.15)', 'rgba(45, 212, 191, 0.05)'] : ['rgba(34, 197, 94, 0.15)', 'rgba(34, 197, 94, 0.05)']}
-              style={styles.amountGradient}
-            />
+          <View style={[styles.amountCard, surfaceStyle]}>
             <View style={styles.amountContent}>
-              <ThemedText style={[styles.amountLabel, !isDark && { color: colors.textSecondary }]}>
-                Total Amount
-              </ThemedText>
-              <ThemedText style={[styles.amount, { color: isDark ? '#2DD4BF' : colors.tint }]}>
-                ${expense.amount.toFixed(2)}
-              </ThemedText>
-              <ThemedText style={[styles.description, !isDark && { color: colors.text }]}>
-                {expense.description}
-              </ThemedText>
-            </View>
-          </BlurView>
-
-          {/* Info Cards */}
-          <View style={styles.infoSection}>
-            {/* Payer Info */}
-            <View style={[styles.infoCard, {
-              backgroundColor: isDark ? 'rgba(30, 41, 59, 0.6)' : 'rgba(241, 245, 249, 0.9)',
-              borderColor: isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(34, 197, 94, 0.2)',
-            }]}>
-              <View style={styles.infoHeader}>
-                <IconSymbol name="person.circle.fill" size={20} color={isDark ? '#2DD4BF' : colors.tint} />
-                <ThemedText style={[styles.infoLabel, !isDark && { color: colors.textSecondary }]}>
-                  Paid by
-                </ThemedText>
-              </View>
-              <ThemedText style={[styles.infoValue, !isDark && { color: colors.text }]}>
-                {isPayer ? 'You' : payer?.name || 'Unknown'}
-              </ThemedText>
-            </View>
-
-            {/* Date Info */}
-            <View style={[styles.infoCard, {
-              backgroundColor: isDark ? 'rgba(30, 41, 59, 0.6)' : 'rgba(241, 245, 249, 0.9)',
-              borderColor: isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(34, 197, 94, 0.2)',
-            }]}>
-              <View style={styles.infoHeader}>
-                <IconSymbol name="calendar" size={20} color={isDark ? '#2DD4BF' : colors.tint} />
-                <ThemedText style={[styles.infoLabel, !isDark && { color: colors.textSecondary }]}>
-                  Date
-                </ThemedText>
-              </View>
-              <ThemedText style={[styles.infoValue, !isDark && { color: colors.text }]}>
-                {dateStr}
-              </ThemedText>
-            </View>
-
-            {/* Group Info */}
-            {group && (
-              <View style={[styles.infoCard, {
-                backgroundColor: isDark ? 'rgba(30, 41, 59, 0.6)' : 'rgba(241, 245, 249, 0.9)',
-                borderColor: isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(34, 197, 94, 0.2)',
-              }]}>
-                <View style={styles.infoHeader}>
-                  <IconSymbol name="person.3.fill" size={20} color={isDark ? '#2DD4BF' : colors.tint} />
-                  <ThemedText style={[styles.infoLabel, !isDark && { color: colors.textSecondary }]}>
-                    Group
+              <View style={styles.amountHeader}>
+                <View style={styles.expenseTitleBlock}>
+                  <ThemedText style={[styles.amountLabel, { color: colors.textSecondary }]}>
+                    Total
+                  </ThemedText>
+                  <ThemedText
+                    numberOfLines={2}
+                    style={[styles.description, { color: colors.text }]}>
+                    {expense.description}
                   </ThemedText>
                 </View>
-                <ThemedText style={[styles.infoValue, !isDark && { color: colors.text }]}>
-                  {group.name}
+                <ThemedText style={[styles.amount, { color: expenseDetail.accent }]}>
+                  ${expense.amount.toFixed(2)}
                 </ThemedText>
               </View>
-            )}
-          </View>
 
-          {/* Split Details */}
-          <View style={styles.splitSection}>
-            <ThemedText style={[styles.sectionTitle, !isDark && { color: colors.text }]}>
-              Split Details
-            </ThemedText>
-
-            {splits.map((split) => {
-              const isCurrentUser = split.userId === currentUserId;
-              const splitPercentage = ((split.amount / expense.amount) * 100).toFixed(1);
-
-              return (
-                <View
-                  key={split.userId}
-                  style={[styles.splitCard, {
-                    backgroundColor: isCurrentUser
-                      ? (isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.15)')
-                      : (isDark ? 'rgba(30, 41, 59, 0.6)' : 'rgba(241, 245, 249, 0.9)'),
-                    borderColor: isCurrentUser
-                      ? (isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(34, 197, 94, 0.3)')
-                      : (isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(34, 197, 94, 0.2)'),
-                  }]}>
-                  <View style={[styles.splitAvatar, {
-                    backgroundColor: isCurrentUser
-                      ? (isDark ? '#2DD4BF' : colors.tint)
-                      : (isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(34, 197, 94, 0.2)'),
-                  }]}>
-                    <ThemedText style={[styles.splitAvatarText, {
-                      color: isCurrentUser ? '#0A0A0F' : (isDark ? '#2DD4BF' : colors.tint),
-                    }]}>
-                      {isCurrentUser ? 'You'.charAt(0) : split.user?.name.charAt(0).toUpperCase() || '?'}
-                    </ThemedText>
+              <View style={styles.amountMeta}>
+                {group && (
+                  <View style={[styles.metaPill, { backgroundColor: expenseDetail.accentSurface }]}>
+                    <IconSymbol name="person.3.fill" size={14} color={expenseDetail.accent} />
+                    <ThemedText style={[styles.metaPillText, { color: expenseDetail.accent }]}>{group.name}</ThemedText>
                   </View>
-                  <View style={styles.splitInfo}>
-                    <ThemedText style={[styles.splitName, !isDark && { color: colors.text }]}>
-                      {isCurrentUser ? 'You' : split.user?.name || 'Unknown'}
-                    </ThemedText>
-                    <View style={styles.splitDetails}>
-                      <ThemedText style={[styles.splitType, !isDark && { color: colors.textSecondary }]}>
-                        {split.splitType === 'equal' ? 'Equal split' : split.splitType === 'percentage' ? `${splitPercentage}%` : 'Custom amount'}
-                      </ThemedText>
-                    </View>
+                )}
+                {expense.category && (
+                  <View style={[styles.metaPill, { backgroundColor: expenseDetail.neutralPillSurface }]}>
+                    <ThemedText style={[styles.metaPillText, { color: colors.textSecondary }]}>{expense.category}</ThemedText>
                   </View>
-                  <ThemedText style={[styles.splitAmount, {
-                    color: isCurrentUser ? (isDark ? '#2DD4BF' : colors.tint) : (isDark ? '#fff' : colors.text),
-                  }]}>
-                    ${split.amount.toFixed(2)}
-                  </ThemedText>
-                </View>
-              );
-            })}
-          </View>
-
-          {/* Your Share Summary */}
-          {userSplit && (
-            <BlurView intensity={isDark ? 40 : 80} tint={isDark ? 'dark' : 'light'} style={styles.summaryCard}>
-              <LinearGradient
-                colors={isPayer
-                  ? (isDark ? ['rgba(16, 185, 129, 0.2)', 'rgba(16, 185, 129, 0.05)'] : ['rgba(34, 197, 94, 0.2)', 'rgba(34, 197, 94, 0.05)'])
-                  : (isDark ? ['rgba(239, 68, 68, 0.2)', 'rgba(239, 68, 68, 0.05)'] : ['rgba(239, 68, 68, 0.2)', 'rgba(239, 68, 68, 0.05)'])
-                }
-                style={styles.summaryGradient}
-              />
-              <View style={styles.summaryContent}>
-                <ThemedText style={[styles.summaryLabel, !isDark && { color: colors.textSecondary }]}>
-                  Your Share
-                </ThemedText>
-                <ThemedText style={[styles.summaryAmount, {
-                  color: isPayer ? '#10b981' : '#ef4444',
-                }]}>
-                  ${userSplit.amount.toFixed(2)}
-                </ThemedText>
-                {isPayer && (
-                  <ThemedText style={[styles.summaryNote, !isDark && { color: colors.textSecondary }]}>
-                    You paid ${expense.amount.toFixed(2)} and are owed ${(expense.amount - userSplit.amount).toFixed(2)}
-                  </ThemedText>
                 )}
               </View>
-            </BlurView>
-          )}
 
-          {/* Activity History */}
+              <View style={[styles.detailGrid, { borderColor: expenseDetail.divider }]}>
+                <View style={styles.detailItem}>
+                  <ThemedText style={[styles.detailLabel, { color: colors.textSecondary }]}>
+                    Paid by
+                  </ThemedText>
+                  <ThemedText numberOfLines={1} style={[styles.detailValue, { color: colors.text }]}>
+                    {payerName}
+                  </ThemedText>
+                </View>
+                <View style={styles.detailItem}>
+                  <ThemedText style={[styles.detailLabel, { color: colors.textSecondary }]}>
+                    Date
+                  </ThemedText>
+                  <ThemedText numberOfLines={1} style={[styles.detailValue, { color: colors.text }]}>
+                    {dateStr}
+                  </ThemedText>
+                </View>
+              </View>
+            </View>
+          </View>
+
+          <View style={styles.splitSection}>
+            <View style={styles.sectionHeader}>
+              <ThemedText style={[styles.sectionTitle, { color: colors.text }]}>
+                Split
+              </ThemedText>
+              <ThemedText style={[styles.sectionMeta, { color: colors.textSecondary }]}>
+                {splits.length} {splits.length === 1 ? 'person' : 'people'}
+              </ThemedText>
+            </View>
+
+            <View style={[styles.splitList, mutedSurfaceStyle]}>
+              {splits.map((split, index) => {
+                const isCurrentUser = split.userId === currentUserId;
+                const splitPercentage = ((split.amount / expense.amount) * 100).toFixed(1);
+                const splitMeta = split.splitType === 'custom' ? 'Custom' : `${splitPercentage}%`;
+
+                return (
+                  <View
+                    key={split.userId}
+                    style={[styles.splitRow, {
+                      backgroundColor: isCurrentUser ? expenseDetail.selectedSurface : undefined,
+                      borderBottomColor: expenseDetail.divider,
+                      borderBottomWidth: index === splits.length - 1 ? 0 : StyleSheet.hairlineWidth,
+                    }]}>
+                    <View style={[styles.splitAvatar, {
+                      backgroundColor: isCurrentUser
+                        ? expenseDetail.accent
+                        : expenseDetail.avatarSurface,
+                    }]}>
+                      <ThemedText style={[styles.splitAvatarText, {
+                        color: isCurrentUser ? expenseDetail.onAccent : expenseDetail.accent,
+                      }]}>
+                        {isCurrentUser ? 'Y' : split.user?.name.charAt(0).toUpperCase() || '?'}
+                      </ThemedText>
+                    </View>
+                    <ThemedText numberOfLines={1} style={[styles.splitName, { color: colors.text }]}>
+                      {isCurrentUser ? 'You' : split.user?.name || 'Unknown'}
+                    </ThemedText>
+                    <ThemedText style={[styles.splitType, { color: colors.textSecondary }]}>
+                      {splitMeta}
+                    </ThemedText>
+                    <ThemedText style={[styles.splitAmount, {
+                      color: isCurrentUser ? expenseDetail.accent : colors.text,
+                    }]}>
+                      ${split.amount.toFixed(2)}
+                    </ThemedText>
+                  </View>
+                );
+              })}
+            </View>
+          </View>
+
           {activities.length > 0 && (
             <View style={styles.activitySection}>
-              <ThemedText style={[styles.sectionTitle, !isDark && { color: colors.text }]}>
-                Activity History
-              </ThemedText>
+              <View style={styles.sectionHeader}>
+                <ThemedText style={[styles.sectionTitle, { color: colors.text }]}>
+                  Activity
+                </ThemedText>
+                <ThemedText style={[styles.sectionMeta, { color: colors.textSecondary }]}>
+                  {activities.length} {activities.length === 1 ? 'update' : 'updates'}
+                </ThemedText>
+              </View>
 
               {activities.map((activity) => {
                 const activityDate = new Date(activity.createdAt);
@@ -455,25 +406,20 @@ export default function ExpenseDetailScreen() {
                 const getActivityColor = () => {
                   switch (activity.type) {
                     case 'expense_created':
-                      return isDark ? '#2DD4BF' : colors.tint;
+                      return expenseDetail.accent;
                     case 'expense_updated':
-                      return '#f59e0b';
+                      return expenseDetail.warning;
                     case 'expense_deleted':
-                      return '#ef4444';
+                      return expenseDetail.danger;
                     default:
-                      return isDark ? '#9CA3AF' : colors.textSecondary;
+                      return colors.textSecondary;
                   }
                 };
 
                 return (
-                  <View
-                    key={activity.id}
-                    style={[styles.activityCard, {
-                      backgroundColor: isDark ? 'rgba(30, 41, 59, 0.6)' : 'rgba(241, 245, 249, 0.9)',
-                      borderColor: isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(34, 197, 94, 0.2)',
-                    }]}>
+                  <View style={[styles.activityCard, mutedSurfaceStyle]} key={activity.id}>
                     <View style={[styles.activityIcon, {
-                      backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)',
+                      backgroundColor: expenseDetail.accentSurface,
                     }]}>
                       <IconSymbol
                         name={getActivityIcon()}
@@ -482,23 +428,23 @@ export default function ExpenseDetailScreen() {
                       />
                     </View>
                     <View style={styles.activityContent}>
-                      <ThemedText style={[styles.activityDescription, !isDark && { color: colors.text }]}>
+                      <ThemedText style={[styles.activityDescription, { color: colors.text }]}>
                         {activity.description}
                       </ThemedText>
                       <View style={styles.activityMeta}>
-                        <ThemedText style={[styles.activityUser, !isDark && { color: colors.textSecondary }]}>
+                        <ThemedText style={[styles.activityUser, { color: colors.textSecondary }]}>
                           {activity.userName || 'Unknown'}
                         </ThemedText>
-                        <ThemedText style={[styles.activityDot, !isDark && { color: colors.textSecondary }]}>
+                        <ThemedText style={[styles.activityDot, { color: colors.textSecondary }]}>
                           •
                         </ThemedText>
-                        <ThemedText style={[styles.activityTime, !isDark && { color: colors.textSecondary }]}>
+                        <ThemedText style={[styles.activityTime, { color: colors.textSecondary }]}>
                           {timeStr}
                         </ThemedText>
                       </View>
                     </View>
                     {activity.amount && (
-                      <ThemedText style={[styles.activityAmount, !isDark && { color: colors.text }]}>
+                      <ThemedText style={[styles.activityAmount, { color: colors.text }]}>
                         ${activity.amount.toFixed(2)}
                       </ThemedText>
                     )}
@@ -516,6 +462,35 @@ export default function ExpenseDetailScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  ambientLayer: {
+    ...StyleSheet.absoluteFill,
+    overflow: 'hidden',
+  },
+  ambientShape: {
+    position: 'absolute',
+    borderRadius: 999,
+  },
+  ambientTop: {
+    width: 360,
+    height: 360,
+    borderRadius: 180,
+    top: -94,
+    right: -150,
+  },
+  ambientMiddle: {
+    width: 320,
+    height: 320,
+    borderRadius: 160,
+    left: -168,
+    top: 292,
+  },
+  ambientBottom: {
+    width: 280,
+    height: 280,
+    borderRadius: 140,
+    right: -144,
+    top: 600,
   },
   loadingContainer: {
     flex: 1,
@@ -543,12 +518,13 @@ const styles = StyleSheet.create({
   },
   headerActions: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 6,
   },
   actionButton: {
     width: 40,
     height: 40,
     borderRadius: 12,
+    borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -564,207 +540,198 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 16,
-    paddingBottom: 100,
+    paddingBottom: 72,
   },
   mainContent: {
-    gap: 20,
+    gap: 10,
   },
   amountCard: {
-    borderRadius: 20,
+    borderRadius: 14,
+    borderWidth: 1,
+    marginTop: 2,
     overflow: 'hidden',
-    marginTop: 8,
-  },
-  amountGradient: {
-    ...StyleSheet.absoluteFill,
   },
   amountContent: {
-    padding: 32,
-    alignItems: 'center',
+    padding: 14,
+    gap: 10,
+  },
+  amountHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  expenseTitleBlock: {
+    flex: 1,
+    minWidth: 0,
   },
   amountLabel: {
-    fontSize: 14,
-    marginBottom: 8,
+    fontSize: 11,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0,
   },
   amount: {
-    fontSize: 36,
+    fontSize: 30,
     fontWeight: '700',
-    marginBottom: 12,
-    lineHeight: 42,
+    lineHeight: 36,
+    textAlign: 'right',
   },
   description: {
     fontSize: 18,
     fontWeight: '600',
-    textAlign: 'center',
+    lineHeight: 23,
+    marginTop: 4,
   },
-  infoSection: {
-    gap: 12,
+  amountMeta: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
   },
-  infoCard: {
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    gap: 8,
-  },
-  infoHeader: {
+  metaPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
   },
-  infoLabel: {
-    fontSize: 13,
+  metaPillText: {
+    fontSize: 11,
+    fontWeight: '700',
   },
-  infoValue: {
-    fontSize: 16,
+  detailGrid: {
+    flexDirection: 'row',
+    gap: 14,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    paddingTop: 10,
+  },
+  detailItem: {
+    flex: 1,
+    minWidth: 0,
+  },
+  detailLabel: {
+    fontSize: 11,
     fontWeight: '600',
-    marginLeft: 28,
+    textTransform: 'uppercase',
+    letterSpacing: 0,
+  },
+  detailValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    lineHeight: 18,
+    marginTop: 4,
   },
   splitSection: {
-    gap: 12,
+    gap: 6,
+    marginTop: 4,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    paddingHorizontal: 4,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    marginTop: 8,
+    fontSize: 16,
+    fontWeight: '600',
   },
-  splitCard: {
+  sectionMeta: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  splitList: {
+    borderRadius: 10,
+    borderWidth: 1,
+    overflow: 'hidden',
+  },
+  splitRow: {
+    minHeight: 42,
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    gap: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    gap: 8,
   },
   splitAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
+    width: 24,
+    height: 24,
+    borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
   },
   splitAvatarText: {
-    fontSize: 16,
+    fontSize: 12,
     fontWeight: '700',
-  },
-  splitInfo: {
-    flex: 1,
-    gap: 4,
   },
   splitName: {
-    fontSize: 16,
+    flex: 1,
+    minWidth: 0,
+    fontSize: 14,
     fontWeight: '600',
   },
-  splitDetails: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
   splitType: {
-    fontSize: 13,
+    width: 50,
+    fontSize: 12,
+    fontWeight: '600',
+    textAlign: 'right',
   },
   splitAmount: {
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  summaryCard: {
-    borderRadius: 20,
-    overflow: 'hidden',
-    marginTop: 8,
-  },
-  summaryGradient: {
-    ...StyleSheet.absoluteFill,
-  },
-  summaryContent: {
-    padding: 24,
-    alignItems: 'center',
-  },
-  summaryLabel: {
+    width: 78,
     fontSize: 14,
-    marginBottom: 8,
-  },
-  summaryAmount: {
-    fontSize: 28,
     fontWeight: '700',
-    marginBottom: 8,
-    lineHeight: 34,
-  },
-  summaryNote: {
-    fontSize: 13,
-    textAlign: 'center',
-  },
-  orbContainer: {
-    ...StyleSheet.absoluteFill,
-    overflow: 'hidden',
-  },
-  orb: {
-    position: 'absolute',
-    borderRadius: 999,
-  },
-  orb1: {
-    width: 300,
-    height: 300,
-    backgroundColor: 'rgba(45, 212, 191, 0.15)',
-    top: -100,
-    right: -100,
-  },
-  orb2: {
-    width: 200,
-    height: 200,
-    backgroundColor: 'rgba(139, 92, 246, 0.1)',
-    bottom: 200,
-    left: -50,
-  },
-  orb3: {
-    width: 150,
-    height: 150,
-    backgroundColor: 'rgba(45, 212, 191, 0.08)',
-    bottom: -50,
-    right: 50,
+    textAlign: 'right',
   },
   activitySection: {
-    gap: 12,
-    marginTop: 8,
+    gap: 6,
+    marginTop: 4,
   },
   activityCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
-    borderRadius: 12,
+    borderRadius: 10,
     borderWidth: 1,
-    gap: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    gap: 10,
   },
   activityIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
+    width: 30,
+    height: 30,
+    borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
   },
   activityContent: {
     flex: 1,
-    gap: 4,
+    gap: 2,
+    minWidth: 0,
   },
   activityDescription: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
   },
   activityMeta: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 5,
   },
   activityUser: {
-    fontSize: 13,
+    fontSize: 12,
+    fontWeight: '600',
     opacity: 0.7,
   },
   activityDot: {
-    fontSize: 13,
+    fontSize: 12,
     opacity: 0.5,
   },
   activityTime: {
-    fontSize: 13,
+    fontSize: 12,
+    fontWeight: '600',
     opacity: 0.7,
   },
   activityAmount: {
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: '700',
   },
 });
