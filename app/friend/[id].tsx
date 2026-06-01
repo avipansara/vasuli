@@ -634,7 +634,7 @@ export default function FriendDetailScreen() {
               }
             ]}>
               <IconSymbol
-                size={18}
+                size={16}
                 name={expense.groupId ? 'person.2.fill' : 'arrow.up.right'}
                 color={friendDetailTheme.actionIcon}
               />
@@ -645,9 +645,6 @@ export default function FriendDetailScreen() {
               </ThemedText>
               <ThemedText style={[styles.expenseDate, { color: colors.textSecondary }]} numberOfLines={1}>
                 {formatDate(expense.date)} • {expense.paidByName} paid
-              </ThemedText>
-              <ThemedText style={[styles.expenseContext, { color: colors.textSecondary }]} numberOfLines={1}>
-                Split with {friend.name.split(' ')[0]} • Your share ${expense.yourShare.toFixed(2)}
               </ThemedText>
             </View>
             <View style={styles.expenseAmounts}>
@@ -1225,8 +1222,9 @@ const styles = StyleSheet.create({
   expenseCard: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    padding: 13,
-    marginBottom: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 8,
     borderRadius: 12,
     borderWidth: 1,
   },
@@ -1246,13 +1244,13 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   expenseIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: 11,
+    width: 34,
+    height: 34,
+    borderRadius: 10,
     borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: 10,
     marginTop: 1,
   },
   expenseInfo: {
@@ -1308,37 +1306,33 @@ const styles = StyleSheet.create({
   },
   expenseDescription: {
     flexShrink: 1,
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
-    marginBottom: 3,
+    marginBottom: 2,
   },
   expenseDate: {
-    fontSize: 12,
-  },
-  expenseContext: {
-    fontSize: 12,
-    marginTop: 3,
+    fontSize: 11,
   },
   expenseAmounts: {
     alignItems: 'flex-end',
-    marginLeft: 10,
-    minWidth: 72,
+    marginLeft: 8,
+    minWidth: 64,
   },
   expenseTotal: {
-    fontSize: 12,
-    marginBottom: 2,
+    fontSize: 11,
+    marginBottom: 1,
   },
   expenseAmountPrimary: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
-    marginBottom: 2,
+    marginBottom: 1,
   },
   settlementLabel: {
     fontSize: 12,
     marginBottom: 2,
   },
   expenseShare: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '700',
   },
   swipeActionLeft: {
