@@ -36,6 +36,13 @@ interface ExpenseWithSplit extends Expense {
 }
 
 const MIN_TOUCH_HIT_SLOP = { top: 8, right: 8, bottom: 8, left: 8 };
+type ActivityFilter = 'all' | 'expenses' | 'updates';
+
+const ACTIVITY_FILTERS: { id: ActivityFilter; label: string }[] = [
+  { id: 'all', label: 'All' },
+  { id: 'expenses', label: 'Expenses' },
+  { id: 'updates', label: 'Updates' },
+];
 
 export default function FriendDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -43,6 +50,7 @@ export default function FriendDetailScreen() {
   const [friend, setFriend] = useState<UserWithBalance | null>(null);
   const [expenses, setExpenses] = useState<ExpenseWithSplit[]>([]);
   const [activity, setActivity] = useState<FriendActivityItem[]>([]);
+  const [activityFilter, setActivityFilter] = useState<ActivityFilter>('all');
   const [settleModalVisible, setSettleModalVisible] = useState(false);
   const [isRemovingFriend, setIsRemovingFriend] = useState(false);
   const [isSettlingUp, setIsSettlingUp] = useState(false);
@@ -479,11 +487,18 @@ export default function FriendDetailScreen() {
       ? `You owe ${friend.name.split(' ')[0]}`
       : 'All settled up';
   const balanceAccessibilityValue = `${balanceCopy}, $${Math.abs(balance).toFixed(2)}`;
-  const expenseActivityCount = activity.filter(item => item.type === 'expense').length;
-  const settlementActivityCount = activity.length - expenseActivityCount;
-  const activityCountLabel = settlementActivityCount > 0
-    ? `${expenseActivityCount} ${expenseActivityCount === 1 ? 'expense' : 'expenses'} • ${settlementActivityCount} ${settlementActivityCount === 1 ? 'settlement' : 'settlements'}`
-    : `${expenseActivityCount} ${expenseActivityCount === 1 ? 'expense' : 'expenses'}`;
+  const filteredActivity = activityFilter === 'expenses'
+    ? activity.filter(item => item.type === 'expense')
+    : activityFilter === 'updates'
+      ? activity.filter(item => item.type !== 'expense')
+      : activity;
+  const expenseActivityCount = filteredActivity.filter(item => item.type === 'expense').length;
+  const updateActivityCount = filteredActivity.length - expenseActivityCount;
+  const activityCountLabel = activityFilter === 'expenses'
+    ? `${expenseActivityCount} ${expenseActivityCount === 1 ? 'expense' : 'expenses'}`
+    : activityFilter === 'updates'
+      ? `${updateActivityCount} ${updateActivityCount === 1 ? 'update' : 'updates'}`
+      : `${expenseActivityCount} ${expenseActivityCount === 1 ? 'expense' : 'expenses'} • ${updateActivityCount} ${updateActivityCount === 1 ? 'update' : 'updates'}`;
 
   const renderSettlementActivity = (item: Extract<FriendActivityItem, { type: 'settlement' }>, index: number) => {
     const youPaid = item.direction === 'you_paid_friend';
@@ -503,10 +518,9 @@ export default function FriendDetailScreen() {
         accessibilityRole="text"
         accessibilityLabel={`${title}, ${formatDate(item.date)}, ${youPaid ? 'you paid' : 'you received'} $${item.amount.toFixed(2)}`}
         style={[
-          styles.expenseCard,
-          styles.settlementCard,
+          styles.updateRow,
           {
-            backgroundColor: friendDetailTheme.surface,
+            backgroundColor: friendDetailTheme.settledSurface,
             borderColor: friendDetailTheme.surfaceBorder,
           },
           {
@@ -514,31 +528,29 @@ export default function FriendDetailScreen() {
             transform: [{ translateY: Animated.multiply(slideAnim, new Animated.Value((index + 1) * 0.2)) }],
           }
         ]}>
-        <View style={[
-          styles.expenseIcon,
-          { backgroundColor: youPaid ? friendDetailTheme.negativeSurface : friendDetailTheme.positiveSurface }
-        ]}>
-          <IconSymbol
-            size={18}
-            name="checkmark.circle.fill"
-            color={amountColor}
-          />
-        </View>
-        <View style={styles.expenseInfo}>
-          <ThemedText style={[styles.expenseDescription, { color: colors.text }]} numberOfLines={1}>
+        <View style={[styles.updateMarker, { backgroundColor: amountColor }]} />
+        <View style={styles.updateInfo}>
+          <ThemedText style={[styles.updateTitle, { color: colors.text }]} numberOfLines={1}>
             {title}
           </ThemedText>
-          <ThemedText style={[styles.expenseDate, { color: colors.textSecondary }]} numberOfLines={1}>
+          <ThemedText style={[styles.updateMeta, { color: colors.textSecondary }]} numberOfLines={1}>
             {subtitle}
           </ThemedText>
         </View>
-        <View style={styles.expenseAmounts}>
-          <ThemedText style={[styles.settlementLabel, { color: colors.textSecondary }]}>
-            settled
+        <View style={styles.updateAmountBlock}>
+          <ThemedText style={[styles.updateStatus, { color: colors.textSecondary }]}>
+            Settled
           </ThemedText>
-          <ThemedText style={[styles.expenseShare, { color: amountColor }]}>
+          <ThemedText style={[styles.updateAmount, { color: amountColor }]}>
             {amountPrefix}${item.amount.toFixed(2)}
           </ThemedText>
+        </View>
+        <View style={[styles.updateIcon, { backgroundColor: youPaid ? friendDetailTheme.negativeSurface : friendDetailTheme.positiveSurface }]}>
+          <IconSymbol
+            size={16}
+            name="checkmark.circle.fill"
+            color={amountColor}
+          />
         </View>
       </Animated.View>
     );
@@ -616,12 +628,15 @@ export default function FriendDetailScreen() {
             ]}>
             <View style={[
               styles.expenseIcon,
-              { backgroundColor: expense.paidBy === currentUserId ? friendDetailTheme.positiveSurface : friendDetailTheme.negativeSurface }
+              {
+                backgroundColor: friendDetailTheme.actionSurface,
+                borderColor: friendDetailTheme.actionBorder,
+              }
             ]}>
               <IconSymbol
                 size={18}
-                name={expense.paidBy === currentUserId ? 'arrow.up.right' : 'arrow.down.left'}
-                color={expense.paidBy === currentUserId ? friendDetailTheme.positive : friendDetailTheme.negative}
+                name={expense.groupId ? 'person.2.fill' : 'arrow.up.right'}
+                color={friendDetailTheme.actionIcon}
               />
             </View>
             <View style={styles.expenseInfo}>
@@ -631,9 +646,15 @@ export default function FriendDetailScreen() {
               <ThemedText style={[styles.expenseDate, { color: colors.textSecondary }]} numberOfLines={1}>
                 {formatDate(expense.date)} • {expense.paidByName} paid
               </ThemedText>
+              <ThemedText style={[styles.expenseContext, { color: colors.textSecondary }]} numberOfLines={1}>
+                Split with {friend.name.split(' ')[0]} • Your share ${expense.yourShare.toFixed(2)}
+              </ThemedText>
             </View>
             <View style={styles.expenseAmounts}>
               <ThemedText style={[styles.expenseTotal, { color: colors.textSecondary }]}>
+                {expense.paidBy === currentUserId ? 'You paid' : `${friend.name.split(' ')[0]} paid`}
+              </ThemedText>
+              <ThemedText style={[styles.expenseAmountPrimary, { color: colors.text }]}>
                 ${expense.amount.toFixed(2)}
               </ThemedText>
               <ThemedText
@@ -649,6 +670,90 @@ export default function FriendDetailScreen() {
           </Animated.View>
         </TouchableOpacity>
       </Swipeable>
+    );
+  };
+
+  const renderExpenseActivityEvent = (item: Extract<FriendActivityItem, { type: 'expense_activity' }>, index: number) => {
+    const isDeleted = item.isDeleted;
+    const statusLabel = isDeleted ? 'Deleted' : 'Updated';
+    const title = item.description.replace(/^(Deleted|Updated):\s*/i, '');
+    const actorName = item.userId === currentUserId ? 'You' : item.userName || friend.name.split(' ')[0];
+    const statusColor = isDeleted ? friendDetailTheme.danger : friendDetailTheme.warning;
+    const iconSurface = isDeleted ? friendDetailTheme.dangerSurface : friendDetailTheme.warningSurface;
+    const iconName = isDeleted ? 'trash.fill' : 'pencil';
+    const amountLabel = item.amount === undefined ? null : `$${item.amount.toFixed(2)}`;
+
+    const content = (
+      <Animated.View
+        style={[
+          styles.updateRow,
+          {
+            backgroundColor: isDeleted ? friendDetailTheme.dangerSurface : friendDetailTheme.warningSurface,
+            borderColor: friendDetailTheme.surfaceBorder,
+          },
+          {
+            opacity: fadeAnim,
+            transform: [{ translateY: Animated.multiply(slideAnim, new Animated.Value((index + 1) * 0.2)) }],
+          }
+        ]}>
+        <View style={[styles.updateMarker, { backgroundColor: statusColor }]} />
+        <View style={styles.updateInfo}>
+          <View style={styles.activityEventTitleRow}>
+            <ThemedText style={[styles.updateTitle, { color: colors.text }]} numberOfLines={1}>
+              {title}
+            </ThemedText>
+            <View style={[styles.activityEventBadge, { backgroundColor: iconSurface }]}>
+              <ThemedText style={[styles.activityEventBadgeText, { color: statusColor }]}>
+                {statusLabel}
+              </ThemedText>
+            </View>
+          </View>
+          <ThemedText style={[styles.updateMeta, { color: colors.textSecondary }]} numberOfLines={1}>
+            {formatDate(item.date)} • {actorName}
+          </ThemedText>
+        </View>
+        {amountLabel && (
+          <View style={styles.updateAmountBlock}>
+            <ThemedText style={[styles.updateStatus, { color: colors.textSecondary }]}>
+              total
+            </ThemedText>
+            <ThemedText style={[styles.updateAmount, { color: colors.textSecondary }]}>
+              {amountLabel}
+            </ThemedText>
+          </View>
+        )}
+        <View style={[styles.updateIcon, { backgroundColor: iconSurface }]}>
+          <IconSymbol
+            size={16}
+            name={iconName}
+            color={statusColor}
+          />
+        </View>
+      </Animated.View>
+    );
+
+    if (isDeleted) {
+      return (
+        <View
+          key={item.id}
+          accessible
+          accessibilityRole="text"
+          accessibilityLabel={`${statusLabel} ${title}, ${formatDate(item.date)}, by ${actorName}`}>
+          {content}
+        </View>
+      );
+    }
+
+    return (
+      <TouchableOpacity
+        key={item.id}
+        accessibilityRole="button"
+        accessibilityLabel={`${statusLabel} ${title}, ${formatDate(item.date)}, by ${actorName}`}
+        accessibilityHint="Opens expense details"
+        activeOpacity={0.7}
+        onPress={() => handleOpenExpense(item.targetId)}>
+        {content}
+      </TouchableOpacity>
     );
   };
 
@@ -819,6 +924,45 @@ export default function FriendDetailScreen() {
           )}
         </View>
 
+        <View
+          accessibilityRole="toolbar"
+          accessibilityLabel="Activity filter"
+          style={[styles.segmentedControl, {
+            backgroundColor: friendDetailTheme.surface,
+            borderColor: friendDetailTheme.surfaceBorder,
+          }]}>
+          {ACTIVITY_FILTERS.map(filter => {
+            const isSelected = activityFilter === filter.id;
+
+            return (
+              <TouchableOpacity
+                key={filter.id}
+                accessibilityRole="button"
+                accessibilityLabel={filter.label}
+                accessibilityState={{ selected: isSelected }}
+                activeOpacity={0.78}
+                onPress={() => setActivityFilter(filter.id)}
+                style={[
+                  styles.segmentedOption,
+                  isSelected && {
+                    backgroundColor: friendDetailTheme.actionIcon,
+                    shadowColor: friendDetailTheme.actionIcon,
+                    shadowOpacity: 0.18,
+                    elevation: 2,
+                  },
+                ]}>
+                <ThemedText
+                  style={[
+                    styles.segmentedLabel,
+                    { color: isSelected ? friendDetailTheme.onPrimary : colors.textSecondary },
+                  ]}>
+                  {filter.label}
+                </ThemedText>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
         {/* Expense History */}
         <View style={styles.historySection}>
           <View style={styles.sectionHeader}>
@@ -830,23 +974,27 @@ export default function FriendDetailScreen() {
             </ThemedText>
           </View>
 
-          {activity.length === 0 ? (
+          {filteredActivity.length === 0 ? (
             <View style={styles.emptyHistory}>
               <View style={[styles.emptyIconWrapper, { backgroundColor: friendDetailTheme.avatarSurface }]}>
                 <IconSymbol size={32} name="doc.text" color={friendDetailTheme.actionIcon} />
               </View>
               <ThemedText style={[styles.emptyTitle, { color: colors.text }]}>
-                No expenses yet
+                {activityFilter === 'updates' ? 'No updates yet' : 'No expenses yet'}
               </ThemedText>
               <ThemedText style={[styles.emptyText, { color: colors.textSecondary }]}>
-                Add an expense to start tracking with {friend.name.split(' ')[0]}
+                {activityFilter === 'updates'
+                  ? `Changes and settlements with ${friend.name.split(' ')[0]} will show here`
+                  : `Add an expense to start tracking with ${friend.name.split(' ')[0]}`}
               </ThemedText>
             </View>
           ) : (
-            activity.map((item, index) => (
+            filteredActivity.map((item, index) => (
               item.type === 'expense'
                 ? renderExpenseActivity(item, index)
-                : renderSettlementActivity(item, index)
+                : item.type === 'settlement'
+                  ? renderSettlementActivity(item, index)
+                  : renderExpenseActivityEvent(item, index)
             ))
           )}
         </View>
@@ -1023,6 +1171,31 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: 14,
   },
+  segmentedControl: {
+    flexDirection: 'row',
+    marginHorizontal: 16,
+    marginBottom: 18,
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 4,
+    gap: 4,
+  },
+  segmentedOption: {
+    flex: 1,
+    minHeight: 44,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 8,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0,
+    shadowRadius: 10,
+    elevation: 0,
+  },
+  segmentedLabel: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
   content: {
     flex: 1,
   },
@@ -1074,27 +1247,90 @@ const styles = StyleSheet.create({
   },
   expenseCard: {
     flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
-    marginBottom: 8,
+    alignItems: 'flex-start',
+    padding: 14,
+    marginBottom: 10,
     borderRadius: 12,
     borderWidth: 1,
   },
-  settlementCard: {
-    borderStyle: 'dashed',
+  updateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 10,
+  },
+  updateMarker: {
+    width: 4,
+    height: 34,
+    borderRadius: 999,
   },
   expenseIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
+    width: 38,
+    height: 38,
+    borderRadius: 11,
+    borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
+    marginTop: 1,
   },
   expenseInfo: {
     flex: 1,
+    minWidth: 0,
+  },
+  updateInfo: {
+    flex: 1,
+    minWidth: 0,
+  },
+  updateTitle: {
+    flexShrink: 1,
+    fontSize: 14,
+    fontWeight: '650',
+  },
+  updateMeta: {
+    fontSize: 12,
+    marginTop: 3,
+  },
+  updateAmountBlock: {
+    alignItems: 'flex-end',
+    minWidth: 64,
+  },
+  updateStatus: {
+    fontSize: 11,
+    marginBottom: 1,
+  },
+  updateAmount: {
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  updateIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  activityEventTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 3,
+  },
+  activityEventBadge: {
+    borderRadius: 999,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+  },
+  activityEventBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
   },
   expenseDescription: {
+    flexShrink: 1,
     fontSize: 15,
     fontWeight: '600',
     marginBottom: 3,
@@ -1102,11 +1338,22 @@ const styles = StyleSheet.create({
   expenseDate: {
     fontSize: 12,
   },
+  expenseContext: {
+    fontSize: 12,
+    marginTop: 3,
+  },
   expenseAmounts: {
     alignItems: 'flex-end',
+    marginLeft: 10,
+    minWidth: 72,
   },
   expenseTotal: {
     fontSize: 12,
+    marginBottom: 2,
+  },
+  expenseAmountPrimary: {
+    fontSize: 16,
+    fontWeight: '700',
     marginBottom: 2,
   },
   settlementLabel: {

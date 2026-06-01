@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildFriendDetailData, calculatePairBalance } from '@/services/friend-detail-service';
-import type { Expense, ExpenseSplit, Settlement, User } from '@/types/database';
+import { ActivityType, type Activity, type Expense, type ExpenseSplit, type Settlement, type User } from '@/types/database';
 
 const currentUserId = 'current-user';
 const friendId = 'friend-a';
@@ -39,6 +39,24 @@ const settlement = (id: string, fromUserId: string, toUserId: string, amount: nu
   currency: 'USD',
   date: 1,
   createdAt: 1,
+});
+
+const activity = (
+  id: string,
+  type: ActivityType,
+  targetId: string,
+  createdAt: number,
+  metadata?: string
+): Activity => ({
+  id,
+  type,
+  userId: currentUserId,
+  userName: 'Current User',
+  targetId,
+  description: type === ActivityType.EXPENSE_DELETED ? 'Deleted: Dinner' : 'Updated: Dinner',
+  amount: 80,
+  metadata,
+  createdAt,
 });
 
 describe('friend detail builders', () => {
@@ -124,6 +142,61 @@ describe('friend detail builders', () => {
         id: 'expense:dinner',
         type: 'expense',
         expense: { id: 'dinner', paidByName: 'You' },
+      },
+    ]);
+  });
+
+  it('includes update activity for expenses shared with the friend', () => {
+    const expenses = [
+      expense('dinner', currentUserId, 80, 2),
+    ];
+    const splits = [
+      split('s1', 'dinner', currentUserId, 40),
+      split('s2', 'dinner', friendId, 40),
+    ];
+    const activities = [
+      activity('activity-update', ActivityType.EXPENSE_UPDATED, 'dinner', 5),
+    ];
+
+    const detail = buildFriendDetailData(currentUserId, friend, expenses, splits, [], activities);
+
+    expect(detail.activity).toMatchObject([
+      {
+        id: 'activity:activity-update',
+        type: 'expense_activity',
+        activityType: ActivityType.EXPENSE_UPDATED,
+        targetId: 'dinner',
+        isDeleted: false,
+        isUpdated: true,
+      },
+      {
+        id: 'expense:dinner',
+        type: 'expense',
+      },
+    ]);
+  });
+
+  it('includes deleted expense activity when metadata says the friend participated', () => {
+    const activities = [
+      activity(
+        'activity-delete',
+        ActivityType.EXPENSE_DELETED,
+        'deleted-dinner',
+        5,
+        JSON.stringify({ participantIds: [currentUserId, friendId] })
+      ),
+    ];
+
+    const detail = buildFriendDetailData(currentUserId, friend, [], [], [], activities);
+
+    expect(detail.activity).toMatchObject([
+      {
+        id: 'activity:activity-delete',
+        type: 'expense_activity',
+        activityType: ActivityType.EXPENSE_DELETED,
+        targetId: 'deleted-dinner',
+        isDeleted: true,
+        isUpdated: false,
       },
     ]);
   });

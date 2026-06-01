@@ -341,6 +341,10 @@ export default function EditExpenseScreen() {
 
       try {
         const group = splitType === SplitType.GROUP ? groups.find(g => g.id === selectedGroupId) : undefined;
+        const participantIds = Array.from(new Set([
+          ...originalSplits.map(split => split.userId),
+          ...splits.map(split => split.userId),
+        ]));
         await activityService.logExpenseUpdated({
           expenseId: id,
           userId: currentUserId,
@@ -349,13 +353,11 @@ export default function EditExpenseScreen() {
           amount: newAmount,
           groupId: group?.id,
           groupName: group?.name,
+          participantIds,
         });
 
         const usersToNotify = await Promise.all(
-          Array.from(new Set([
-            ...originalSplits.map(split => split.userId),
-            ...splits.map(split => split.userId),
-          ]))
+          participantIds
             .filter(userId => userId !== currentUserId)
             .map(userId => userService.getById(userId))
         );
