@@ -1,7 +1,7 @@
 import { SettleUpModal } from '@/components/friends/settle-up-modal';
 import { ThemedText } from '@/components/themed-text';
 import { AsyncErrorState } from '@/components/ui/async-error-state';
-import { IconSymbol } from '@/components/ui/icon-symbol';
+import { IconSymbol, type IconSymbolName } from '@/components/ui/icon-symbol';
 import { LoadingState } from '@/components/ui/loading-state';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useDebouncedQueryInvalidation } from '@/hooks/use-debounced-query-invalidation';
@@ -38,10 +38,10 @@ interface ExpenseWithSplit extends Expense {
 const MIN_TOUCH_HIT_SLOP = { top: 8, right: 8, bottom: 8, left: 8 };
 type ActivityFilter = 'all' | 'expenses' | 'updates';
 
-const ACTIVITY_FILTERS: { id: ActivityFilter; label: string }[] = [
-  { id: 'all', label: 'All' },
-  { id: 'expenses', label: 'Expenses' },
-  { id: 'updates', label: 'Updates' },
+const ACTIVITY_FILTERS: { id: ActivityFilter; label: string; icon: IconSymbolName }[] = [
+  { id: 'all', label: 'All', icon: 'list.bullet' },
+  { id: 'expenses', label: 'Expenses', icon: 'dollarsign.circle' },
+  { id: 'updates', label: 'Updates', icon: 'clock' },
 ];
 
 export default function FriendDetailScreen() {
@@ -67,6 +67,7 @@ export default function FriendDetailScreen() {
   const [fadeAnim] = useState(() => new Animated.Value(0));
   const [slideAnim] = useState(() => new Animated.Value(30));
   const [scaleAnim] = useState(() => new Animated.Value(0.98));
+  const [activityTransitionAnim] = useState(() => new Animated.Value(1));
 
   const {
     data: friendDetail,
@@ -101,6 +102,24 @@ export default function FriendDetailScreen() {
   const loadFriendData = useCallback(async () => {
     await refetch();
   }, [refetch]);
+
+  const handleActivityFilterChange = useCallback((nextFilter: ActivityFilter) => {
+    if (nextFilter === activityFilter) return;
+
+    Animated.timing(activityTransitionAnim, {
+      toValue: 0,
+      duration: 70,
+      useNativeDriver: true,
+    }).start(() => {
+      setActivityFilter(nextFilter);
+      activityTransitionAnim.setValue(0);
+      Animated.timing(activityTransitionAnim, {
+        toValue: 1,
+        duration: 140,
+        useNativeDriver: true,
+      }).start();
+    });
+  }, [activityFilter, activityTransitionAnim]);
 
   useEffect(() => {
     if (!loading && friend) {
@@ -929,7 +948,7 @@ export default function FriendDetailScreen() {
                 accessibilityLabel={filter.label}
                 accessibilityState={{ selected: isSelected }}
                 activeOpacity={0.78}
-                onPress={() => setActivityFilter(filter.id)}
+                onPress={() => handleActivityFilterChange(filter.id)}
                 style={[
                   styles.segmentedOption,
                   isSelected && {
@@ -937,6 +956,11 @@ export default function FriendDetailScreen() {
                     borderColor: friendDetailTheme.actionBorder,
                   },
                 ]}>
+                <IconSymbol
+                  size={14}
+                  name={filter.icon}
+                  color={isSelected ? friendDetailTheme.actionIcon : colors.textSecondary}
+                />
                 <ThemedText
                   style={[
                     styles.segmentedLabel,
@@ -960,29 +984,40 @@ export default function FriendDetailScreen() {
             </ThemedText>
           </View>
 
-          {filteredActivity.length === 0 ? (
-            <View style={styles.emptyHistory}>
-              <View style={[styles.emptyIconWrapper, { backgroundColor: friendDetailTheme.avatarSurface }]}>
-                <IconSymbol size={32} name="doc.text" color={friendDetailTheme.actionIcon} />
+          <Animated.View
+            style={{
+              opacity: activityTransitionAnim,
+              transform: [{
+                translateY: activityTransitionAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [6, 0],
+                }),
+              }],
+            }}>
+            {filteredActivity.length === 0 ? (
+              <View style={styles.emptyHistory}>
+                <View style={[styles.emptyIconWrapper, { backgroundColor: friendDetailTheme.avatarSurface }]}>
+                  <IconSymbol size={32} name="doc.text" color={friendDetailTheme.actionIcon} />
+                </View>
+                <ThemedText style={[styles.emptyTitle, { color: colors.text }]}>
+                  {activityFilter === 'updates' ? 'No updates yet' : 'No expenses yet'}
+                </ThemedText>
+                <ThemedText style={[styles.emptyText, { color: colors.textSecondary }]}>
+                  {activityFilter === 'updates'
+                    ? `Changes and settlements with ${friend.name.split(' ')[0]} will show here`
+                    : `Add an expense to start tracking with ${friend.name.split(' ')[0]}`}
+                </ThemedText>
               </View>
-              <ThemedText style={[styles.emptyTitle, { color: colors.text }]}>
-                {activityFilter === 'updates' ? 'No updates yet' : 'No expenses yet'}
-              </ThemedText>
-              <ThemedText style={[styles.emptyText, { color: colors.textSecondary }]}>
-                {activityFilter === 'updates'
-                  ? `Changes and settlements with ${friend.name.split(' ')[0]} will show here`
-                  : `Add an expense to start tracking with ${friend.name.split(' ')[0]}`}
-              </ThemedText>
-            </View>
-          ) : (
-            filteredActivity.map((item, index) => (
-              item.type === 'expense'
-                ? renderExpenseActivity(item, index)
-                : item.type === 'settlement'
-                  ? renderSettlementActivity(item, index)
-                  : renderExpenseActivityEvent(item, index)
-            ))
-          )}
+            ) : (
+              filteredActivity.map((item, index) => (
+                item.type === 'expense'
+                  ? renderExpenseActivity(item, index)
+                  : item.type === 'settlement'
+                    ? renderSettlementActivity(item, index)
+                    : renderExpenseActivityEvent(item, index)
+              ))
+            )}
+          </Animated.View>
         </View>
 
       </ScrollView>
@@ -1169,12 +1204,14 @@ const styles = StyleSheet.create({
     borderRadius: 9,
     borderWidth: 1,
     borderColor: 'transparent',
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 5,
     paddingHorizontal: 6,
   },
   segmentedLabel: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '650',
   },
   content: {
