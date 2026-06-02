@@ -20,8 +20,15 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Animated, Easing, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Alert, Animated, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
+import Reanimated, {
+  Easing as ReanimatedEasing,
+  FadeInDown,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
 
 interface UserWithBalance extends User {
@@ -36,6 +43,8 @@ interface ExpenseWithSplit extends Expense {
 }
 
 const MIN_TOUCH_HIT_SLOP = { top: 8, right: 8, bottom: 8, left: 8 };
+const SEGMENTED_CONTROL_PADDING = 3;
+const SEGMENTED_CONTROL_GAP = 3;
 type ActivityFilter = 'all' | 'expenses' | 'updates';
 
 const ACTIVITY_FILTERS: { id: ActivityFilter; label: string; icon: IconSymbolName }[] = [
@@ -51,6 +60,7 @@ export default function FriendDetailScreen() {
   const [expenses, setExpenses] = useState<ExpenseWithSplit[]>([]);
   const [activity, setActivity] = useState<FriendActivityItem[]>([]);
   const [activityFilter, setActivityFilter] = useState<ActivityFilter>('all');
+  const [segmentedWidth, setSegmentedWidth] = useState(0);
   const [settleModalVisible, setSettleModalVisible] = useState(false);
   const [isRemovingFriend, setIsRemovingFriend] = useState(false);
   const [isSettlingUp, setIsSettlingUp] = useState(false);
@@ -67,7 +77,20 @@ export default function FriendDetailScreen() {
   const [fadeAnim] = useState(() => new Animated.Value(0));
   const [slideAnim] = useState(() => new Animated.Value(30));
   const [scaleAnim] = useState(() => new Animated.Value(0.98));
-  const [activityTransitionAnim] = useState(() => new Animated.Value(1));
+  const tabIndicatorX = useSharedValue(0);
+  const feedOpacity = useSharedValue(1);
+  const feedTranslateY = useSharedValue(0);
+  const segmentWidth = segmentedWidth > 0
+    ? (segmentedWidth - (SEGMENTED_CONTROL_PADDING * 2) - (SEGMENTED_CONTROL_GAP * (ACTIVITY_FILTERS.length - 1))) / ACTIVITY_FILTERS.length
+    : 0;
+
+  const tabIndicatorStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: tabIndicatorX.value }],
+  }));
+  const feedTransitionStyle = useAnimatedStyle(() => ({
+    opacity: feedOpacity.value,
+    transform: [{ translateY: feedTranslateY.value }],
+  }));
 
   const {
     data: friendDetail,
@@ -106,16 +129,31 @@ export default function FriendDetailScreen() {
   const handleActivityFilterChange = useCallback((nextFilter: ActivityFilter) => {
     if (nextFilter === activityFilter) return;
 
-    activityTransitionAnim.stopAnimation();
-    activityTransitionAnim.setValue(0);
+    // eslint-disable-next-line react-hooks/immutability -- Reanimated shared values are mutable animation refs.
+    feedOpacity.value = 0.72;
+    // eslint-disable-next-line react-hooks/immutability -- Reanimated shared values are mutable animation refs.
+    feedTranslateY.value = 8;
     setActivityFilter(nextFilter);
-    Animated.timing(activityTransitionAnim, {
-      toValue: 1,
-      duration: 180,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
-    }).start();
-  }, [activityFilter, activityTransitionAnim]);
+    feedOpacity.value = withTiming(1, {
+      duration: 170,
+      easing: ReanimatedEasing.out(ReanimatedEasing.cubic),
+    });
+    feedTranslateY.value = withTiming(0, {
+      duration: 170,
+      easing: ReanimatedEasing.out(ReanimatedEasing.cubic),
+    });
+  }, [activityFilter, feedOpacity, feedTranslateY]);
+
+  useEffect(() => {
+    if (segmentWidth <= 0) return;
+
+    const selectedIndex = ACTIVITY_FILTERS.findIndex(filter => filter.id === activityFilter);
+    // eslint-disable-next-line react-hooks/immutability -- Reanimated shared values are mutable animation refs.
+    tabIndicatorX.value = withTiming(selectedIndex * (segmentWidth + SEGMENTED_CONTROL_GAP), {
+      duration: 210,
+      easing: ReanimatedEasing.out(ReanimatedEasing.cubic),
+    });
+  }, [activityFilter, segmentWidth, tabIndicatorX]);
 
   useEffect(() => {
     if (!loading && friend) {
@@ -930,10 +968,25 @@ export default function FriendDetailScreen() {
         <View
           accessibilityRole="toolbar"
           accessibilityLabel="Activity filter"
+          onLayout={({ nativeEvent }) => setSegmentedWidth(nativeEvent.layout.width)}
           style={[styles.segmentedControl, {
             backgroundColor: friendDetailTheme.surface,
             borderColor: friendDetailTheme.surfaceBorder,
           }]}>
+          {segmentWidth > 0 && (
+            <Reanimated.View
+              pointerEvents="none"
+              style={[
+                styles.segmentedIndicator,
+                {
+                  width: segmentWidth,
+                  backgroundColor: friendDetailTheme.actionSurface,
+                  borderColor: friendDetailTheme.actionBorder,
+                },
+                tabIndicatorStyle,
+              ]}
+            />
+          )}
           {ACTIVITY_FILTERS.map(filter => {
             const isSelected = activityFilter === filter.id;
 
@@ -947,10 +1000,6 @@ export default function FriendDetailScreen() {
                 onPress={() => handleActivityFilterChange(filter.id)}
                 style={[
                   styles.segmentedOption,
-                  isSelected && {
-                    backgroundColor: friendDetailTheme.actionSurface,
-                    borderColor: friendDetailTheme.actionBorder,
-                  },
                 ]}>
                 <IconSymbol
                   size={14}
@@ -980,19 +1029,7 @@ export default function FriendDetailScreen() {
             </ThemedText>
           </View>
 
-          <Animated.View
-            style={{
-              opacity: activityTransitionAnim.interpolate({
-                inputRange: [0, 1],
-                outputRange: [0.88, 1],
-              }),
-              transform: [{
-                translateY: activityTransitionAnim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [4, 0],
-                }),
-              }],
-            }}>
+          <Reanimated.View style={feedTransitionStyle}>
             {filteredActivity.length === 0 ? (
               <View style={styles.emptyHistory}>
                 <View style={[styles.emptyIconWrapper, { backgroundColor: friendDetailTheme.avatarSurface }]}>
@@ -1009,14 +1046,18 @@ export default function FriendDetailScreen() {
               </View>
             ) : (
               filteredActivity.map((item, index) => (
-                item.type === 'expense'
-                  ? renderExpenseActivity(item, index)
-                  : item.type === 'settlement'
-                    ? renderSettlementActivity(item, index)
-                    : renderExpenseActivityEvent(item, index)
+                <Reanimated.View
+                  key={`${activityFilter}:${item.id}`}
+                  entering={FadeInDown.duration(180).delay(Math.min(index, 6) * 24).easing(ReanimatedEasing.out(ReanimatedEasing.cubic))}>
+                  {item.type === 'expense'
+                    ? renderExpenseActivity(item, index)
+                    : item.type === 'settlement'
+                      ? renderSettlementActivity(item, index)
+                      : renderExpenseActivityEvent(item, index)}
+                </Reanimated.View>
               ))
             )}
-          </Animated.View>
+          </Reanimated.View>
         </View>
 
       </ScrollView>
@@ -1196,18 +1237,27 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     padding: 3,
     gap: 3,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  segmentedIndicator: {
+    position: 'absolute',
+    top: SEGMENTED_CONTROL_PADDING,
+    bottom: SEGMENTED_CONTROL_PADDING,
+    left: SEGMENTED_CONTROL_PADDING,
+    borderRadius: 9,
+    borderWidth: 1,
   },
   segmentedOption: {
     flex: 1,
     minHeight: 36,
     borderRadius: 9,
-    borderWidth: 1,
-    borderColor: 'transparent',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 5,
     paddingHorizontal: 6,
+    zIndex: 1,
   },
   segmentedLabel: {
     fontSize: 12,
