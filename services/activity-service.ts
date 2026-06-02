@@ -190,6 +190,32 @@ export const activityService = {
     }));
   },
 
+  async getByTargets(targetIds: string[]): Promise<Activity[]> {
+    if (targetIds.length === 0) return [];
+
+    const { data, error } = await supabase
+      .from('activities')
+      .select('*')
+      .in('target_id', targetIds)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    return (data || []).map(r => ({
+      id: r.id,
+      type: r.type as ActivityType,
+      userId: r.user_id,
+      userName: r.user_name || undefined,
+      targetId: r.target_id,
+      groupId: r.group_id || undefined,
+      groupName: r.group_name || undefined,
+      description: r.description,
+      amount: r.amount || undefined,
+      metadata: r.metadata || undefined,
+      createdAt: new Date(r.created_at).getTime(),
+    }));
+  },
+
   // Helper to log expense activities
   async logExpenseCreated(params: {
     expenseId: string;
@@ -220,6 +246,7 @@ export const activityService = {
     amount: number;
     groupId?: string;
     groupName?: string;
+    participantIds?: string[];
   }): Promise<Activity> {
     return this.create({
       type: ActivityType.EXPENSE_UPDATED,
@@ -230,6 +257,7 @@ export const activityService = {
       groupName: params.groupName,
       description: `Updated: ${params.description}`,
       amount: params.amount,
+      metadata: params.participantIds ? JSON.stringify({ participantIds: params.participantIds }) : undefined,
     });
   },
 
@@ -241,6 +269,7 @@ export const activityService = {
     amount: number;
     groupId?: string;
     groupName?: string;
+    participantIds?: string[];
   }): Promise<Activity> {
     return this.create({
       type: ActivityType.EXPENSE_DELETED,
@@ -251,6 +280,7 @@ export const activityService = {
       groupName: params.groupName,
       description: `Deleted: ${params.description}`,
       amount: params.amount,
+      metadata: params.participantIds ? JSON.stringify({ participantIds: params.participantIds }) : undefined,
     });
   },
 

@@ -291,6 +291,18 @@ export const expenseService = {
       throw new Error('Only the person who paid for this expense can delete it.');
     }
 
+    const { data: splitData, error: splitError } = await supabase
+      .from('expense_splits')
+      .select('user_id')
+      .eq('expense_id', id);
+
+    if (splitError) throw splitError;
+
+    const participantIds = Array.from(new Set([
+      userId,
+      ...(splitData || []).map(split => split.user_id),
+    ]));
+
     // Delete the expense
     const { error } = await supabase
       .from('expenses')
@@ -309,6 +321,7 @@ export const expenseService = {
       amount: expense.amount,
       groupId: expense.group_id || undefined,
       groupName: expense.groups?.name || undefined,
+      participantIds,
     });
   },
 };

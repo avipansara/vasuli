@@ -47,6 +47,7 @@ export function InvitationsSection() {
   }, [user]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Initial async load populates invitation lists for this section.
     loadInvitations();
   }, [loadInvitations]);
 

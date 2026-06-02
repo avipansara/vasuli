@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/refs -- OTP focus is advanced from native input events, not during render. */
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { PENDING_INVITE_PATH_KEY } from '@/lib/invite-deeplink';

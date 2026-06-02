@@ -35,6 +35,7 @@ export function SettleUpModal({ visible, onClose, friend, onConfirm }: SettleUpM
 
   useEffect(() => {
     if (visible && friend) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Opening the modal resets the editable amount to the current balance.
       setEditableAmount(maxAmount.toFixed(2));
     }
   }, [visible, friend, maxAmount]);

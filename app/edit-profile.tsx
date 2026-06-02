@@ -34,6 +34,7 @@ export default function EditProfileScreen() {
   const nameInputRef = useRef<any>(null);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Auth profile data is copied into an editable form field.
     setName(user?.name || '');
 
     Animated.parallel([

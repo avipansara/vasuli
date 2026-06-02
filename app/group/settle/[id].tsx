@@ -221,6 +221,7 @@ export default function GroupSettleScreen() {
   }, [applyGroupDetail, currentUserId, id, queryClient]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Initial async load hydrates settlement choices and cached group detail state.
     loadData();
   }, [loadData]);
 
@@ -299,11 +300,8 @@ export default function GroupSettleScreen() {
       return;
     }
     setSelectedMember(item);
+    setAmount(getGroupSettleAmount(item.balance));
   }, []);
-
-  useEffect(() => {
-    setAmount(selectedMember ? getGroupSettleAmount(selectedMember.balance) : '');
-  }, [selectedMember]);
 
   const canSubmitSettlement = canSubmitGroupSettlement(selectedMember, amount, settling);
 
