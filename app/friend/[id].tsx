@@ -20,7 +20,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Animated, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Alert, Animated, Easing, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
 
@@ -106,19 +106,15 @@ export default function FriendDetailScreen() {
   const handleActivityFilterChange = useCallback((nextFilter: ActivityFilter) => {
     if (nextFilter === activityFilter) return;
 
+    activityTransitionAnim.stopAnimation();
+    activityTransitionAnim.setValue(0);
+    setActivityFilter(nextFilter);
     Animated.timing(activityTransitionAnim, {
-      toValue: 0,
-      duration: 70,
+      toValue: 1,
+      duration: 180,
+      easing: Easing.out(Easing.cubic),
       useNativeDriver: true,
-    }).start(() => {
-      setActivityFilter(nextFilter);
-      activityTransitionAnim.setValue(0);
-      Animated.timing(activityTransitionAnim, {
-        toValue: 1,
-        duration: 140,
-        useNativeDriver: true,
-      }).start();
-    });
+    }).start();
   }, [activityFilter, activityTransitionAnim]);
 
   useEffect(() => {
@@ -986,11 +982,14 @@ export default function FriendDetailScreen() {
 
           <Animated.View
             style={{
-              opacity: activityTransitionAnim,
+              opacity: activityTransitionAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0.88, 1],
+              }),
               transform: [{
                 translateY: activityTransitionAnim.interpolate({
                   inputRange: [0, 1],
-                  outputRange: [6, 0],
+                  outputRange: [4, 0],
                 }),
               }],
             }}>
