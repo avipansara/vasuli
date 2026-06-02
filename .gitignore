@@ -48,5 +48,6 @@ supabase/.temp/
 
 .cursor
 .codex
+.agents/
 marketing/
 PRODUCT.md
