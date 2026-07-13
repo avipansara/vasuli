@@ -20,7 +20,15 @@ const mocks = vi.hoisted(() => {
   )
   const deleteEq = vi.fn(() => Promise.resolve({ error: null }))
   const from = vi.fn()
-  return { invoke, insertSelectSingle, deleteEq, from }
+  const getByEmail = vi.fn(() => Promise.resolve(null))
+  const createFriendship = vi.fn(() => Promise.resolve({
+    id: 'friendship-1',
+    userId: 'inviter-uuid',
+    friendId: 'existing-user',
+    status: 'pending',
+    createdAt: Date.now(),
+  }))
+  return { invoke, insertSelectSingle, deleteEq, from, getByEmail, createFriendship }
 })
 
 vi.mock('@/lib/supabase', () => ({
@@ -31,9 +39,11 @@ vi.mock('@/lib/supabase', () => ({
 }))
 
 vi.mock('@/services/user-service', () => ({
-  userService: {
-    getByEmail: vi.fn(() => Promise.resolve(null)),
-  },
+  userService: { getByEmail: mocks.getByEmail },
+}))
+
+vi.mock('@/services/friendship-service', () => ({
+  friendshipService: { create: mocks.createFriendship },
 }))
 
 vi.mock('@/services/notification-service', () => ({
@@ -51,6 +61,7 @@ describe('invitationService.create', () => {
     mocks.invoke.mockResolvedValue({ data: { success: true }, error: null })
     mocks.insertSelectSingle.mockResolvedValue({ data: inviteRow, error: null })
     mocks.deleteEq.mockResolvedValue({ error: null })
+    mocks.getByEmail.mockResolvedValue(null)
     mocks.from.mockImplementation((table: string) => {
       if (table !== 'invitations') {
         return {}
@@ -89,6 +100,27 @@ describe('invitationService.create', () => {
         }),
       })
     )
+  })
+
+  it('creates a pending friendship request for an existing user', async () => {
+    mocks.getByEmail.mockResolvedValueOnce({
+      id: 'existing-user',
+      name: 'Existing Friend',
+      email: 'friend@example.com',
+      isActive: true,
+      createdAt: Date.now(),
+    })
+
+    const result = await invitationService.sendRequestOrInvitation({
+      inviterId: 'inviter-uuid',
+      inviteeEmail: 'friend@example.com',
+      inviteeName: 'Existing Friend',
+    })
+
+    expect(result.type).toBe('friend_request')
+    expect(mocks.createFriendship).toHaveBeenCalledWith('inviter-uuid', 'existing-user')
+    expect(mocks.insertSelectSingle).not.toHaveBeenCalled()
+    expect(mocks.invoke).not.toHaveBeenCalled()
   })
 
   it('skips email invoke for synthetic phone-placeholder inbox', async () => {

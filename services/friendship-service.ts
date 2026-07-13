@@ -49,6 +49,17 @@ export const friendshipService = {
     if (error) throw error;
   },
 
+  /** Decline a pending friendship request. */
+  async decline(friendshipId: string): Promise<void> {
+    const { error } = await supabase
+      .from('friendships')
+      .delete()
+      .eq('id', friendshipId)
+      .eq('status', 'pending');
+
+    if (error) throw error;
+  },
+
   /**
    * Get all friends for a user (accepted friendships only)
    */

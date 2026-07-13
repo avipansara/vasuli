@@ -11,6 +11,7 @@ import { invitationService } from '@/services/invitation-service';
 import { userService } from '@/services/user-service';
 import { normalizeEmail } from '@/utils/validation';
 import type { Invitation } from '@/types/database';
+import type { Friendship } from '@/services/friendship-service';
 import { useFocusEffect } from 'expo-router/react-navigation';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -26,6 +27,7 @@ import {
 } from 'react-native';
 
 type InvitationWithDetails = Invitation & { inviterName?: string; inviteeName?: string };
+type FriendRequestWithDetails = Friendship & { requesterName: string };
 
 type TabType = 'received' | 'sent';
 
@@ -35,6 +37,7 @@ export default function InvitationsScreen() {
   const [activeTab, setActiveTab] = useState<TabType>('received');
   const [receivedInvitations, setReceivedInvitations] = useState<InvitationWithDetails[]>([]);
   const [sentInvitations, setSentInvitations] = useState<InvitationWithDetails[]>([]);
+  const [receivedFriendRequests, setReceivedFriendRequests] = useState<FriendRequestWithDetails[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -61,6 +64,14 @@ export default function InvitationsScreen() {
       const sent = await invitationService.getByInviter(userId);
       setSentInvitations(sent);
 
+      const requests = await friendshipService.getPendingRequests(userId);
+      const requesters = await userService.getByIds(requests.map((request) => request.userId));
+      const requesterNames = new Map(requesters.map((requester) => [requester.id, requester.name]));
+      setReceivedFriendRequests(requests.map((request) => ({
+        ...request,
+        requesterName: requesterNames.get(request.userId) || 'Someone',
+      })));
+
       if (!email) {
         setReceivedInvitations([]);
         setNoEmailForInvites(true);
@@ -77,6 +88,33 @@ export default function InvitationsScreen() {
       setLoading(false);
     }
   }, [userId, refreshUser]);
+
+  const handleAcceptFriendRequest = useCallback(async (request: FriendRequestWithDetails) => {
+    setActionLoading(request.id);
+    try {
+      await friendshipService.accept(request.id);
+      Alert.alert('Success', `You are now connected with ${request.requesterName}`);
+      loadInvitations();
+    } catch (error) {
+      console.error('Error accepting friend request:', error);
+      Alert.alert('Error', 'Failed to accept friend request');
+    } finally {
+      setActionLoading(null);
+    }
+  }, [loadInvitations]);
+
+  const handleDeclineFriendRequest = useCallback(async (request: FriendRequestWithDetails) => {
+    setActionLoading(request.id);
+    try {
+      await friendshipService.decline(request.id);
+      loadInvitations();
+    } catch (error) {
+      console.error('Error declining friend request:', error);
+      Alert.alert('Error', 'Failed to decline friend request');
+    } finally {
+      setActionLoading(null);
+    }
+  }, [loadInvitations]);
 
   useFocusEffect(
     useCallback(() => {
@@ -308,6 +346,7 @@ export default function InvitationsScreen() {
   }, [actionLoading, colors, isDark, handleResend, handleCancel]);
 
   const currentInvitations = activeTab === 'received' ? receivedInvitations : sentInvitations;
+  const receivedCount = receivedInvitations.length + receivedFriendRequests.length;
 
   return (
     <>
@@ -339,7 +378,7 @@ export default function InvitationsScreen() {
               activeTab === 'received' && { color: isDark ? '#2DD4BF' : colors.tint },
               { color: colors.text },
             ]}>
-              Received ({receivedInvitations.length})
+              Received ({receivedCount})
             </ThemedText>
           </TouchableOpacity>
           <TouchableOpacity
@@ -382,6 +421,37 @@ export default function InvitationsScreen() {
             renderItem={activeTab === 'received' ? renderReceivedInvitation : renderSentInvitation}
             keyExtractor={(item) => item.id}
             contentContainerStyle={styles.listContent}
+            ListHeaderComponent={activeTab === 'received' && receivedFriendRequests.length > 0 ? (
+              <View>
+                {receivedFriendRequests.map((request) => {
+                  const isLoading = actionLoading === request.id;
+                  return (
+                    <BlurView key={request.id} intensity={isDark ? 20 : 40} tint={isDark ? 'dark' : 'light'} style={styles.invitationCard}>
+                      <View style={[styles.cardContent, !isDark && { backgroundColor: 'rgba(255,255,255,0.8)' }]}>
+                        <View style={styles.invitationHeader}>
+                          <View style={[styles.iconContainer, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)' }]}>
+                            <IconSymbol name="person.crop.circle.badge.plus" size={24} color={isDark ? '#2DD4BF' : colors.tint} />
+                          </View>
+                          <View style={styles.invitationInfo}>
+                            <ThemedText style={[styles.inviterName, { color: colors.text }]}>{request.requesterName}</ThemedText>
+                            <ThemedText style={[styles.invitationDate, { color: colors.textSecondary }]}>wants to be your friend</ThemedText>
+                          </View>
+                        </View>
+                        <View style={styles.actionButtons}>
+                          <TouchableOpacity onPress={() => handleDeclineFriendRequest(request)} disabled={isLoading} style={[styles.actionButton, styles.declineButton, { opacity: isLoading ? 0.5 : 1 }]}>
+                            <ThemedText style={[styles.actionButtonText, { color: isDark ? '#EF4444' : '#DC2626' }]}>Decline</ThemedText>
+                          </TouchableOpacity>
+                          <TouchableOpacity onPress={() => handleAcceptFriendRequest(request)} disabled={isLoading} style={[styles.actionButton, styles.acceptButton, { backgroundColor: isDark ? '#2DD4BF' : '#22C55E', opacity: isLoading ? 0.5 : 1 }]}>
+                            <ThemedText style={styles.actionButtonText}>Accept</ThemedText>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    </BlurView>
+                  );
+                })}
+                {receivedInvitations.length > 0 && <ThemedText style={[styles.sectionLabel, { color: colors.textSecondary }]}>App invitations</ThemedText>}
+              </View>
+            ) : null}
             ListEmptyComponent={
               <View style={styles.emptyContainer}>
                 <IconSymbol
@@ -391,7 +461,9 @@ export default function InvitationsScreen() {
                 />
                 <ThemedText style={[styles.emptyText, { color: colors.textSecondary }]}>
                   {activeTab === 'received'
-                    ? noEmailForInvites
+                    ? receivedFriendRequests.length > 0
+                      ? 'No app invitations received'
+                      : noEmailForInvites
                       ? 'Friend invitations are sent to your email. Add an email in your profile so pending invites appear here.'
                       : 'No invitations received'
                     : 'No invitations sent'}
@@ -493,6 +565,11 @@ const styles = StyleSheet.create({
   },
   invitationDate: {
     fontSize: 14,
+  },
+  sectionLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    marginBottom: 10,
   },
   statusBadge: {
     paddingHorizontal: 12,

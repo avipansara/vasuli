@@ -130,7 +130,7 @@ export default function AddFriendScreen() {
       }
       const friendName = name.trim() || friendEmail.split('@')[0];
 
-      await invitationService.create({
+      const result = await invitationService.sendRequestOrInvitation({
         inviterId: currentUserId,
         inviteeEmail: friendEmail,
         inviteeName: friendName,
@@ -138,8 +138,10 @@ export default function AddFriendScreen() {
       });
 
       Alert.alert(
-        'Invite Sent!',
-        `An invitation has been sent to ${friendName}. They'll appear in your friends list once they accept.`,
+        result.type === 'friend_request' ? 'Friend Request Sent' : 'Invite Sent!',
+        result.type === 'friend_request'
+          ? `${friendName} is already on Vasuli. They can accept your friend request from Invitations.`
+          : `An invitation has been sent to ${friendName}. They'll appear in your friends list once they accept.`,
         [{
           text: 'OK', onPress: () => {
             // Stay on screen to see the new invite in list?
