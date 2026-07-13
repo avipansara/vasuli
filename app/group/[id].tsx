@@ -60,7 +60,7 @@ export default function GroupDetailScreen() {
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
   const [availableUsers, setAvailableUsers] = useState<User[]>([]);
-  const [selectedUserId, setSelectedUserId] = useState('');
+  const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
   const [friendshipStatus, setFriendshipStatus] = useState<Map<string, 'none' | 'pending_sent' | 'pending_received' | 'accepted'>>(new Map());
   const { user } = useAuth();
   const currentUserId = user?.id || '';
@@ -211,27 +211,29 @@ export default function GroupDetailScreen() {
   const addMember = async () => {
     if (isAddingMember) return;
 
-    if (!selectedUserId) {
-      Alert.alert('Error', 'Please select a friend');
+    if (selectedUserIds.length === 0) {
+      Alert.alert('Error', 'Please select at least one friend');
       return;
     }
 
     try {
       setIsAddingMember(true);
-      await groupService.addMember(id, selectedUserId);
+      await Promise.all(selectedUserIds.map(userId => groupService.addMember(id, userId)));
 
       if (group && user) {
-        const newMember = availableUsers.find(u => u.id === selectedUserId);
-        await activityService.logMemberAdded({
-          groupId: id,
-          userId: currentUserId,
-          userName: user.name,
-          memberName: newMember?.name || 'Someone',
-          groupName: group.name,
-        });
+        await Promise.all(selectedUserIds.map(async userId => {
+          const newMember = availableUsers.find(u => u.id === userId);
+          return activityService.logMemberAdded({
+            groupId: id,
+            userId: currentUserId,
+            userName: user.name,
+            memberName: newMember?.name || 'Someone',
+            groupName: group.name,
+          });
+        }));
       }
 
-      setSelectedUserId('');
+      setSelectedUserIds([]);
       setMemberModalVisible(false);
       loadGroupData();
     } catch (error) {
@@ -1009,8 +1011,8 @@ export default function GroupDetailScreen() {
         visible={memberModalVisible}
         onClose={() => setMemberModalVisible(false)}
         availableUsers={availableUsers}
-        selectedUserId={selectedUserId}
-        setSelectedUserId={setSelectedUserId}
+        selectedUserIds={selectedUserIds}
+        setSelectedUserIds={setSelectedUserIds}
         onSubmit={addMember}
       />
 

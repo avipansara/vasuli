@@ -1,4 +1,5 @@
 import { ACCENT_GREEN, ACCENT_TEAL } from '@/constants/theme';
+import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
@@ -35,6 +36,7 @@ export function SelectableOption({ label, selected, onPress }: SelectableOptionP
           <ThemedText style={[styles.optionText, { color: textColor }]}>
             {label}
           </ThemedText>
+          <IconSymbol name="checkmark" size={16} color={textColor} />
         </LinearGradient>
       </TouchableOpacity>
     );
@@ -67,6 +69,9 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   option: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 12,
