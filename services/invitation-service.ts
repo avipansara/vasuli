@@ -1,11 +1,16 @@
 import { supabase } from '@/lib/supabase';
 import { createInvitationNotification, notificationService } from '@/services/notification-service';
 import { userService } from '@/services/user-service';
-import type { Invitation } from '@/types/database';
+import type { Invitation, User } from '@/types/database';
 import { normalizeEmail } from '@/utils/validation';
+import type { Friendship } from '@/services/friendship-service';
 
 // Set to true for development/testing without real Supabase
 const USE_MOCK_DATA = false;
+
+export type FriendRequestOrInvitation =
+  | { type: 'friend_request'; friendship: Friendship; friend: User }
+  | { type: 'invitation'; invitation: Invitation };
 
 /** Phone invites use a synthetic inbox; Resend cannot deliver to it. */
 function isDeliverableEmail(email: string): boolean {
@@ -34,6 +39,42 @@ async function assertSendInvitationEmail(params: {
 }
 
 export const invitationService = {
+  /** Connect directly with an existing Vasuli user; invite everyone else by email. */
+  async sendRequestOrInvitation(invitation: {
+    inviterId: string;
+    inviteeEmail: string;
+    inviteePhone?: string;
+    inviteeName?: string;
+    inviterName?: string;
+  }): Promise<FriendRequestOrInvitation> {
+    const inviteeEmail = normalizeEmail(invitation.inviteeEmail);
+    if (!inviteeEmail) throw new Error('A valid email address is required');
+
+    const existingUser = await userService.getByEmail(inviteeEmail);
+    if (existingUser) {
+      if (existingUser.id === invitation.inviterId) {
+        throw new Error('You cannot add yourself as a friend');
+      }
+
+      const { friendshipService } = await import('@/services/friendship-service');
+      const friendship = await friendshipService.create(invitation.inviterId, existingUser.id);
+      if (existingUser.pushToken) {
+        try {
+          await notificationService.sendPushNotification(
+            existingUser.pushToken,
+            createInvitationNotification(invitation.inviterName || 'A friend'),
+          );
+        } catch (pushErr) {
+          console.error('Error sending friend request notification:', pushErr);
+        }
+      }
+      return { type: 'friend_request', friendship, friend: existingUser };
+    }
+
+    const createdInvitation = await this.create({ ...invitation, inviteeEmail });
+    return { type: 'invitation', invitation: createdInvitation };
+  },
+
   async create(invitation: {
     inviterId: string;
     inviteeEmail: string;
@@ -79,8 +120,6 @@ export const invitationService = {
     const inviterName = invitation.inviterName || 'A friend';
     const inviteeName = invitation.inviteeName || inviteeEmail.split('@')[0];
 
-    const existingUser = await userService.getByEmail(inviteeEmail);
-
     if (isDeliverableEmail(inviteeEmail)) {
       try {
         const invitationId = data?.id != null ? String(data.id) : '';
@@ -104,16 +143,6 @@ export const invitationService = {
       console.warn(
         `[Invitation] Skipping email for synthetic address ${inviteeEmail} (phone invite — add SMS or another channel to notify).`
       );
-    }
-
-    if (existingUser?.pushToken) {
-      try {
-        console.log(`[Invitation] Also sending push notification to ${inviteeEmail}`);
-        const notification = createInvitationNotification(inviterName);
-        await notificationService.sendPushNotification(existingUser.pushToken, notification);
-      } catch (pushErr) {
-        console.error('Error sending invitation push notification:', pushErr);
-      }
     }
 
     return {

@@ -118,7 +118,7 @@ export default function FriendsScreen() {
     }
 
     try {
-      await invitationService.create({
+      const result = await invitationService.sendRequestOrInvitation({
         inviterId: currentUserId,
         inviteeEmail: contact,
         inviteeName: newFriendName.trim() || contact.split('@')[0],
@@ -129,7 +129,12 @@ export default function FriendsScreen() {
       setNewFriendEmail('');
       setModalVisible(false);
       loadFriends();
-      Alert.alert('Invite Sent!', `An invite has been sent to ${contact}`);
+      Alert.alert(
+        result.type === 'friend_request' ? 'Friend Request Sent' : 'Invite Sent!',
+        result.type === 'friend_request'
+          ? 'They are already on Vasuli and can accept your request from Invitations.'
+          : `An invite has been sent to ${contact}`,
+      );
     } catch (error) {
       console.error('Error sending invite:', error);
       Alert.alert('Error', 'Failed to send invite');
