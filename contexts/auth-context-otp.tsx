@@ -1,6 +1,7 @@
 import { otpService } from '@/services/otp-service';
 import { userService } from '@/services/user-service';
 import type { User } from '@/types/database';
+import { withTimeout } from '@/lib/with-timeout';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
@@ -13,35 +14,46 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const AUTH_INITIALIZATION_TIMEOUT_MS = 8000;
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    loadSession();
+    let mounted = true;
+
+    withTimeout(
+      loadSession(),
+      AUTH_INITIALIZATION_TIMEOUT_MS,
+      'Auth initialization timed out',
+    )
+      .catch(error => {
+        console.error('Error loading session:', error);
+      })
+      .finally(() => {
+        if (mounted) setIsLoading(false);
+      });
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   async function loadSession() {
-    try {
-      const session = await otpService.getSession();
-      if (session) {
-        const reconciledSession = await otpService.syncSupabaseAuthSessionToAppProfile(session.user.email);
-        setUser(reconciledSession?.user ?? session.user);
-      } else {
-        const reconciledSession = await otpService.syncSupabaseAuthSessionToAppProfile();
-        if (reconciledSession) {
-          setUser(reconciledSession.user);
-          return;
-        }
-
-        // Explicitly clear if no session found to prevent stale data issues
-        await otpService.clearSession();
+    const session = await otpService.getSession();
+    if (session) {
+      const reconciledSession = await otpService.syncSupabaseAuthSessionToAppProfile(session.user.email);
+      setUser(reconciledSession?.user ?? session.user);
+    } else {
+      const reconciledSession = await otpService.syncSupabaseAuthSessionToAppProfile();
+      if (reconciledSession) {
+        setUser(reconciledSession.user);
+        return;
       }
-    } catch (error) {
-      console.error('Error loading session:', error);
-    } finally {
-      setIsLoading(false);
+
+      // Explicitly clear if no session found to prevent stale data issues
+      await otpService.clearSession();
     }
   }
 
