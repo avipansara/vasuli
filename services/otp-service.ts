@@ -7,6 +7,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // Set to true for development/testing without real Supabase
 const USE_MOCK_DATA = process.env.EXPO_PUBLIC_USE_MOCK_DATA === 'true';
 const MOCK_OTP_CODE = '123456';
+const AUTH_EMAIL_REDIRECT_URL = 'vasuli://auth/callback';
 const APP_REVIEWER_EMAIL = 'apple.reviewer@vasuli.app';
 const APP_REVIEWER_OTP = '123456';
 const APP_REVIEWER_NAME = 'Apple Reviewer';
@@ -93,6 +94,7 @@ export async function sendSignUpCode(params: {
     const { error: authError } = await supabase.auth.signInWithOtp({
       email,
       options: {
+        emailRedirectTo: AUTH_EMAIL_REDIRECT_URL,
         shouldCreateUser: true,
         data: { name },
       },
@@ -140,7 +142,10 @@ export async function sendSignInCode(params: {
 
     const { error: authError } = await supabase.auth.signInWithOtp({
       email,
-      options: { shouldCreateUser: true },
+      options: {
+        emailRedirectTo: AUTH_EMAIL_REDIRECT_URL,
+        shouldCreateUser: true,
+      },
     });
 
     if (authError) {

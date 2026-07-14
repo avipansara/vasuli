@@ -218,7 +218,10 @@ describe('otpService App Review account', () => {
     expect(result).toEqual({ success: true })
     expect(mocks.signInWithOtp).toHaveBeenCalledWith({
       email: 'existing@example.com',
-      options: { shouldCreateUser: true },
+      options: {
+        emailRedirectTo: 'vasuli://auth/callback',
+        shouldCreateUser: true,
+      },
     })
     expect(mocks.from).not.toHaveBeenCalled()
   })
@@ -236,7 +239,10 @@ describe('otpService App Review account', () => {
     expect(result).toEqual({ success: true })
     expect(mocks.signInWithOtp).toHaveBeenCalledWith({
       email: 'legacy@example.com',
-      options: { shouldCreateUser: true },
+      options: {
+        emailRedirectTo: 'vasuli://auth/callback',
+        shouldCreateUser: true,
+      },
     })
     expect(mocks.from).not.toHaveBeenCalled()
   })
@@ -266,6 +272,7 @@ describe('otpService App Review account', () => {
     expect(mocks.signInWithOtp).toHaveBeenCalledWith({
       email: 'new@example.com',
       options: {
+        emailRedirectTo: 'vasuli://auth/callback',
         shouldCreateUser: true,
         data: { name: 'New User' },
       },
