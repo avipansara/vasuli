@@ -67,8 +67,11 @@ export function AddMemberModal({
           styles.userRow,
           {
             backgroundColor: selected
-              ? isDark ? 'rgba(45, 212, 191, 0.14)' : 'rgba(34, 197, 94, 0.10)'
-              : 'transparent',
+              ? isDark ? 'rgba(45, 212, 191, 0.10)' : 'rgba(34, 197, 94, 0.08)'
+              : colors.card,
+            borderColor: selected
+              ? isDark ? 'rgba(45, 212, 191, 0.42)' : 'rgba(34, 197, 94, 0.34)'
+              : colors.border,
             opacity: pressed ? 0.72 : 1,
           },
         ]}>
@@ -194,8 +197,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    paddingHorizontal: 4,
+    paddingHorizontal: 12,
     borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 8,
   },
   avatar: {
     width: 40,
