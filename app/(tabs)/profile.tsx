@@ -36,22 +36,24 @@ export default function ProfileScreen() {
   const notificationsEnabled = notificationOverride ?? !!currentUser?.pushToken;
 
   async function handleToggleNotifications(value: boolean) {
+    if (!currentUser?.id) return;
     setNotificationOverride(value);
     try {
       if (value) {
         const { notificationService } = await import('@/services/notification-service');
+        await notificationService.setNotificationPreference(currentUser.id, true);
         const token = await notificationService.registerForPushNotificationsAsync();
-        if (token && currentUser?.id) {
+        if (token) {
           await userService.updatePushToken(currentUser.id, token);
           await refreshUser();
         } else {
           setNotificationOverride(false);
         }
       } else {
-        if (currentUser?.id) {
-          await userService.updatePushToken(currentUser.id, null);
-          await refreshUser();
-        }
+        const { notificationService } = await import('@/services/notification-service');
+        await notificationService.setNotificationPreference(currentUser.id, false);
+        await userService.updatePushToken(currentUser.id, null);
+        await refreshUser();
       }
     } catch (error) {
       console.error('Error toggling notifications:', error);
