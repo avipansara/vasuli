@@ -67,12 +67,12 @@ export interface AuthSession {
  * Create and send OTP code for sign up
  */
 export async function sendSignUpCode(params: {
-  name: string;
+  name?: string;
   email?: string;
 }): Promise<{ success: boolean; error?: string }> {
   try {
-    const { name } = params;
     const email = normalizeEmail(params.email);
+    const name = params.name?.trim() || email?.split('@')[0] || 'User';
 
     if (!email) {
       return { success: false, error: 'Email is required' };
@@ -165,13 +165,14 @@ export async function sendSignInCode(params: {
  * Verify OTP code for sign up and create user account
  */
 export async function verifySignUpCode(params: {
-  name: string;
+  name?: string;
   email?: string;
   code: string;
 }): Promise<{ success: boolean; session?: AuthSession; error?: string }> {
   try {
-    const { name, code } = params;
+    const { code } = params;
     const email = normalizeEmail(params.email);
+    const name = params.name?.trim() || email?.split('@')[0] || 'User';
 
     if (!email) {
       return { success: false, error: 'Email is required' };

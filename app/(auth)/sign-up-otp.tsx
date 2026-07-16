@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/auth-context-otp';
 import { PENDING_INVITE_PATH_KEY } from '@/lib/invite-deeplink';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { otpService } from '@/services/otp-service';
-import { getPersonNameErrorMessage, isEmailValid, normalizeEmail, normalizePersonName } from '@/utils/validation';
+import { isEmailValid, normalizeEmail, normalizePersonName } from '@/utils/validation';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Link, router, type Href } from 'expo-router';
@@ -107,17 +107,10 @@ export default function SignUpOTPScreen() {
   }, [resendTimer]);
 
   const isContactValid = () => {
-    if (!normalizePersonName(name)) return false;
     return isEmailValid(email);
   };
 
   async function handleSendCode() {
-    const normalizedName = normalizePersonName(name);
-    if (!normalizedName) {
-      Alert.alert('Invalid Name', getPersonNameErrorMessage(name));
-      return;
-    }
-    
     if (!isEmailValid(email)) {
       Alert.alert('Invalid Email', 'Please enter a valid email address');
       return;
@@ -126,7 +119,7 @@ export default function SignUpOTPScreen() {
     setLoading(true);
     try {
       const result = await otpService.sendSignUpCode({
-        name: normalizedName,
+        name: normalizePersonName(name) || undefined,
         email: normalizeEmail(email),
       });
 
@@ -147,16 +140,10 @@ export default function SignUpOTPScreen() {
   async function handleVerifyCode() {
     const code = otp.join('');
     if (code.length !== 6) return;
-    const normalizedName = normalizePersonName(name);
-    if (!normalizedName) {
-      Alert.alert('Invalid Name', getPersonNameErrorMessage(name));
-      return;
-    }
-
     setLoading(true);
     try {
       const result = await otpService.verifySignUpCode({
-        name: normalizedName,
+        name: normalizePersonName(name) || undefined,
         email: normalizeEmail(email),
         code,
       });
@@ -249,16 +236,10 @@ export default function SignUpOTPScreen() {
 
   async function handleResendCode() {
     if (resendTimer > 0) return;
-    const normalizedName = normalizePersonName(name);
-    if (!normalizedName) {
-      Alert.alert('Invalid Name', getPersonNameErrorMessage(name));
-      return;
-    }
-    
     setLoading(true);
     try {
       const result = await otpService.sendSignUpCode({
-        name: normalizedName,
+        name: normalizePersonName(name) || undefined,
         email: normalizeEmail(email),
       });
 
@@ -293,14 +274,14 @@ export default function SignUpOTPScreen() {
           Create account
         </Text>
         <Text style={[styles.subtitle, { color: isDark ? 'rgba(255,255,255,0.6)' : colors.textSecondary }]}>
-          Join Vasuli to split expenses with friends
+          Join Vasuli to split expenses with friends. Your email keeps your profile recognizable.
         </Text>
       </View>
 
       {/* Name Input */}
       <View style={styles.inputSection}>
         <Text style={[styles.inputLabel, { color: isDark ? 'rgba(255,255,255,0.7)' : colors.textSecondary }]}>
-          Your name
+          Your name (optional)
         </Text>
         <View style={[
           styles.inputContainer,
@@ -312,7 +293,7 @@ export default function SignUpOTPScreen() {
           <IconSymbol name="person.fill" size={20} color={isDark ? '#2DD4BF' : '#22C55E'} />
           <TextInput
             style={[styles.input, { color: isDark ? '#fff' : colors.text }]}
-            placeholder="John Doe"
+            placeholder="How friends will see you"
             placeholderTextColor={isDark ? '#6B7280' : '#9CA3AF'}
             value={name}
             onChangeText={setName}
@@ -325,7 +306,7 @@ export default function SignUpOTPScreen() {
       {/* Email Input */}
       <View style={styles.inputSection}>
         <Text style={[styles.inputLabel, { color: isDark ? 'rgba(255,255,255,0.7)' : colors.textSecondary }]}>
-          Email address
+          Email address *
         </Text>
         <View style={[
           styles.inputContainer,

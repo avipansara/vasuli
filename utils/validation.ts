@@ -32,6 +32,14 @@ export function normalizeEmail(email: string | undefined): string | undefined {
   return trimmed.length === 0 ? undefined : trimmed;
 }
 
+/** Use the verified email as a useful identity cue when a profile has no real name. */
+export function getDisplayName(name: string | undefined, email: string | undefined): string {
+  const normalizedName = name?.trim();
+  if (normalizedName && normalizedName.toLowerCase() !== 'user') return normalizedName;
+  const normalizedEmail = normalizeEmail(email);
+  return normalizedEmail?.split('@')[0] || normalizedName || 'Unknown friend';
+}
+
 /**
  * Validates and formats email address
  * @param email - Email address to validate and format

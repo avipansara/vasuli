@@ -31,7 +31,6 @@ export default function FriendsScreen() {
   const { gradients, colors, friends: friendsTheme } = useThemeColors();
   const [refreshing, setRefreshing] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
-  const [newFriendName, setNewFriendName] = useState('');
   const [newFriendEmail, setNewFriendEmail] = useState('');
   const [qrModalVisible, setQrModalVisible] = useState(false);
   const { user } = useAuth();
@@ -121,11 +120,9 @@ export default function FriendsScreen() {
       const result = await invitationService.sendRequestOrInvitation({
         inviterId: currentUserId,
         inviteeEmail: contact,
-        inviteeName: newFriendName.trim() || contact.split('@')[0],
         inviterName: user?.name || 'A friend',
       });
 
-      setNewFriendName('');
       setNewFriendEmail('');
       setModalVisible(false);
       loadFriends();
@@ -334,8 +331,6 @@ export default function FriendsScreen() {
       <InviteFriendModal
         visible={modalVisible}
         onClose={() => setModalVisible(false)}
-        name={newFriendName}
-        setName={setNewFriendName}
         email={newFriendEmail}
         setEmail={setNewFriendEmail}
         onSubmit={sendInvite}

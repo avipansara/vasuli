@@ -9,8 +9,6 @@ import { StyleSheet, View } from 'react-native';
 interface InviteFriendModalProps {
   visible: boolean;
   onClose: () => void;
-  name: string;
-  setName: (value: string) => void;
   email: string;
   setEmail: (value: string) => void;
   onSubmit: () => void;
@@ -19,8 +17,6 @@ interface InviteFriendModalProps {
 export function InviteFriendModal({
   visible,
   onClose,
-  name,
-  setName,
   email,
   setEmail,
   onSubmit,
@@ -49,15 +45,6 @@ export function InviteFriendModal({
           Email invite
         </ThemedText>
       </View>
-
-      <FormGroup label="Name (Optional)">
-        <FormInput
-          placeholder="e.g. John Doe"
-          value={name}
-          onChangeText={setName}
-          returnKeyType="done"
-        />
-      </FormGroup>
 
       <FormGroup label="Email Address *">
         <FormInput

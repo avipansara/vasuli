@@ -29,7 +29,6 @@ export default function AddFriendScreen() {
   const { user } = useAuth();
   const currentUserId = user?.id || '';
 
-  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [pendingInvites, setPendingInvites] = useState<any[]>([]);
@@ -79,7 +78,6 @@ export default function AddFriendScreen() {
   const [slideAnim] = useState(() => new Animated.Value(30));
 
   // Input refs for focus management
-  const nameInputRef = useRef<TextInput>(null);
   const emailInputRef = useRef<TextInput>(null);
 
   useEffect(() => {
@@ -105,11 +103,6 @@ export default function AddFriendScreen() {
       return;
     }
 
-    if (!name.trim()) {
-      Alert.alert('Error', 'Please enter a name');
-      return;
-    }
-
     if (!email.trim()) {
       Alert.alert('Error', 'Please enter an email address');
       return;
@@ -128,20 +121,17 @@ export default function AddFriendScreen() {
         Alert.alert('Error', 'Please enter an email address');
         return;
       }
-      const friendName = name.trim() || friendEmail.split('@')[0];
-
       const result = await invitationService.sendRequestOrInvitation({
         inviterId: currentUserId,
         inviteeEmail: friendEmail,
-        inviteeName: friendName,
         inviterName: user?.name || 'A friend',
       });
 
       Alert.alert(
         result.type === 'friend_request' ? 'Friend Request Sent' : 'Invite Sent!',
         result.type === 'friend_request'
-          ? `${friendName} is already on Vasuli. They can accept your friend request from Invitations.`
-          : `An invitation has been sent to ${friendName}. They'll appear in your friends list once they accept.`,
+          ? 'They are already on Vasuli and can accept your friend request from Invitations.'
+          : `An invitation has been sent to ${friendEmail}. They'll appear in your friends list once they accept.`,
         [{
           text: 'OK', onPress: () => {
             // Stay on screen to see the new invite in list?
@@ -151,7 +141,6 @@ export default function AddFriendScreen() {
             // Let's reload list and then decide.
             loadPendingInvites();
             setEmail('');
-            setName('');
             router.back();
           }
         }]
@@ -222,30 +211,6 @@ export default function AddFriendScreen() {
             <ThemedText style={[styles.heroSubtitle, { color: colors.textSecondary }]}>
               Split expenses and settle up easily
             </ThemedText>
-          </View>
-
-          {/* Name Input */}
-          <View style={styles.inputSection}>
-            <ThemedText style={[styles.inputLabel, { color: colors.textSecondary }]}>
-              Name (Optional)
-            </ThemedText>
-            <View style={[styles.inputContainer, {
-              backgroundColor: isDark ? 'rgba(30, 41, 59, 0.6)' : 'rgba(241, 245, 249, 0.9)',
-              borderColor: isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(34, 197, 94, 0.2)',
-            }]}>
-              <IconSymbol name="person" size={20} color={isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'} />
-              <TextInput
-                ref={nameInputRef}
-                style={[styles.textInput, { color: isDark ? '#fff' : colors.text }]}
-                value={name}
-                onChangeText={setName}
-                placeholder="e.g. John Doe"
-                placeholderTextColor={isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'}
-                returnKeyType="next"
-                onSubmitEditing={() => emailInputRef.current?.focus()}
-                blurOnSubmit={false}
-              />
-            </View>
           </View>
 
           <View style={styles.inputSection}>
