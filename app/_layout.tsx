@@ -94,7 +94,12 @@ function RootLayoutNav() {
   const router = useRouter();
   const [animationComplete, setAnimationComplete] = useState(false);
 
-  // Ensure animation plays for at least 2.5 seconds
+  // Keep the native splash brief, then show the animated in-app splash while
+  // auth and navigation finish initializing.
+  useEffect(() => {
+    SplashScreen.hideAsync();
+  }, []);
+
   useEffect(() => {
     const timer = setTimeout(() => {
       setAnimationComplete(true);
@@ -183,12 +188,6 @@ export default function RootLayout() {
     'Nunito_600SemiBold': require('@expo-google-fonts/nunito/600SemiBold/Nunito_600SemiBold.ttf'),
     'Nunito_700Bold': require('@expo-google-fonts/nunito/700Bold/Nunito_700Bold.ttf'),
   });
-
-  useEffect(() => {
-    if (fontsLoaded) {
-      SplashScreen.hideAsync();
-    }
-  }, [fontsLoaded]);
 
   if (!fontsLoaded) {
     return null;
