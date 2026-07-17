@@ -93,7 +93,10 @@ export const userService = {
     const { data, error } = await supabase
       .from('users')
       .select('*')
-      .eq('email', normalized)
+      // Email input is normalized client-side, but older/imported profiles may
+      // retain casing. Postgres text equality is case-sensitive, so use an
+      // exact case-insensitive match for identity lookup.
+      .ilike('email', normalized)
       .maybeSingle();
 
     if (error) throw error;

@@ -1,6 +1,4 @@
 import { FriendCard } from '@/components/friends/friend-card';
-import { InviteFriendModal } from '@/components/friends/invite-friend-modal';
-import { QRCodeModal } from '@/components/friends/qr-code-modal';
 import { ThemedText } from '@/components/themed-text';
 import { AsyncErrorState } from '@/components/ui/async-error-state';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -12,10 +10,8 @@ import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { friendSummaryService, initDatabase } from '@/services/api';
 import { friendshipService } from '@/services/friendship-service';
-import { invitationService } from '@/services/invitation-service';
 import { queryKeys } from '@/services/query-keys';
 import type { Expense, User } from '@/types/database';
-import { isEmailValid, normalizeEmail } from '@/utils/validation';
 import { useQuery } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
@@ -30,9 +26,6 @@ interface UserWithBalance extends User {
 export default function FriendsScreen() {
   const { gradients, colors, friends: friendsTheme } = useThemeColors();
   const [refreshing, setRefreshing] = useState(false);
-  const [modalVisible, setModalVisible] = useState(false);
-  const [newFriendEmail, setNewFriendEmail] = useState('');
-  const [qrModalVisible, setQrModalVisible] = useState(false);
   const { user } = useAuth();
   const currentUserId = user?.id || '';
   const friendsQueryKey = useMemo(() => queryKeys.friends.home(currentUserId), [currentUserId]);
@@ -104,40 +97,6 @@ export default function FriendsScreen() {
     enabled: !!currentUserId,
   });
 
-  const sendInvite = async () => {
-    const contact = normalizeEmail(newFriendEmail);
-
-    if (!contact) {
-      Alert.alert('Required', 'Please enter an email address');
-      return;
-    }
-    if (!isEmailValid(contact)) {
-      Alert.alert('Invalid Email', 'Please enter a valid email address');
-      return;
-    }
-
-    try {
-      const result = await invitationService.sendRequestOrInvitation({
-        inviterId: currentUserId,
-        inviteeEmail: contact,
-        inviterName: user?.name || 'A friend',
-      });
-
-      setNewFriendEmail('');
-      setModalVisible(false);
-      loadFriends();
-      Alert.alert(
-        result.type === 'friend_request' ? 'Friend Request Sent' : 'Invite Sent!',
-        result.type === 'friend_request'
-          ? 'They are already on Vasuli and can accept your request from Invitations.'
-          : `An invite has been sent to ${contact}`,
-      );
-    } catch (error) {
-      console.error('Error sending invite:', error);
-      Alert.alert('Error', 'Failed to send invite');
-    }
-  }
-
   const handleFriendPress = useCallback((friend: UserWithBalance) => {
     router.push(`/friend/${friend.id}` as any);
   }, []);
@@ -205,16 +164,6 @@ export default function FriendsScreen() {
           <ThemedText type="header" style={{ color: balanceColor }}>${Math.abs(netBalance).toFixed(2)}</ThemedText>
         </View>
         <View style={styles.headerButtons}>
-          <TouchableOpacity
-            style={[styles.addButtonRect, actionButtonStyle]}
-            onPress={() => setQrModalVisible(true)}>
-            <IconSymbol size={20} name="qrcode" color={friendsTheme.actionIcon} />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.addButtonRect, actionButtonStyle]}
-            onPress={() => router.push('/scan-qr')}>
-            <IconSymbol size={20} name="qrcode.viewfinder" color={friendsTheme.actionIcon} />
-          </TouchableOpacity>
           <TouchableOpacity
             style={[styles.addButtonRect, actionButtonStyle]}
             onPress={() => router.push('/add-friend')}>
@@ -328,20 +277,6 @@ export default function FriendsScreen() {
         />
       )}
 
-      <InviteFriendModal
-        visible={modalVisible}
-        onClose={() => setModalVisible(false)}
-        email={newFriendEmail}
-        setEmail={setNewFriendEmail}
-        onSubmit={sendInvite}
-      />
-
-      <QRCodeModal
-        visible={qrModalVisible}
-        onClose={() => setQrModalVisible(false)}
-        userId={currentUserId}
-        userName={user?.name || ''}
-      />
     </LinearGradient>
   );
 }
