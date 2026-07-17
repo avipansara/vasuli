@@ -64,7 +64,10 @@ function useProtectedRoute() {
     if (!navState?.key) return;
 
     const inAuthGroup = segments[0] === '(auth)';
+    const inOAuthCallback = segments[0] === 'auth' && segments[1] === 'callback';
     const inInviteRoute = segments[0] === 'invite';
+
+    if (inOAuthCallback) return;
 
     if (!isAuthenticated && !inAuthGroup && !inInviteRoute) {
       // Redirect to sign-in if not authenticated and not already in auth flow
@@ -107,6 +110,10 @@ function RootLayoutNav() {
   useEffect(() => {
     const handleDeepLink = (event: { url: string }) => {
       if (!event.url) return;
+
+      // The OAuth callback is owned by the initiating auth screen and
+      // WebBrowser session, not the invitation deep-link handler.
+      if (event.url.startsWith('vasuli://auth/callback')) return;
 
       console.log('[DeepLink] Received URL:', event.url);
 
