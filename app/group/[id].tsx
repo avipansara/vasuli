@@ -21,7 +21,12 @@ import {
 import { friendshipService } from '@/services/friendship-service';
 import type { GroupDetailData } from '@/services/group-detail-service';
 import { areGroupBalancesSettled, calculateGroupBalances } from '@/services/group-balance';
-import { createExpenseDeletedNotification, createExpenseNotification, notificationService } from '@/services/notification-service';
+import {
+  createExpenseDeletedNotification,
+  createExpenseNotification,
+  createMemberAddedNotification,
+  notificationService,
+} from '@/services/notification-service';
 import { queryKeys } from '@/services/query-keys';
 import type { Expense, ExpenseSplit, Group, GroupMember, Settlement, User } from '@/types/database';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -231,6 +236,31 @@ export default function GroupDetailScreen() {
             groupName: group.name,
           });
         }));
+
+        // Notify each newly added member individually so the message can use
+        // their name. Push failures must not turn a successful membership add
+        // into a failed group operation.
+        try {
+          const usersToNotify = await Promise.all(
+            selectedUserIds.map(userId => userService.getById(userId))
+          );
+
+          await Promise.all(
+            usersToNotify
+              .filter((newMember): newMember is User => !!newMember?.pushToken)
+              .map(newMember => notificationService.sendPushNotification(
+                newMember.pushToken!,
+                createMemberAddedNotification(
+                  group.name,
+                  user.name,
+                  newMember.name,
+                  id,
+                ),
+              ))
+          );
+        } catch (notificationError) {
+          console.error('Error sending group member notifications:', notificationError);
+        }
       }
 
       setSelectedUserIds([]);

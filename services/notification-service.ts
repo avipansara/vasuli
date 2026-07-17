@@ -234,12 +234,13 @@ export const createGroupNotification = (
 export const createMemberAddedNotification = (
   groupName: string,
   addedBy: string,
-  memberName: string
+  memberName: string,
+  groupId: string,
 ): PushNotificationData => ({
   type: 'member_added',
   title: '➕ Added to Group',
   body: `${addedBy} added ${memberName} to "${groupName}"`,
-  data: { groupName, addedBy, memberName },
+  data: { groupId, groupName, addedBy, memberName },
 });
 
 export const createInvitationNotification = (
