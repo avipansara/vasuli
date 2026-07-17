@@ -359,6 +359,7 @@ export async function verifySignInCode(params: {
 export async function signInWithGoogle(): Promise<{ success: boolean; error?: string }> {
   try {
     const WebBrowser = await import('expo-web-browser');
+    const Linking = await import('expo-linking');
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
@@ -374,15 +375,43 @@ export async function signInWithGoogle(): Promise<{ success: boolean; error?: st
       return { success: false, error: error?.message || 'Unable to start Google sign-in' };
     }
 
-    const result = await WebBrowser.openAuthSessionAsync(data.url, AUTH_EMAIL_REDIRECT_URL);
-    if (result.type !== 'success') {
+    let resolveCallback: ((url: string) => void) | null = null;
+    const callbackPromise = new Promise<string>(resolve => {
+      resolveCallback = resolve;
+    });
+    const subscription = Linking.addEventListener('url', ({ url }) => {
+      if (url.startsWith(AUTH_EMAIL_REDIRECT_URL)) {
+        resolveCallback?.(url);
+      }
+    });
+
+    let callbackUrl: string | null = null;
+    let browserResult: Awaited<ReturnType<typeof WebBrowser.openAuthSessionAsync>>;
+    try {
+      browserResult = await WebBrowser.openAuthSessionAsync(data.url, AUTH_EMAIL_REDIRECT_URL);
+      if (browserResult.type === 'success') {
+        callbackUrl = browserResult.url;
+      } else {
+        // Android can report the browser as dismissed after handing the deep
+        // link to the app. Give the Linking event a short window to complete
+        // the same OAuth flow before treating it as a cancellation.
+        callbackUrl = await Promise.race([
+          callbackPromise,
+          new Promise<null>(resolve => setTimeout(() => resolve(null), 1500)),
+        ]);
+      }
+    } finally {
+      subscription.remove();
+    }
+
+    if (!callbackUrl) {
       return {
         success: false,
-        error: result.type === 'cancel' ? 'Google sign-in was cancelled' : 'Google sign-in did not complete',
+        error: browserResult.type === 'cancel' ? 'Google sign-in was cancelled' : 'Google sign-in did not complete',
       };
     }
 
-    const params = getOAuthParams(result.url);
+    const params = getOAuthParams(callbackUrl);
     const providerError = params.get('error_description') || params.get('error');
     if (providerError) {
       return { success: false, error: providerError };

@@ -30,6 +30,8 @@ const mocks = vi.hoisted(() => {
   const exchangeCodeForSession = vi.fn()
   const signOut = vi.fn()
   const openAuthSessionAsync = vi.fn()
+  const addEventListener = vi.fn()
+  const removeEventListener = vi.fn()
   const ensureAppReviewDemoData = vi.fn()
   const linkAuthUserToProfile = vi.fn()
 
@@ -49,6 +51,8 @@ const mocks = vi.hoisted(() => {
     exchangeCodeForSession,
     signOut,
     openAuthSessionAsync,
+    addEventListener,
+    removeEventListener,
     ensureAppReviewDemoData,
     linkAuthUserToProfile,
   }
@@ -83,6 +87,10 @@ vi.mock('@/lib/supabase', () => ({
 
 vi.mock('expo-web-browser', () => ({
   openAuthSessionAsync: mocks.openAuthSessionAsync,
+}))
+
+vi.mock('expo-linking', () => ({
+  addEventListener: mocks.addEventListener,
 }))
 
 vi.mock('@/services/app-review-demo-service', () => ({
@@ -128,6 +136,7 @@ describe('otpService App Review account', () => {
       type: 'success',
       url: 'vasuli://auth/callback#access_token=access-token&refresh_token=refresh-token',
     })
+    mocks.addEventListener.mockReturnValue({ remove: mocks.removeEventListener })
     mocks.linkAuthUserToProfile.mockResolvedValue({
       id: 'existing-public-user-id',
       name: 'Existing User',
@@ -202,6 +211,35 @@ describe('otpService App Review account', () => {
       authUserId: 'google-auth-id',
       email: 'google@example.com',
       name: 'Google User',
+    })
+  })
+
+  it('accepts the Android deep-link event when the browser reports dismissal', async () => {
+    mocks.openAuthSessionAsync.mockResolvedValueOnce({ type: 'dismiss' })
+    mocks.addEventListener.mockImplementationOnce((_event, callback) => {
+      callback({
+        url: 'vasuli://auth/callback#access_token=android-access&refresh_token=android-refresh',
+      })
+      return { remove: mocks.removeEventListener }
+    })
+    mocks.getSession.mockResolvedValueOnce({
+      data: {
+        session: {
+          user: {
+            id: 'android-google-auth-id',
+            email: 'android@example.com',
+            user_metadata: { name: 'Android User' },
+          },
+        },
+      },
+    })
+
+    const result = await otpService.signInWithGoogle()
+
+    expect(result).toEqual({ success: true })
+    expect(mocks.setSession).toHaveBeenCalledWith({
+      access_token: 'android-access',
+      refresh_token: 'android-refresh',
     })
   })
 
