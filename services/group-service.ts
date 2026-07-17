@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import type { Group, GroupMember } from '@/types/database';
-import { isGroupSettled } from './group-balance';
+import { calculateGroupBalances, isGroupSettled, SETTLED_BALANCE_THRESHOLD } from './group-balance';
 import { expenseService } from './expense-service';
 import { settlementService } from './settlement-service';
 
@@ -170,6 +170,17 @@ export const groupService = {
   },
 
   async removeMember(groupId: string, userId: string): Promise<void> {
+    const expenses = await expenseService.getByGroup(groupId);
+    const [splits, settlements] = await Promise.all([
+      expenseService.getSplitsForExpenses(expenses.map(expense => expense.id)),
+      settlementService.getByGroup(groupId),
+    ]);
+    const balance = calculateGroupBalances(expenses, splits, settlements).get(userId) ?? 0;
+
+    if (Math.abs(balance) >= SETTLED_BALANCE_THRESHOLD) {
+      throw new Error('This member cannot be removed until their group balance is settled.');
+    }
+
     const { error } = await supabase
       .from('group_members')
       .delete()

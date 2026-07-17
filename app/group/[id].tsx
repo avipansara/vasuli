@@ -555,6 +555,15 @@ export default function GroupDetailScreen() {
       return;
     }
 
+    const balance = balances.get(member.userId) || 0;
+    if (Math.abs(balance) >= 0.01) {
+      Alert.alert(
+        'Settle Balance First',
+        `${member.user?.name || 'This member'} has an outstanding group balance. Record the settlement before removing them.`,
+      );
+      return;
+    }
+
     Alert.alert(
       'Remove Member',
       `Are you sure you want to remove ${member.user?.name || 'this member'} from the group?`,
@@ -687,7 +696,7 @@ export default function GroupDetailScreen() {
                         color={friendDetailTheme.actionIcon}
                       />
                       <ThemedText style={[styles.friendBadgeText, { color: friendDetailTheme.actionIcon }]}>
-                        {status === 'none' ? 'Add' : isPending ? 'Sent' : 'Pending'}
+                        {status === 'none' ? 'Add friend' : isPending ? 'Request sent' : 'Request received'}
                       </ThemedText>
                     </TouchableOpacity>
                   );
@@ -958,6 +967,22 @@ export default function GroupDetailScreen() {
             onPress={handleSettleUp}>
             <IconSymbol size={18} name="checkmark.circle.fill" color={friendDetailTheme.positive} />
             <ThemedText style={[styles.quickActionText, { color: friendDetailTheme.positive }]}>Settle Up</ThemedText>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.quickActionButton,
+              styles.secondaryQuickActionButton,
+              {
+                backgroundColor: friendDetailTheme.actionSurface,
+                borderColor: friendDetailTheme.actionBorder,
+              },
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel={`View stats for ${group.name}`}
+            accessibilityHint="Opens spending and balance statistics for this group"
+            onPress={() => router.push(`/group/stats/${id}`)}>
+            <IconSymbol size={18} name="chart.bar.fill" color={friendDetailTheme.actionIcon} />
+            <ThemedText style={[styles.quickActionText, { color: friendDetailTheme.actionIcon }]}>Stats</ThemedText>
           </TouchableOpacity>
         </View>
 
