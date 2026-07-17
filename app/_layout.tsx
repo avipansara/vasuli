@@ -99,8 +99,9 @@ function RootLayoutNav() {
     return () => clearTimeout(timer);
   }, []);
 
-  // Initialize notifications - must be inside AuthProvider to access user context
-  useNotifications();
+  // Initialize notifications only after the splash has completed and the main
+  // navigation is visible, so the permission prompt never appears over splash.
+  useNotifications(animationComplete && !isLoading);
 
   // Handle deep links for invitations → full invite screen (with invitation id in query)
   useEffect(() => {

@@ -9,14 +9,14 @@ import { Alert } from 'react-native';
 
 const NOTIFICATION_ONBOARDING_PREFIX = 'notifications-onboarding-prompted:';
 
-export function useNotifications() {
+export function useNotifications(enabled = true) {
   const router = useRouter();
   const { user, isLoading } = useAuth();
   const notificationListener = useRef<Notifications.EventSubscription>(undefined);
   const responseListener = useRef<Notifications.EventSubscription>(undefined);
 
   useEffect(() => {
-    if (isLoading || !user?.id) return;
+    if (!enabled || isLoading || !user?.id) return;
 
     let cancelled = false;
     const onboardingKey = `${NOTIFICATION_ONBOARDING_PREFIX}${user.id}`;
@@ -71,7 +71,7 @@ export function useNotifications() {
     return () => {
       cancelled = true;
     };
-  }, [isLoading, user?.id, user?.pushToken]);
+  }, [enabled, isLoading, user?.id, user?.pushToken]);
 
   const handleNotificationNavigation = useCallback((data: any) => {
     switch (data.type) {
