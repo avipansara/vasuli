@@ -12,6 +12,7 @@ import { invitationService } from '@/services/invitation-service';
 import { calculateFriendSummaryTotals } from '@/services/friend-summary-service';
 import { queryKeys } from '@/services/query-keys';
 import { getPendingInvitationCount } from '@/utils/invitation-count';
+import { normalizeEmail } from '@/utils/validation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useFocusEffect } from 'expo-router';
@@ -43,34 +44,42 @@ export default function ProfileScreen() {
   const { toggleTheme } = useTheme();
   const { user: currentUser, signOut, refreshUser } = useAuth();
   const [notificationOverride, setNotificationOverride] = useState<boolean | null>(null);
-  const [pendingInvitationCount, setPendingInvitationCount] = useState(0);
   const currentUserId = currentUser?.id || '';
-  const currentUserEmail = currentUser?.email;
   const queryClient = useQueryClient();
+  const normalizedEmail = normalizeEmail(currentUser?.email) || '';
+  const pendingInvitationQueryKey = useMemo(
+    () => queryKeys.invitations.pendingCount(currentUserId, normalizedEmail),
+    [currentUserId, normalizedEmail]
+  );
   const friendsHomeQueryKey = useMemo(() => queryKeys.friends.home(currentUserId), [currentUserId]);
   const notificationsEnabled = notificationOverride ?? !!currentUser?.pushToken;
 
-  const loadPendingInvitations = useCallback(async () => {
-    if (!currentUserId) {
-      setPendingInvitationCount(0);
-      return;
-    }
-
-    try {
+  const pendingInvitationQuery = useQuery({
+    queryKey: pendingInvitationQueryKey,
+    enabled: !!currentUserId,
+    queryFn: async () => {
       const [friendRequests, emailInvitations] = await Promise.all([
-        friendshipService.getPendingRequests(currentUserId),
-        currentUserEmail ? invitationService.getReceivedInvitations(currentUserEmail) : Promise.resolve([]),
+        queryClient.fetchQuery({
+          queryKey: queryKeys.invitations.friendRequests(currentUserId),
+          queryFn: () => friendshipService.getPendingRequests(currentUserId),
+        }),
+        normalizedEmail
+          ? queryClient.fetchQuery({
+              queryKey: queryKeys.invitations.received(currentUserId, normalizedEmail),
+              queryFn: () => invitationService.getReceivedInvitations(normalizedEmail),
+            })
+          : Promise.resolve([]),
       ]);
-      setPendingInvitationCount(getPendingInvitationCount(friendRequests.length, emailInvitations.length));
-    } catch (error) {
-      console.error('Error loading pending invitations:', error);
-    }
-  }, [currentUserEmail, currentUserId]);
+      return getPendingInvitationCount(friendRequests.length, emailInvitations.length);
+    },
+  });
+  const { data: pendingInvitationCountData, refetch: refetchPendingInvitations } = pendingInvitationQuery;
+  const pendingInvitationCount = pendingInvitationCountData ?? 0;
 
   useFocusEffect(
     useCallback(() => {
-      void loadPendingInvitations();
-    }, [loadPendingInvitations])
+      void refetchPendingInvitations();
+    }, [refetchPendingInvitations])
   );
 
   async function handleToggleNotifications(value: boolean) {

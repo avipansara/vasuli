@@ -5,18 +5,21 @@ import { LoadingState } from '@/components/ui/loading-state';
 import { NavigationHeader } from '@/components/ui/screen-header';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useThemeColors } from '@/hooks/use-theme-colors';
+import { useRealtime } from '@/hooks/use-realtime';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { friendshipService } from '@/services/friendship-service';
 import { invitationService } from '@/services/invitation-service';
+import { queryKeys } from '@/services/query-keys';
 import { userService } from '@/services/user-service';
 import { normalizeEmail } from '@/utils/validation';
 import type { Invitation } from '@/types/database';
 import type { Friendship } from '@/services/friendship-service';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useFocusEffect } from 'expo-router/react-navigation';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, Stack } from 'expo-router';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   Alert,
   FlatList,
@@ -33,61 +36,95 @@ type TabType = 'received' | 'sent';
 
 export default function InvitationsScreen() {
   const { gradients, colors, isDark } = useThemeColors();
-  const { user, refreshUser } = useAuth();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>('received');
-  const [receivedInvitations, setReceivedInvitations] = useState<InvitationWithDetails[]>([]);
-  const [sentInvitations, setSentInvitations] = useState<InvitationWithDetails[]>([]);
-  const [receivedFriendRequests, setReceivedFriendRequests] = useState<FriendRequestWithDetails[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [loadError, setLoadError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [noEmailForInvites, setNoEmailForInvites] = useState(false);
-  const hasLoadedOnce = useRef(false);
+  const queryClient = useQueryClient();
   const userId = user?.id;
   const userName = user?.name;
+  const normalizedEmail = normalizeEmail(user?.email);
+  const receivedInvitationsQueryKey = useMemo(
+    () => queryKeys.invitations.received(userId || '', normalizedEmail || ''),
+    [normalizedEmail, userId]
+  );
+  const sentInvitationsQueryKey = useMemo(
+    () => queryKeys.invitations.sent(userId || ''),
+    [userId]
+  );
+  const friendRequestsQueryKey = useMemo(
+    () => queryKeys.invitations.friendRequests(userId || ''),
+    [userId]
+  );
+
+  const receivedInvitationsQuery = useQuery({
+    queryKey: receivedInvitationsQueryKey,
+    enabled: !!userId && !!normalizedEmail,
+    queryFn: () => invitationService.getReceivedInvitations(normalizedEmail!),
+  });
+  const sentInvitationsQuery = useQuery({
+    queryKey: sentInvitationsQueryKey,
+    enabled: !!userId,
+    queryFn: () => invitationService.getByInviter(userId!),
+  });
+  const friendRequestsQuery = useQuery({
+    queryKey: friendRequestsQueryKey,
+    enabled: !!userId,
+    queryFn: async (): Promise<FriendRequestWithDetails[]> => {
+      const requests = await friendshipService.getPendingRequests(userId!);
+      const requesters = await userService.getByIds(requests.map((request) => request.userId));
+      const requesterNames = new Map(requesters.map((requester) => [requester.id, requester.name]));
+      return requests.map((request) => ({
+        ...request,
+        requesterName: requesterNames.get(request.userId) || 'Someone',
+      }));
+    },
+  });
+
+  const { refetch: refetchReceivedInvitations } = receivedInvitationsQuery;
+  const { refetch: refetchSentInvitations } = sentInvitationsQuery;
+  const { refetch: refetchFriendRequests } = friendRequestsQuery;
+
+  const receivedInvitations = receivedInvitationsQuery.data || [];
+  const sentInvitations = sentInvitationsQuery.data || [];
+  const receivedFriendRequests = friendRequestsQuery.data || [];
+  const loading = [receivedInvitationsQuery, sentInvitationsQuery, friendRequestsQuery]
+    .some((query) => query.isLoading && !query.data);
+  const queryError = [receivedInvitationsQuery, sentInvitationsQuery, friendRequestsQuery]
+    .find((query) => query.error)?.error;
+  const loadError = queryError ? getFetchErrorMessage(queryError) : null;
+  const noEmailForInvites = !normalizedEmail;
 
   const loadInvitations = useCallback(async () => {
     if (!userId) return;
+    await Promise.all([
+      refetchReceivedInvitations(),
+      refetchSentInvitations(),
+      refetchFriendRequests(),
+    ]);
+  }, [refetchFriendRequests, refetchReceivedInvitations, refetchSentInvitations, userId]);
 
-    try {
-      setLoadError(null);
-      // Only show loader on first load
-      if (!hasLoadedOnce.current) {
-        setLoading(true);
-        hasLoadedOnce.current = true;
-      }
+  const invalidateInvitationQueries = useCallback(() => {
+    void queryClient.invalidateQueries({ queryKey: ['invitations'] });
+  }, [queryClient]);
 
-      await refreshUser();
-      const profile = await userService.getById(userId);
-      const email = normalizeEmail(profile?.email);
-
-      const sent = await invitationService.getByInviter(userId);
-      setSentInvitations(sent);
-
-      const requests = await friendshipService.getPendingRequests(userId);
-      const requesters = await userService.getByIds(requests.map((request) => request.userId));
-      const requesterNames = new Map(requesters.map((requester) => [requester.id, requester.name]));
-      setReceivedFriendRequests(requests.map((request) => ({
-        ...request,
-        requesterName: requesterNames.get(request.userId) || 'Someone',
-      })));
-
-      if (!email) {
-        setReceivedInvitations([]);
-        setNoEmailForInvites(true);
-        return;
-      }
-
-      setNoEmailForInvites(false);
-      const received = await invitationService.getReceivedInvitations(email);
-      setReceivedInvitations(received);
-    } catch (error) {
-      console.error('Error loading invitations:', error);
-      setLoadError(getFetchErrorMessage(error));
-    } finally {
-      setLoading(false);
-    }
-  }, [userId, refreshUser]);
+  useRealtime({
+    table: 'invitations',
+    filter: normalizedEmail ? `invitee_email=eq.${normalizedEmail}` : undefined,
+    onChange: invalidateInvitationQueries,
+    enabled: !!normalizedEmail,
+  });
+  useRealtime({
+    table: 'invitations',
+    filter: userId ? `inviter_id=eq.${userId}` : undefined,
+    onChange: invalidateInvitationQueries,
+    enabled: !!userId,
+  });
+  useRealtime({
+    table: 'friendships',
+    filter: userId ? `friend_id=eq.${userId}` : undefined,
+    onChange: invalidateInvitationQueries,
+    enabled: !!userId,
+  });
 
   const handleAcceptFriendRequest = useCallback(async (request: FriendRequestWithDetails) => {
     setActionLoading(request.id);

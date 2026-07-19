@@ -2,7 +2,7 @@ import { supabase } from '@/lib/supabase';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { useEffect, useRef } from 'react';
 
-type TableName = 'expenses' | 'expense_splits' | 'settlements' | 'groups' | 'group_members' | 'friendships' | 'users';
+type TableName = 'expenses' | 'expense_splits' | 'settlements' | 'groups' | 'group_members' | 'friendships' | 'invitations' | 'users';
 type EventType = 'INSERT' | 'UPDATE' | 'DELETE' | '*';
 
 interface UseRealtimeOptions {
