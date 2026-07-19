@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-This is an Expo/React Native mobile application (**Expo SDK 56**, React Native 0.85, React 19.2). Prioritize mobile-first patterns, performance, and cross-platform compatibility.
+This is an Expo/React Native mobile application (**Expo SDK 57**, React Native 0.86, React 19.2.3). Prioritize mobile-first patterns, performance, and cross-platform compatibility.
 
 After changing the `expo` version, run `npx expo install --fix` and `npx expo-doctor`. Manual `eas update` requires `--environment` (e.g. `production`, `preview`); EAS Workflow update jobs in this repo set `environment` explicitly.
 
@@ -42,7 +42,11 @@ These documentation files are specifically formatted for AI agents and should be
 │   ├── ui/                # UI primitives (IconSymbol, Collapsible)
 │   └── ...                # Feature components (themed, haptic, parallax)
 ├── constants/             # App-wide constants (theme, colors)
+├── contexts/              # Authentication and theme providers
 ├── hooks/                 # Custom React hooks (color scheme, theme)
+├── lib/                   # Shared clients and app utilities
+├── services/              # Supabase and domain services
+├── utils/                 # Shared pure helpers
 ├── assets/                # Static assets (images, fonts)
 ├── scripts/               # Utility scripts (reset-project)
 ├── .eas/workflows/        # EAS Workflows (CI/CD automation)
@@ -86,10 +90,13 @@ npm run precommit    # Run the same checks locally without committing
 ### Production
 
 ```bash
-npx eas-cli@latest build --platform ios -s          # Use EAS to build for iOS platform and submit to App Store
-npx eas-cli@latest build --platform android -s      # Use EAS to build for Android platform and submit to Google Play Store
+npx eas-cli@latest build --platform all --profile production # Build Android and iOS production binaries
+npx eas-cli@latest build --platform ios --profile production # Build iOS only
+npx eas-cli@latest build --platform android --profile production # Build Android only
 npm run deploy                                      # Deploy to production (workflow)
 ```
+
+Building does not submit binaries to the stores. Use EAS Submit or the production workflow when store submission is required.
 
 ## Development Guidelines
 
@@ -121,13 +128,8 @@ npm run deploy                                      # Deploy to production (work
 
 ## Debugging & Development Tools
 
-### DevTools Integration
-
-- **React Native DevTools**: Use MCP `open_devtools` command to launch debugging tools
-- **Network Inspection**: Monitor API calls and network requests in DevTools
-- **Element Inspector**: Debug component hierarchy and styles
-- **Performance Profiler**: Identify performance bottlenecks
-- **Logging**: Use `console.log` for debugging (remove before production), `console.warn` for deprecation notices, `console.error` for actual errors, and implement error boundaries for production error handling
+- Use the Expo development server and React Native DevTools available in the local development build for runtime, network, and component inspection.
+- Use `console.warn` for actionable deprecation notices and `console.error` for actual errors. Remove temporary debugging logs before production.
 
 ### Testing & Quality Assurance
 
@@ -135,14 +137,10 @@ npm run deploy                                      # Deploy to production (work
 
 When you **change existing behavior** or **add a feature**, **add or update automated tests** that cover the new logic, and **run `npm test`** before finishing (alongside `npm run precommit` when appropriate). Co-locate tests as `*.test.ts` next to **Edge Functions** (`supabase/functions/`), **shared helpers** (`lib/`, `utils/`), and **services** (`services/`). Prefer pure helpers and mocked Supabase clients; add screen-level or E2E tests only when needed (see [`README.md`](./README.md)).
 
-#### Automated Testing with MCP Tools
+#### UI and device testing
 
-Developers can configure the Expo MCP server with the following doc: https://docs.expo.dev/eas/ai/mcp/
-
-- **Component Testing**: Add `testID` props to components for automation
-- **Visual Testing**: Use MCP `automation_take_screenshot` to verify UI appearance
-- **Interaction Testing**: Use MCP `automation_tap_by_testid` to simulate user interactions
-- **View Verification**: Use MCP `automation_find_view_by_testid` to validate component rendering
+- Add stable `testID` props to important interactive components when screen-level or device automation is needed.
+- Prefer focused unit tests for business logic and add screen-level or E2E coverage only for important user flows.
 
 ## EAS Workflows CI/CD
 
@@ -165,19 +163,8 @@ When working with EAS Workflows, **always refer to**:
 
 ### Expo Go Errors & Development Builds
 
-If there are errors in **Expo Go** or the project is not running, create a **development build**. **Expo Go** is a sandbox environment with a limited set of native modules. To create development builds, run `eas build:dev`. Additionally, after installing new packages or adding config plugins, new development builds are often required.
+If there are errors in **Expo Go** or the project is not running, create a **development build**. **Expo Go** is a sandbox environment with a limited set of native modules. To create development builds, run `npx eas-cli@latest build --profile development --platform all`. After installing native packages or adding config plugins, a new development build is often required.
 
 ## AI Agent Instructions
 
-When working on this project:
-
-1. **Always start by consulting the appropriate documentation**:
-   - For general Expo questions: https://docs.expo.dev/llms-full.txt
-   - For EAS/deployment questions: https://docs.expo.dev/llms-eas.txt
-   - For SDK/API questions: https://docs.expo.dev/llms-sdk.txt
-
-2. **Understand before implementing**: Read the relevant docs section before writing code
-
-3. **Follow existing patterns**: Look at existing components and screens for patterns to follow
-
-4. **Tests for feature work**: When modifying or adding features, create or extend test cases for the affected behavior and run `npm test` to confirm they pass
+When working on this project, consult the relevant official Expo or React Native documentation before changing platform APIs, Expo Router behavior, EAS configuration, or SDK modules. Follow existing components and screens for local patterns. For feature work, add or update focused tests and run `npm test` before finishing.
