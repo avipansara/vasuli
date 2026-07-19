@@ -7,11 +7,14 @@ import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getAppVersionLabel } from '@/lib/app-version';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { friendSummaryService, initDatabase, userService } from '@/services/api';
+import { friendshipService } from '@/services/friendship-service';
+import { invitationService } from '@/services/invitation-service';
 import { calculateFriendSummaryTotals } from '@/services/friend-summary-service';
 import { queryKeys } from '@/services/query-keys';
+import { getPendingInvitationCount } from '@/utils/invitation-count';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -25,15 +28,50 @@ import {
   View,
 } from 'react-native';
 
+type SettingsItem = {
+  icon: string;
+  title: string;
+  onPress?: () => void;
+  hasSwitch?: boolean;
+  value?: boolean;
+  onToggle?: (value: boolean) => void;
+  badge?: number;
+};
+
 export default function ProfileScreen() {
   const { gradients, isDark, colors } = useThemeColors();
   const { toggleTheme } = useTheme();
   const { user: currentUser, signOut, refreshUser } = useAuth();
   const [notificationOverride, setNotificationOverride] = useState<boolean | null>(null);
+  const [pendingInvitationCount, setPendingInvitationCount] = useState(0);
   const currentUserId = currentUser?.id || '';
+  const currentUserEmail = currentUser?.email;
   const queryClient = useQueryClient();
   const friendsHomeQueryKey = useMemo(() => queryKeys.friends.home(currentUserId), [currentUserId]);
   const notificationsEnabled = notificationOverride ?? !!currentUser?.pushToken;
+
+  const loadPendingInvitations = useCallback(async () => {
+    if (!currentUserId) {
+      setPendingInvitationCount(0);
+      return;
+    }
+
+    try {
+      const [friendRequests, emailInvitations] = await Promise.all([
+        friendshipService.getPendingRequests(currentUserId),
+        currentUserEmail ? invitationService.getReceivedInvitations(currentUserEmail) : Promise.resolve([]),
+      ]);
+      setPendingInvitationCount(getPendingInvitationCount(friendRequests.length, emailInvitations.length));
+    } catch (error) {
+      console.error('Error loading pending invitations:', error);
+    }
+  }, [currentUserEmail, currentUserId]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void loadPendingInvitations();
+    }, [loadPendingInvitations])
+  );
 
   async function handleToggleNotifications(value: boolean) {
     if (!currentUser?.id) return;
@@ -158,8 +196,8 @@ export default function ProfileScreen() {
     );
   }
 
-  const settingsItems = [
-    { icon: 'envelope.badge', title: 'Invitations', onPress: () => router.push('/invitations') },
+  const settingsItems: SettingsItem[] = [
+    { icon: 'envelope.badge', title: 'Invitations', badge: pendingInvitationCount, onPress: () => router.push('/invitations') },
     { icon: 'person.badge.plus', title: 'Invite a Friend', onPress: () => router.push('/add-friend') },
     // { icon: 'figure.skateboarding', title: 'Loading Playground', onPress: () => setPlaygroundVisible(true) },
     { icon: 'bell.fill', title: 'Notifications', hasSwitch: true, value: notificationsEnabled, onToggle: handleToggleNotifications },
@@ -252,6 +290,28 @@ export default function ProfileScreen() {
 
         <View style={styles.settingsSection}>
           <ThemedText style={[styles.sectionTitle, { color: colors.textSecondary }]}>Settings</ThemedText>
+          {pendingInvitationCount > 0 && (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`${pendingInvitationCount} pending invitation${pendingInvitationCount === 1 ? '' : 's'}`}
+              style={({ pressed }) => [
+                styles.invitationAlert,
+                { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.14)' : 'rgba(34, 197, 94, 0.1)', borderColor: isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(34, 197, 94, 0.25)' },
+                pressed && styles.pressed,
+              ]}
+              onPress={() => router.push('/invitations')}>
+              <View style={[styles.invitationAlertIcon, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(34, 197, 94, 0.16)' }]}>
+                <IconSymbol name="envelope.badge" size={18} color={isDark ? '#2DD4BF' : colors.tint} />
+              </View>
+              <View style={styles.invitationAlertContent}>
+                <ThemedText style={[styles.invitationAlertTitle, { color: colors.text }]}>
+                  You have {pendingInvitationCount} pending invitation{pendingInvitationCount === 1 ? '' : 's'}
+                </ThemedText>
+                <ThemedText style={[styles.invitationAlertSubtitle, { color: colors.textSecondary }]}>Review and accept or decline now</ThemedText>
+              </View>
+              <IconSymbol name="chevron.right" size={16} color={isDark ? '#2DD4BF' : colors.tint} />
+            </Pressable>
+          )}
           <View style={[styles.settingsList, !isDark && { backgroundColor: colors.card, borderColor: colors.border }]}>
             {settingsItems.map((item, index) => (
               <Pressable
@@ -280,7 +340,14 @@ export default function ProfileScreen() {
                     thumbColor={item.value ? (isDark ? '#2DD4BF' : colors.tint) : (isDark ? '#666' : '#999')}
                   />
                 ) : (
-                  <IconSymbol name="chevron.right" size={16} color={isDark ? 'rgba(255,255,255,0.35)' : colors.textSecondary} />
+                  <View style={styles.settingRight}>
+                    {item.badge ? (
+                      <View style={[styles.invitationBadge, { backgroundColor: isDark ? '#2DD4BF' : colors.tint }]}>
+                        <ThemedText style={[styles.invitationBadgeText, { color: isDark ? '#0A0A0F' : '#FFFFFF' }]}>{item.badge > 9 ? '9+' : item.badge}</ThemedText>
+                      </View>
+                    ) : null}
+                    <IconSymbol name="chevron.right" size={16} color={isDark ? 'rgba(255,255,255,0.35)' : colors.textSecondary} />
+                  </View>
                 )}
               </Pressable>
             ))}
@@ -415,6 +482,15 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginBottom: 20,
   },
+  invitationAlert: {
+    alignItems: 'center', borderRadius: 14, borderWidth: 1, flexDirection: 'row', gap: 12, marginBottom: 12, padding: 13,
+  },
+  invitationAlertIcon: {
+    alignItems: 'center', borderRadius: 10, height: 36, justifyContent: 'center', width: 36,
+  },
+  invitationAlertContent: { flex: 1, gap: 2 },
+  invitationAlertTitle: { fontSize: 14, fontWeight: '700' },
+  invitationAlertSubtitle: { fontSize: 12 },
   sectionTitle: {
     fontSize: 13,
     fontWeight: '700',
@@ -447,6 +523,9 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 0,
   },
+  settingRight: { alignItems: 'center', flexDirection: 'row', gap: 10 },
+  invitationBadge: { alignItems: 'center', borderRadius: 10, minWidth: 20, paddingHorizontal: 6, paddingVertical: 2 },
+  invitationBadgeText: { fontSize: 11, fontWeight: '800' },
   settingIcon: {
     width: 34,
     height: 34,
