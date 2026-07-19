@@ -15,6 +15,7 @@ import { createExpenseNotification, notificationService } from '@/services/notif
 import { queryKeys } from '@/services/query-keys';
 import type { Expense, Group, User } from '@/types/database';
 import { filterFriendsForExpenseSearch } from '@/utils/friend-search';
+import { getGroupExpenseParticipant } from '@/utils/group-expense-participants';
 import { normalizeCurrencyInput } from '@/utils/validation';
 import { useQueryClient } from '@tanstack/react-query';
 import { BlurView } from 'expo-blur';
@@ -71,6 +72,7 @@ export default function AddExpenseScreen() {
   const [selectedGroupId, setSelectedGroupId] = useState(preselectedGroupId || '');
   const [selectedFriendIds, setSelectedFriendIds] = useState<string[]>(preselectedFriendId ? [preselectedFriendId] : []);
   const [groupMembers, setGroupMembers] = useState<string[]>([]);
+  const [groupMemberUsers, setGroupMemberUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
   const [dataLoading, setDataLoading] = useState(true);
   const [dataLoadError, setDataLoadError] = useState<string | null>(null);
@@ -118,13 +120,17 @@ export default function AddExpenseScreen() {
   const loadGroupMembersForSelection = useCallback(async () => {
     if (!selectedGroupId) {
       setGroupMembers([]);
+      setGroupMemberUsers([]);
       setGroupMembersLoadError(null);
       return;
     }
     try {
       setGroupMembersLoadError(null);
       const members = await groupService.getMembers(selectedGroupId);
-      setGroupMembers(members.map((m: { userId: string }) => m.userId));
+      const memberIds = members.map((m: { userId: string }) => m.userId);
+      const memberUsers = await userService.getByIds(memberIds);
+      setGroupMembers(memberIds);
+      setGroupMemberUsers(memberUsers);
     } catch (error) {
       console.error('Error loading group members:', error);
       setGroupMembersLoadError(getFetchErrorMessage(error));
@@ -1194,7 +1200,7 @@ export default function AddExpenseScreen() {
 
                 {/* Group Members */}
                 {splitType === SplitType.GROUP && groupMembers.filter(memberId => memberId !== currentUserId).map(memberId => {
-                  const member = friends.find(f => f.id === memberId);
+                  const member = getGroupExpenseParticipant(memberId, groupMemberUsers, friends);
                   if (!member) return null;
                   return (
                     <View key={memberId} style={[styles.customSplitCard, {

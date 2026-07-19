@@ -12,6 +12,7 @@ import { createExpenseUpdatedNotification, notificationService } from '@/service
 import { queryKeys } from '@/services/query-keys';
 import type { Expense, ExpenseSplit, Group, User } from '@/types/database';
 import { normalizeCurrencyInput } from '@/utils/validation';
+import { getGroupExpenseParticipant } from '@/utils/group-expense-participants';
 import { useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -66,6 +67,7 @@ export default function EditExpenseScreen() {
   const [selectedGroupId, setSelectedGroupId] = useState<string>('');
   const [selectedFriendIds, setSelectedFriendIds] = useState<string[]>([]);
   const [groupMembers, setGroupMembers] = useState<string[]>([]);
+  const [groupMemberUsers, setGroupMemberUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
   const [dataLoading, setDataLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -88,13 +90,17 @@ export default function EditExpenseScreen() {
   const loadGroupMembersForSelection = useCallback(async () => {
     if (!selectedGroupId) {
       setGroupMembers([]);
+      setGroupMemberUsers([]);
       setGroupMembersLoadError(null);
       return;
     }
     try {
       setGroupMembersLoadError(null);
       const members = await groupService.getMembers(selectedGroupId);
-      setGroupMembers(members.map((m: { userId: string }) => m.userId));
+      const memberIds = members.map((m: { userId: string }) => m.userId);
+      const memberUsers = await userService.getByIds(memberIds);
+      setGroupMembers(memberIds);
+      setGroupMemberUsers(memberUsers);
     } catch (error) {
       console.error('Error loading group members:', error);
       setGroupMembersLoadError(getFetchErrorMessage(error));
@@ -767,7 +773,7 @@ export default function EditExpenseScreen() {
 
                 {/* Other participants */}
                 {(splitType === SplitType.FRIENDS ? selectedFriendIds : groupMembers.filter(m => m !== currentUserId)).map(userId => {
-                  const participant = friends.find(f => f.id === userId);
+                  const participant = getGroupExpenseParticipant(userId, groupMemberUsers, friends);
                   if (!participant) return null;
                   return (
                     <View key={userId} style={[styles.customSplitCard, {
