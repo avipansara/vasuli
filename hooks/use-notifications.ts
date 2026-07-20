@@ -11,7 +11,7 @@ const NOTIFICATION_ONBOARDING_PREFIX = 'notifications-onboarding-prompted:';
 
 export function useNotifications(enabled = true) {
   const router = useRouter();
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, refreshUser } = useAuth();
   const notificationListener = useRef<Notifications.EventSubscription>(undefined);
   const responseListener = useRef<Notifications.EventSubscription>(undefined);
 
@@ -31,8 +31,11 @@ export function useNotifications(enabled = true) {
         if (!cancelled && token && token !== user.pushToken) {
           await userService.updatePushToken(user.id, token);
         }
-        if (preference === null) {
+        if (token && preference !== true) {
           await notificationService.setNotificationPreference(user.id, true);
+        }
+        if (!cancelled && token && token !== user.pushToken) {
+          await refreshUser();
         }
         return;
       }
@@ -57,6 +60,7 @@ export function useNotifications(enabled = true) {
               if (!cancelled && token) {
                 await notificationService.setNotificationPreference(user.id, true);
                 await userService.updatePushToken(user.id, token);
+                await refreshUser();
               }
             },
           },
@@ -71,7 +75,7 @@ export function useNotifications(enabled = true) {
     return () => {
       cancelled = true;
     };
-  }, [enabled, isLoading, user?.id, user?.pushToken]);
+  }, [enabled, isLoading, refreshUser, user?.id, user?.pushToken]);
 
   const handleNotificationNavigation = useCallback((data: any) => {
     switch (data.type) {

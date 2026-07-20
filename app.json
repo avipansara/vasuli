@@ -2,7 +2,7 @@
   "expo": {
     "name": "Vasuli",
     "slug": "vasuli",
-    "version": "1.0.14",
+    "version": "1.0.15",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "vasuli",
@@ -27,6 +27,7 @@
       },
       "predictiveBackGestureEnabled": false,
       "package": "com.avipansara.vasuli",
+      "googleServicesFile": "./google-services.json",
       "intentFilters": [
         {
           "action": "VIEW",

@@ -3,12 +3,14 @@ import { AsyncErrorState } from '@/components/ui/async-error-state';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useTheme } from '@/contexts/theme-context';
+import { useRealtime } from '@/hooks/use-realtime';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getAppVersionLabel } from '@/lib/app-version';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { friendSummaryService, initDatabase, userService } from '@/services/api';
 import { friendshipService } from '@/services/friendship-service';
 import { invitationService } from '@/services/invitation-service';
+import { notificationService } from '@/services/notification-service';
 import { calculateFriendSummaryTotals } from '@/services/friend-summary-service';
 import { queryKeys } from '@/services/query-keys';
 import { getPendingInvitationCount } from '@/utils/invitation-count';
@@ -82,22 +84,62 @@ export default function ProfileScreen() {
     }, [refetchPendingInvitations])
   );
 
+  const invalidateInvitationCount = useCallback(() => {
+    void queryClient.invalidateQueries({ queryKey: ['invitations'] });
+  }, [queryClient]);
+
+  useRealtime({
+    table: 'invitations',
+    filter: normalizedEmail ? `invitee_email=eq.${normalizedEmail}` : undefined,
+    onChange: invalidateInvitationCount,
+    enabled: !!normalizedEmail,
+  });
+  useRealtime({
+    table: 'friendships',
+    filter: currentUserId ? `friend_id=eq.${currentUserId}` : undefined,
+    onChange: invalidateInvitationCount,
+    enabled: !!currentUserId,
+  });
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadNotificationPreference() {
+      if (!currentUser?.id) {
+        setNotificationOverride(null);
+        return;
+      }
+
+      const preference = await notificationService.getNotificationPreference(currentUser.id);
+      if (!cancelled && preference !== null) {
+        setNotificationOverride(preference);
+      }
+    }
+
+    loadNotificationPreference().catch(error => {
+      console.error('Error loading notification preference:', error);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentUser?.id]);
+
   async function handleToggleNotifications(value: boolean) {
     if (!currentUser?.id) return;
     setNotificationOverride(value);
     try {
       if (value) {
-        const { notificationService } = await import('@/services/notification-service');
-        await notificationService.setNotificationPreference(currentUser.id, true);
         const token = await notificationService.registerForPushNotificationsAsync();
         if (token) {
           await userService.updatePushToken(currentUser.id, token);
+          await notificationService.setNotificationPreference(currentUser.id, true);
           await refreshUser();
         } else {
           setNotificationOverride(false);
+          await notificationService.setNotificationPreference(currentUser.id, false);
         }
       } else {
-        const { notificationService } = await import('@/services/notification-service');
         await notificationService.setNotificationPreference(currentUser.id, false);
         await userService.updatePushToken(currentUser.id, null);
         await refreshUser();
