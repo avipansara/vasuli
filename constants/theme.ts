@@ -50,33 +50,21 @@ export const BTN_CLOSE_LIGHT = 'rgba(0, 0, 0, 0.05)';
 export const BTN_DISABLED_DARK = ['#1A1A24', '#12121A'] as const;
 export const BTN_DISABLED_LIGHT = ['#E5E5E5', '#D4D4D4'] as const;
 
-// Legacy aliases for backward compatibility
-const accentTeal = ACCENT_TEAL;
-const accentGreen = ACCENT_GREEN;
-const accentPurple = ACCENT_PURPLE;
-const backgroundDark = BG_DARK;
-const backgroundCardDark = BG_CARD_DARK;
-const backgroundLight = BG_LIGHT;
-const backgroundCardLight = BG_CARD_LIGHT;
-const surfaceGlassDark = BG_GLASS_DARK;
-const surfaceBorderDark = BORDER_DARK;
-const surfaceBorderLight = BORDER_LIGHT;
-
 export const Colors = {
   light: {
     text: '#1A1A1A',
     textSecondary: '#6B7280',
-    background: backgroundLight,
-    tint: accentGreen,
+    background: BG_LIGHT,
+    tint: ACCENT_GREEN,
     icon: '#6B7280',
     tabIconDefault: '#9CA3AF',
-    tabIconSelected: accentGreen,
+    tabIconSelected: ACCENT_GREEN,
     // Extended palette
-    accent: accentGreen,
+    accent: ACCENT_GREEN,
     accentSecondary: '#FACC15', // Yellow accent like reference
-    card: backgroundCardLight,
+    card: BG_CARD_LIGHT,
     cardGlass: '#FFFFFF',
-    border: surfaceBorderLight,
+    border: BORDER_LIGHT,
     success: '#22C55E',
     error: '#EF4444',
     // Additional light mode colors
@@ -88,17 +76,17 @@ export const Colors = {
   dark: {
     text: '#f4f4f5',
     textSecondary: '#9CA3AF',
-    background: backgroundDark,
-    tint: accentTeal,
+    background: BG_DARK,
+    tint: ACCENT_TEAL,
     icon: '#6B7280',
     tabIconDefault: '#4B5563',
-    tabIconSelected: accentTeal,
+    tabIconSelected: ACCENT_TEAL,
     // Extended palette
-    accent: accentTeal,
-    accentSecondary: accentPurple,
-    card: backgroundCardDark,
-    cardGlass: surfaceGlassDark,
-    border: surfaceBorderDark,
+    accent: ACCENT_TEAL,
+    accentSecondary: ACCENT_PURPLE,
+    card: BG_CARD_DARK,
+    cardGlass: BG_GLASS_DARK,
+    border: BORDER_DARK,
     success: '#10B981',
     error: '#EF4444',
     // Additional dark mode colors
@@ -268,19 +256,7 @@ export const Gradients = {
     glassOverlay: ['#FFFFFF', '#FFFFFF'] as [string, string],
     cardGlass: ['#FFFFFF', '#FFFFFF'] as [string, string],
   },
-  // Keep these for backward compatibility - will be deprecated
-  screenBackground: ['#0D1B1E', '#0A1214', '#080E10'] as [string, string, string],
-  cardPrimary: ['#1A2428', '#141C1E'] as [string, string],
-  cardAccent: ['rgba(45, 212, 191, 0.15)', 'rgba(139, 92, 246, 0.1)'] as [string, string],
-  hero: ['#0D1B1E', '#0A1214'] as [string, string],
-  buttonPrimary: ['#2DD4BF', '#14B8A6'] as [string, string],
-  purpleAccent: ['#A78BFA', '#8B5CF6'] as [string, string],
-  glassOverlay: ['rgba(26, 26, 36, 0.9)', 'rgba(18, 18, 26, 0.95)'] as [string, string],
-  cardGlass: ['rgba(20, 35, 38, 0.9)', 'rgba(15, 25, 28, 0.95)'] as [string, string],
 };
-
-// Helper function to get gradients based on color scheme
-export const getGradients = (colorScheme: 'light' | 'dark') => Gradients[colorScheme];
 
 // Glow/shadow effects for ambient UI
 export const Glows = {
