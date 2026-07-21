@@ -48,7 +48,6 @@ These documentation files are specifically formatted for AI agents and should be
 ├── services/              # Supabase and domain services
 ├── utils/                 # Shared pure helpers
 ├── assets/                # Static assets (images, fonts)
-├── scripts/               # Utility scripts (reset-project)
 ├── .eas/workflows/        # EAS Workflows (CI/CD automation)
 ├── app.json               # Expo configuration
 ├── eas.json               # EAS Build/Submit configuration
@@ -66,7 +65,6 @@ npx expo install <package>      # Install packages with compatible versions
 npx expo install --check        # Check which installed packages need to be updated
 npx expo install --fix          # Automatically update any invalid package versions
 npm run development-builds      # Create development builds (workflow)
-npm run reset-project           # Reset to blank template
 ```
 
 ### Building & Testing
