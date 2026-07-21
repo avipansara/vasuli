@@ -18,6 +18,7 @@
     "deploy": "npx eas-cli@latest workflow:run deploy-to-production.yml",
     "supabase:deploy:send-invitation": "supabase functions deploy send-invitation --no-verify-jwt",
     "supabase:deploy:send-push-notification": "supabase functions deploy send-push-notification --no-verify-jwt",
+    "supabase:deploy:delete-account": "supabase functions deploy delete-account",
     "prepare": "husky"
   },
   "dependencies": {

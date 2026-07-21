@@ -47,6 +47,7 @@ export default function ProfileScreen() {
   const { toggleTheme } = useTheme();
   const { user: currentUser, signOut, refreshUser } = useAuth();
   const [notificationOverride, setNotificationOverride] = useState<boolean | null>(null);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const currentUserId = currentUser?.id || '';
   const queryClient = useQueryClient();
   const normalizedEmail = normalizeEmail(currentUser?.email) || '';
@@ -217,7 +218,7 @@ export default function ProfileScreen() {
   async function handleDeleteAccount() {
     Alert.alert(
       'Delete Account',
-      'Are you sure you want to delete your account? This will permanently remove all your data including expenses, groups, and friendships. This action cannot be undone.',
+      'This permanently deletes your account, removes your friendships and invitations, and removes you from groups. Shared financial records may remain with your identity anonymized as "Deleted User."',
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -227,7 +228,7 @@ export default function ProfileScreen() {
             // Second confirmation for destructive action
             Alert.alert(
               'Confirm Deletion',
-              'Please confirm that you want to permanently delete your account and all associated data.',
+              'This cannot be undone. Continue deleting your account?',
               [
                 { text: 'Cancel', style: 'cancel' },
                 {
@@ -235,13 +236,18 @@ export default function ProfileScreen() {
                   style: 'destructive',
                   onPress: async () => {
                     try {
+                      setIsDeletingAccount(true);
+                      await userService.deleteAccount();
                       if (currentUser?.id) {
-                        await userService.delete(currentUser.id);
+                        await notificationService.clearNotificationPreference(currentUser.id);
                       }
+                      queryClient.clear();
                       await signOut();
                     } catch (error) {
                       console.error('Error deleting account:', error);
                       Alert.alert('Error', 'Failed to delete account. Please try again or contact support.');
+                    } finally {
+                      setIsDeletingAccount(false);
                     }
                   },
                 },
@@ -417,8 +423,11 @@ export default function ProfileScreen() {
             <ThemedText style={styles.logoutText}>Log out</ThemedText>
           </Pressable>
 
-          <Pressable style={({ pressed }) => [styles.deleteButton, pressed && styles.pressed]} onPress={handleDeleteAccount}>
-            <ThemedText style={styles.deleteText}>Delete Account</ThemedText>
+          <Pressable
+            disabled={isDeletingAccount}
+            style={({ pressed }) => [styles.deleteButton, pressed && styles.pressed, isDeletingAccount && styles.disabledAction]}
+            onPress={handleDeleteAccount}>
+            <ThemedText style={styles.deleteText}>{isDeletingAccount ? 'Deleting Account...' : 'Delete Account'}</ThemedText>
           </Pressable>
         </View>
 
@@ -622,6 +631,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 12,
+  },
+  disabledAction: {
+    opacity: 0.5,
   },
   deleteText: {
     fontSize: 14,

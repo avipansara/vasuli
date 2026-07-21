@@ -14,3 +14,26 @@ declare module "https://deno.land/std@0.168.0/http/server.ts" {
     handler: (request: Request) => Response | Promise<Response>
   ): void;
 }
+
+declare module "https://esm.sh/@supabase/supabase-js@2" {
+  interface SupabaseAuth {
+    getUser(): Promise<{
+      data: { user: { id: string; email?: string | null } | null };
+      error: Error | null;
+    }>;
+    admin: {
+      deleteUser(id: string): Promise<{ error: Error | null }>;
+    };
+  }
+
+  interface SupabaseClient {
+    auth: SupabaseAuth;
+    rpc(name: string, args: Record<string, unknown>): Promise<{ error: Error | null }>;
+  }
+
+  export function createClient(
+    url: string,
+    key: string,
+    options?: Record<string, unknown>,
+  ): SupabaseClient;
+}

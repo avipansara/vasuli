@@ -71,6 +71,10 @@ export const notificationService = {
     await AsyncStorage.setItem(notificationPreferenceKey(userId), String(enabled));
   },
 
+  async clearNotificationPreference(userId: string): Promise<void> {
+    await AsyncStorage.removeItem(notificationPreferenceKey(userId));
+  },
+
   async registerForPushNotificationsAsync(): Promise<string | null> {
     let token: string | null = null;
 
