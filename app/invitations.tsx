@@ -15,7 +15,6 @@ import { normalizeEmail } from '@/utils/validation';
 import type { Invitation } from '@/types/database';
 import type { Friendship } from '@/services/friendship-service';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useFocusEffect } from 'expo-router/react-navigation';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, Stack } from 'expo-router';
@@ -152,12 +151,6 @@ export default function InvitationsScreen() {
       setActionLoading(null);
     }
   }, [loadInvitations]);
-
-  useFocusEffect(
-    useCallback(() => {
-      loadInvitations();
-    }, [loadInvitations])
-  );
 
   const handleAccept = useCallback(async (invitation: InvitationWithDetails) => {
     setActionLoading(invitation.id);

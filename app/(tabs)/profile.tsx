@@ -3,6 +3,7 @@ import { AsyncErrorState } from '@/components/ui/async-error-state';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useTheme } from '@/contexts/theme-context';
+import { useRefetchOnFocus } from '@/hooks/use-refetch-on-focus';
 import { useRealtime } from '@/hooks/use-realtime';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getAppVersionLabel } from '@/lib/app-version';
@@ -17,7 +18,7 @@ import { getPendingInvitationCount } from '@/utils/invitation-count';
 import { normalizeEmail } from '@/utils/validation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router, useFocusEffect } from 'expo-router';
+import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -75,14 +76,20 @@ export default function ProfileScreen() {
       return getPendingInvitationCount(friendRequests.length, emailInvitations.length);
     },
   });
-  const { data: pendingInvitationCountData, refetch: refetchPendingInvitations } = pendingInvitationQuery;
+  const {
+    data: pendingInvitationCountData,
+    isFetching: isFetchingPendingInvitations,
+    isStale: isPendingInvitationsStale,
+    refetch: refetchPendingInvitations,
+  } = pendingInvitationQuery;
   const pendingInvitationCount = pendingInvitationCountData ?? 0;
 
-  useFocusEffect(
-    useCallback(() => {
-      void refetchPendingInvitations();
-    }, [refetchPendingInvitations])
-  );
+  useRefetchOnFocus({
+    enabled: !!currentUserId,
+    isFetching: isFetchingPendingInvitations,
+    isStale: isPendingInvitationsStale,
+    refetch: refetchPendingInvitations,
+  });
 
   const invalidateInvitationCount = useCallback(() => {
     void queryClient.invalidateQueries({ queryKey: ['invitations'] });

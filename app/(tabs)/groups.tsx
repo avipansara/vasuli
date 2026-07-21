@@ -5,13 +5,13 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { LoadingState } from '@/components/ui/loading-state';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useDebouncedQueryInvalidation } from '@/hooks/use-debounced-query-invalidation';
+import { useRefetchOnFocus } from '@/hooks/use-refetch-on-focus';
 import { useRealtime } from '@/hooks/use-realtime';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { calculateGroupBalances, groupService, userService } from '@/services/api';
 import { queryKeys } from '@/services/query-keys';
 import type { GroupWithMembers } from '@/types/database';
-import { useFocusEffect } from 'expo-router/react-navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
@@ -36,7 +36,9 @@ export default function GroupsScreen() {
   const {
     data: groups = [],
     error,
+    isFetching,
     isLoading,
+    isStale,
     refetch,
   } = useQuery({
     queryKey: groupsQueryKey,
@@ -58,11 +60,12 @@ export default function GroupsScreen() {
     await refetch();
   }, [refetch]);
 
-  useFocusEffect(
-    useCallback(() => {
-      loadGroups();
-    }, [loadGroups])
-  );
+  useRefetchOnFocus({
+    enabled: !!currentUserId,
+    isFetching,
+    isStale,
+    refetch,
+  });
 
   useEffect(() => {
     if (!loading) {

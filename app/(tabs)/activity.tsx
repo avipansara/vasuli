@@ -4,13 +4,13 @@ import { AsyncErrorState } from '@/components/ui/async-error-state';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { LoadingState } from '@/components/ui/loading-state';
 import { useAuth } from '@/contexts/auth-context-otp';
+import { useRefetchOnFocus } from '@/hooks/use-refetch-on-focus';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { getDeletedExpenseTargetIds } from '@/lib/activity-link';
 import { activityService } from '@/services/activity-service';
 import { queryKeys } from '@/services/query-keys';
 import type { Activity } from '@/types/database';
-import { useFocusEffect } from 'expo-router/react-navigation';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -47,8 +47,10 @@ export default function ActivityScreen() {
     fetchNextPage,
     hasNextPage,
     isError,
+    isFetching,
     isFetchingNextPage,
     isLoading,
+    isStale,
     refetch,
   } = useInfiniteQuery({
     queryKey: activityQueryKey,
@@ -84,11 +86,12 @@ export default function ActivityScreen() {
     }
   }, [fadeAnim, loading, isFetchingNextPage, slideAnim]);
 
-  useFocusEffect(
-    useCallback(() => {
-      refetch();
-    }, [refetch])
-  );
+  useRefetchOnFocus({
+    enabled: !!currentUserId,
+    isFetching,
+    isStale,
+    refetch,
+  });
 
   const handleLoadMore = () => {
     if (!loading && !isFetchingNextPage && hasNextPage) {
