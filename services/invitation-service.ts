@@ -5,9 +5,6 @@ import type { Invitation, User } from '@/types/database';
 import { normalizeEmail } from '@/utils/validation';
 import type { Friendship } from '@/services/friendship-service';
 
-// Set to true for development/testing without real Supabase
-const USE_MOCK_DATA = false;
-
 export type FriendRequestOrInvitation =
   | { type: 'friend_request'; friendship: Friendship; friend: User }
   | { type: 'invitation'; invitation: Invitation };
@@ -86,21 +83,6 @@ export const invitationService = {
     const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(); // 30 days
     const inviteeEmail = normalizeEmail(invitation.inviteeEmail) ?? '';
 
-    // Mock mode - return a mock invitation
-    if (USE_MOCK_DATA) {
-      console.log(`[MOCK] Invitation created for ${inviteeEmail}`);
-      return {
-        id: `mock-invitation-${Date.now()}`,
-        inviterId: invitation.inviterId,
-        inviteeEmail,
-        inviteePhone: invitation.inviteePhone,
-        inviteeName: invitation.inviteeName,
-        status: 'pending',
-        createdAt: Date.now(),
-        expiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000,
-      };
-    }
-
     const { data, error } = await supabase
       .from('invitations')
       .insert({
@@ -158,10 +140,6 @@ export const invitationService = {
   },
 
   async getByInviter(inviterId: string): Promise<Invitation[]> {
-    if (USE_MOCK_DATA) {
-      return [];
-    }
-
     const { data, error } = await supabase
       .from('invitations')
       .select('*')
@@ -267,8 +245,6 @@ export const invitationService = {
     inviterId: string;
     inviteeEmail?: string | null;
   }): Promise<void> {
-    if (USE_MOCK_DATA) return;
-
     const email = normalizeEmail(params.inviteeEmail ?? undefined);
     if (!email) return;
 
@@ -306,10 +282,6 @@ export const invitationService = {
 
   /** Pending invites for the signed-in user's email (email invites only). */
   async getReceivedInvitations(email: string): Promise<(Invitation & { inviterName?: string })[]> {
-    if (USE_MOCK_DATA) {
-      return [];
-    }
-
     const normalized = normalizeEmail(email);
     if (!normalized) {
       return [];
@@ -357,8 +329,6 @@ export const invitationService = {
    * Deletes (inviter_id=userId, invitee_email=friend's email) and the reverse.
    */
   async deleteInvitationsForRemovedFriendship(userId: string, friendId: string): Promise<void> {
-    if (USE_MOCK_DATA) return;
-
     const [user, friend] = await Promise.all([
       userService.getById(userId),
       userService.getById(friendId),
