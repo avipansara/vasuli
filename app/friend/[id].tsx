@@ -9,7 +9,7 @@ import { useRealtime } from '@/hooks/use-realtime';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { activityService } from '@/services/activity-service';
-import { expenseService, friendDetailService, initDatabase, settlementService } from '@/services/api';
+import { expenseService, friendDetailService, settlementService } from '@/services/api';
 import type { FriendActivityItem, FriendDetailData } from '@/services/friend-detail-service';
 import { applySettlementsToGroupDetailData, type GroupDetailData } from '@/services/group-detail-service';
 import { friendshipService } from '@/services/friendship-service';
@@ -101,7 +101,6 @@ export default function FriendDetailScreen() {
     queryKey: friendDetailQueryKey,
     enabled: !!currentUserId && !!id,
     queryFn: async () => {
-      await initDatabase();
       return friendDetailService.getDetail(currentUserId, id);
     },
   });

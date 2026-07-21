@@ -8,7 +8,6 @@ import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { getDeletedExpenseTargetIds } from '@/lib/activity-link';
 import { activityService } from '@/services/activity-service';
-import { initDatabase } from '@/services/api';
 import { queryKeys } from '@/services/query-keys';
 import type { Activity } from '@/types/database';
 import { useFocusEffect } from 'expo-router/react-navigation';
@@ -56,7 +55,6 @@ export default function ActivityScreen() {
     enabled: !!currentUserId,
     initialPageParam: 0,
     queryFn: async ({ pageParam }) => {
-      await initDatabase();
       return activityService.getUserActivities(currentUserId, PAGE_SIZE, pageParam);
     },
     getNextPageParam: (lastPage, allPages) => {

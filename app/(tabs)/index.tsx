@@ -8,7 +8,7 @@ import { useDebouncedQueryInvalidation } from '@/hooks/use-debounced-query-inval
 import { useRealtime } from '@/hooks/use-realtime';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
-import { friendSummaryService, initDatabase } from '@/services/api';
+import { friendSummaryService } from '@/services/api';
 import { friendshipService } from '@/services/friendship-service';
 import { queryKeys } from '@/services/query-keys';
 import type { Expense, User } from '@/types/database';
@@ -40,7 +40,6 @@ export default function FriendsScreen() {
     queryKey: friendsQueryKey,
     enabled: !!currentUserId,
     queryFn: async () => {
-      await initDatabase();
       return friendSummaryService.getHomeSummaries(currentUserId);
     },
   });

@@ -8,7 +8,7 @@ import { useDebouncedQueryInvalidation } from '@/hooks/use-debounced-query-inval
 import { useRealtime } from '@/hooks/use-realtime';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
-import { calculateGroupBalances, groupService, initDatabase, userService } from '@/services/api';
+import { calculateGroupBalances, groupService, userService } from '@/services/api';
 import { queryKeys } from '@/services/query-keys';
 import type { GroupWithMembers } from '@/types/database';
 import { useFocusEffect } from 'expo-router/react-navigation';
@@ -42,7 +42,6 @@ export default function GroupsScreen() {
     queryKey: groupsQueryKey,
     enabled: !!currentUserId,
     queryFn: async () => {
-      await initDatabase();
       const allGroups = await groupService.getUserGroups(currentUserId);
       const balancesByGroupId = await calculateGroupBalances(allGroups.map(group => group.id));
 

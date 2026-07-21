@@ -7,7 +7,7 @@ import { useRealtime } from '@/hooks/use-realtime';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getAppVersionLabel } from '@/lib/app-version';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
-import { friendSummaryService, initDatabase, userService } from '@/services/api';
+import { friendSummaryService, userService } from '@/services/api';
 import { friendshipService } from '@/services/friendship-service';
 import { invitationService } from '@/services/invitation-service';
 import { notificationService } from '@/services/notification-service';
@@ -163,7 +163,6 @@ export default function ProfileScreen() {
     initialData: cachedFriends,
     refetchOnMount: false,
     queryFn: async () => {
-      await initDatabase();
       return friendSummaryService.getHomeSummaries(currentUserId);
     },
   });

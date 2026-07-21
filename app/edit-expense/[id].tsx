@@ -7,7 +7,7 @@ import { useAuth } from '@/contexts/auth-context-otp';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { activityService } from '@/services/activity-service';
-import { expenseService, groupService, initDatabase, userService } from '@/services/api';
+import { expenseService, groupService, userService } from '@/services/api';
 import { createExpenseUpdatedNotification, notificationService } from '@/services/notification-service';
 import { queryKeys } from '@/services/query-keys';
 import type { Expense, ExpenseSplit, Group, User } from '@/types/database';
@@ -116,8 +116,6 @@ export default function EditExpenseScreen() {
     setLoadError(null);
     setDataLoading(true);
     try {
-      await initDatabase();
-
       const expense = await expenseService.getById(id);
       if (!expense) {
         setDataLoading(false);
@@ -301,8 +299,6 @@ export default function EditExpenseScreen() {
     let previousHomeFriends: HomeFriend[] | undefined;
     let didOptimisticallyUpdate = false;
     try {
-      await initDatabase();
-
       const newAmount = parseFloat(amount);
       const trimmedDescription = description.trim();
       const updatedExpense: Expense = {

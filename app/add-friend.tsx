@@ -5,7 +5,6 @@ import { NavigationHeader } from '@/components/ui/screen-header';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { buildInvitePath } from '@/lib/invite-deeplink';
-import { initDatabase } from '@/services/api';
 import { invitationService } from '@/services/invitation-service';
 import { userService } from '@/services/user-service';
 import type { User } from '@/types/database';
@@ -116,7 +115,6 @@ export default function AddFriendScreen() {
 
     setLoading(true);
     try {
-      await initDatabase();
       const result = await invitationService.sendRequestOrInvitation({
         inviterId: currentUserId,
         inviteeEmail: normalized,

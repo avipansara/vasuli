@@ -7,7 +7,7 @@ import { useAuth } from '@/contexts/auth-context-otp';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { activityService } from '@/services/activity-service';
-import { expenseService, groupService, initDatabase, userService } from '@/services/api';
+import { expenseService, groupService, userService } from '@/services/api';
 import type { FriendDetailData } from '@/services/friend-detail-service';
 import { calculateGroupBalances } from '@/services/group-balance';
 import type { GroupDetailData } from '@/services/group-detail-service';
@@ -102,7 +102,6 @@ export default function AddExpenseScreen() {
     if (!currentUserId) return;
     try {
       setDataLoadError(null);
-      await initDatabase();
       const [allGroups, userFriends] = await Promise.all([
         groupService.getUserGroups(currentUserId),
         userService.getUserFriends(currentUserId),
