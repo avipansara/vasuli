@@ -15,11 +15,11 @@ import { calculateGroupBalances } from '@/services/group-balance';
 import type { GroupDetailData } from '@/services/group-detail-service';
 import { createExpenseNotification, notificationService } from '@/services/notification-service';
 import { queryKeys } from '@/services/query-keys';
-import type { Expense, Group, User } from '@/types/database';
+import type { Expense, User } from '@/types/database';
 import { filterFriendsForExpenseSearch } from '@/utils/friend-search';
 import { getGroupExpenseParticipant } from '@/utils/group-expense-participants';
 import { normalizeCurrencyInput } from '@/utils/validation';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -68,17 +68,37 @@ export default function AddExpenseScreen() {
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
   const [splitType, setSplitType] = useState<SplitType>(preselectedFriendId ? SplitType.FRIENDS : (preselectedGroupId ? SplitType.GROUP : SplitType.GROUP));
-  const [groups, setGroups] = useState<Group[]>([]);
-  const [friends, setFriends] = useState<User[]>([]);
-  const [friendSearchQuery, setFriendSearchQuery] = useState('');
   const [selectedGroupId, setSelectedGroupId] = useState(preselectedGroupId || '');
+  const groupsQuery = useQuery({
+    queryKey: queryKeys.expenses.formGroups(currentUserId),
+    enabled: !!currentUserId,
+    queryFn: () => groupService.getUserGroups(currentUserId),
+  });
+  const friendsQuery = useQuery({
+    queryKey: queryKeys.expenses.formFriends(currentUserId),
+    enabled: !!currentUserId,
+    queryFn: () => userService.getUserFriends(currentUserId),
+  });
+  const groupMembersQuery = useQuery({
+    queryKey: queryKeys.expenses.formMembers(selectedGroupId),
+    enabled: !!selectedGroupId,
+    queryFn: async () => {
+      const members = await groupService.getMembers(selectedGroupId);
+      const memberIds = members.map(member => member.userId);
+      const memberUsers = await userService.getByIds(memberIds);
+      return { memberIds, memberUsers };
+    },
+  });
+  const groups = groupsQuery.data ?? [];
+  const friends = useMemo(() => friendsQuery.data ?? [], [friendsQuery.data]);
+  const [friendSearchQuery, setFriendSearchQuery] = useState('');
   const [selectedFriendIds, setSelectedFriendIds] = useState<string[]>(preselectedFriendId ? [preselectedFriendId] : []);
-  const [groupMembers, setGroupMembers] = useState<string[]>([]);
-  const [groupMemberUsers, setGroupMemberUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
-  const [dataLoading, setDataLoading] = useState(true);
-  const [dataLoadError, setDataLoadError] = useState<string | null>(null);
-  const [groupMembersLoadError, setGroupMembersLoadError] = useState<string | null>(null);
+  const dataLoading = groupsQuery.isLoading || friendsQuery.isLoading;
+  const dataLoadError = groupsQuery.error || friendsQuery.error;
+  const groupMembers = groupMembersQuery.data?.memberIds ?? [];
+  const groupMemberUsers = groupMembersQuery.data?.memberUsers ?? [];
+  const groupMembersLoadError = groupMembersQuery.error;
   const [splitMethod, setSplitMethod] = useState<SplitMethod>(SplitMethod.EQUAL);
   const [customAmounts, setCustomAmounts] = useState<Record<string, string>>({});
   const [customPercentages, setCustomPercentages] = useState<Record<string, string>>({});
@@ -100,52 +120,8 @@ export default function AddExpenseScreen() {
     return filterFriendsForExpenseSearch(friends, friendSearchQuery);
   }, [friends, friendSearchQuery, preselectedFriendId]);
 
-  const loadData = useCallback(async () => {
-    if (!currentUserId) return;
-    try {
-      setDataLoadError(null);
-      const [allGroups, userFriends] = await Promise.all([
-        groupService.getUserGroups(currentUserId),
-        userService.getUserFriends(currentUserId),
-      ]);
-      setGroups(allGroups);
-      setFriends(userFriends);
-    } catch (error) {
-      console.error('Error loading data:', error);
-      setDataLoadError(getFetchErrorMessage(error));
-    } finally {
-      setDataLoading(false);
-    }
-  }, [currentUserId]);
-
-  const loadGroupMembersForSelection = useCallback(async () => {
-    if (!selectedGroupId) {
-      setGroupMembers([]);
-      setGroupMemberUsers([]);
-      setGroupMembersLoadError(null);
-      return;
-    }
-    try {
-      setGroupMembersLoadError(null);
-      const members = await groupService.getMembers(selectedGroupId);
-      const memberIds = members.map((m: { userId: string }) => m.userId);
-      const memberUsers = await userService.getByIds(memberIds);
-      setGroupMembers(memberIds);
-      setGroupMemberUsers(memberUsers);
-    } catch (error) {
-      console.error('Error loading group members:', error);
-      setGroupMembersLoadError(getFetchErrorMessage(error));
-    }
-  }, [selectedGroupId]);
-
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- Fetching members here intentionally syncs selected group state into the form.
-    void loadGroupMembersForSelection();
-  }, [loadGroupMembersForSelection]);
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- Initial async screen load hydrates local editable form state.
-    loadData();
+    if (dataLoading) return;
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
@@ -158,7 +134,15 @@ export default function AddExpenseScreen() {
         useNativeDriver: true,
       }),
     ]).start();
-  }, [fadeAnim, loadData, slideAnim]);
+  }, [dataLoading, fadeAnim, slideAnim]);
+
+  const loadData = useCallback(async () => {
+    await Promise.all([groupsQuery.refetch(), friendsQuery.refetch()]);
+  }, [friendsQuery, groupsQuery]);
+
+  const loadGroupMembersForSelection = useCallback(async () => {
+    await groupMembersQuery.refetch();
+  }, [groupMembersQuery]);
 
   const toggleFriend = (friendId: string) => {
     if (selectedFriendIds.includes(friendId)) {
@@ -632,7 +616,7 @@ export default function AddExpenseScreen() {
           onBack={() => router.back()}
         />
         <AsyncErrorState
-          message={dataLoadError}
+          message={getFetchErrorMessage(dataLoadError)}
           onRetry={() => void loadData()}
           title="Couldn't load"
         />
@@ -867,11 +851,11 @@ export default function AddExpenseScreen() {
               {splitType === SplitType.GROUP ? 'Select a group' : 'Select friends'}
             </ThemedText>
 
-            {splitType === SplitType.GROUP && selectedGroupId && groupMembersLoadError && !dataLoading && (
+            {splitType === SplitType.GROUP && selectedGroupId && groupMembersLoadError && !groupMembersQuery.isLoading && (
               <AsyncErrorState
                 variant="compact"
                 title="Couldn't load members"
-                message={groupMembersLoadError}
+                message={getFetchErrorMessage(groupMembersLoadError)}
                 onRetry={() => void loadGroupMembersForSelection()}
               />
             )}

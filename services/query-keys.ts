@@ -9,6 +9,11 @@ export const queryKeys = {
   },
   expenses: {
     list: (userId: string) => ['expenses', 'list', userId] as const,
+    detail: (expenseId: string) => ['expenses', 'detail', expenseId] as const,
+    formGroups: (userId: string) => ['expenses', 'form-groups', userId] as const,
+    formFriends: (userId: string) => ['expenses', 'form-friends', userId] as const,
+    formMembers: (groupId: string) => ['expenses', 'form-members', groupId] as const,
+    editForm: (userId: string, expenseId: string) => ['expenses', 'edit-form', userId, expenseId] as const,
   },
   activity: {
     list: (userId: string) => ['activity', 'list', userId] as const,
