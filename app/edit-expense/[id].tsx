@@ -362,14 +362,12 @@ export default function EditExpenseScreen() {
           participantIds,
         });
 
-        const usersToNotify = await Promise.all(
-          participantIds
-            .filter(userId => userId !== currentUserId)
-            .map(userId => userService.getById(userId))
+        const usersToNotify = await userService.getByIds(
+          participantIds.filter(userId => userId !== currentUserId)
         );
         const pushTokens = usersToNotify
-          .filter((u) => u && u.pushToken)
-          .map((u) => u!.pushToken!);
+          .filter(u => u.pushToken)
+          .map(u => u.pushToken!);
         if (pushTokens.length > 0) {
           const notification = createExpenseUpdatedNotification(
             trimmedDescription,

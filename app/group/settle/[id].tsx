@@ -188,16 +188,15 @@ export default function GroupSettleScreen() {
       // Load members
       const groupMembers = await groupService.getMembers(id);
 
-      // Load user details for each member
-      const membersWithUsers = await Promise.all(
-        groupMembers.map(async (member) => {
-          const userData = await userService.getById(member.userId);
-          return { ...member, user: userData };
-        })
-      );
-
-      // Calculate balances
-      const balances = await calculateBalances(id);
+      const [memberUsers, balances] = await Promise.all([
+        userService.getByIds(groupMembers.map(member => member.userId)),
+        calculateBalances(id),
+      ]);
+      const usersById = new Map(memberUsers.map(user => [user.id, user]));
+      const membersWithUsers = groupMembers.map(member => ({
+        ...member,
+        user: usersById.get(member.userId),
+      }));
 
       // Combine members with balances, excluding current user
       const membersWithBalances = membersWithUsers

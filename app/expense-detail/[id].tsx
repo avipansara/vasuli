@@ -62,28 +62,26 @@ export default function ExpenseDetailScreen() {
 
       setExpense(expenseData);
 
-      // Load splits with user info
-      const splitsData = await expenseService.getSplits(id);
-      const splitsWithUsers = await Promise.all(
-        splitsData.map(async (split) => {
-          const userData = await userService.getById(split.userId);
-          return { ...split, user: userData || undefined };
-        })
-      );
+      const [splitsData, payerData, groupData, activitiesData] = await Promise.all([
+        expenseService.getSplits(id),
+        userService.getById(expenseData.paidBy),
+        expenseData.groupId ? groupService.getById(expenseData.groupId) : Promise.resolve(null),
+        activityService.getByTarget(id),
+      ]);
+      const splitUsers = await userService.getByIds(splitsData.map(split => split.userId));
+      const usersById = new Map(splitUsers.map(user => [user.id, user]));
+      const splitsWithUsers = splitsData.map(split => ({ ...split, user: usersById.get(split.userId) }));
       setSplits(splitsWithUsers);
 
       // Load payer info
-      const payerData = await userService.getById(expenseData.paidBy);
       setPayer(payerData);
 
       // Load group info if expense is part of a group
       if (expenseData.groupId) {
-        const groupData = await groupService.getById(expenseData.groupId);
         setGroup(groupData);
       }
 
       // Load activity history for this expense
-      const activitiesData = await activityService.getByTarget(id);
       setActivities(activitiesData);
 
       hasLoadedOnce.current = true;
@@ -130,15 +128,14 @@ export default function ExpenseDetailScreen() {
               setIsDeleting(true);
               await expenseService.delete(id, currentUserId, user?.name || 'Unknown');
               if (expense) {
-                const usersToNotify = await Promise.all(
+                const usersToNotify = await userService.getByIds(
                   splits
                     .map(split => split.userId)
                     .filter(userId => userId !== currentUserId)
-                    .map(userId => userService.getById(userId))
                 );
                 const pushTokens = usersToNotify
-                  .filter((u) => u && u.pushToken)
-                  .map((u) => u!.pushToken!);
+                  .filter(u => u.pushToken)
+                  .map(u => u.pushToken!);
                 if (pushTokens.length > 0) {
                   const notification = createExpenseDeletedNotification(
                     expense.description,

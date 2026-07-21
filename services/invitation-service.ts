@@ -302,14 +302,10 @@ export const invitationService = {
 
     const inviterIds = [...new Set(data.map((row) => row.inviter_id as string))];
     const inviterNames = new Map<string, string>();
-    await Promise.all(
-      inviterIds.map(async (inviterId) => {
-        const u = await userService.getById(inviterId);
-        if (u?.name) {
-          inviterNames.set(inviterId, u.name);
-        }
-      })
-    );
+    const inviters = await userService.getByIds(inviterIds);
+    for (const inviter of inviters) {
+      if (inviter.name) inviterNames.set(inviter.id, inviter.name);
+    }
 
     return data.map((inv) => ({
       id: inv.id,
@@ -329,10 +325,7 @@ export const invitationService = {
    * Deletes (inviter_id=userId, invitee_email=friend's email) and the reverse.
    */
   async deleteInvitationsForRemovedFriendship(userId: string, friendId: string): Promise<void> {
-    const [user, friend] = await Promise.all([
-      userService.getById(userId),
-      userService.getById(friendId),
-    ]);
+    const [user, friend] = await userService.getByIds([userId, friendId]);
     const userEmail = normalizeEmail(user?.email);
     const friendEmail = normalizeEmail(friend?.email);
 

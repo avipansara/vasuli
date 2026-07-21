@@ -182,13 +182,11 @@ export default function GroupDetailScreen() {
 
         // Send push notifications to other members
         const otherMembers = members.filter(m => m.userId !== currentUserId);
-        const usersToNotify = await Promise.all(
-          otherMembers.map(m => userService.getById(m.userId))
-        );
+        const usersToNotify = await userService.getByIds(otherMembers.map(member => member.userId));
 
         const pushTokens = usersToNotify
-          .filter(u => u && u.pushToken)
-          .map(u => u!.pushToken!);
+          .filter(u => u.pushToken)
+          .map(u => u.pushToken!);
 
         if (pushTokens.length > 0) {
           const notification = createExpenseNotification(
@@ -241,13 +239,11 @@ export default function GroupDetailScreen() {
         // their name. Push failures must not turn a successful membership add
         // into a failed group operation.
         try {
-          const usersToNotify = await Promise.all(
-            selectedUserIds.map(userId => userService.getById(userId))
-          );
+          const usersToNotify = await userService.getByIds(selectedUserIds);
 
           await Promise.all(
             usersToNotify
-              .filter((newMember): newMember is User => !!newMember?.pushToken)
+              .filter((newMember): newMember is User => !!newMember.pushToken)
               .map(newMember => notificationService.sendPushNotification(
                 newMember.pushToken!,
                 createMemberAddedNotification(
@@ -412,11 +408,10 @@ export default function GroupDetailScreen() {
               await expenseService.delete(expenseId, currentUserId, user?.name || 'Unknown');
               if (expenseToDelete) {
                 const deletedExpenseSplits = expenseSplits.filter(split => split.expenseId === expenseId);
-                const usersToNotify = await Promise.all(
+                const usersToNotify = await userService.getByIds(
                   deletedExpenseSplits
                     .map(split => split.userId)
                     .filter(userId => userId !== currentUserId)
-                    .map(userId => userService.getById(userId))
                 );
                 const pushTokens = usersToNotify
                   .filter((u) => u && u.pushToken)

@@ -433,14 +433,12 @@ export default function AddExpenseScreen() {
             groupName: group?.name,
           });
 
-          const usersToNotify = await Promise.all(
-            memberIds
-              .filter(memberId => memberId !== currentUserId)
-              .map(memberId => userService.getById(memberId))
+          const usersToNotify = await userService.getByIds(
+            memberIds.filter(memberId => memberId !== currentUserId)
           );
           const pushTokens = usersToNotify
-            .filter((u) => u && u.pushToken)
-            .map((u) => u!.pushToken!);
+            .filter(u => u.pushToken)
+            .map(u => u.pushToken!);
           if (pushTokens.length > 0) {
             const notification = createExpenseNotification(
               trimmedDescription,
