@@ -243,7 +243,7 @@ describe('otpService App Review account', () => {
     })
   })
 
-  it('verifies the built-in Apple reviewer OTP and saves a session', async () => {
+  it('verifies the built-in Apple reviewer OTP', async () => {
     mocks.linkAuthUserToProfile.mockResolvedValueOnce({
       id: 'apple-reviewer-user-id',
       name: 'Apple Reviewer',
@@ -267,15 +267,12 @@ describe('otpService App Review account', () => {
       email: 'apple.reviewer@vasuli.app',
       name: 'Apple Reviewer',
     })
-    expect(result.session?.user.email).toBe('apple.reviewer@vasuli.app')
+    expect(result.user?.email).toBe('apple.reviewer@vasuli.app')
     expect(mocks.ensureAppReviewDemoData).toHaveBeenCalledWith(expect.objectContaining({
       id: 'apple-reviewer-user-id',
       email: 'apple.reviewer@vasuli.app',
     }))
-    expect(mocks.setItem).toHaveBeenCalledWith(
-      'auth_session',
-      expect.stringContaining('"email":"apple.reviewer@vasuli.app"')
-    )
+    expect(mocks.setItem).not.toHaveBeenCalledWith('auth_session', expect.anything())
   })
 
   it('rejects the Apple reviewer OTP when the Supabase Auth password user is missing', async () => {
@@ -412,7 +409,7 @@ describe('otpService App Review account', () => {
     })
 
     expect(result.success).toBe(true)
-    expect(result.session?.user.id).toBe('new-public-user-id')
+    expect(result.user?.id).toBe('new-public-user-id')
     expect(mocks.linkAuthUserToProfile).toHaveBeenCalledWith({
       authUserId: 'new-auth-id',
       email: 'new@example.com',
@@ -439,7 +436,7 @@ describe('otpService App Review account', () => {
     })
 
     expect(result.success).toBe(true)
-    expect(result.session?.user.id).toBe('existing-public-user-id')
+    expect(result.user?.id).toBe('existing-public-user-id')
     expect(mocks.verifyOtp).toHaveBeenCalledWith({
       email: 'existing@example.com',
       token: '654321',
@@ -466,16 +463,13 @@ describe('otpService App Review account', () => {
 
     const session = await otpService.syncSupabaseAuthSessionToAppProfile(' existing@example.com ')
 
-    expect(session?.user.id).toBe('existing-public-user-id')
+    expect(session?.id).toBe('existing-public-user-id')
     expect(mocks.linkAuthUserToProfile).toHaveBeenCalledWith({
       authUserId: 'auth-user-id',
       email: 'existing@example.com',
       name: 'Existing User',
     })
-    expect(mocks.setItem).toHaveBeenCalledWith(
-      'auth_session',
-      expect.stringContaining('"id":"existing-public-user-id"')
-    )
+    expect(mocks.setItem).not.toHaveBeenCalledWith('auth_session', expect.anything())
   })
 
   it('does not sync a Supabase Auth session for a different local email', async () => {

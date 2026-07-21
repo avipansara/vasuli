@@ -65,12 +65,6 @@ export interface User {
   updatedAt: number;
 }
 
-export interface AuthSession {
-  user: User;
-  token: string;
-  expiresAt: number;
-}
-
 /**
  * Create and send OTP code for sign up
  */
@@ -176,7 +170,7 @@ export async function verifySignUpCode(params: {
   name?: string;
   email?: string;
   code: string;
-}): Promise<{ success: boolean; session?: AuthSession; error?: string }> {
+}): Promise<{ success: boolean; user?: User; error?: string }> {
   try {
     const { code } = params;
     const email = normalizeEmail(params.email);
@@ -205,12 +199,11 @@ export async function verifySignUpCode(params: {
         updated_at: new Date().toISOString(),
       };
 
-      const session = await createSession(mockUser);
-      await saveSession(session);
+      const user = createAppUser(mockUser);
       await AsyncStorage.removeItem('pending_signup');
 
       console.log('[MOCK] Sign up successful!');
-      return { success: true, session };
+      return { success: true, user };
     }
 
     // Test accounts are real Supabase Auth password users for strict RLS.
@@ -233,11 +226,10 @@ export async function verifySignUpCode(params: {
       email,
       name,
     });
-    const session = await createSessionFromProfile(profile);
-    await saveSession(session);
+    const user = createAppUserFromProfile(profile);
     await AsyncStorage.removeItem('pending_signup');
 
-    return { success: true, session };
+    return { success: true, user };
   } catch (error: any) {
     console.error('Error in verifySignUpCode:', error);
     return { success: false, error: error.message || 'Failed to verify code' };
@@ -250,7 +242,7 @@ export async function verifySignUpCode(params: {
 export async function verifySignInCode(params: {
   email?: string;
   code: string;
-}): Promise<{ success: boolean; session?: AuthSession; error?: string }> {
+}): Promise<{ success: boolean; user?: User; error?: string }> {
   try {
     const { code } = params;
     const email = normalizeEmail(params.email);
@@ -278,12 +270,11 @@ export async function verifySignInCode(params: {
         updated_at: new Date().toISOString(),
       };
 
-      const session = await createSession(mockUser);
-      await saveSession(session);
+      const user = createAppUser(mockUser);
       await AsyncStorage.removeItem('pending_signin');
 
       console.log('[MOCK] Sign in successful!');
-      return { success: true, session };
+      return { success: true, user };
     }
 
     // Test account mode - auto-verify with code
@@ -317,10 +308,9 @@ export async function verifySignInCode(params: {
         console.error('[TEST ACCOUNT] Failed to seed app review demo data:', seedError);
       }
 
-      const session = await createSessionFromProfile(profile);
-      await saveSession(session);
+      const user = createAppUserFromProfile(profile);
       console.log('[TEST ACCOUNT] Sign in successful!');
-      return { success: true, session };
+      return { success: true, user };
     }
 
     const { data, error: authError } = await supabase.auth.verifyOtp({
@@ -337,11 +327,10 @@ export async function verifySignInCode(params: {
       authUserId: data.user.id,
       email,
     });
-    const session = await createSessionFromProfile(profile);
-    await saveSession(session);
+    const user = createAppUserFromProfile(profile);
     await AsyncStorage.removeItem('pending_signin');
 
-    return { success: true, session };
+    return { success: true, user };
   } catch (error: any) {
     console.error('Error in verifySignInCode:', error);
     return { success: false, error: error.message || 'Failed to verify code' };
@@ -439,8 +428,8 @@ export async function signInWithGoogle(): Promise<{ success: boolean; error?: st
       }
     }
 
-    const appSession = await syncSupabaseAuthSessionToAppProfile();
-    if (!appSession) {
+    const appUser = await syncSupabaseAuthSessionToAppProfile();
+    if (!appUser) {
       return { success: false, error: 'Google sign-in succeeded, but your Vasuli profile could not be loaded' };
     }
 
@@ -452,13 +441,13 @@ export async function signInWithGoogle(): Promise<{ success: boolean; error?: st
 }
 
 /**
- * Reconcile the local app session with the persisted Supabase Auth session.
+ * Reconcile the app profile with the persisted Supabase Auth session.
  *
  * This is important for users who verified OTP before the RLS bridge migration
  * was applied: the Supabase session may exist, but public.users.auth_user_id may
  * still be empty until we link it here.
  */
-export async function syncSupabaseAuthSessionToAppProfile(expectedEmail?: string): Promise<AuthSession | null> {
+export async function syncSupabaseAuthSessionToAppProfile(expectedEmail?: string): Promise<User | null> {
   const { data: { session } } = await supabase.auth.getSession();
   const authUser = session?.user;
   const email = normalizeEmail(authUser?.email);
@@ -475,108 +464,39 @@ export async function syncSupabaseAuthSessionToAppProfile(expectedEmail?: string
     email,
     name: typeof authUser.user_metadata?.name === 'string' ? authUser.user_metadata.name : undefined,
   });
-  const appSession = await createSessionFromProfile(profile);
-  await saveSession(appSession);
-  return appSession;
+  return createAppUserFromProfile(profile);
 }
 
-/**
- * Create a session for a user
- */
-async function createSession(user: any): Promise<AuthSession> {
-  const token = generateSessionToken();
-  const expiresAt = Date.now() + 30 * 24 * 60 * 60 * 1000; // 30 days
-
+function createAppUser(user: any): User {
   return {
-    user: {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      phone: user.phone,
-      avatar: user.avatar,
-      emailVerified: user.email_verified,
-      phoneVerified: user.phone_verified,
-      pushToken: user.push_token || undefined,
-      isActive: user.is_active ?? true,
-      createdAt: new Date(user.created_at).getTime(),
-      updatedAt: new Date(user.updated_at).getTime(),
-    },
-    token,
-    expiresAt,
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    phone: user.phone,
+    avatar: user.avatar,
+    emailVerified: user.email_verified,
+    phoneVerified: user.phone_verified,
+    pushToken: user.push_token || undefined,
+    isActive: user.is_active ?? true,
+    createdAt: new Date(user.created_at).getTime(),
+    updatedAt: new Date(user.updated_at).getTime(),
   };
 }
 
-async function createSessionFromProfile(user: any): Promise<AuthSession> {
-  const token = generateSessionToken();
-  const expiresAt = Date.now() + 30 * 24 * 60 * 60 * 1000;
-
+function createAppUserFromProfile(user: any): User {
   return {
-    user: {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      phone: user.phone,
-      avatar: user.avatar,
-      emailVerified: !!user.email,
-      phoneVerified: !!user.phone,
-      pushToken: user.pushToken,
-      isActive: user.isActive ?? true,
-      createdAt: user.createdAt,
-      updatedAt: user.updatedAt ?? user.createdAt,
-    },
-    token,
-    expiresAt,
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    phone: user.phone,
+    avatar: user.avatar,
+    emailVerified: !!user.email,
+    phoneVerified: !!user.phone,
+    pushToken: user.pushToken,
+    isActive: user.isActive ?? true,
+    createdAt: user.createdAt,
+    updatedAt: user.updatedAt ?? user.createdAt,
   };
-}
-
-/**
- * Generate a random session token
- */
-function generateSessionToken(): string {
-  // Simple random token generator for React Native
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  let token = '';
-  for (let i = 0; i < 64; i++) {
-    token += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return token;
-}
-
-/**
- * Save session to AsyncStorage
- */
-async function saveSession(session: AuthSession): Promise<void> {
-  await AsyncStorage.setItem('auth_session', JSON.stringify(session));
-}
-
-/**
- * Get current session from AsyncStorage
- */
-export async function getSession(): Promise<AuthSession | null> {
-  try {
-    const sessionData = await AsyncStorage.getItem('auth_session');
-    if (!sessionData) return null;
-
-    const session: AuthSession = JSON.parse(sessionData);
-
-    // Check if session is expired
-    if (session.expiresAt < Date.now()) {
-      await clearSession();
-      return null;
-    }
-
-    return session;
-  } catch (error) {
-    console.error('Error getting session:', error);
-    return null;
-  }
-}
-
-/**
- * Clear session from AsyncStorage
- */
-export async function clearSession(): Promise<void> {
-  await AsyncStorage.removeItem('auth_session');
 }
 
 /**
@@ -584,7 +504,6 @@ export async function clearSession(): Promise<void> {
  */
 export async function signOut(): Promise<void> {
   await supabase.auth.signOut();
-  await clearSession();
 }
 
 export const otpService = {
@@ -594,7 +513,5 @@ export const otpService = {
   verifySignInCode,
   signInWithGoogle,
   syncSupabaseAuthSessionToAppProfile,
-  getSession,
-  clearSession,
   signOut,
 };
