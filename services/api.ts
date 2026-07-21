@@ -13,7 +13,7 @@ export async function initDatabase(): Promise<void> {
 }
 
 // Re-export individual services
-export { calculateBalances, calculateFriendBalance, calculateUserNetBalance, calculateUserTotalBalance, getFriendRecentExpenses } from './balance-utils';
+export { calculateBalances, calculateFriendBalance, calculateGroupBalances, calculateUserNetBalance, calculateUserTotalBalance, getFriendRecentExpenses } from './balance-utils';
 export { expenseService } from './expense-service';
 export { friendDetailService } from './friend-detail-service';
 export { friendSummaryService } from './friend-summary-service';

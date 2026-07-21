@@ -19,33 +19,56 @@ function groupSplitsByExpenseId(splits: ExpenseSplit[]): Map<string, ExpenseSpli
  * Calculate balances for a specific group
  */
 export async function calculateBalances(groupId: string): Promise<Map<string, number>> {
-  const balances = new Map<string, number>();
+  const balances = await calculateGroupBalances([groupId]);
+  return balances.get(groupId) ?? new Map<string, number>();
+}
+
+export async function calculateGroupBalances(groupIds: string[]): Promise<Map<string, Map<string, number>>> {
+  const uniqueGroupIds = [...new Set(groupIds)].filter(Boolean);
+  const balances = new Map<string, Map<string, number>>(
+    uniqueGroupIds.map(groupId => [groupId, new Map<string, number>()])
+  );
+  if (uniqueGroupIds.length === 0) return balances;
 
   const [expenses, settlements] = await Promise.all([
-    expenseService.getByGroup(groupId),
-    settlementService.getByGroup(groupId),
+    expenseService.getByGroups(uniqueGroupIds),
+    settlementService.getByGroups(uniqueGroupIds),
   ]);
   const splits = await expenseService.getSplitsForExpenses(expenses.map(expense => expense.id));
   const splitsByExpenseId = groupSplitsByExpenseId(splits);
 
   for (const expense of expenses) {
-    const expenseSplits = splitsByExpenseId.get(expense.id) ?? [];
+    if (!expense.groupId) continue;
+    const groupBalances = balances.get(expense.groupId);
+    if (!groupBalances) continue;
 
-    const currentBalance = balances.get(expense.paidBy) || 0;
-    balances.set(expense.paidBy, currentBalance + expense.amount);
+    const expenseSplits = splitsByExpenseId.get(expense.id) ?? [];
+    groupBalances.set(
+      expense.paidBy,
+      (groupBalances.get(expense.paidBy) ?? 0) + expense.amount
+    );
 
     for (const split of expenseSplits) {
-      const userBalance = balances.get(split.userId) || 0;
-      balances.set(split.userId, userBalance - split.amount);
+      groupBalances.set(
+        split.userId,
+        (groupBalances.get(split.userId) ?? 0) - split.amount
+      );
     }
   }
 
   for (const settlement of settlements) {
-    const fromBalance = balances.get(settlement.fromUserId) || 0;
-    balances.set(settlement.fromUserId, fromBalance + settlement.amount);
+    if (!settlement.groupId) continue;
+    const groupBalances = balances.get(settlement.groupId);
+    if (!groupBalances) continue;
 
-    const toBalance = balances.get(settlement.toUserId) || 0;
-    balances.set(settlement.toUserId, toBalance - settlement.amount);
+    groupBalances.set(
+      settlement.fromUserId,
+      (groupBalances.get(settlement.fromUserId) ?? 0) + settlement.amount
+    );
+    groupBalances.set(
+      settlement.toUserId,
+      (groupBalances.get(settlement.toUserId) ?? 0) - settlement.amount
+    );
   }
 
   return balances;
@@ -61,8 +84,8 @@ export async function calculateUserTotalBalance(userId: string): Promise<{ total
 
   // 1. Calculate balances from group expenses (only groups user is a member of)
   const groups = await groupService.getUserGroups(userId);
-  const groupBalances = await Promise.all(groups.map(group => calculateBalances(group.id)));
-  for (const balances of groupBalances) {
+  const groupBalances = await calculateGroupBalances(groups.map(group => group.id));
+  for (const balances of groupBalances.values()) {
     const userBalance = balances.get(userId) || 0;
 
     if (userBalance > 0) {

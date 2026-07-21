@@ -189,6 +189,34 @@ export const expenseService = {
     }));
   },
 
+  async getByGroups(groupIds: string[]): Promise<Expense[]> {
+    const uniqueGroupIds = [...new Set(groupIds)].filter(Boolean);
+    if (uniqueGroupIds.length === 0) return [];
+
+    const { data, error } = await supabase
+      .from('expenses')
+      .select('*')
+      .in('group_id', uniqueGroupIds)
+      .order('date', { ascending: false });
+
+    if (error) throw error;
+
+    return (data || []).map(r => ({
+      id: r.id,
+      groupId: r.group_id || undefined,
+      description: r.description,
+      amount: r.amount,
+      currency: r.currency,
+      paidBy: r.paid_by,
+      category: r.category || undefined,
+      date: new Date(r.date).getTime(),
+      imageUrl: r.image_url || undefined,
+      notes: r.notes || undefined,
+      createdAt: new Date(r.created_at).getTime(),
+      updatedAt: new Date(r.updated_at).getTime(),
+    }));
+  },
+
   async getSplits(expenseId: string): Promise<ExpenseSplit[]> {
     const { data, error } = await supabase
       .from('expense_splits')
