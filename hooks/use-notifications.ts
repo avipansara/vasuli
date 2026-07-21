@@ -1,5 +1,5 @@
 import { useAuth } from '@/contexts/auth-context-otp';
-import { userService } from '@/services/api';
+import { userService } from '@/services/user-service';
 import { notificationService } from '@/services/notification-service';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';

@@ -8,7 +8,7 @@ import { useDebouncedQueryInvalidation } from '@/hooks/use-debounced-query-inval
 import { useRealtime } from '@/hooks/use-realtime';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
-import { friendSummaryService } from '@/services/api';
+import { friendSummaryService } from '@/services/friend-summary-service';
 import { friendshipService } from '@/services/friendship-service';
 import { queryKeys } from '@/services/query-keys';
 import type { Expense, User } from '@/types/database';

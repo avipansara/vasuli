@@ -142,7 +142,7 @@ export const friendshipService = {
    * Remove a friendship
    */
   async remove(userId: string, friendId: string): Promise<void> {
-    const { calculateFriendBalance } = await import('@/services/api');
+    const { calculateFriendBalance } = await import('@/services/balance-utils');
 
     const balance = await calculateFriendBalance(userId, friendId);
 

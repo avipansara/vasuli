@@ -1,7 +1,7 @@
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useThemeColors } from '@/hooks/use-theme-colors';
-import { groupService } from '@/services/api';
+import { groupService } from '@/services/group-service';
 import type { GroupWithMembers } from '@/types/database';
 import { router } from 'expo-router';
 import React, { memo, useRef } from 'react';

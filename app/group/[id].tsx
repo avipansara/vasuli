@@ -12,12 +12,10 @@ import { useRealtime } from '@/hooks/use-realtime';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { activityService } from '@/services/activity-service';
-import {
-  expenseService,
-  groupDetailService,
-  groupService,
-  userService
-} from '@/services/api';
+import { expenseService } from '@/services/expense-service';
+import { groupDetailService } from '@/services/group-detail-service';
+import { groupService } from '@/services/group-service';
+import { userService } from '@/services/user-service';
 import { friendshipService } from '@/services/friendship-service';
 import type { GroupDetailData } from '@/services/group-detail-service';
 import { areGroupBalancesSettled, calculateGroupBalances } from '@/services/group-balance';
