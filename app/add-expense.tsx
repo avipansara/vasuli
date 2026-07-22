@@ -785,6 +785,8 @@ export default function AddExpenseScreen() {
                   returnKeyType="next"
                   onSubmitEditing={() => descriptionInputRef.current?.focus()}
                   blurOnSubmit={false}
+                  autoFocus={expenseStep === 2}
+                  testID="expense-amount-input"
                 />
               </View>
             </View>
@@ -809,6 +811,7 @@ export default function AddExpenseScreen() {
                 placeholderTextColor={isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'}
                 returnKeyType="done"
                 onSubmitEditing={() => Keyboard.dismiss()}
+                testID="expense-description-input"
               />
             </View>
           </View>
