@@ -67,6 +67,24 @@ function GroupCardInner({ group, index, onRefresh }: GroupCardProps) {
     );
   }
 
+  function handleOpenActions() {
+    Alert.alert(`Actions for ${group.name}`, undefined, [
+      {
+        text: 'Edit group',
+        onPress: handleEditGroup,
+      },
+      {
+        text: 'Delete group',
+        style: 'destructive',
+        onPress: handleDeleteGroup,
+      },
+      {
+        text: 'Cancel',
+        style: 'cancel',
+      },
+    ]);
+  }
+
   function renderLeftActions(progress: any, dragX: any) {
     const trans = dragX.interpolate({
       inputRange: [0, 80],
@@ -76,7 +94,11 @@ function GroupCardInner({ group, index, onRefresh }: GroupCardProps) {
 
     return (
       <RNAnimated.View style={[styles.swipeActionLeft, { opacity: trans }]}>
-        <TouchableOpacity onPress={handleEditGroup} style={styles.swipeActionButton}>
+        <TouchableOpacity
+          onPress={handleEditGroup}
+          style={styles.swipeActionButton}
+          accessibilityRole="button"
+          accessibilityLabel={`Edit ${group.name}`}>
           <IconSymbol name="pencil" size={20} color="#fff" />
           <ThemedText style={styles.swipeActionText}>Edit</ThemedText>
         </TouchableOpacity>
@@ -93,7 +115,11 @@ function GroupCardInner({ group, index, onRefresh }: GroupCardProps) {
 
     return (
       <RNAnimated.View style={[styles.swipeActionRight, { opacity: trans }]}>
-        <TouchableOpacity onPress={handleDeleteGroup} style={styles.swipeActionButton}>
+        <TouchableOpacity
+          onPress={handleDeleteGroup}
+          style={styles.swipeActionButton}
+          accessibilityRole="button"
+          accessibilityLabel={`Delete ${group.name}`}>
           <IconSymbol name="trash" size={20} color="#fff" />
           <ThemedText style={styles.swipeActionText}>Delete</ThemedText>
         </TouchableOpacity>
@@ -115,15 +141,18 @@ function GroupCardInner({ group, index, onRefresh }: GroupCardProps) {
         overshootFriction={8}
         enableTrackpadTwoFingerGesture
         containerStyle={{ overflow: 'visible' }}>
-        <TouchableOpacity
-          activeOpacity={0.7}
-          onPress={() => router.push(`/group/${group.id}` as any)}>
-          <View
-            style={[
-              styles.card,
-              isDark ? styles.cardDark : { backgroundColor: colors.card, borderColor: colors.border },
-            ]}>
-            <View style={styles.content}>
+        <View
+          style={[
+            styles.card,
+            isDark ? styles.cardDark : { backgroundColor: colors.card, borderColor: colors.border },
+          ]}>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              style={styles.content}
+              onPress={() => router.push(`/group/${group.id}` as any)}
+              accessibilityRole="button"
+              accessibilityLabel={`${group.name}, ${isSettled ? 'all settled up' : `${isPositive ? 'you are owed' : 'you owe'} $${Math.abs(balance).toFixed(2)}`}`}
+              accessibilityHint="Opens this group">
               <View style={styles.header}>
                 <View
                   style={[
@@ -176,9 +205,16 @@ function GroupCardInner({ group, index, onRefresh }: GroupCardProps) {
                   )}
                 </View>
               </View>
-            </View>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.moreButton}
+              onPress={handleOpenActions}
+              accessibilityRole="button"
+              accessibilityLabel={`More actions for ${group.name}`}
+              accessibilityHint="Shows options to edit or delete this group">
+              <IconSymbol name="ellipsis" size={22} color={colors.textSecondary} />
+            </TouchableOpacity>
           </View>
-        </TouchableOpacity>
       </Swipeable>
     </Animated.View>
   );
@@ -199,11 +235,23 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 16,
+    paddingRight: 64,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 12,
+  },
+  moreButton: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 8,
   },
   iconContainer: {
     width: 44,

@@ -44,6 +44,7 @@ const MAPPING: IconMapping = {
   'pencil': 'edit',
   'pencil.circle.fill': 'edit',
   'square.and.pencil': 'edit',
+  'ellipsis': 'more-vert',
   
   // People
   'person': 'person-outline',
