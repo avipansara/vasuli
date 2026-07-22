@@ -27,7 +27,6 @@ import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import {
   Alert,
   Animated,
-  FlatList,
   Keyboard,
   Platform,
   ScrollView,
@@ -146,11 +145,12 @@ export default function AddExpenseScreen() {
   }, [friends, friendSearchQuery, preselectedFriendId]);
 
   const displayedFriends = useMemo(() => {
-    if (preselectedFriendId || friendSearchQuery.trim()) return visibleFriends;
+    const maxVisibleFriends = friendSearchQuery.trim() ? 40 : 20;
+    if (preselectedFriendId) return visibleFriends;
 
     const selected = visibleFriends.filter(friend => selectedFriendIds.includes(friend.id));
     const remaining = visibleFriends.filter(friend => !selectedFriendIds.includes(friend.id));
-    return [...selected, ...remaining].slice(0, 20);
+    return [...selected, ...remaining].slice(0, maxVisibleFriends);
   }, [friendSearchQuery, preselectedFriendId, selectedFriendIds, visibleFriends]);
 
   useEffect(() => {
@@ -1076,26 +1076,18 @@ export default function AddExpenseScreen() {
                       </View>
                     ) : (
                       <>
-                        {!friendSearchQuery.trim() && visibleFriends.length > displayedFriends.length && (
+                        {visibleFriends.length > displayedFriends.length && (
                           <ThemedText style={[styles.friendListHint, { color: colors.textSecondary }]}>
-                            Showing {displayedFriends.length} of {visibleFriends.length}. Search to find someone else.
+                            {friendSearchQuery.trim()
+                              ? `Showing ${displayedFriends.length} matches. Refine your search to see fewer.`
+                              : `Showing ${displayedFriends.length} of ${visibleFriends.length}. Search to find someone else.`}
                           </ThemedText>
                         )}
-                        <FlatList
-                          data={displayedFriends}
-                          keyExtractor={friend => friend.id}
-                          style={styles.friendListViewport}
-                          contentContainerStyle={styles.friendListContent}
-                          showsVerticalScrollIndicator={false}
-                          keyboardShouldPersistTaps="handled"
-                          nestedScrollEnabled
-                          initialNumToRender={12}
-                          maxToRenderPerBatch={12}
-                          windowSize={7}
-                          renderItem={({ item: friend }) => {
+                        {displayedFriends.map(friend => {
                             const isSelected = selectedFriendIds.includes(friend.id);
                             return (
                               <TouchableOpacity
+                                key={friend.id}
                                 style={[
                                   styles.optionCard,
                                   isSelected && styles.optionCardSelected,
@@ -1127,8 +1119,7 @@ export default function AddExpenseScreen() {
                                 )}
                               </TouchableOpacity>
                             );
-                          }}
-                        />
+                        })}
                       </>
                     )}
                   </>
@@ -1779,13 +1770,6 @@ const styles = StyleSheet.create({
   },
   optionsList: {
     gap: 10,
-  },
-  friendListViewport: {
-    maxHeight: 320,
-  },
-  friendListContent: {
-    gap: 10,
-    paddingBottom: 2,
   },
   searchContainer: {
     flexDirection: 'row',
