@@ -1,11 +1,17 @@
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Animated, Dimensions, Easing, StyleSheet, View } from 'react-native';
 
 const { width, height } = Dimensions.get('window');
 
-export function AnimatedSplash() {
+export function AnimatedSplash({
+  startAnimation = true,
+  onAnimationComplete,
+}: {
+  startAnimation?: boolean;
+  onAnimationComplete?: () => void;
+}) {
   const { isDark } = useThemeColors();
 
   // Avatar animations
@@ -46,8 +52,12 @@ export function AnimatedSplash() {
 
   // Glow effect
   const [glowPulse] = useState(() => new Animated.Value(0));
+  const animationStarted = useRef(false);
 
   useEffect(() => {
+    if (!startAnimation || animationStarted.current) return;
+    animationStarted.current = true;
+
     // Main animation sequence
     Animated.sequence([
       // Phase 1: Avatars slide in from sides
@@ -199,7 +209,11 @@ export function AnimatedSplash() {
           useNativeDriver: true,
         }),
       ]),
-    ]).start();
+    ]).start(({ finished }) => {
+      if (finished) {
+        onAnimationComplete?.();
+      }
+    });
 
     // Looping glow animation
     Animated.loop(
@@ -332,6 +346,8 @@ export function AnimatedSplash() {
     particle3Y,
     textOpacity,
     textSlide,
+    startAnimation,
+    onAnimationComplete,
   ]);
 
   const moneyRotation = moneyRotate.interpolate({

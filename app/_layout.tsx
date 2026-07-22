@@ -17,11 +17,15 @@ import {
 } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
 
 SplashScreen.preventAutoHideAsync();
+SplashScreen.setOptions({
+  duration: 0,
+  fade: false,
+});
 
 export const unstable_settings = {
   initialRouteName: '(tabs)',
@@ -92,19 +96,27 @@ function RootLayoutNav() {
   const { isDark } = useTheme();
   const isLoading = useProtectedRoute();
   const router = useRouter();
+  const [nativeSplashHidden, setNativeSplashHidden] = useState(false);
   const [animationComplete, setAnimationComplete] = useState(false);
 
-  // Keep the native splash brief, then show the animated in-app splash while
-  // auth and navigation finish initializing.
+  // Keep the native splash static while React Native initializes. The animated
+  // splash is started only after the native logo has fully handed off.
   useEffect(() => {
-    SplashScreen.hideAsync();
+    let isMounted = true;
+
+    SplashScreen.hideAsync().then(() => {
+      if (isMounted) {
+        setNativeSplashHidden(true);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setAnimationComplete(true);
-    }, 2500);
-    return () => clearTimeout(timer);
+  const handleAnimationComplete = useCallback(() => {
+    setAnimationComplete(true);
   }, []);
 
   // Initialize notifications only after the splash has completed and the main
@@ -150,7 +162,12 @@ function RootLayoutNav() {
   }, [router]);
 
   if (isLoading || !animationComplete) {
-    return <AnimatedSplash />;
+    return (
+      <AnimatedSplash
+        startAnimation={nativeSplashHidden}
+        onAnimationComplete={handleAnimationComplete}
+      />
+    );
   }
 
   return (
