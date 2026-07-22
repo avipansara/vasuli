@@ -5,12 +5,14 @@ const mocks = vi.hoisted(() => {
   const single = vi.fn()
   const maybeSingle = vi.fn()
   const from = vi.fn()
-  return { single, maybeSingle, from }
+  const invoke = vi.fn()
+  return { single, maybeSingle, from, invoke }
 })
 
 vi.mock('@/lib/supabase', () => ({
   supabase: {
     from: mocks.from,
+    functions: { invoke: mocks.invoke },
   },
 }))
 
@@ -94,5 +96,35 @@ describe('userService.getByEmail', () => {
 
     expect(user?.id).toBe('u2')
     expect(mocks.maybeSingle).toHaveBeenCalledOnce()
+  })
+})
+
+describe('userService.deleteAccount', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('surfaces the server safeguard when balances are outstanding', async () => {
+    mocks.invoke.mockResolvedValue({
+      data: null,
+      error: {
+        message: 'Edge Function returned a non-2xx status code',
+        context: new Response(JSON.stringify({
+          error: 'ACCOUNT_HAS_OUTSTANDING_BALANCES',
+          message: 'Please settle all outstanding balances before deleting your account.',
+        }), { status: 409 }),
+      },
+    })
+
+    await expect(userService.deleteAccount()).rejects.toThrow(
+      'Please settle all outstanding balances before deleting your account.'
+    )
+  })
+
+  it('completes successfully when the server confirms deletion', async () => {
+    mocks.invoke.mockResolvedValue({ data: { success: true }, error: null })
+
+    await expect(userService.deleteAccount()).resolves.toBeUndefined()
+    expect(mocks.invoke).toHaveBeenCalledWith('delete-account', { body: {} })
   })
 })

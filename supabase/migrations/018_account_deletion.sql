@@ -14,6 +14,7 @@ DECLARE
   app_user_id text;
   app_email text;
   member_group_ids text[];
+  outstanding_balance_count integer;
 BEGIN
   SELECT id, email
   INTO app_user_id, app_email
@@ -32,6 +33,50 @@ BEGIN
   END IF;
 
   app_email := COALESCE(app_email, target_email);
+
+  -- Account deletion is rare, so briefly serialize writes to the financial
+  -- and membership tables. This prevents a new expense or settlement from
+  -- being created between the balance check and anonymization.
+  LOCK TABLE public.expenses, public.expense_splits, public.settlements,
+    public.group_members, public.friendships, public.invitations
+    IN SHARE ROW EXCLUSIVE MODE;
+
+  -- Account deletion must not strand an unsettled debt. Calculate the
+  -- deleting user's net balance independently for every group/currency pair
+  -- (and for ungrouped expenses) so currencies are never mixed together.
+  WITH balance_entries AS (
+    SELECT e.group_id, e.currency, e.amount AS balance
+    FROM public.expenses e
+    WHERE e.paid_by = app_user_id
+    UNION ALL
+    SELECT e.group_id, e.currency, -es.amount AS balance
+    FROM public.expenses e
+    JOIN public.expense_splits es ON es.expense_id = e.id
+    WHERE es.user_id = app_user_id
+    UNION ALL
+    SELECT s.group_id, s.currency, s.amount AS balance
+    FROM public.settlements s
+    WHERE s.from_user_id = app_user_id
+    UNION ALL
+    SELECT s.group_id, s.currency, -s.amount AS balance
+    FROM public.settlements s
+    WHERE s.to_user_id = app_user_id
+  ), grouped_balances AS (
+    SELECT group_id, currency, SUM(balance) AS balance
+    FROM balance_entries
+    GROUP BY group_id, currency
+  )
+  SELECT COUNT(*)
+  INTO outstanding_balance_count
+  FROM grouped_balances
+  WHERE ABS(balance) >= 0.01;
+
+  IF outstanding_balance_count > 0 THEN
+    RAISE EXCEPTION USING
+      ERRCODE = 'P0001',
+      MESSAGE = 'ACCOUNT_HAS_OUTSTANDING_BALANCES',
+      DETAIL = 'Settle all balances before deleting this account.';
+  END IF;
 
   DELETE FROM public.activities
   WHERE user_id = app_user_id;
@@ -74,18 +119,13 @@ BEGIN
       LIMIT 1
     );
 
-  -- Groups with no remaining members are fully removed. Their expenses and
-  -- settlements cascade away; shared groups remain available to other users.
-  DELETE FROM public.groups group_record
-  WHERE group_record.id = ANY(member_group_ids)
-    AND NOT EXISTS (
-      SELECT 1
-      FROM public.group_members remaining_member
-      WHERE remaining_member.group_id = group_record.id
-    );
+  -- Keep groups and shared financial records intact, including groups that
+  -- become empty. This avoids cascading away historical expenses/settlements
+  -- during account deletion. Empty groups are no longer visible to members,
+  -- but remain available for retention/support workflows.
 
   -- Keep shared expenses/splits/settlements for the other participants, but
-  -- remove the account's personal identity and auth linkage is cleared when
+  -- remove the account's personal identity. The auth linkage is cleared when
   -- the Edge Function deletes the corresponding auth.users row.
   UPDATE public.users
   SET name = 'Deleted User',

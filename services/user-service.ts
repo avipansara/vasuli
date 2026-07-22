@@ -198,9 +198,21 @@ export const userService = {
       body: {},
     });
 
-    if (error) throw new Error(error.message || 'Failed to delete account');
+    if (error) {
+      let parsedData: { message?: string; error?: string } | null = null;
+
+      if (error.context instanceof Response) {
+        try {
+          parsedData = await error.context.clone().json() as { message?: string; error?: string };
+        } catch {
+          parsedData = null;
+        }
+      }
+
+      throw new Error(parsedData?.message || error.message || 'Failed to delete account');
+    }
     if (data && typeof data === 'object' && 'error' in data && data.error) {
-      throw new Error(String(data.error));
+      throw new Error('message' in data && data.message ? String(data.message) : String(data.error));
     }
   },
 

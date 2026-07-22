@@ -218,7 +218,7 @@ export default function ProfileScreen() {
   async function handleDeleteAccount() {
     Alert.alert(
       'Delete Account',
-      'This permanently deletes your account, removes your friendships and invitations, and removes you from groups. Shared financial records may remain with your identity anonymized as "Deleted User."',
+      'This permanently deletes your account, removes your friendships and invitations, and removes you from groups. You must settle all outstanding balances first. Shared financial records may remain with your identity anonymized as "Deleted User."',
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -245,7 +245,11 @@ export default function ProfileScreen() {
                       await signOut();
                     } catch (error) {
                       console.error('Error deleting account:', error);
-                      Alert.alert('Error', 'Failed to delete account. Please try again or contact support.');
+                      const message = error instanceof Error ? error.message : '';
+                      Alert.alert(
+                        'Account Not Deleted',
+                        message || 'Failed to delete account. Please try again or contact support.'
+                      );
                     } finally {
                       setIsDeletingAccount(false);
                     }
