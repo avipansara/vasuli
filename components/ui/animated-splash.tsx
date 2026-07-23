@@ -59,7 +59,7 @@ export function AnimatedSplash({
     animationStarted.current = true;
 
     // Main animation sequence
-    Animated.sequence([
+    const mainSequence = Animated.sequence([
       // Phase 1: Avatars slide in from sides
       Animated.parallel([
         Animated.timing(avatar1X, {
@@ -209,14 +209,16 @@ export function AnimatedSplash({
           useNativeDriver: true,
         }),
       ]),
-    ]).start(({ finished }) => {
+    ]);
+
+    mainSequence.start(({ finished }) => {
       if (finished) {
         onAnimationComplete?.();
       }
     });
 
     // Looping glow animation
-    Animated.loop(
+    const glowLoop = Animated.loop(
       Animated.sequence([
         Animated.timing(glowPulse, {
           toValue: 1,
@@ -231,10 +233,11 @@ export function AnimatedSplash({
           useNativeDriver: true,
         }),
       ])
-    ).start();
+    );
+    glowLoop.start();
 
     // Floating particles
-    Animated.loop(
+    const particlesLoop = Animated.loop(
       Animated.parallel([
         Animated.sequence([
           Animated.parallel([
@@ -320,7 +323,14 @@ export function AnimatedSplash({
           }),
         ]),
       ])
-    ).start();
+    );
+    particlesLoop.start();
+
+    return () => {
+      mainSequence.stop();
+      glowLoop.stop();
+      particlesLoop.stop();
+    };
   }, [
     avatar1Opacity,
     avatar1Pulse,

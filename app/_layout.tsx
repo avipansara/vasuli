@@ -17,7 +17,7 @@ import {
 } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
 
@@ -57,13 +57,18 @@ const AmbientLightTheme = {
   },
 };
 
-function useProtectedRoute() {
+function useProtectedRoute(animationComplete: boolean) {
   const { isAuthenticated, isLoading } = useAuth();
   const segments = useSegments();
   const router = useRouter();
   const navState = useRootNavigationState();
 
-  useEffect(() => {
+  useLayoutEffect(() => {
+    // Avoid navigation mutations while the splash screen is still visible;
+    // they can cause the root layout to remount and restart the animation.
+    // Using useLayoutEffect so the redirect happens synchronously when the
+    // Stack first paints, avoiding a flash of the initial route.
+    if (!animationComplete) return;
     if (isLoading) return;
     if (!navState?.key) return;
 
@@ -87,17 +92,17 @@ function useProtectedRoute() {
         router.replace('/(auth)/sign-in-otp');
       }
     }
-  }, [isAuthenticated, isLoading, navState?.key, segments, router]);
+  }, [isAuthenticated, isLoading, navState?.key, segments, router, animationComplete]);
 
   return isLoading;
 }
 
 function RootLayoutNav() {
   const { isDark } = useTheme();
-  const isLoading = useProtectedRoute();
+  const [animationComplete, setAnimationComplete] = useState(false);
+  const isLoading = useProtectedRoute(animationComplete);
   const router = useRouter();
   const [nativeSplashHidden, setNativeSplashHidden] = useState(false);
-  const [animationComplete, setAnimationComplete] = useState(false);
 
   // Keep the native splash static while React Native initializes. The animated
   // splash is started only after the native logo has fully handed off.
