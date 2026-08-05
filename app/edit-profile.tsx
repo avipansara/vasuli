@@ -5,7 +5,7 @@ import { NavigationHeader } from '@/components/ui/screen-header';
 import { ThemedInput } from '@/components/ui/themed-input';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useThemeColors } from '@/hooks/use-theme-colors';
-import { initDatabase, userService } from '@/services/api';
+import { userService } from '@/services/user-service';
 import { getPersonNameErrorMessage, normalizePersonName } from '@/utils/validation';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
@@ -63,7 +63,6 @@ export default function EditProfileScreen() {
 
     setLoading(true);
     try {
-      await initDatabase();
       await userService.update(user.id, { name: normalizedName });
       
       // Refresh user data in auth context

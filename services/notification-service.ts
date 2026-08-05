@@ -1,8 +1,15 @@
 import Constants from 'expo-constants';
 import * as Notifications from 'expo-notifications';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 
 import { supabase } from '@/lib/supabase';
+
+const NOTIFICATION_PREFERENCE_PREFIX = 'notifications-enabled:';
+
+function notificationPreferenceKey(userId: string): string {
+  return `${NOTIFICATION_PREFERENCE_PREFIX}${userId}`;
+}
 
 export interface PushNotificationData {
   type: 'expense_added' | 'expense_updated' | 'expense_deleted' | 'expense_reminder' | 'group_created' | 'member_added' | 'invitation_sent' | 'invitation_accepted' | 'settlement_created';
@@ -54,6 +61,20 @@ Notifications.setNotificationHandler({
 });
 
 export const notificationService = {
+  async getNotificationPreference(userId: string): Promise<boolean | null> {
+    const value = await AsyncStorage.getItem(notificationPreferenceKey(userId));
+    if (value === null) return null;
+    return value === 'true';
+  },
+
+  async setNotificationPreference(userId: string, enabled: boolean): Promise<void> {
+    await AsyncStorage.setItem(notificationPreferenceKey(userId), String(enabled));
+  },
+
+  async clearNotificationPreference(userId: string): Promise<void> {
+    await AsyncStorage.removeItem(notificationPreferenceKey(userId));
+  },
+
   async registerForPushNotificationsAsync(): Promise<string | null> {
     let token: string | null = null;
 
@@ -80,7 +101,7 @@ export const notificationService = {
     }
 
     try {
-      const projectId = Constants.expoConfig?.extra?.eas?.projectId;
+      const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
       if (!projectId) {
         console.warn('Project ID not found in app config');
         return null;
@@ -217,12 +238,13 @@ export const createGroupNotification = (
 export const createMemberAddedNotification = (
   groupName: string,
   addedBy: string,
-  memberName: string
+  memberName: string,
+  groupId: string,
 ): PushNotificationData => ({
   type: 'member_added',
   title: '➕ Added to Group',
   body: `${addedBy} added ${memberName} to "${groupName}"`,
-  data: { groupName, addedBy, memberName },
+  data: { groupId, groupName, addedBy, memberName },
 });
 
 export const createInvitationNotification = (

@@ -1,34 +1,74 @@
+import type { ExpenseSplit } from '@/types/database';
 import { expenseService } from './expense-service';
 import { groupService } from './group-service';
 import { settlementService } from './settlement-service';
+
+function groupSplitsByExpenseId(splits: ExpenseSplit[]): Map<string, ExpenseSplit[]> {
+  const splitsByExpenseId = new Map<string, ExpenseSplit[]>();
+
+  for (const split of splits) {
+    const expenseSplits = splitsByExpenseId.get(split.expenseId) ?? [];
+    expenseSplits.push(split);
+    splitsByExpenseId.set(split.expenseId, expenseSplits);
+  }
+
+  return splitsByExpenseId;
+}
 
 /**
  * Calculate balances for a specific group
  */
 export async function calculateBalances(groupId: string): Promise<Map<string, number>> {
-  const balances = new Map<string, number>();
+  const balances = await calculateGroupBalances([groupId]);
+  return balances.get(groupId) ?? new Map<string, number>();
+}
 
-  const expenses = await expenseService.getByGroup(groupId);
+export async function calculateGroupBalances(groupIds: string[]): Promise<Map<string, Map<string, number>>> {
+  const uniqueGroupIds = [...new Set(groupIds)].filter(Boolean);
+  const balances = new Map<string, Map<string, number>>(
+    uniqueGroupIds.map(groupId => [groupId, new Map<string, number>()])
+  );
+  if (uniqueGroupIds.length === 0) return balances;
+
+  const [expenses, settlements] = await Promise.all([
+    expenseService.getByGroups(uniqueGroupIds),
+    settlementService.getByGroups(uniqueGroupIds),
+  ]);
+  const splits = await expenseService.getSplitsForExpenses(expenses.map(expense => expense.id));
+  const splitsByExpenseId = groupSplitsByExpenseId(splits);
 
   for (const expense of expenses) {
-    const splits = await expenseService.getSplits(expense.id);
+    if (!expense.groupId) continue;
+    const groupBalances = balances.get(expense.groupId);
+    if (!groupBalances) continue;
 
-    const currentBalance = balances.get(expense.paidBy) || 0;
-    balances.set(expense.paidBy, currentBalance + expense.amount);
+    const expenseSplits = splitsByExpenseId.get(expense.id) ?? [];
+    groupBalances.set(
+      expense.paidBy,
+      (groupBalances.get(expense.paidBy) ?? 0) + expense.amount
+    );
 
-    for (const split of splits) {
-      const userBalance = balances.get(split.userId) || 0;
-      balances.set(split.userId, userBalance - split.amount);
+    for (const split of expenseSplits) {
+      groupBalances.set(
+        split.userId,
+        (groupBalances.get(split.userId) ?? 0) - split.amount
+      );
     }
   }
 
-  const settlements = await settlementService.getByGroup(groupId);
   for (const settlement of settlements) {
-    const fromBalance = balances.get(settlement.fromUserId) || 0;
-    balances.set(settlement.fromUserId, fromBalance + settlement.amount);
+    if (!settlement.groupId) continue;
+    const groupBalances = balances.get(settlement.groupId);
+    if (!groupBalances) continue;
 
-    const toBalance = balances.get(settlement.toUserId) || 0;
-    balances.set(settlement.toUserId, toBalance - settlement.amount);
+    groupBalances.set(
+      settlement.fromUserId,
+      (groupBalances.get(settlement.fromUserId) ?? 0) + settlement.amount
+    );
+    groupBalances.set(
+      settlement.toUserId,
+      (groupBalances.get(settlement.toUserId) ?? 0) - settlement.amount
+    );
   }
 
   return balances;
@@ -44,8 +84,8 @@ export async function calculateUserTotalBalance(userId: string): Promise<{ total
 
   // 1. Calculate balances from group expenses (only groups user is a member of)
   const groups = await groupService.getUserGroups(userId);
-  for (const group of groups) {
-    const balances = await calculateBalances(group.id);
+  const groupBalances = await calculateGroupBalances(groups.map(group => group.id));
+  for (const balances of groupBalances.values()) {
     const userBalance = balances.get(userId) || 0;
 
     if (userBalance > 0) {
@@ -57,21 +97,24 @@ export async function calculateUserTotalBalance(userId: string): Promise<{ total
 
   // 2. Calculate balances from individual friend expenses (non-group)
   // We must calculate pairwise balance with each friend to avoid incorrect netting across different friends
-  const allExpenses = await expenseService.getUserExpenses(userId);
+  const [allExpenses, allSettlements] = await Promise.all([
+    expenseService.getUserExpenses(userId),
+    settlementService.getUserSettlements(userId),
+  ]);
   const individualExpenses = allExpenses.filter(e => !e.groupId);
-
-  const allSettlements = await settlementService.getUserSettlements(userId);
   const individualSettlements = allSettlements.filter(s => !s.groupId);
+  const splits = await expenseService.getSplitsForExpenses(individualExpenses.map(expense => expense.id));
+  const splitsByExpenseId = groupSplitsByExpenseId(splits);
 
   const friendBalances = new Map<string, number>();
 
   // Process Expenses
   for (const expense of individualExpenses) {
-    const splits = await expenseService.getSplits(expense.id);
+    const expenseSplits = splitsByExpenseId.get(expense.id) ?? [];
 
     if (expense.paidBy === userId) {
       // I paid, friends owe me
-      for (const split of splits) {
+      for (const split of expenseSplits) {
         if (split.userId !== userId) {
           const current = friendBalances.get(split.userId) || 0;
           friendBalances.set(split.userId, current + split.amount);
@@ -80,7 +123,7 @@ export async function calculateUserTotalBalance(userId: string): Promise<{ total
     } else {
       // Friend paid, I owe them
       const payerId = expense.paidBy;
-      const mySplit = splits.find(s => s.userId === userId);
+      const mySplit = expenseSplits.find(s => s.userId === userId);
       if (mySplit) {
         const current = friendBalances.get(payerId) || 0;
         friendBalances.set(payerId, current - mySplit.amount);
@@ -128,31 +171,48 @@ export async function calculateUserTotalBalance(userId: string): Promise<{ total
  * Negative = currentUser owes friend
  */
 export async function calculateFriendBalance(currentUserId: string, friendId: string): Promise<number> {
+  const [allExpenses, allSettlements] = await Promise.all([
+    expenseService.getUserExpenses(currentUserId),
+    settlementService.getUserSettlements(currentUserId),
+  ]);
+  const splits = await expenseService.getSplitsForExpenses(allExpenses.map(expense => expense.id));
+
+  return calculateFriendBalanceFromData(
+    currentUserId,
+    friendId,
+    allExpenses,
+    splits,
+    allSettlements,
+  );
+}
+
+function calculateFriendBalanceFromData(
+  currentUserId: string,
+  friendId: string,
+  allExpenses: import('@/types/database').Expense[],
+  splits: import('@/types/database').ExpenseSplit[],
+  allSettlements: import('@/types/database').Settlement[],
+): number {
   let balance = 0;
+  const splitsByExpenseId = groupSplitsByExpenseId(splits);
 
   // 1. Calculate from expenses involving the current user (both group and individual)
-  const allExpenses = await expenseService.getUserExpenses(currentUserId);
-
   for (const expense of allExpenses) {
-    const splits = await expenseService.getSplits(expense.id);
-
-    const currentUserSplit = splits.find(s => s.userId === currentUserId);
-    const friendSplit = splits.find(s => s.userId === friendId);
+    const expenseSplits = splitsByExpenseId.get(expense.id) ?? [];
+    const currentUserSplit = expenseSplits.find(s => s.userId === currentUserId);
+    const friendSplit = expenseSplits.find(s => s.userId === friendId);
 
     // Only count expenses where both users are involved
     if (currentUserSplit && friendSplit) {
       if (expense.paidBy === currentUserId) {
-        // Current user paid, friend owes their share
         balance += friendSplit.amount;
       } else if (expense.paidBy === friendId) {
-        // Friend paid, current user owes their share
         balance -= currentUserSplit.amount;
       }
     }
   }
 
   // 2. Account for settlements between these two users
-  const allSettlements = await settlementService.getUserSettlements(currentUserId);
   const friendSettlements = allSettlements.filter((s: { fromUserId: string; toUserId: string }) =>
     (s.fromUserId === currentUserId && s.toUserId === friendId) ||
     (s.fromUserId === friendId && s.toUserId === currentUserId));
@@ -175,35 +235,42 @@ export async function calculateFriendBalance(currentUserId: string, friendId: st
  * Used for the index screen header
  */
 export async function calculateUserNetBalance(userId: string, friendIds: string[]): Promise<number> {
-  let netBalance = 0;
-
-  for (const friendId of friendIds) {
-    const balance = await calculateFriendBalance(userId, friendId);
-    netBalance += balance;
-  }
-
-  return netBalance;
+  const balances = await Promise.all(
+    friendIds.map(friendId => calculateFriendBalance(userId, friendId))
+  );
+  return balances.reduce((total, balance) => total + balance, 0);
 }
 /**
  * Get pending expenses between two users that contribute to the current net balance.
  * Returns up to `limit` most recent expenses.
  */
 export async function getFriendRecentExpenses(currentUserId: string, friendId: string, limit: number = 2): Promise<import('@/types/database').Expense[]> {
-  const balance = await calculateFriendBalance(currentUserId, friendId);
+  const [allExpenses, allSettlements] = await Promise.all([
+    expenseService.getUserExpenses(currentUserId),
+    settlementService.getUserSettlements(currentUserId),
+  ]);
+  const splits = await expenseService.getSplitsForExpenses(allExpenses.map(expense => expense.id));
+  const balance = calculateFriendBalanceFromData(
+    currentUserId,
+    friendId,
+    allExpenses,
+    splits,
+    allSettlements,
+  );
 
   // If settled up, no pending expenses
   if (Math.abs(balance) < 0.01) {
     return [];
   }
 
-  const allExpenses = await expenseService.getUserExpenses(currentUserId);
   const friendExpenses: import('@/types/database').Expense[] = [];
+  const splitsByExpenseId = groupSplitsByExpenseId(splits);
 
   // 1. Filter expenses where both users are involved
   for (const expense of allExpenses) {
-    const splits = await expenseService.getSplits(expense.id);
-    const currentUserSplit = splits.find(s => s.userId === currentUserId);
-    const friendSplit = splits.find(s => s.userId === friendId);
+    const expenseSplits = splitsByExpenseId.get(expense.id) ?? [];
+    const currentUserSplit = expenseSplits.find(s => s.userId === currentUserId);
+    const friendSplit = expenseSplits.find(s => s.userId === friendId);
 
     if (currentUserSplit && friendSplit) {
       // Calculate the net impact of this specific expense on the balance

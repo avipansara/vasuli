@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import type { User } from '@/types/database';
-import { normalizeEmail } from '@/utils/validation';
+import { getDisplayName, normalizeEmail } from '@/utils/validation';
 
 type LinkAuthUserParams = {
   authUserId: string;
@@ -89,6 +89,6 @@ export async function linkAuthUserToProfile(params: LinkAuthUserParams): Promise
   return createProfile({
     authUserId: params.authUserId,
     email,
-    name: params.name?.trim() || 'User',
+    name: getDisplayName(params.name, email),
   });
 }

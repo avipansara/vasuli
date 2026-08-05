@@ -8,7 +8,10 @@ import { useAuth } from '@/contexts/auth-context-otp';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { activityService } from '@/services/activity-service';
-import { calculateBalances, groupService, settlementService, userService } from '@/services/api';
+import { calculateBalances } from '@/services/balance-utils';
+import { groupService } from '@/services/group-service';
+import { settlementService } from '@/services/settlement-service';
+import { userService } from '@/services/user-service';
 import { applySettlementsToGroupDetailData, type GroupDetailData } from '@/services/group-detail-service';
 import { queryKeys } from '@/services/query-keys';
 import type { Group, GroupMember, User } from '@/types/database';
@@ -188,16 +191,15 @@ export default function GroupSettleScreen() {
       // Load members
       const groupMembers = await groupService.getMembers(id);
 
-      // Load user details for each member
-      const membersWithUsers = await Promise.all(
-        groupMembers.map(async (member) => {
-          const userData = await userService.getById(member.userId);
-          return { ...member, user: userData };
-        })
-      );
-
-      // Calculate balances
-      const balances = await calculateBalances(id);
+      const [memberUsers, balances] = await Promise.all([
+        userService.getByIds(groupMembers.map(member => member.userId)),
+        calculateBalances(id),
+      ]);
+      const usersById = new Map(memberUsers.map(user => [user.id, user]));
+      const membersWithUsers = groupMembers.map(member => ({
+        ...member,
+        user: usersById.get(member.userId),
+      }));
 
       // Combine members with balances, excluding current user
       const membersWithBalances = membersWithUsers

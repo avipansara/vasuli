@@ -189,6 +189,31 @@ export const settlementService = {
     }));
   },
 
+  async getByGroups(groupIds: string[]): Promise<Settlement[]> {
+    const uniqueGroupIds = [...new Set(groupIds)].filter(Boolean);
+    if (uniqueGroupIds.length === 0) return [];
+
+    const { data, error } = await supabase
+      .from('settlements')
+      .select('*')
+      .in('group_id', uniqueGroupIds)
+      .order('date', { ascending: false });
+
+    if (error) throw error;
+
+    return (data || []).map(r => ({
+      id: r.id,
+      groupId: r.group_id || undefined,
+      fromUserId: r.from_user_id,
+      toUserId: r.to_user_id,
+      amount: r.amount,
+      currency: r.currency,
+      date: new Date(r.date).getTime(),
+      notes: r.notes || undefined,
+      createdAt: new Date(r.created_at).getTime(),
+    }));
+  },
+
   async delete(id: string): Promise<void> {
     const { error } = await supabase
       .from('settlements')

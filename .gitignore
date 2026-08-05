@@ -53,3 +53,5 @@ supabase/.temp/
 .agents/
 marketing/
 PRODUCT.md
+
+google-services.json

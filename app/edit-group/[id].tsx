@@ -5,7 +5,7 @@ import { NavigationHeader } from '@/components/ui/screen-header';
 import { ThemedInput } from '@/components/ui/themed-input';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
-import { groupService, initDatabase } from '@/services/api';
+import { groupService } from '@/services/group-service';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState, useRef } from 'react';
@@ -82,7 +82,6 @@ export default function EditGroupScreen() {
 
     setLoading(true);
     try {
-      await initDatabase();
       await groupService.update(id, {
         name: groupName.trim(),
         description: description.trim() || undefined,

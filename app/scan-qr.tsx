@@ -2,7 +2,7 @@ import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { NavigationHeader } from '@/components/ui/screen-header';
 import { useThemeColors } from '@/hooks/use-theme-colors';
-import { userService } from '@/services/api';
+import { userService } from '@/services/user-service';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';

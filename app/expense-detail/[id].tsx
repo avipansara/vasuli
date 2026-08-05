@@ -4,16 +4,19 @@ import { AsyncErrorState } from '@/components/ui/async-error-state';
 import { LoadingState } from '@/components/ui/loading-state';
 import { NavigationHeader } from '@/components/ui/screen-header';
 import { useAuth } from '@/contexts/auth-context-otp';
+import { useRefetchOnFocus } from '@/hooks/use-refetch-on-focus';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { activityService } from '@/services/activity-service';
-import { expenseService, groupService, userService } from '@/services/api';
+import { expenseService } from '@/services/expense-service';
+import { groupService } from '@/services/group-service';
+import { userService } from '@/services/user-service';
 import { createExpenseDeletedNotification, notificationService } from '@/services/notification-service';
-import type { Activity, Expense, ExpenseSplit, Group, User } from '@/types/database';
+import { queryKeys } from '@/services/query-keys';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { useFocusEffect } from 'expo-router/react-navigation';
-import { useCallback, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   Animated,
@@ -23,96 +26,86 @@ import {
   View
 } from 'react-native';
 
-interface ExpenseSplitWithUser extends ExpenseSplit {
-  user?: User;
-}
-
 export default function ExpenseDetailScreen() {
   const { gradients, colors, expenseDetail } = useThemeColors();
   const { user } = useAuth();
   const { id } = useLocalSearchParams<{ id: string }>();
   const currentUserId = user?.id || '';
 
-  const [expense, setExpense] = useState<Expense | null>(null);
-  const [splits, setSplits] = useState<ExpenseSplitWithUser[]>([]);
-  const [payer, setPayer] = useState<User | null>(null);
-  const [group, setGroup] = useState<Group | null>(null);
-  const [activities, setActivities] = useState<Activity[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
   const [fadeAnim] = useState(() => new Animated.Value(1));
   const [slideAnim] = useState(() => new Animated.Value(0));
-  const hasLoadedOnce = useRef(false);
-
-  const loadExpenseDetails = useCallback(async () => {
-    setLoadError(null);
-    if (!hasLoadedOnce.current) {
-      setLoading(true);
-    }
-    try {
+  const queryClient = useQueryClient();
+  const expenseQueryKey = useMemo(() => queryKeys.expenses.detail(id), [id]);
+  const {
+    data: expenseQueryData,
+    error,
+    isFetching,
+    isLoading,
+    isStale,
+    refetch,
+  } = useQuery({
+    queryKey: expenseQueryKey,
+    enabled: !!id,
+    queryFn: async () => {
       const expenseData = await expenseService.getById(id);
-      if (!expenseData) {
-        setLoading(false);
-        Alert.alert('Error', 'Expense not found');
-        router.back();
-        return;
-      }
+      if (!expenseData) return null;
 
-      setExpense(expenseData);
+      const [splitsData, payer, group, activities] = await Promise.all([
+        expenseService.getSplits(id),
+        userService.getById(expenseData.paidBy),
+        expenseData.groupId ? groupService.getById(expenseData.groupId) : Promise.resolve(null),
+        activityService.getByTarget(id),
+      ]);
+      const splitUsers = await userService.getByIds(splitsData.map(split => split.userId));
+      const usersById = new Map(splitUsers.map(user => [user.id, user]));
 
-      // Load splits with user info
-      const splitsData = await expenseService.getSplits(id);
-      const splitsWithUsers = await Promise.all(
-        splitsData.map(async (split) => {
-          const userData = await userService.getById(split.userId);
-          return { ...split, user: userData || undefined };
-        })
-      );
-      setSplits(splitsWithUsers);
+      return {
+        expense: expenseData,
+        splits: splitsData.map(split => ({ ...split, user: usersById.get(split.userId) })),
+        payer,
+        group,
+        activities,
+      };
+    },
+  });
+  const expense = expenseQueryData?.expense ?? null;
+  const splits = expenseQueryData?.splits ?? [];
+  const payer = expenseQueryData?.payer ?? null;
+  const group = expenseQueryData?.group ?? null;
+  const activities = expenseQueryData?.activities ?? [];
+  const loading = isLoading;
+  const loadError = error ? getFetchErrorMessage(error) : null;
 
-      // Load payer info
-      const payerData = await userService.getById(expenseData.paidBy);
-      setPayer(payerData);
+  useRefetchOnFocus({
+    enabled: !!id,
+    isFetching,
+    isStale,
+    refetch,
+  });
 
-      // Load group info if expense is part of a group
-      if (expenseData.groupId) {
-        const groupData = await groupService.getById(expenseData.groupId);
-        setGroup(groupData);
-      }
-
-      // Load activity history for this expense
-      const activitiesData = await activityService.getByTarget(id);
-      setActivities(activitiesData);
-
-      hasLoadedOnce.current = true;
-      setLoading(false);
-
-      Animated.parallel([
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 400,
-          useNativeDriver: true,
-        }),
-        Animated.timing(slideAnim, {
-          toValue: 0,
-          duration: 400,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    } catch (error) {
-      console.error('Error loading expense details:', error);
-      setLoadError(getFetchErrorMessage(error));
-      setLoading(false);
+  useEffect(() => {
+    if (expenseQueryData === undefined) return;
+    if (!expenseQueryData) {
+      Alert.alert('Error', 'Expense not found');
+      router.back();
+      return;
     }
-  }, [fadeAnim, id, slideAnim]);
 
-  useFocusEffect(
-    useCallback(() => {
-      loadExpenseDetails();
-    }, [loadExpenseDetails])
-  );
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 400,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [expenseQueryData, fadeAnim, slideAnim]);
 
   const handleDelete = () => {
     if (isDeleting) return;
@@ -130,15 +123,14 @@ export default function ExpenseDetailScreen() {
               setIsDeleting(true);
               await expenseService.delete(id, currentUserId, user?.name || 'Unknown');
               if (expense) {
-                const usersToNotify = await Promise.all(
+                const usersToNotify = await userService.getByIds(
                   splits
                     .map(split => split.userId)
                     .filter(userId => userId !== currentUserId)
-                    .map(userId => userService.getById(userId))
                 );
                 const pushTokens = usersToNotify
-                  .filter((u) => u && u.pushToken)
-                  .map((u) => u!.pushToken!);
+                  .filter(u => u.pushToken)
+                  .map(u => u.pushToken!);
                 if (pushTokens.length > 0) {
                   const notification = createExpenseDeletedNotification(
                     expense.description,
@@ -149,6 +141,11 @@ export default function ExpenseDetailScreen() {
                   await notificationService.sendNotificationToUsers(pushTokens, notification);
                 }
               }
+              await Promise.all([
+                queryClient.invalidateQueries({ queryKey: queryKeys.expenses.detail(id) }),
+                queryClient.invalidateQueries({ queryKey: queryKeys.expenses.list(currentUserId) }),
+                queryClient.invalidateQueries({ queryKey: queryKeys.activity.list(currentUserId) }),
+              ]);
               router.back();
             } catch (error) {
               console.error('Error deleting expense:', error);
@@ -172,7 +169,7 @@ export default function ExpenseDetailScreen() {
         />
         <AsyncErrorState
           message={loadError}
-          onRetry={() => void loadExpenseDetails()}
+          onRetry={() => void refetch()}
           title="Couldn't load expense"
         />
       </View>
@@ -332,7 +329,7 @@ export default function ExpenseDetailScreen() {
               {splits.map((split, index) => {
                 const isCurrentUser = split.userId === currentUserId;
                 const splitPercentage = ((split.amount / expense.amount) * 100).toFixed(1);
-                const splitMeta = split.splitType === 'custom' ? 'Custom' : `${splitPercentage}%`;
+                const splitMeta = `${splitPercentage}%`;
 
                 return (
                   <View

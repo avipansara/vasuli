@@ -5,17 +5,20 @@ import { LoadingState } from '@/components/ui/loading-state';
 import { NavigationHeader } from '@/components/ui/screen-header';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useThemeColors } from '@/hooks/use-theme-colors';
+import { useRealtime } from '@/hooks/use-realtime';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { friendshipService } from '@/services/friendship-service';
 import { invitationService } from '@/services/invitation-service';
+import { queryKeys } from '@/services/query-keys';
 import { userService } from '@/services/user-service';
 import { normalizeEmail } from '@/utils/validation';
 import type { Invitation } from '@/types/database';
-import { useFocusEffect } from 'expo-router/react-navigation';
+import type { Friendship } from '@/services/friendship-service';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, Stack } from 'expo-router';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   Alert,
   FlatList,
@@ -26,63 +29,128 @@ import {
 } from 'react-native';
 
 type InvitationWithDetails = Invitation & { inviterName?: string; inviteeName?: string };
+type FriendRequestWithDetails = Friendship & { requesterName: string };
 
 type TabType = 'received' | 'sent';
 
 export default function InvitationsScreen() {
   const { gradients, colors, isDark } = useThemeColors();
-  const { user, refreshUser } = useAuth();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>('received');
-  const [receivedInvitations, setReceivedInvitations] = useState<InvitationWithDetails[]>([]);
-  const [sentInvitations, setSentInvitations] = useState<InvitationWithDetails[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [loadError, setLoadError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [noEmailForInvites, setNoEmailForInvites] = useState(false);
-  const hasLoadedOnce = useRef(false);
+  const queryClient = useQueryClient();
   const userId = user?.id;
   const userName = user?.name;
+  const normalizedEmail = normalizeEmail(user?.email);
+  const receivedInvitationsQueryKey = useMemo(
+    () => queryKeys.invitations.received(userId || '', normalizedEmail || ''),
+    [normalizedEmail, userId]
+  );
+  const sentInvitationsQueryKey = useMemo(
+    () => queryKeys.invitations.sent(userId || ''),
+    [userId]
+  );
+  const friendRequestsQueryKey = useMemo(
+    () => queryKeys.invitations.friendRequests(userId || ''),
+    [userId]
+  );
+
+  const receivedInvitationsQuery = useQuery({
+    queryKey: receivedInvitationsQueryKey,
+    enabled: !!userId && !!normalizedEmail,
+    queryFn: () => invitationService.getReceivedInvitations(normalizedEmail!),
+  });
+  const sentInvitationsQuery = useQuery({
+    queryKey: sentInvitationsQueryKey,
+    enabled: !!userId,
+    queryFn: () => invitationService.getByInviter(userId!),
+  });
+  const friendRequestsQuery = useQuery({
+    queryKey: friendRequestsQueryKey,
+    enabled: !!userId,
+    queryFn: async (): Promise<FriendRequestWithDetails[]> => {
+      const requests = await friendshipService.getPendingRequests(userId!);
+      const requesters = await userService.getByIds(requests.map((request) => request.userId));
+      const requesterNames = new Map(requesters.map((requester) => [requester.id, requester.name]));
+      return requests.map((request) => ({
+        ...request,
+        requesterName: requesterNames.get(request.userId) || 'Someone',
+      }));
+    },
+  });
+
+  const { refetch: refetchReceivedInvitations } = receivedInvitationsQuery;
+  const { refetch: refetchSentInvitations } = sentInvitationsQuery;
+  const { refetch: refetchFriendRequests } = friendRequestsQuery;
+
+  const receivedInvitations = receivedInvitationsQuery.data || [];
+  const sentInvitations = sentInvitationsQuery.data || [];
+  const receivedFriendRequests = friendRequestsQuery.data || [];
+  const loading = [receivedInvitationsQuery, sentInvitationsQuery, friendRequestsQuery]
+    .some((query) => query.isLoading && !query.data);
+  const queryError = [receivedInvitationsQuery, sentInvitationsQuery, friendRequestsQuery]
+    .find((query) => query.error)?.error;
+  const loadError = queryError ? getFetchErrorMessage(queryError) : null;
+  const noEmailForInvites = !normalizedEmail;
 
   const loadInvitations = useCallback(async () => {
     if (!userId) return;
+    await Promise.all([
+      refetchReceivedInvitations(),
+      refetchSentInvitations(),
+      refetchFriendRequests(),
+    ]);
+  }, [refetchFriendRequests, refetchReceivedInvitations, refetchSentInvitations, userId]);
 
+  const invalidateInvitationQueries = useCallback(() => {
+    void queryClient.invalidateQueries({ queryKey: ['invitations'] });
+  }, [queryClient]);
+
+  useRealtime({
+    table: 'invitations',
+    filter: normalizedEmail ? `invitee_email=eq.${normalizedEmail}` : undefined,
+    onChange: invalidateInvitationQueries,
+    enabled: !!normalizedEmail,
+  });
+  useRealtime({
+    table: 'invitations',
+    filter: userId ? `inviter_id=eq.${userId}` : undefined,
+    onChange: invalidateInvitationQueries,
+    enabled: !!userId,
+  });
+  useRealtime({
+    table: 'friendships',
+    filter: userId ? `friend_id=eq.${userId}` : undefined,
+    onChange: invalidateInvitationQueries,
+    enabled: !!userId,
+  });
+
+  const handleAcceptFriendRequest = useCallback(async (request: FriendRequestWithDetails) => {
+    setActionLoading(request.id);
     try {
-      setLoadError(null);
-      // Only show loader on first load
-      if (!hasLoadedOnce.current) {
-        setLoading(true);
-        hasLoadedOnce.current = true;
-      }
-
-      await refreshUser();
-      const profile = await userService.getById(userId);
-      const email = normalizeEmail(profile?.email);
-
-      const sent = await invitationService.getByInviter(userId);
-      setSentInvitations(sent);
-
-      if (!email) {
-        setReceivedInvitations([]);
-        setNoEmailForInvites(true);
-        return;
-      }
-
-      setNoEmailForInvites(false);
-      const received = await invitationService.getReceivedInvitations(email);
-      setReceivedInvitations(received);
-    } catch (error) {
-      console.error('Error loading invitations:', error);
-      setLoadError(getFetchErrorMessage(error));
-    } finally {
-      setLoading(false);
-    }
-  }, [userId, refreshUser]);
-
-  useFocusEffect(
-    useCallback(() => {
+      await friendshipService.accept(request.id);
+      Alert.alert('Success', `You are now connected with ${request.requesterName}`);
       loadInvitations();
-    }, [loadInvitations])
-  );
+    } catch (error) {
+      console.error('Error accepting friend request:', error);
+      Alert.alert('Error', 'Failed to accept friend request');
+    } finally {
+      setActionLoading(null);
+    }
+  }, [loadInvitations]);
+
+  const handleDeclineFriendRequest = useCallback(async (request: FriendRequestWithDetails) => {
+    setActionLoading(request.id);
+    try {
+      await friendshipService.decline(request.id);
+      loadInvitations();
+    } catch (error) {
+      console.error('Error declining friend request:', error);
+      Alert.alert('Error', 'Failed to decline friend request');
+    } finally {
+      setActionLoading(null);
+    }
+  }, [loadInvitations]);
 
   const handleAccept = useCallback(async (invitation: InvitationWithDetails) => {
     setActionLoading(invitation.id);
@@ -308,6 +376,7 @@ export default function InvitationsScreen() {
   }, [actionLoading, colors, isDark, handleResend, handleCancel]);
 
   const currentInvitations = activeTab === 'received' ? receivedInvitations : sentInvitations;
+  const receivedCount = receivedInvitations.length + receivedFriendRequests.length;
 
   return (
     <>
@@ -339,7 +408,7 @@ export default function InvitationsScreen() {
               activeTab === 'received' && { color: isDark ? '#2DD4BF' : colors.tint },
               { color: colors.text },
             ]}>
-              Received ({receivedInvitations.length})
+              Received ({receivedCount})
             </ThemedText>
           </TouchableOpacity>
           <TouchableOpacity
@@ -382,6 +451,37 @@ export default function InvitationsScreen() {
             renderItem={activeTab === 'received' ? renderReceivedInvitation : renderSentInvitation}
             keyExtractor={(item) => item.id}
             contentContainerStyle={styles.listContent}
+            ListHeaderComponent={activeTab === 'received' && receivedFriendRequests.length > 0 ? (
+              <View>
+                {receivedFriendRequests.map((request) => {
+                  const isLoading = actionLoading === request.id;
+                  return (
+                    <BlurView key={request.id} intensity={isDark ? 20 : 40} tint={isDark ? 'dark' : 'light'} style={styles.invitationCard}>
+                      <View style={[styles.cardContent, !isDark && { backgroundColor: 'rgba(255,255,255,0.8)' }]}>
+                        <View style={styles.invitationHeader}>
+                          <View style={[styles.iconContainer, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)' }]}>
+                            <IconSymbol name="person.crop.circle.badge.plus" size={24} color={isDark ? '#2DD4BF' : colors.tint} />
+                          </View>
+                          <View style={styles.invitationInfo}>
+                            <ThemedText style={[styles.inviterName, { color: colors.text }]}>{request.requesterName}</ThemedText>
+                            <ThemedText style={[styles.invitationDate, { color: colors.textSecondary }]}>wants to be your friend</ThemedText>
+                          </View>
+                        </View>
+                        <View style={styles.actionButtons}>
+                          <TouchableOpacity onPress={() => handleDeclineFriendRequest(request)} disabled={isLoading} style={[styles.actionButton, styles.declineButton, { opacity: isLoading ? 0.5 : 1 }]}>
+                            <ThemedText style={[styles.actionButtonText, { color: isDark ? '#EF4444' : '#DC2626' }]}>Decline</ThemedText>
+                          </TouchableOpacity>
+                          <TouchableOpacity onPress={() => handleAcceptFriendRequest(request)} disabled={isLoading} style={[styles.actionButton, styles.acceptButton, { backgroundColor: isDark ? '#2DD4BF' : '#22C55E', opacity: isLoading ? 0.5 : 1 }]}>
+                            <ThemedText style={styles.actionButtonText}>Accept</ThemedText>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    </BlurView>
+                  );
+                })}
+                {receivedInvitations.length > 0 && <ThemedText style={[styles.sectionLabel, { color: colors.textSecondary }]}>App invitations</ThemedText>}
+              </View>
+            ) : null}
             ListEmptyComponent={
               <View style={styles.emptyContainer}>
                 <IconSymbol
@@ -391,7 +491,9 @@ export default function InvitationsScreen() {
                 />
                 <ThemedText style={[styles.emptyText, { color: colors.textSecondary }]}>
                   {activeTab === 'received'
-                    ? noEmailForInvites
+                    ? receivedFriendRequests.length > 0
+                      ? 'No app invitations received'
+                      : noEmailForInvites
                       ? 'Friend invitations are sent to your email. Add an email in your profile so pending invites appear here.'
                       : 'No invitations received'
                     : 'No invitations sent'}
@@ -493,6 +595,11 @@ const styles = StyleSheet.create({
   },
   invitationDate: {
     fontSize: 14,
+  },
+  sectionLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    marginBottom: 10,
   },
   statusBadge: {
     paddingHorizontal: 12,

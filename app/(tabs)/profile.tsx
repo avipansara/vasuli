@@ -3,12 +3,19 @@ import { AsyncErrorState } from '@/components/ui/async-error-state';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useTheme } from '@/contexts/theme-context';
+import { useRefetchOnFocus } from '@/hooks/use-refetch-on-focus';
+import { useRealtime } from '@/hooks/use-realtime';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getAppVersionLabel } from '@/lib/app-version';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
-import { friendSummaryService, initDatabase, userService } from '@/services/api';
-import { calculateFriendSummaryTotals } from '@/services/friend-summary-service';
+import { calculateFriendSummaryTotals, friendSummaryService } from '@/services/friend-summary-service';
+import { userService } from '@/services/user-service';
+import { friendshipService } from '@/services/friendship-service';
+import { invitationService } from '@/services/invitation-service';
+import { notificationService } from '@/services/notification-service';
 import { queryKeys } from '@/services/query-keys';
+import { getPendingInvitationCount } from '@/utils/invitation-count';
+import { normalizeEmail } from '@/utils/validation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
@@ -25,33 +32,125 @@ import {
   View,
 } from 'react-native';
 
+type SettingsItem = {
+  icon: string;
+  title: string;
+  onPress?: () => void;
+  hasSwitch?: boolean;
+  value?: boolean;
+  onToggle?: (value: boolean) => void;
+  badge?: number;
+};
+
 export default function ProfileScreen() {
   const { gradients, isDark, colors } = useThemeColors();
   const { toggleTheme } = useTheme();
   const { user: currentUser, signOut, refreshUser } = useAuth();
   const [notificationOverride, setNotificationOverride] = useState<boolean | null>(null);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const currentUserId = currentUser?.id || '';
   const queryClient = useQueryClient();
+  const normalizedEmail = normalizeEmail(currentUser?.email) || '';
+  const pendingInvitationQueryKey = useMemo(
+    () => queryKeys.invitations.pendingCount(currentUserId, normalizedEmail),
+    [currentUserId, normalizedEmail]
+  );
   const friendsHomeQueryKey = useMemo(() => queryKeys.friends.home(currentUserId), [currentUserId]);
   const notificationsEnabled = notificationOverride ?? !!currentUser?.pushToken;
 
+  const pendingInvitationQuery = useQuery({
+    queryKey: pendingInvitationQueryKey,
+    enabled: !!currentUserId,
+    queryFn: async () => {
+      const [friendRequests, emailInvitations] = await Promise.all([
+        queryClient.fetchQuery({
+          queryKey: queryKeys.invitations.friendRequests(currentUserId),
+          queryFn: () => friendshipService.getPendingRequests(currentUserId),
+        }),
+        normalizedEmail
+          ? queryClient.fetchQuery({
+              queryKey: queryKeys.invitations.received(currentUserId, normalizedEmail),
+              queryFn: () => invitationService.getReceivedInvitations(normalizedEmail),
+            })
+          : Promise.resolve([]),
+      ]);
+      return getPendingInvitationCount(friendRequests.length, emailInvitations.length);
+    },
+  });
+  const {
+    data: pendingInvitationCountData,
+    isFetching: isFetchingPendingInvitations,
+    isStale: isPendingInvitationsStale,
+    refetch: refetchPendingInvitations,
+  } = pendingInvitationQuery;
+  const pendingInvitationCount = pendingInvitationCountData ?? 0;
+
+  useRefetchOnFocus({
+    enabled: !!currentUserId,
+    isFetching: isFetchingPendingInvitations,
+    isStale: isPendingInvitationsStale,
+    refetch: refetchPendingInvitations,
+  });
+
+  const invalidateInvitationCount = useCallback(() => {
+    void queryClient.invalidateQueries({ queryKey: ['invitations'] });
+  }, [queryClient]);
+
+  useRealtime({
+    table: 'invitations',
+    filter: normalizedEmail ? `invitee_email=eq.${normalizedEmail}` : undefined,
+    onChange: invalidateInvitationCount,
+    enabled: !!normalizedEmail,
+  });
+  useRealtime({
+    table: 'friendships',
+    filter: currentUserId ? `friend_id=eq.${currentUserId}` : undefined,
+    onChange: invalidateInvitationCount,
+    enabled: !!currentUserId,
+  });
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadNotificationPreference() {
+      if (!currentUser?.id) {
+        setNotificationOverride(null);
+        return;
+      }
+
+      const preference = await notificationService.getNotificationPreference(currentUser.id);
+      if (!cancelled && preference !== null) {
+        setNotificationOverride(preference);
+      }
+    }
+
+    loadNotificationPreference().catch(error => {
+      console.error('Error loading notification preference:', error);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentUser?.id]);
+
   async function handleToggleNotifications(value: boolean) {
+    if (!currentUser?.id) return;
     setNotificationOverride(value);
     try {
       if (value) {
-        const { notificationService } = await import('@/services/notification-service');
         const token = await notificationService.registerForPushNotificationsAsync();
-        if (token && currentUser?.id) {
+        if (token) {
           await userService.updatePushToken(currentUser.id, token);
+          await notificationService.setNotificationPreference(currentUser.id, true);
           await refreshUser();
         } else {
           setNotificationOverride(false);
+          await notificationService.setNotificationPreference(currentUser.id, false);
         }
       } else {
-        if (currentUser?.id) {
-          await userService.updatePushToken(currentUser.id, null);
-          await refreshUser();
-        }
+        await notificationService.setNotificationPreference(currentUser.id, false);
+        await userService.updatePushToken(currentUser.id, null);
+        await refreshUser();
       }
     } catch (error) {
       console.error('Error toggling notifications:', error);
@@ -72,7 +171,6 @@ export default function ProfileScreen() {
     initialData: cachedFriends,
     refetchOnMount: false,
     queryFn: async () => {
-      await initDatabase();
       return friendSummaryService.getHomeSummaries(currentUserId);
     },
   });
@@ -120,7 +218,7 @@ export default function ProfileScreen() {
   async function handleDeleteAccount() {
     Alert.alert(
       'Delete Account',
-      'Are you sure you want to delete your account? This will permanently remove all your data including expenses, groups, and friendships. This action cannot be undone.',
+      'This permanently deletes your account, removes your friendships and invitations, and removes you from groups. You must settle all outstanding balances first. Shared financial records may remain with your identity anonymized as "Deleted User."',
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -130,7 +228,7 @@ export default function ProfileScreen() {
             // Second confirmation for destructive action
             Alert.alert(
               'Confirm Deletion',
-              'Please confirm that you want to permanently delete your account and all associated data.',
+              'This cannot be undone. Continue deleting your account?',
               [
                 { text: 'Cancel', style: 'cancel' },
                 {
@@ -138,13 +236,22 @@ export default function ProfileScreen() {
                   style: 'destructive',
                   onPress: async () => {
                     try {
+                      setIsDeletingAccount(true);
+                      await userService.deleteAccount();
                       if (currentUser?.id) {
-                        await userService.delete(currentUser.id);
+                        await notificationService.clearNotificationPreference(currentUser.id);
                       }
+                      queryClient.clear();
                       await signOut();
                     } catch (error) {
                       console.error('Error deleting account:', error);
-                      Alert.alert('Error', 'Failed to delete account. Please try again or contact support.');
+                      const message = error instanceof Error ? error.message : '';
+                      Alert.alert(
+                        'Account Not Deleted',
+                        message || 'Failed to delete account. Please try again or contact support.'
+                      );
+                    } finally {
+                      setIsDeletingAccount(false);
                     }
                   },
                 },
@@ -156,8 +263,8 @@ export default function ProfileScreen() {
     );
   }
 
-  const settingsItems = [
-    { icon: 'envelope.badge', title: 'Invitations', onPress: () => router.push('/invitations') },
+  const settingsItems: SettingsItem[] = [
+    { icon: 'envelope.badge', title: 'Invitations', badge: pendingInvitationCount, onPress: () => router.push('/invitations') },
     { icon: 'person.badge.plus', title: 'Invite a Friend', onPress: () => router.push('/add-friend') },
     // { icon: 'figure.skateboarding', title: 'Loading Playground', onPress: () => setPlaygroundVisible(true) },
     { icon: 'bell.fill', title: 'Notifications', hasSwitch: true, value: notificationsEnabled, onToggle: handleToggleNotifications },
@@ -250,6 +357,28 @@ export default function ProfileScreen() {
 
         <View style={styles.settingsSection}>
           <ThemedText style={[styles.sectionTitle, { color: colors.textSecondary }]}>Settings</ThemedText>
+          {pendingInvitationCount > 0 && (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`${pendingInvitationCount} pending invitation${pendingInvitationCount === 1 ? '' : 's'}`}
+              style={({ pressed }) => [
+                styles.invitationAlert,
+                { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.14)' : 'rgba(34, 197, 94, 0.1)', borderColor: isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(34, 197, 94, 0.25)' },
+                pressed && styles.pressed,
+              ]}
+              onPress={() => router.push('/invitations')}>
+              <View style={[styles.invitationAlertIcon, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(34, 197, 94, 0.16)' }]}>
+                <IconSymbol name="envelope.badge" size={18} color={isDark ? '#2DD4BF' : colors.tint} />
+              </View>
+              <View style={styles.invitationAlertContent}>
+                <ThemedText style={[styles.invitationAlertTitle, { color: colors.text }]}>
+                  You have {pendingInvitationCount} pending invitation{pendingInvitationCount === 1 ? '' : 's'}
+                </ThemedText>
+                <ThemedText style={[styles.invitationAlertSubtitle, { color: colors.textSecondary }]}>Review and accept or decline now</ThemedText>
+              </View>
+              <IconSymbol name="chevron.right" size={16} color={isDark ? '#2DD4BF' : colors.tint} />
+            </Pressable>
+          )}
           <View style={[styles.settingsList, !isDark && { backgroundColor: colors.card, borderColor: colors.border }]}>
             {settingsItems.map((item, index) => (
               <Pressable
@@ -278,7 +407,14 @@ export default function ProfileScreen() {
                     thumbColor={item.value ? (isDark ? '#2DD4BF' : colors.tint) : (isDark ? '#666' : '#999')}
                   />
                 ) : (
-                  <IconSymbol name="chevron.right" size={16} color={isDark ? 'rgba(255,255,255,0.35)' : colors.textSecondary} />
+                  <View style={styles.settingRight}>
+                    {item.badge ? (
+                      <View style={[styles.invitationBadge, { backgroundColor: isDark ? '#2DD4BF' : colors.tint }]}>
+                        <ThemedText style={[styles.invitationBadgeText, { color: isDark ? '#0A0A0F' : '#FFFFFF' }]}>{item.badge > 9 ? '9+' : item.badge}</ThemedText>
+                      </View>
+                    ) : null}
+                    <IconSymbol name="chevron.right" size={16} color={isDark ? 'rgba(255,255,255,0.35)' : colors.textSecondary} />
+                  </View>
                 )}
               </Pressable>
             ))}
@@ -291,8 +427,11 @@ export default function ProfileScreen() {
             <ThemedText style={styles.logoutText}>Log out</ThemedText>
           </Pressable>
 
-          <Pressable style={({ pressed }) => [styles.deleteButton, pressed && styles.pressed]} onPress={handleDeleteAccount}>
-            <ThemedText style={styles.deleteText}>Delete Account</ThemedText>
+          <Pressable
+            disabled={isDeletingAccount}
+            style={({ pressed }) => [styles.deleteButton, pressed && styles.pressed, isDeletingAccount && styles.disabledAction]}
+            onPress={handleDeleteAccount}>
+            <ThemedText style={styles.deleteText}>{isDeletingAccount ? 'Deleting Account...' : 'Delete Account'}</ThemedText>
           </Pressable>
         </View>
 
@@ -413,6 +552,15 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginBottom: 20,
   },
+  invitationAlert: {
+    alignItems: 'center', borderRadius: 14, borderWidth: 1, flexDirection: 'row', gap: 12, marginBottom: 12, padding: 13,
+  },
+  invitationAlertIcon: {
+    alignItems: 'center', borderRadius: 10, height: 36, justifyContent: 'center', width: 36,
+  },
+  invitationAlertContent: { flex: 1, gap: 2 },
+  invitationAlertTitle: { fontSize: 14, fontWeight: '700' },
+  invitationAlertSubtitle: { fontSize: 12 },
   sectionTitle: {
     fontSize: 13,
     fontWeight: '700',
@@ -445,6 +593,9 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 0,
   },
+  settingRight: { alignItems: 'center', flexDirection: 'row', gap: 10 },
+  invitationBadge: { alignItems: 'center', borderRadius: 10, minWidth: 20, paddingHorizontal: 6, paddingVertical: 2 },
+  invitationBadgeText: { fontSize: 11, fontWeight: '800' },
   settingIcon: {
     width: 34,
     height: 34,
@@ -484,6 +635,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 12,
+  },
+  disabledAction: {
+    opacity: 0.5,
   },
   deleteText: {
     fontSize: 14,

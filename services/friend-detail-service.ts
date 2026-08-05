@@ -203,13 +203,13 @@ export function buildFriendDetailData(
 
 export const friendDetailService = {
   async getDetail(currentUserId: string, friendId: string): Promise<FriendDetailData | null> {
-    const friend = await userService.getById(friendId);
-    if (!friend) return null;
-
-    const [expenses, settlements] = await Promise.all([
+    const [friend, expenses, settlements] = await Promise.all([
+      userService.getById(friendId),
       expenseService.getUserExpenses(currentUserId),
       settlementService.getUserSettlements(currentUserId),
     ]);
+    if (!friend) return null;
+
     const expenseIds = expenses.map(expense => expense.id);
     const [splits, expenseActivities, recentActivities] = await Promise.all([
       expenseService.getSplitsForExpenses(expenseIds),

@@ -7,6 +7,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // Set to true for development/testing without real Supabase
 const USE_MOCK_DATA = process.env.EXPO_PUBLIC_USE_MOCK_DATA === 'true';
 const MOCK_OTP_CODE = '123456';
+const AUTH_EMAIL_REDIRECT_URL = 'vasuli://auth/callback';
 const APP_REVIEWER_EMAIL = 'apple.reviewer@vasuli.app';
 const APP_REVIEWER_OTP = '123456';
 const APP_REVIEWER_NAME = 'Apple Reviewer';
@@ -22,6 +23,14 @@ const TEST_ACCOUNTS = [
   { email: TEST_ACCOUNT_1_EMAIL },
   { email: TEST_ACCOUNT_2_EMAIL },
 ];
+
+function getOAuthParams(url: string): URLSearchParams {
+  const hashIndex = url.indexOf('#');
+  const queryIndex = url.indexOf('?');
+  const paramsStart = hashIndex >= 0 ? hashIndex : queryIndex;
+  const rawParams = paramsStart >= 0 ? url.slice(paramsStart + 1) : '';
+  return new URLSearchParams(rawParams);
+}
 
 /**
  * Check if the email is a test account
@@ -56,22 +65,16 @@ export interface User {
   updatedAt: number;
 }
 
-export interface AuthSession {
-  user: User;
-  token: string;
-  expiresAt: number;
-}
-
 /**
  * Create and send OTP code for sign up
  */
 export async function sendSignUpCode(params: {
-  name: string;
+  name?: string;
   email?: string;
 }): Promise<{ success: boolean; error?: string }> {
   try {
-    const { name } = params;
     const email = normalizeEmail(params.email);
+    const name = params.name?.trim() || email?.split('@')[0] || 'User';
 
     if (!email) {
       return { success: false, error: 'Email is required' };
@@ -93,6 +96,7 @@ export async function sendSignUpCode(params: {
     const { error: authError } = await supabase.auth.signInWithOtp({
       email,
       options: {
+        emailRedirectTo: AUTH_EMAIL_REDIRECT_URL,
         shouldCreateUser: true,
         data: { name },
       },
@@ -140,7 +144,10 @@ export async function sendSignInCode(params: {
 
     const { error: authError } = await supabase.auth.signInWithOtp({
       email,
-      options: { shouldCreateUser: true },
+      options: {
+        emailRedirectTo: AUTH_EMAIL_REDIRECT_URL,
+        shouldCreateUser: true,
+      },
     });
 
     if (authError) {
@@ -160,13 +167,14 @@ export async function sendSignInCode(params: {
  * Verify OTP code for sign up and create user account
  */
 export async function verifySignUpCode(params: {
-  name: string;
+  name?: string;
   email?: string;
   code: string;
-}): Promise<{ success: boolean; session?: AuthSession; error?: string }> {
+}): Promise<{ success: boolean; user?: User; error?: string }> {
   try {
-    const { name, code } = params;
+    const { code } = params;
     const email = normalizeEmail(params.email);
+    const name = params.name?.trim() || email?.split('@')[0] || 'User';
 
     if (!email) {
       return { success: false, error: 'Email is required' };
@@ -191,12 +199,11 @@ export async function verifySignUpCode(params: {
         updated_at: new Date().toISOString(),
       };
 
-      const session = await createSession(mockUser);
-      await saveSession(session);
+      const user = createAppUser(mockUser);
       await AsyncStorage.removeItem('pending_signup');
 
       console.log('[MOCK] Sign up successful!');
-      return { success: true, session };
+      return { success: true, user };
     }
 
     // Test accounts are real Supabase Auth password users for strict RLS.
@@ -219,11 +226,10 @@ export async function verifySignUpCode(params: {
       email,
       name,
     });
-    const session = await createSessionFromProfile(profile);
-    await saveSession(session);
+    const user = createAppUserFromProfile(profile);
     await AsyncStorage.removeItem('pending_signup');
 
-    return { success: true, session };
+    return { success: true, user };
   } catch (error: any) {
     console.error('Error in verifySignUpCode:', error);
     return { success: false, error: error.message || 'Failed to verify code' };
@@ -236,7 +242,7 @@ export async function verifySignUpCode(params: {
 export async function verifySignInCode(params: {
   email?: string;
   code: string;
-}): Promise<{ success: boolean; session?: AuthSession; error?: string }> {
+}): Promise<{ success: boolean; user?: User; error?: string }> {
   try {
     const { code } = params;
     const email = normalizeEmail(params.email);
@@ -264,12 +270,11 @@ export async function verifySignInCode(params: {
         updated_at: new Date().toISOString(),
       };
 
-      const session = await createSession(mockUser);
-      await saveSession(session);
+      const user = createAppUser(mockUser);
       await AsyncStorage.removeItem('pending_signin');
 
       console.log('[MOCK] Sign in successful!');
-      return { success: true, session };
+      return { success: true, user };
     }
 
     // Test account mode - auto-verify with code
@@ -303,10 +308,9 @@ export async function verifySignInCode(params: {
         console.error('[TEST ACCOUNT] Failed to seed app review demo data:', seedError);
       }
 
-      const session = await createSessionFromProfile(profile);
-      await saveSession(session);
+      const user = createAppUserFromProfile(profile);
       console.log('[TEST ACCOUNT] Sign in successful!');
-      return { success: true, session };
+      return { success: true, user };
     }
 
     const { data, error: authError } = await supabase.auth.verifyOtp({
@@ -323,11 +327,10 @@ export async function verifySignInCode(params: {
       authUserId: data.user.id,
       email,
     });
-    const session = await createSessionFromProfile(profile);
-    await saveSession(session);
+    const user = createAppUserFromProfile(profile);
     await AsyncStorage.removeItem('pending_signin');
 
-    return { success: true, session };
+    return { success: true, user };
   } catch (error: any) {
     console.error('Error in verifySignInCode:', error);
     return { success: false, error: error.message || 'Failed to verify code' };
@@ -335,13 +338,116 @@ export async function verifySignInCode(params: {
 }
 
 /**
- * Reconcile the local app session with the persisted Supabase Auth session.
+ * Sign in with Google through Supabase's browser OAuth flow.
+ *
+ * Supabase redirects back to the app's custom scheme with either an implicit
+ * session (tokens in the URL fragment) or a PKCE authorization code. Supporting
+ * both keeps this flow compatible with the project's current Supabase client
+ * configuration and future flow changes.
+ */
+export async function signInWithGoogle(): Promise<{ success: boolean; error?: string }> {
+  try {
+    const WebBrowser = await import('expo-web-browser');
+    const Linking = await import('expo-linking');
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: AUTH_EMAIL_REDIRECT_URL,
+        skipBrowserRedirect: true,
+        queryParams: {
+          prompt: 'select_account',
+        },
+      },
+    });
+
+    if (error || !data.url) {
+      return { success: false, error: error?.message || 'Unable to start Google sign-in' };
+    }
+
+    let resolveCallback: ((url: string) => void) | null = null;
+    const callbackPromise = new Promise<string>(resolve => {
+      resolveCallback = resolve;
+    });
+    const subscription = Linking.addEventListener('url', ({ url }) => {
+      if (url.startsWith(AUTH_EMAIL_REDIRECT_URL)) {
+        resolveCallback?.(url);
+      }
+    });
+
+    let callbackUrl: string | null = null;
+    let browserResult: Awaited<ReturnType<typeof WebBrowser.openAuthSessionAsync>>;
+    try {
+      browserResult = await WebBrowser.openAuthSessionAsync(data.url, AUTH_EMAIL_REDIRECT_URL);
+      if (browserResult.type === 'success') {
+        callbackUrl = browserResult.url;
+      } else {
+        // Android can report the browser as dismissed after handing the deep
+        // link to the app. Give the Linking event a short window to complete
+        // the same OAuth flow before treating it as a cancellation.
+        callbackUrl = await Promise.race([
+          callbackPromise,
+          new Promise<null>(resolve => setTimeout(() => resolve(null), 1500)),
+        ]);
+      }
+    } finally {
+      subscription.remove();
+    }
+
+    if (!callbackUrl) {
+      return {
+        success: false,
+        error: browserResult.type === 'cancel' ? 'Google sign-in was cancelled' : 'Google sign-in did not complete',
+      };
+    }
+
+    const params = getOAuthParams(callbackUrl);
+    const providerError = params.get('error_description') || params.get('error');
+    if (providerError) {
+      return { success: false, error: providerError };
+    }
+
+    const code = params.get('code');
+    if (code) {
+      const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+      if (exchangeError) {
+        return { success: false, error: exchangeError.message || 'Failed to complete Google sign-in' };
+      }
+    } else {
+      const accessToken = params.get('access_token');
+      const refreshToken = params.get('refresh_token');
+      if (!accessToken || !refreshToken) {
+        return { success: false, error: 'Google sign-in returned an incomplete session' };
+      }
+
+      const { error: sessionError } = await supabase.auth.setSession({
+        access_token: accessToken,
+        refresh_token: refreshToken,
+      });
+      if (sessionError) {
+        return { success: false, error: sessionError.message || 'Failed to save Google session' };
+      }
+    }
+
+    const appUser = await syncSupabaseAuthSessionToAppProfile();
+    if (!appUser) {
+      return { success: false, error: 'Google sign-in succeeded, but your Vasuli profile could not be loaded' };
+    }
+
+    return { success: true };
+  } catch (error: any) {
+    console.error('Error in signInWithGoogle:', error);
+    return { success: false, error: error?.message || 'Google sign-in failed' };
+  }
+}
+
+/**
+ * Reconcile the app profile with the persisted Supabase Auth session.
  *
  * This is important for users who verified OTP before the RLS bridge migration
  * was applied: the Supabase session may exist, but public.users.auth_user_id may
  * still be empty until we link it here.
  */
-export async function syncSupabaseAuthSessionToAppProfile(expectedEmail?: string): Promise<AuthSession | null> {
+export async function syncSupabaseAuthSessionToAppProfile(expectedEmail?: string): Promise<User | null> {
   const { data: { session } } = await supabase.auth.getSession();
   const authUser = session?.user;
   const email = normalizeEmail(authUser?.email);
@@ -358,108 +464,39 @@ export async function syncSupabaseAuthSessionToAppProfile(expectedEmail?: string
     email,
     name: typeof authUser.user_metadata?.name === 'string' ? authUser.user_metadata.name : undefined,
   });
-  const appSession = await createSessionFromProfile(profile);
-  await saveSession(appSession);
-  return appSession;
+  return createAppUserFromProfile(profile);
 }
 
-/**
- * Create a session for a user
- */
-async function createSession(user: any): Promise<AuthSession> {
-  const token = generateSessionToken();
-  const expiresAt = Date.now() + 30 * 24 * 60 * 60 * 1000; // 30 days
-
+function createAppUser(user: any): User {
   return {
-    user: {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      phone: user.phone,
-      avatar: user.avatar,
-      emailVerified: user.email_verified,
-      phoneVerified: user.phone_verified,
-      pushToken: user.push_token || undefined,
-      isActive: user.is_active ?? true,
-      createdAt: new Date(user.created_at).getTime(),
-      updatedAt: new Date(user.updated_at).getTime(),
-    },
-    token,
-    expiresAt,
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    phone: user.phone,
+    avatar: user.avatar,
+    emailVerified: user.email_verified,
+    phoneVerified: user.phone_verified,
+    pushToken: user.push_token || undefined,
+    isActive: user.is_active ?? true,
+    createdAt: new Date(user.created_at).getTime(),
+    updatedAt: new Date(user.updated_at).getTime(),
   };
 }
 
-async function createSessionFromProfile(user: any): Promise<AuthSession> {
-  const token = generateSessionToken();
-  const expiresAt = Date.now() + 30 * 24 * 60 * 60 * 1000;
-
+function createAppUserFromProfile(user: any): User {
   return {
-    user: {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      phone: user.phone,
-      avatar: user.avatar,
-      emailVerified: !!user.email,
-      phoneVerified: !!user.phone,
-      pushToken: user.pushToken,
-      isActive: user.isActive ?? true,
-      createdAt: user.createdAt,
-      updatedAt: user.updatedAt ?? user.createdAt,
-    },
-    token,
-    expiresAt,
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    phone: user.phone,
+    avatar: user.avatar,
+    emailVerified: !!user.email,
+    phoneVerified: !!user.phone,
+    pushToken: user.pushToken,
+    isActive: user.isActive ?? true,
+    createdAt: user.createdAt,
+    updatedAt: user.updatedAt ?? user.createdAt,
   };
-}
-
-/**
- * Generate a random session token
- */
-function generateSessionToken(): string {
-  // Simple random token generator for React Native
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  let token = '';
-  for (let i = 0; i < 64; i++) {
-    token += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return token;
-}
-
-/**
- * Save session to AsyncStorage
- */
-async function saveSession(session: AuthSession): Promise<void> {
-  await AsyncStorage.setItem('auth_session', JSON.stringify(session));
-}
-
-/**
- * Get current session from AsyncStorage
- */
-export async function getSession(): Promise<AuthSession | null> {
-  try {
-    const sessionData = await AsyncStorage.getItem('auth_session');
-    if (!sessionData) return null;
-
-    const session: AuthSession = JSON.parse(sessionData);
-
-    // Check if session is expired
-    if (session.expiresAt < Date.now()) {
-      await clearSession();
-      return null;
-    }
-
-    return session;
-  } catch (error) {
-    console.error('Error getting session:', error);
-    return null;
-  }
-}
-
-/**
- * Clear session from AsyncStorage
- */
-export async function clearSession(): Promise<void> {
-  await AsyncStorage.removeItem('auth_session');
 }
 
 /**
@@ -467,7 +504,6 @@ export async function clearSession(): Promise<void> {
  */
 export async function signOut(): Promise<void> {
   await supabase.auth.signOut();
-  await clearSession();
 }
 
 export const otpService = {
@@ -475,8 +511,7 @@ export const otpService = {
   sendSignInCode,
   verifySignUpCode,
   verifySignInCode,
+  signInWithGoogle,
   syncSupabaseAuthSessionToAppProfile,
-  getSession,
-  clearSession,
   signOut,
 };

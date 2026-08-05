@@ -28,7 +28,8 @@ interface SharedModalProps {
   icon: IconSymbolName;
   iconBackgroundColor?: string;
   iconColor?: string;
-  children: React.ReactNode;
+  children?: React.ReactNode;
+  bodyContent?: React.ReactNode;
   footerContent?: React.ReactNode;
   submitLabel?: string;
   submitIcon?: IconSymbolName;
@@ -47,6 +48,7 @@ export function SharedModal({
   iconBackgroundColor,
   iconColor,
   children,
+  bodyContent,
   footerContent,
   submitLabel,
   submitIcon = 'plus.circle.fill',
@@ -66,6 +68,36 @@ export function SharedModal({
     ? disabledColors
     : (submitGradientColors || gradients.buttonPrimary);
 
+  const headerContent = (
+    <View style={styles.headerContent}>
+      <View
+        style={[
+          styles.iconContainer,
+          { backgroundColor: iconBackgroundColor || defaultIconBg },
+        ]}>
+        <IconSymbol
+          size={40}
+          name={icon}
+          color={iconColor || defaultIconColor}
+        />
+      </View>
+      <View>
+        <ThemedText
+          type="title"
+          style={[styles.title, !isDark && { color: colors.text }]}>
+          {title}
+        </ThemedText>
+        <ThemedText
+          style={[
+            styles.subtitle,
+            { color: colors.textSecondary },
+          ]}>
+          {subtitle}
+        </ThemedText>
+      </View>
+    </View>
+  );
+
   return (
     <Modal
       visible={visible}
@@ -84,40 +116,20 @@ export function SharedModal({
             </TouchableOpacity>
           </View>
 
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.scrollContent}
-            keyboardShouldPersistTaps="handled">
-            <View style={styles.headerContent}>
-              <View
-                style={[
-                  styles.iconContainer,
-                  { backgroundColor: iconBackgroundColor || defaultIconBg },
-                ]}>
-                <IconSymbol
-                  size={40}
-                  name={icon}
-                  color={iconColor || defaultIconColor}
-                />
-              </View>
-              <View>
-                <ThemedText
-                  type="title"
-                  style={[styles.title, !isDark && { color: colors.text }]}>
-                  {title}
-                </ThemedText>
-                <ThemedText
-                  style={[
-                    styles.subtitle,
-                    { color: colors.textSecondary },
-                  ]}>
-                  {subtitle}
-                </ThemedText>
-              </View>
+          {bodyContent ? (
+            <View style={styles.bodyContent}>
+              {headerContent}
+              {bodyContent}
             </View>
-
-            {children}
-          </ScrollView>
+          ) : (
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.scrollContent}
+              keyboardShouldPersistTaps="handled">
+              {headerContent}
+              {children}
+            </ScrollView>
+          )}
 
           {(onSubmit || footerContent) && (
             <View
@@ -248,6 +260,10 @@ const styles = StyleSheet.create({
   },
   formGroup: {
     marginBottom: 20,
+  },
+  bodyContent: {
+    flex: 1,
+    paddingHorizontal: 24,
   },
   label: {
     fontSize: 13,

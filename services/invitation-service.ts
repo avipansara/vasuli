@@ -1,11 +1,13 @@
 import { supabase } from '@/lib/supabase';
 import { createInvitationNotification, notificationService } from '@/services/notification-service';
 import { userService } from '@/services/user-service';
-import type { Invitation } from '@/types/database';
+import type { Invitation, User } from '@/types/database';
 import { normalizeEmail } from '@/utils/validation';
+import type { Friendship } from '@/services/friendship-service';
 
-// Set to true for development/testing without real Supabase
-const USE_MOCK_DATA = false;
+export type FriendRequestOrInvitation =
+  | { type: 'friend_request'; friendship: Friendship; friend: User }
+  | { type: 'invitation'; invitation: Invitation };
 
 /** Phone invites use a synthetic inbox; Resend cannot deliver to it. */
 function isDeliverableEmail(email: string): boolean {
@@ -34,6 +36,42 @@ async function assertSendInvitationEmail(params: {
 }
 
 export const invitationService = {
+  /** Connect directly with an existing Vasuli user; invite everyone else by email. */
+  async sendRequestOrInvitation(invitation: {
+    inviterId: string;
+    inviteeEmail: string;
+    inviteePhone?: string;
+    inviteeName?: string;
+    inviterName?: string;
+  }): Promise<FriendRequestOrInvitation> {
+    const inviteeEmail = normalizeEmail(invitation.inviteeEmail);
+    if (!inviteeEmail) throw new Error('A valid email address is required');
+
+    const existingUser = await userService.getByEmail(inviteeEmail);
+    if (existingUser) {
+      if (existingUser.id === invitation.inviterId) {
+        throw new Error('You cannot add yourself as a friend');
+      }
+
+      const { friendshipService } = await import('@/services/friendship-service');
+      const friendship = await friendshipService.create(invitation.inviterId, existingUser.id);
+      if (existingUser.pushToken) {
+        try {
+          await notificationService.sendPushNotification(
+            existingUser.pushToken,
+            createInvitationNotification(invitation.inviterName || 'A friend'),
+          );
+        } catch (pushErr) {
+          console.error('Error sending friend request notification:', pushErr);
+        }
+      }
+      return { type: 'friend_request', friendship, friend: existingUser };
+    }
+
+    const createdInvitation = await this.create({ ...invitation, inviteeEmail });
+    return { type: 'invitation', invitation: createdInvitation };
+  },
+
   async create(invitation: {
     inviterId: string;
     inviteeEmail: string;
@@ -44,21 +82,6 @@ export const invitationService = {
     const createdAt = new Date().toISOString();
     const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(); // 30 days
     const inviteeEmail = normalizeEmail(invitation.inviteeEmail) ?? '';
-
-    // Mock mode - return a mock invitation
-    if (USE_MOCK_DATA) {
-      console.log(`[MOCK] Invitation created for ${inviteeEmail}`);
-      return {
-        id: `mock-invitation-${Date.now()}`,
-        inviterId: invitation.inviterId,
-        inviteeEmail,
-        inviteePhone: invitation.inviteePhone,
-        inviteeName: invitation.inviteeName,
-        status: 'pending',
-        createdAt: Date.now(),
-        expiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000,
-      };
-    }
 
     const { data, error } = await supabase
       .from('invitations')
@@ -78,8 +101,6 @@ export const invitationService = {
 
     const inviterName = invitation.inviterName || 'A friend';
     const inviteeName = invitation.inviteeName || inviteeEmail.split('@')[0];
-
-    const existingUser = await userService.getByEmail(inviteeEmail);
 
     if (isDeliverableEmail(inviteeEmail)) {
       try {
@@ -106,16 +127,6 @@ export const invitationService = {
       );
     }
 
-    if (existingUser?.pushToken) {
-      try {
-        console.log(`[Invitation] Also sending push notification to ${inviteeEmail}`);
-        const notification = createInvitationNotification(inviterName);
-        await notificationService.sendPushNotification(existingUser.pushToken, notification);
-      } catch (pushErr) {
-        console.error('Error sending invitation push notification:', pushErr);
-      }
-    }
-
     return {
       id: data.id,
       inviterId: data.inviter_id,
@@ -129,10 +140,6 @@ export const invitationService = {
   },
 
   async getByInviter(inviterId: string): Promise<Invitation[]> {
-    if (USE_MOCK_DATA) {
-      return [];
-    }
-
     const { data, error } = await supabase
       .from('invitations')
       .select('*')
@@ -238,8 +245,6 @@ export const invitationService = {
     inviterId: string;
     inviteeEmail?: string | null;
   }): Promise<void> {
-    if (USE_MOCK_DATA) return;
-
     const email = normalizeEmail(params.inviteeEmail ?? undefined);
     if (!email) return;
 
@@ -277,10 +282,6 @@ export const invitationService = {
 
   /** Pending invites for the signed-in user's email (email invites only). */
   async getReceivedInvitations(email: string): Promise<(Invitation & { inviterName?: string })[]> {
-    if (USE_MOCK_DATA) {
-      return [];
-    }
-
     const normalized = normalizeEmail(email);
     if (!normalized) {
       return [];
@@ -301,14 +302,10 @@ export const invitationService = {
 
     const inviterIds = [...new Set(data.map((row) => row.inviter_id as string))];
     const inviterNames = new Map<string, string>();
-    await Promise.all(
-      inviterIds.map(async (inviterId) => {
-        const u = await userService.getById(inviterId);
-        if (u?.name) {
-          inviterNames.set(inviterId, u.name);
-        }
-      })
-    );
+    const inviters = await userService.getByIds(inviterIds);
+    for (const inviter of inviters) {
+      if (inviter.name) inviterNames.set(inviter.id, inviter.name);
+    }
 
     return data.map((inv) => ({
       id: inv.id,
@@ -328,12 +325,7 @@ export const invitationService = {
    * Deletes (inviter_id=userId, invitee_email=friend's email) and the reverse.
    */
   async deleteInvitationsForRemovedFriendship(userId: string, friendId: string): Promise<void> {
-    if (USE_MOCK_DATA) return;
-
-    const [user, friend] = await Promise.all([
-      userService.getById(userId),
-      userService.getById(friendId),
-    ]);
+    const [user, friend] = await userService.getByIds([userId, friendId]);
     const userEmail = normalizeEmail(user?.email);
     const friendEmail = normalizeEmail(friend?.email);
 

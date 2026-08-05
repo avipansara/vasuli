@@ -22,10 +22,16 @@ const mocks = vi.hoisted(() => {
   const usersInsertSingle = vi.fn()
   const from = vi.fn()
   const signInWithOtp = vi.fn()
+  const signInWithOAuth = vi.fn()
   const signInWithPassword = vi.fn()
   const verifyOtp = vi.fn()
   const getSession = vi.fn()
+  const setSession = vi.fn()
+  const exchangeCodeForSession = vi.fn()
   const signOut = vi.fn()
+  const openAuthSessionAsync = vi.fn()
+  const addEventListener = vi.fn()
+  const removeEventListener = vi.fn()
   const ensureAppReviewDemoData = vi.fn()
   const linkAuthUserToProfile = vi.fn()
 
@@ -37,10 +43,16 @@ const mocks = vi.hoisted(() => {
     usersInsertSingle,
     from,
     signInWithOtp,
+    signInWithOAuth,
     signInWithPassword,
     verifyOtp,
     getSession,
+    setSession,
+    exchangeCodeForSession,
     signOut,
+    openAuthSessionAsync,
+    addEventListener,
+    removeEventListener,
     ensureAppReviewDemoData,
     linkAuthUserToProfile,
   }
@@ -62,12 +74,23 @@ vi.mock('@/lib/supabase', () => ({
     },
     auth: {
       signInWithOtp: mocks.signInWithOtp,
+      signInWithOAuth: mocks.signInWithOAuth,
       signInWithPassword: mocks.signInWithPassword,
       verifyOtp: mocks.verifyOtp,
       getSession: mocks.getSession,
+      setSession: mocks.setSession,
+      exchangeCodeForSession: mocks.exchangeCodeForSession,
       signOut: mocks.signOut,
     },
   },
+}))
+
+vi.mock('expo-web-browser', () => ({
+  openAuthSessionAsync: mocks.openAuthSessionAsync,
+}))
+
+vi.mock('expo-linking', () => ({
+  addEventListener: mocks.addEventListener,
 }))
 
 vi.mock('@/services/app-review-demo-service', () => ({
@@ -87,6 +110,7 @@ describe('otpService App Review account', () => {
     mocks.removeItem.mockResolvedValue(undefined)
     mocks.ensureAppReviewDemoData.mockResolvedValue(undefined)
     mocks.signInWithOtp.mockResolvedValue({ data: {}, error: null })
+    mocks.signInWithOAuth.mockResolvedValue({ data: { url: 'https://accounts.google.com/oauth' }, error: null })
     mocks.signInWithPassword.mockResolvedValue({
       data: {
         user: {
@@ -106,6 +130,13 @@ describe('otpService App Review account', () => {
       error: null,
     })
     mocks.signOut.mockResolvedValue({ error: null })
+    mocks.setSession.mockResolvedValue({ error: null })
+    mocks.exchangeCodeForSession.mockResolvedValue({ error: null })
+    mocks.openAuthSessionAsync.mockResolvedValue({
+      type: 'success',
+      url: 'vasuli://auth/callback#access_token=access-token&refresh_token=refresh-token',
+    })
+    mocks.addEventListener.mockReturnValue({ remove: mocks.removeEventListener })
     mocks.linkAuthUserToProfile.mockResolvedValue({
       id: 'existing-public-user-id',
       name: 'Existing User',
@@ -144,7 +175,75 @@ describe('otpService App Review account', () => {
     expect(mocks.from).not.toHaveBeenCalled()
   })
 
-  it('verifies the built-in Apple reviewer OTP and saves a session', async () => {
+  it('requests the Google account chooser and syncs the returned session', async () => {
+    mocks.getSession.mockResolvedValueOnce({
+      data: {
+        session: {
+          user: {
+            id: 'google-auth-id',
+            email: 'google@example.com',
+            user_metadata: { name: 'Google User' },
+          },
+        },
+      },
+    })
+
+    const result = await otpService.signInWithGoogle()
+
+    expect(result).toEqual({ success: true })
+    expect(mocks.signInWithOAuth).toHaveBeenCalledWith({
+      provider: 'google',
+      options: {
+        redirectTo: 'vasuli://auth/callback',
+        skipBrowserRedirect: true,
+        queryParams: { prompt: 'select_account' },
+      },
+    })
+    expect(mocks.openAuthSessionAsync).toHaveBeenCalledWith(
+      'https://accounts.google.com/oauth',
+      'vasuli://auth/callback',
+    )
+    expect(mocks.setSession).toHaveBeenCalledWith({
+      access_token: 'access-token',
+      refresh_token: 'refresh-token',
+    })
+    expect(mocks.linkAuthUserToProfile).toHaveBeenCalledWith({
+      authUserId: 'google-auth-id',
+      email: 'google@example.com',
+      name: 'Google User',
+    })
+  })
+
+  it('accepts the Android deep-link event when the browser reports dismissal', async () => {
+    mocks.openAuthSessionAsync.mockResolvedValueOnce({ type: 'dismiss' })
+    mocks.addEventListener.mockImplementationOnce((_event, callback) => {
+      callback({
+        url: 'vasuli://auth/callback#access_token=android-access&refresh_token=android-refresh',
+      })
+      return { remove: mocks.removeEventListener }
+    })
+    mocks.getSession.mockResolvedValueOnce({
+      data: {
+        session: {
+          user: {
+            id: 'android-google-auth-id',
+            email: 'android@example.com',
+            user_metadata: { name: 'Android User' },
+          },
+        },
+      },
+    })
+
+    const result = await otpService.signInWithGoogle()
+
+    expect(result).toEqual({ success: true })
+    expect(mocks.setSession).toHaveBeenCalledWith({
+      access_token: 'android-access',
+      refresh_token: 'android-refresh',
+    })
+  })
+
+  it('verifies the built-in Apple reviewer OTP', async () => {
     mocks.linkAuthUserToProfile.mockResolvedValueOnce({
       id: 'apple-reviewer-user-id',
       name: 'Apple Reviewer',
@@ -168,15 +267,12 @@ describe('otpService App Review account', () => {
       email: 'apple.reviewer@vasuli.app',
       name: 'Apple Reviewer',
     })
-    expect(result.session?.user.email).toBe('apple.reviewer@vasuli.app')
+    expect(result.user?.email).toBe('apple.reviewer@vasuli.app')
     expect(mocks.ensureAppReviewDemoData).toHaveBeenCalledWith(expect.objectContaining({
       id: 'apple-reviewer-user-id',
       email: 'apple.reviewer@vasuli.app',
     }))
-    expect(mocks.setItem).toHaveBeenCalledWith(
-      'auth_session',
-      expect.stringContaining('"email":"apple.reviewer@vasuli.app"')
-    )
+    expect(mocks.setItem).not.toHaveBeenCalledWith('auth_session', expect.anything())
   })
 
   it('rejects the Apple reviewer OTP when the Supabase Auth password user is missing', async () => {
@@ -218,7 +314,10 @@ describe('otpService App Review account', () => {
     expect(result).toEqual({ success: true })
     expect(mocks.signInWithOtp).toHaveBeenCalledWith({
       email: 'existing@example.com',
-      options: { shouldCreateUser: true },
+      options: {
+        emailRedirectTo: 'vasuli://auth/callback',
+        shouldCreateUser: true,
+      },
     })
     expect(mocks.from).not.toHaveBeenCalled()
   })
@@ -236,7 +335,10 @@ describe('otpService App Review account', () => {
     expect(result).toEqual({ success: true })
     expect(mocks.signInWithOtp).toHaveBeenCalledWith({
       email: 'legacy@example.com',
-      options: { shouldCreateUser: true },
+      options: {
+        emailRedirectTo: 'vasuli://auth/callback',
+        shouldCreateUser: true,
+      },
     })
     expect(mocks.from).not.toHaveBeenCalled()
   })
@@ -266,6 +368,7 @@ describe('otpService App Review account', () => {
     expect(mocks.signInWithOtp).toHaveBeenCalledWith({
       email: 'new@example.com',
       options: {
+        emailRedirectTo: 'vasuli://auth/callback',
         shouldCreateUser: true,
         data: { name: 'New User' },
       },
@@ -306,7 +409,7 @@ describe('otpService App Review account', () => {
     })
 
     expect(result.success).toBe(true)
-    expect(result.session?.user.id).toBe('new-public-user-id')
+    expect(result.user?.id).toBe('new-public-user-id')
     expect(mocks.linkAuthUserToProfile).toHaveBeenCalledWith({
       authUserId: 'new-auth-id',
       email: 'new@example.com',
@@ -333,7 +436,7 @@ describe('otpService App Review account', () => {
     })
 
     expect(result.success).toBe(true)
-    expect(result.session?.user.id).toBe('existing-public-user-id')
+    expect(result.user?.id).toBe('existing-public-user-id')
     expect(mocks.verifyOtp).toHaveBeenCalledWith({
       email: 'existing@example.com',
       token: '654321',
@@ -360,16 +463,13 @@ describe('otpService App Review account', () => {
 
     const session = await otpService.syncSupabaseAuthSessionToAppProfile(' existing@example.com ')
 
-    expect(session?.user.id).toBe('existing-public-user-id')
+    expect(session?.id).toBe('existing-public-user-id')
     expect(mocks.linkAuthUserToProfile).toHaveBeenCalledWith({
       authUserId: 'auth-user-id',
       email: 'existing@example.com',
       name: 'Existing User',
     })
-    expect(mocks.setItem).toHaveBeenCalledWith(
-      'auth_session',
-      expect.stringContaining('"id":"existing-public-user-id"')
-    )
+    expect(mocks.setItem).not.toHaveBeenCalledWith('auth_session', expect.anything())
   })
 
   it('does not sync a Supabase Auth session for a different local email', async () => {

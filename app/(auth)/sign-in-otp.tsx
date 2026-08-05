@@ -133,6 +133,28 @@ export default function SignInOTPScreen() {
     }
   }
 
+  async function handleGoogleSignIn() {
+    setLoading(true);
+    try {
+      const result = await otpService.signInWithGoogle();
+      if (!result.success) {
+        if (result.error !== 'Google sign-in was cancelled') {
+          Alert.alert('Google sign-in failed', result.error || 'Please try again.');
+        }
+        return;
+      }
+
+      await refreshUser();
+      const pendingInvite = await AsyncStorage.getItem(PENDING_INVITE_PATH_KEY);
+      await AsyncStorage.removeItem(PENDING_INVITE_PATH_KEY);
+      router.replace((pendingInvite || '/(tabs)') as Href);
+    } catch {
+      Alert.alert('Google sign-in failed', 'Something went wrong. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function handleVerifyCode() {
     const code = otp.join('');
     if (code.length !== 6) return;
@@ -325,6 +347,28 @@ export default function SignInOTPScreen() {
             </>
           )}
         </LinearGradient>
+      </Pressable>
+
+      <View style={styles.oauthDivider}>
+        <View style={[styles.oauthDividerLine, { backgroundColor: isDark ? 'rgba(255,255,255,0.15)' : '#E5E7EB' }]} />
+        <Text style={[styles.oauthDividerText, { color: isDark ? 'rgba(255,255,255,0.5)' : colors.textSecondary }]}>or</Text>
+        <View style={[styles.oauthDividerLine, { backgroundColor: isDark ? 'rgba(255,255,255,0.15)' : '#E5E7EB' }]} />
+      </View>
+
+      <Pressable
+        testID="google-sign-in-button"
+        onPress={handleGoogleSignIn}
+        disabled={loading}
+        style={({ pressed }) => [
+          styles.googleButton,
+          { borderColor: isDark ? 'rgba(255,255,255,0.2)' : '#D1D5DB', backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#fff' },
+          pressed && styles.buttonPressed,
+          loading && styles.buttonDisabled,
+        ]}>
+        <View style={styles.googleMark}>
+          <Text style={styles.googleMarkText}>G</Text>
+        </View>
+        <Text style={[styles.googleButtonText, { color: isDark ? '#fff' : colors.text }]}>Continue with Google</Text>
       </Pressable>
 
       {/* Footer */}
@@ -639,6 +683,48 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     overflow: 'hidden',
     marginBottom: 24,
+  },
+  oauthDivider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 16,
+  },
+  oauthDividerLine: {
+    flex: 1,
+    height: 1,
+  },
+  oauthDividerText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  googleButton: {
+    minHeight: 54,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    marginBottom: 24,
+    paddingHorizontal: 20,
+  },
+  googleMark: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+  },
+  googleMarkText: {
+    color: '#4285F4',
+    fontSize: 17,
+    fontWeight: '800',
+  },
+  googleButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
   },
   buttonPressed: {
     opacity: 0.9,

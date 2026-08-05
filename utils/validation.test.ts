@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   getEmailErrorMessage,
+  getDisplayName,
   getPersonNameErrorMessage,
   isEmailValid,
   normalizeCurrencyInput,
@@ -38,6 +39,17 @@ describe('normalizeEmail', () => {
 
   it('trims and lowercases for lookup parity', () => {
     expect(normalizeEmail('  Varun.y.n@Gmail.COM  ')).toBe('varun.y.n@gmail.com')
+  })
+})
+
+describe('getDisplayName', () => {
+  it('uses the email handle when the profile has the generic fallback name', () => {
+    expect(getDisplayName('User', 'alex@example.com')).toBe('alex')
+    expect(getDisplayName(undefined, '  Priya@Example.com ')).toBe('priya')
+  })
+
+  it('keeps a real profile name', () => {
+    expect(getDisplayName('Alex Johnson', 'alex@example.com')).toBe('Alex Johnson')
   })
 })
 

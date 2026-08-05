@@ -5,13 +5,15 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { LoadingState } from '@/components/ui/loading-state';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useDebouncedQueryInvalidation } from '@/hooks/use-debounced-query-invalidation';
+import { useRefetchOnFocus } from '@/hooks/use-refetch-on-focus';
 import { useRealtime } from '@/hooks/use-realtime';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
-import { calculateBalances, groupService, initDatabase, userService } from '@/services/api';
+import { calculateGroupBalances } from '@/services/balance-utils';
+import { groupService } from '@/services/group-service';
+import { userService } from '@/services/user-service';
 import { queryKeys } from '@/services/query-keys';
 import type { GroupWithMembers } from '@/types/database';
-import { useFocusEffect } from 'expo-router/react-navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
@@ -36,26 +38,21 @@ export default function GroupsScreen() {
   const {
     data: groups = [],
     error,
+    isFetching,
     isLoading,
+    isStale,
     refetch,
   } = useQuery({
     queryKey: groupsQueryKey,
     enabled: !!currentUserId,
     queryFn: async () => {
-      await initDatabase();
       const allGroups = await groupService.getUserGroups(currentUserId);
+      const balancesByGroupId = await calculateGroupBalances(allGroups.map(group => group.id));
 
-      return Promise.all(
-        allGroups.map(async (group) => {
-          const balances = await calculateBalances(group.id);
-          const yourBalance = balances.get(currentUserId) || 0;
-
-          return {
-            ...group,
-            yourBalance,
-          };
-        })
-      );
+      return allGroups.map(group => ({
+        ...group,
+        yourBalance: balancesByGroupId.get(group.id)?.get(currentUserId) || 0,
+      }));
     },
   });
   const loading = isLoading && groups.length === 0;
@@ -65,11 +62,12 @@ export default function GroupsScreen() {
     await refetch();
   }, [refetch]);
 
-  useFocusEffect(
-    useCallback(() => {
-      loadGroups();
-    }, [loadGroups])
-  );
+  useRefetchOnFocus({
+    enabled: !!currentUserId,
+    isFetching,
+    isStale,
+    refetch,
+  });
 
   useEffect(() => {
     if (!loading) {
@@ -136,21 +134,54 @@ export default function GroupsScreen() {
   }
 
   const totalBalance = groups.reduce((sum, g) => sum + (g.yourBalance || 0), 0);
+  const totalOwed = groups.reduce((sum, g) => sum + Math.max(g.yourBalance || 0, 0), 0);
+  const totalOwe = groups.reduce((sum, g) => sum + Math.max(-(g.yourBalance || 0), 0), 0);
+  const hasSeparateBalances = totalOwed > 0 && totalOwe > 0;
+  const summaryAccessibilityLabel = hasSeparateBalances
+    ? `You owe $${totalOwe.toFixed(2)} and you are owed $${totalOwed.toFixed(2)}`
+    : totalOwe > 0
+      ? `You owe $${totalOwe.toFixed(2)}`
+      : totalOwed > 0
+        ? `You are owed $${totalOwed.toFixed(2)}`
+        : 'All settled up';
 
   return (
     <LinearGradient
       colors={gradients.screenBackground}
       style={styles.container}>
       <View style={styles.header}>
-        <View>
-          <ThemedText style={[styles.headerLabel, { color: colors.textSecondary }]}>Total balance</ThemedText>
-          <ThemedText type="header" style={[styles.headerAmount, !isDark && { color: colors.text }]}>
-            ${Math.abs(totalBalance).toFixed(2)}
-          </ThemedText>
+        <View accessible accessibilityRole="summary" accessibilityLabel={`Group balances: ${summaryAccessibilityLabel}`}>
+          {hasSeparateBalances ? (
+            <View style={styles.balanceSummaryRow}>
+              <View>
+                <ThemedText style={[styles.headerLabel, { color: colors.textSecondary }]}>You owe</ThemedText>
+                <ThemedText type="header" style={[styles.headerAmount, { color: colors.error }]}>${totalOwe.toFixed(2)}</ThemedText>
+              </View>
+              <View>
+                <ThemedText style={[styles.headerLabel, { color: colors.textSecondary }]}>You are owed</ThemedText>
+                <ThemedText type="header" style={[styles.headerAmount, { color: colors.success }]}>${totalOwed.toFixed(2)}</ThemedText>
+              </View>
+            </View>
+          ) : (
+            <>
+              <ThemedText style={[styles.headerLabel, { color: colors.textSecondary }]}>
+                {totalBalance === 0 ? 'All settled up' : totalOwe > 0 ? 'You owe' : 'You are owed'}
+              </ThemedText>
+              <ThemedText
+                type="header"
+                style={[styles.headerAmount, { color: totalOwe > 0 ? colors.error : colors.success }]}
+              >
+                ${Math.abs(totalBalance).toFixed(2)}
+              </ThemedText>
+            </>
+          )}
         </View>
         <TouchableOpacity
           style={[styles.addButtonRect, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)', borderColor: isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(34, 197, 94, 0.3)' }]}
-          onPress={() => router.push('/create-group')}>
+          onPress={() => router.push('/create-group')}
+          accessibilityRole="button"
+          accessibilityLabel="Create group"
+          accessibilityHint="Opens the form to create a new group">
           <IconSymbol size={20} name="plus" color={isDark ? '#2DD4BF' : colors.tint} />
         </TouchableOpacity>
       </View>
@@ -179,7 +210,9 @@ export default function GroupsScreen() {
           </ThemedText>
           <TouchableOpacity
             activeOpacity={0.8}
-            onPress={() => router.push('/create-group')}>
+            onPress={() => router.push('/create-group')}
+            accessibilityRole="button"
+            accessibilityLabel="Create your first group">
             <LinearGradient
               colors={gradients.buttonPrimary}
               start={{ x: 0, y: 0 }}
@@ -242,6 +275,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: Platform.OS === 'ios' ? 60 : 54,
     marginBottom: 16,
+  },
+  balanceSummaryRow: {
+    flexDirection: 'row',
+    gap: 20,
   },
   headerLabel: {
     fontSize: 15,

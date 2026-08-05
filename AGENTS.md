@@ -1,183 +1,123 @@
 # AGENTS.md
 
-## Project Overview
+## Project overview
 
-This is an Expo/React Native mobile application (**Expo SDK 56**, React Native 0.85, React 19.2). Prioritize mobile-first patterns, performance, and cross-platform compatibility.
+Vasuli is a mobile-first Expo Router application targeting Expo SDK 57, React
+Native 0.86, and React 19.2. It supports iOS and Android, with a web tab
+layout for web development. Prioritize cross-platform behavior, accessibility,
+performance, and the existing visual language.
 
-After changing the `expo` version, run `npx expo install --fix` and `npx expo-doctor`. Manual `eas update` requires `--environment` (e.g. `production`, `preview`); EAS Workflow update jobs in this repo set `environment` explicitly.
+The app uses Supabase for authentication, data, and Edge Functions. Routes live
+under `app/`; reusable UI and feature components live under `components/`;
+shared logic lives in `lib/`, `hooks/`, `services/`, and `utils/`; database
+schemas, migrations, and Edge Functions live under `supabase/`.
 
-## Documentation Resources
+## Before changing code
 
-When working on this project, **always consult the official Expo documentation** available at:
+- Inspect nearby screens, components, services, and tests before introducing a
+  new pattern.
+- Use TypeScript for new code and keep strict type checking passing.
+- Use Expo Router for navigation and follow the existing route conventions.
+- Consult the official Expo or React Native documentation when changing Expo
+  APIs, Router behavior, native modules, or EAS configuration. The project’s
+  primary AI-readable references are:
+  - <https://docs.expo.dev/llms.txt>
+  - <https://docs.expo.dev/llms-full.txt>
+  - <https://docs.expo.dev/llms-eas.txt>
+  - <https://docs.expo.dev/llms-sdk.txt>
+  - <https://reactnative.dev/docs/getting-started>
 
-- **https://docs.expo.dev/llms.txt** - Index of all available documentation files
-- **https://docs.expo.dev/llms-full.txt** - Complete Expo documentation including Expo Router, Expo Modules API, development process
-- **https://docs.expo.dev/llms-eas.txt** - Complete EAS (Expo Application Services) documentation
-- **https://docs.expo.dev/llms-sdk.txt** - Complete Expo SDK documentation
-- **https://reactnative.dev/docs/getting-started** - Complete React Native documentation
-
-These documentation files are specifically formatted for AI agents and should be your **primary reference** for:
-
-- Expo APIs and best practices
-- Expo Router navigation patterns
-- EAS Build, Submit, and Update workflows
-- Expo SDK modules and their usage
-- Development and deployment processes
-
-## Project Structure
-
-```
-/
-├── app/                   # Expo Router file-based routing
-│   ├── (tabs)/            # Tab-based navigation screens
-│   │   ├── index.tsx      # Friends screen
-│   │   ├── groups.tsx     # Groups screen
-│   │   ├── activity.tsx   # Global activity/history feed
-│   │   ├── profile.tsx    # Profile and settings screen
-│   │   ├── _layout.tsx    # Native tabs layout
-│   │   └── _layout.web.tsx # Web tabs layout
-│   ├── _layout.tsx        # Root layout with theme provider
-│   └── modal.tsx          # Modal screen example
-├── components/            # Reusable React components
-│   ├── ui/                # UI primitives (IconSymbol, Collapsible)
-│   └── ...                # Feature components (themed, haptic, parallax)
-├── constants/             # App-wide constants (theme, colors)
-├── hooks/                 # Custom React hooks (color scheme, theme)
-├── assets/                # Static assets (images, fonts)
-├── scripts/               # Utility scripts (reset-project)
-├── .eas/workflows/        # EAS Workflows (CI/CD automation)
-├── app.json               # Expo configuration
-├── eas.json               # EAS Build/Submit configuration
-└── package.json           # Dependencies and scripts
-```
-
-## Essential Commands
-
-### Development
+## Development commands
 
 ```bash
-npx expo start                  # Start dev server
-npx expo start --clear          # Clear cache and start dev server
-npx expo install <package>      # Install packages with compatible versions
-npx expo install --check        # Check which installed packages need to be updated
-npx expo install --fix          # Automatically update any invalid package versions
-npm run development-builds      # Create development builds (workflow)
-npm run reset-project           # Reset to blank template
+npx expo start
+npx expo start --clear
+npx expo start --dev-client
+npx expo install <package>
+npx expo install --check
+npx expo install --fix
 ```
 
-### Building & Testing
+Use `npx expo install` for Expo and React Native packages so compatible
+versions are selected. After changing the `expo` dependency, run:
 
 ```bash
-npx expo-doctor      # Check project health and dependencies
-npx expo lint        # Run ESLint
-npm test             # Run unit tests (Vitest)
-npm run test:watch   # Vitest in watch mode
-npm run draft        # Publish preview update and website (workflow)
+npx expo install --fix
+npx expo-doctor
 ```
 
-### Git hooks (Husky)
+## Quality checks
 
-Pre-commit runs `npm run precommit` (ESLint via `expo lint` + `typecheck:supabase` + `npm test`). After `npm install`, the `prepare` script wires Husky. If hooks do not run, set `git config core.hooksPath .husky` and ensure `.husky/pre-commit` is executable.
+Run focused checks while developing and the full suite before handing off a
+behavior change:
 
 ```bash
-npm run precommit    # Run the same checks locally without committing
+npm run lint
+npm run typecheck:supabase
+npm test
+npm run precommit
 ```
 
-### Production
+`npm run precommit` runs linting, Supabase type checking, and Vitest. When
+adding or changing behavior, add or update focused tests, especially for
+helpers, services, and Supabase Edge Functions. Use stable `testID` props for
+important interactive UI when screen or device automation needs them.
+
+Keep production logs actionable: use `console.warn` for deprecations and
+`console.error` for actual errors; remove temporary debugging output.
+
+## EAS and deployment
+
+Build profiles are defined in `eas.json`:
+
+- `development`: internal development client builds
+- `development-simulator`: iOS simulator development build
+- `preview`: internal preview builds
+- `production`: store builds with auto-incrementing versions
+
+Existing workflow shortcuts are available through:
 
 ```bash
-npx eas-cli@latest build --platform ios -s          # Use EAS to build for iOS platform and submit to App Store
-npx eas-cli@latest build --platform android -s      # Use EAS to build for Android platform and submit to Google Play Store
-npm run deploy                                      # Deploy to production (workflow)
+npm run development-builds
+npm run draft
+npm run deploy
 ```
 
-## Development Guidelines
+The workflows are in `.eas/workflows/`. The production workflow builds and
+submits binaries when needed, or publishes platform updates when a compatible
+build already exists. Manual `eas update` commands must include an explicit
+`--environment` such as `preview` or `production`.
 
-### Code Style & Standards
+Use a development build when native modules or config plugins are not
+available in Expo Go, or after native dependencies/configuration change.
 
-- **TypeScript First**: Use TypeScript for all new code with strict type checking
-- **Naming Conventions**: Use meaningful, descriptive names for variables, functions, and components
-- **Self-Documenting Code**: Write clear, readable code that explains itself; only add comments for complex business logic or design decisions
-- **React 19 Patterns**: Follow modern React patterns including:
-  - Function components with hooks
-  - Enable React Compiler
-  - Proper dependency arrays in useEffect
-  - Memoization when appropriate (useMemo, useCallback)
-  - Error boundaries for better error handling
+When changing EAS workflows, consult the existing workflow files and the
+official workflow documentation:
 
-### Navigation & Routing
+- <https://docs.expo.dev/eas/workflows/>
+- <https://exp.host/--/api/v2/workflows/schema>
 
-- Use **Expo Router** for all navigation
-- Import `Link`, `router`, and `useLocalSearchParams` from `expo-router`
-- Docs: https://docs.expo.dev/router/introduction/
+## Implementation conventions
 
-### Recommended Libraries
+- Prefer clear function components and hooks with correct effect dependencies.
+- Keep business logic in reusable services or pure helpers rather than route
+  components.
+- Use the existing query, storage, theme, image, animation, and error-state
+  utilities before adding alternatives.
+- Add error boundaries and explicit loading, empty, offline, and error states
+  where a user flow can encounter them.
+- Do not add stale compatibility code or speculative fallbacks. If a fallback
+  is required for a supported platform or migration, document why it exists.
+- Avoid unrelated refactors and preserve user changes already present in the
+  worktree.
 
-- **Navigation**: `expo-router` for navigation
-- **Images**: `expo-image` for optimized image handling and caching
-- **Animations**: `react-native-reanimated` for performant animations on native thread
-- **Gestures**: `react-native-gesture-handler` for native gesture recognition
-- **Storage**: Use `expo-sqlite` for persistent storage, `expo-sqlite/kv-store` for simple key-value storage
+## Git and release notes
 
-## Debugging & Development Tools
-
-### DevTools Integration
-
-- **React Native DevTools**: Use MCP `open_devtools` command to launch debugging tools
-- **Network Inspection**: Monitor API calls and network requests in DevTools
-- **Element Inspector**: Debug component hierarchy and styles
-- **Performance Profiler**: Identify performance bottlenecks
-- **Logging**: Use `console.log` for debugging (remove before production), `console.warn` for deprecation notices, `console.error` for actual errors, and implement error boundaries for production error handling
-
-### Testing & Quality Assurance
-
-#### Unit tests (Vitest)
-
-When you **change existing behavior** or **add a feature**, **add or update automated tests** that cover the new logic, and **run `npm test`** before finishing (alongside `npm run precommit` when appropriate). Co-locate tests as `*.test.ts` next to **Edge Functions** (`supabase/functions/`), **shared helpers** (`lib/`, `utils/`), and **services** (`services/`). Prefer pure helpers and mocked Supabase clients; add screen-level or E2E tests only when needed (see [`README.md`](./README.md)).
-
-#### Automated Testing with MCP Tools
-
-Developers can configure the Expo MCP server with the following doc: https://docs.expo.dev/eas/ai/mcp/
-
-- **Component Testing**: Add `testID` props to components for automation
-- **Visual Testing**: Use MCP `automation_take_screenshot` to verify UI appearance
-- **Interaction Testing**: Use MCP `automation_tap_by_testid` to simulate user interactions
-- **View Verification**: Use MCP `automation_find_view_by_testid` to validate component rendering
-
-## EAS Workflows CI/CD
-
-This project is pre-configured with **EAS Workflows** for automating development and release processes. Workflows are defined in `.eas/workflows/` directory.
-
-When working with EAS Workflows, **always refer to**:
-
-- https://docs.expo.dev/eas/workflows/ for workflow examples
-- The `.eas/workflows/` directory for existing workflow configurations
-- You can check that a workflow YAML is valid using the workflows schema: https://exp.host/--/api/v2/workflows/schema
-
-### Build Profiles (eas.json)
-
-- **development**: Development builds with dev client
-- **development-simulator**: Development builds for iOS simulator
-- **preview**: Internal distribution preview builds
-- **production**: Production builds with auto-increment
-
-## Troubleshooting
-
-### Expo Go Errors & Development Builds
-
-If there are errors in **Expo Go** or the project is not running, create a **development build**. **Expo Go** is a sandbox environment with a limited set of native modules. To create development builds, run `eas build:dev`. Additionally, after installing new packages or adding config plugins, new development builds are often required.
-
-## AI Agent Instructions
-
-When working on this project:
-
-1. **Always start by consulting the appropriate documentation**:
-   - For general Expo questions: https://docs.expo.dev/llms-full.txt
-   - For EAS/deployment questions: https://docs.expo.dev/llms-eas.txt
-   - For SDK/API questions: https://docs.expo.dev/llms-sdk.txt
-
-2. **Understand before implementing**: Read the relevant docs section before writing code
-
-3. **Follow existing patterns**: Look at existing components and screens for patterns to follow
-
-4. **Tests for feature work**: When modifying or adding features, create or extend test cases for the affected behavior and run `npm test` to confirm they pass
+- Do not commit, tag, push, or submit builds unless explicitly requested.
+- Significant features, fixes, refactors, specification changes, deployment
+  changes, and documentation changes should be recorded in `CHANGELOG.md`
+  under the current date. Keep entries concise and describe user-visible or
+  operational impact.
+- Update the relevant version metadata when preparing a release, then follow
+  the repository’s requested commit, tag, push, and submission process. Do not
+  invent release steps or perform them without explicit instruction.

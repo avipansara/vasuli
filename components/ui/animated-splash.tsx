@@ -1,11 +1,17 @@
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Animated, Dimensions, Easing, StyleSheet, View } from 'react-native';
 
 const { width, height } = Dimensions.get('window');
 
-export function AnimatedSplash() {
+export function AnimatedSplash({
+  startAnimation = true,
+  onAnimationComplete,
+}: {
+  startAnimation?: boolean;
+  onAnimationComplete?: () => void;
+}) {
   const { isDark } = useThemeColors();
 
   // Avatar animations
@@ -46,10 +52,14 @@ export function AnimatedSplash() {
 
   // Glow effect
   const [glowPulse] = useState(() => new Animated.Value(0));
+  const animationStarted = useRef(false);
 
   useEffect(() => {
+    if (!startAnimation || animationStarted.current) return;
+    animationStarted.current = true;
+
     // Main animation sequence
-    Animated.sequence([
+    const mainSequence = Animated.sequence([
       // Phase 1: Avatars slide in from sides
       Animated.parallel([
         Animated.timing(avatar1X, {
@@ -199,10 +209,16 @@ export function AnimatedSplash() {
           useNativeDriver: true,
         }),
       ]),
-    ]).start();
+    ]);
+
+    mainSequence.start(({ finished }) => {
+      if (finished) {
+        onAnimationComplete?.();
+      }
+    });
 
     // Looping glow animation
-    Animated.loop(
+    const glowLoop = Animated.loop(
       Animated.sequence([
         Animated.timing(glowPulse, {
           toValue: 1,
@@ -217,10 +233,11 @@ export function AnimatedSplash() {
           useNativeDriver: true,
         }),
       ])
-    ).start();
+    );
+    glowLoop.start();
 
     // Floating particles
-    Animated.loop(
+    const particlesLoop = Animated.loop(
       Animated.parallel([
         Animated.sequence([
           Animated.parallel([
@@ -306,7 +323,14 @@ export function AnimatedSplash() {
           }),
         ]),
       ])
-    ).start();
+    );
+    particlesLoop.start();
+
+    return () => {
+      mainSequence.stop();
+      glowLoop.stop();
+      particlesLoop.stop();
+    };
   }, [
     avatar1Opacity,
     avatar1Pulse,
@@ -332,6 +356,8 @@ export function AnimatedSplash() {
     particle3Y,
     textOpacity,
     textSlide,
+    startAnimation,
+    onAnimationComplete,
   ]);
 
   const moneyRotation = moneyRotate.interpolate({

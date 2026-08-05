@@ -33,6 +33,7 @@ export default function TabLayout() {
           shadowColor={isDark ? 'rgba(45,212,191,0.18)' : 'rgba(0,0,0,0.12)'}
           disableTransparentOnScrollEdge
           minimizeBehavior="automatic"
+          labelVisibilityMode="labeled"
           labelStyle={{
             default: { color: defaultTabColor },
             selected: { color: colors.tint },

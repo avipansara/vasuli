@@ -32,7 +32,7 @@ cp .env.example .env
 # Edit .env, then restart the dev server (Expo reads EXPO_PUBLIC_* on startup).
 ```
 
-This app targets **Expo SDK 56**, which matches the **App Store** [Expo Go](https://expo.dev/go) client for day-to-day development on a physical device.
+This app targets **Expo SDK 57**, which matches the **App Store** [Expo Go](https://expo.dev/go) client for day-to-day development on a physical device.
 
 For **custom native code** or modules Expo Go does not include, use a **development build** and the dev-client bundler:
 
@@ -102,32 +102,47 @@ npm run test:watch
 
 This project is configured to use [EAS Workflows](https://docs.expo.dev/eas/workflows/get-started/) to automate some development and release processes. These commands are set up in [`package.json`](./package.json) and can be run using NPM scripts in your terminal.
 
+The default Git branch for this project is **`master`**. Production workflows are triggered by pushes to `master`.
+
 ### Previews
 
-Run `npm run draft` to [publish a preview update](https://docs.expo.dev/eas/workflows/examples/publish-preview-update/) of your project.
+Run `npm run draft` to [publish a preview update](https://docs.expo.dev/eas/workflows/examples/publish-preview-update/) of your project. Preview updates are published to the current Git branch; preview builds use the `master` channel, so updates intended for the shared preview build should be published from `master`.
+
+EAS Update publishes JavaScript, styling, and asset changes without requiring a new native build. A preview or production build downloads an applicable update when it starts and applies it after restarting the app. The update channel and runtime version must match the installed build.
 
 ### Development Builds
 
 Run `npm run development-builds` to [create a development build](https://docs.expo.dev/eas/workflows/examples/create-development-builds/). Note - you'll need to follow the [Prerequisites](https://docs.expo.dev/eas/workflows/examples/create-development-builds/#prerequisites) to ensure you have the correct emulator setup on your machine.
 
+### Production Builds
+
+Build Android and iOS production binaries together:
+
+```bash
+npx eas-cli@latest build --platform all --profile production
+```
+
+To build one platform only:
+
+```bash
+npx eas-cli@latest build --platform android --profile production
+npx eas-cli@latest build --platform ios --profile production
+```
+
+Production builds use the `production` update channel. EAS Build may increment Android and iOS build numbers using the remote version source. Building does not submit the binaries to Google Play or the App Store; use EAS Submit or the production workflow for store submission.
+
+The Android build requires the local [`google-services.json`](./google-services.json) referenced by [`app.json`](./app.json). Keep this file out of Git because it contains project-specific configuration, but make sure it is available locally when starting an Android build.
+
+Clearing Metro is only needed for a stale local development server. `npx expo start --clear` is not required before every EAS build.
+
 ### Production Deployments
 
-Run `npm run deploy` to [deploy to production](https://docs.expo.dev/eas/workflows/examples/deploy-to-production/). Note - you'll need to follow the [Prerequisites](https://docs.expo.dev/eas/workflows/examples/deploy-to-production/#prerequisites) to ensure you're set up to submit to the Apple and Google stores.
+Run `npm run deploy` to [deploy to production](https://docs.expo.dev/eas/workflows/examples/deploy-to-production/). This workflow runs on pushes to `master`, builds or reuses matching production binaries, and publishes production updates. Follow the [Prerequisites](https://docs.expo.dev/eas/workflows/examples/deploy-to-production/#prerequisites) to submit to the Apple and Google stores.
 
 ## Hosting
 
 Expo offers hosting for websites and API functions via EAS Hosting. See the [Getting Started](https://docs.expo.dev/eas/hosting/get-started/) guide to learn more.
 
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
-```
-
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
 
 ## Learn more
 

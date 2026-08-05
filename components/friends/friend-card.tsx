@@ -2,6 +2,7 @@ import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import type { User } from '@/types/database';
+import { getDisplayName } from '@/utils/validation';
 import React, { memo, useMemo } from 'react';
 import { Animated, StyleSheet, TouchableOpacity, View } from 'react-native';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
@@ -29,7 +30,7 @@ function areFriendCardPropsEqual(prev: FriendCardProps, next: FriendCardProps): 
   }
   const a = prev.friend;
   const b = next.friend;
-  if (a.id !== b.id || a.balance !== b.balance || a.name !== b.name) {
+  if (a.id !== b.id || a.balance !== b.balance || a.name !== b.name || a.email !== b.email) {
     return false;
   }
   const ar = a.recentExpenses;
@@ -51,6 +52,7 @@ function areFriendCardPropsEqual(prev: FriendCardProps, next: FriendCardProps): 
 function FriendCardInner({ friend, onPress, onDelete }: FriendCardProps) {
   const { colors, friends: friendsTheme } = useThemeColors();
   const balance = normalizeDisplayBalance(friend.balance);
+  const displayName = getDisplayName(friend.name, friend.email);
   const balanceColor =
     balance > 0
       ? colors.success
@@ -104,15 +106,20 @@ function FriendCardInner({ friend, onPress, onDelete }: FriendCardProps) {
             { backgroundColor: friendsTheme.avatarSurface },
           ]}>
           <ThemedText style={[styles.avatarText, { color: colors.tint }]}>
-            {friend.name.charAt(0).toUpperCase()}
+            {displayName.charAt(0).toUpperCase()}
           </ThemedText>
         </View>
         <View style={styles.info}>
           <ThemedText
             type="defaultSemiBold"
             style={[styles.name, { color: colors.text }]}>
-            {friend.name}
+            {displayName}
           </ThemedText>
+          {friend.email ? (
+            <ThemedText numberOfLines={1} style={[styles.email, { color: colors.textSecondary }]}>
+              {friend.email}
+            </ThemedText>
+          ) : null}
           {balance !== 0 ? (
             <View style={styles.recentExpenses}>
               {friend.recentExpenses && friend.recentExpenses.length > 0 ? (

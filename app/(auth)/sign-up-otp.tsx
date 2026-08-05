@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/auth-context-otp';
 import { PENDING_INVITE_PATH_KEY } from '@/lib/invite-deeplink';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { otpService } from '@/services/otp-service';
-import { getPersonNameErrorMessage, isEmailValid, normalizeEmail, normalizePersonName } from '@/utils/validation';
+import { isEmailValid, normalizeEmail, normalizePersonName } from '@/utils/validation';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Link, router, type Href } from 'expo-router';
@@ -107,17 +107,10 @@ export default function SignUpOTPScreen() {
   }, [resendTimer]);
 
   const isContactValid = () => {
-    if (!normalizePersonName(name)) return false;
     return isEmailValid(email);
   };
 
   async function handleSendCode() {
-    const normalizedName = normalizePersonName(name);
-    if (!normalizedName) {
-      Alert.alert('Invalid Name', getPersonNameErrorMessage(name));
-      return;
-    }
-    
     if (!isEmailValid(email)) {
       Alert.alert('Invalid Email', 'Please enter a valid email address');
       return;
@@ -126,7 +119,7 @@ export default function SignUpOTPScreen() {
     setLoading(true);
     try {
       const result = await otpService.sendSignUpCode({
-        name: normalizedName,
+        name: normalizePersonName(name) || undefined,
         email: normalizeEmail(email),
       });
 
@@ -144,19 +137,35 @@ export default function SignUpOTPScreen() {
     }
   }
 
+  async function handleGoogleSignIn() {
+    setLoading(true);
+    try {
+      const result = await otpService.signInWithGoogle();
+      if (!result.success) {
+        if (result.error !== 'Google sign-in was cancelled') {
+          Alert.alert('Google sign-in failed', result.error || 'Please try again.');
+        }
+        return;
+      }
+
+      await refreshUser();
+      const pendingInvite = await AsyncStorage.getItem(PENDING_INVITE_PATH_KEY);
+      await AsyncStorage.removeItem(PENDING_INVITE_PATH_KEY);
+      router.replace((pendingInvite || '/(tabs)') as Href);
+    } catch {
+      Alert.alert('Google sign-in failed', 'Something went wrong. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function handleVerifyCode() {
     const code = otp.join('');
     if (code.length !== 6) return;
-    const normalizedName = normalizePersonName(name);
-    if (!normalizedName) {
-      Alert.alert('Invalid Name', getPersonNameErrorMessage(name));
-      return;
-    }
-
     setLoading(true);
     try {
       const result = await otpService.verifySignUpCode({
-        name: normalizedName,
+        name: normalizePersonName(name) || undefined,
         email: normalizeEmail(email),
         code,
       });
@@ -249,16 +258,10 @@ export default function SignUpOTPScreen() {
 
   async function handleResendCode() {
     if (resendTimer > 0) return;
-    const normalizedName = normalizePersonName(name);
-    if (!normalizedName) {
-      Alert.alert('Invalid Name', getPersonNameErrorMessage(name));
-      return;
-    }
-    
     setLoading(true);
     try {
       const result = await otpService.sendSignUpCode({
-        name: normalizedName,
+        name: normalizePersonName(name) || undefined,
         email: normalizeEmail(email),
       });
 
@@ -293,14 +296,14 @@ export default function SignUpOTPScreen() {
           Create account
         </Text>
         <Text style={[styles.subtitle, { color: isDark ? 'rgba(255,255,255,0.6)' : colors.textSecondary }]}>
-          Join Vasuli to split expenses with friends
+          Join Vasuli to split expenses with friends. Your email keeps your profile recognizable.
         </Text>
       </View>
 
       {/* Name Input */}
       <View style={styles.inputSection}>
         <Text style={[styles.inputLabel, { color: isDark ? 'rgba(255,255,255,0.7)' : colors.textSecondary }]}>
-          Your name
+          Your name (optional)
         </Text>
         <View style={[
           styles.inputContainer,
@@ -312,7 +315,7 @@ export default function SignUpOTPScreen() {
           <IconSymbol name="person.fill" size={20} color={isDark ? '#2DD4BF' : '#22C55E'} />
           <TextInput
             style={[styles.input, { color: isDark ? '#fff' : colors.text }]}
-            placeholder="John Doe"
+            placeholder="How friends will see you"
             placeholderTextColor={isDark ? '#6B7280' : '#9CA3AF'}
             value={name}
             onChangeText={setName}
@@ -325,7 +328,7 @@ export default function SignUpOTPScreen() {
       {/* Email Input */}
       <View style={styles.inputSection}>
         <Text style={[styles.inputLabel, { color: isDark ? 'rgba(255,255,255,0.7)' : colors.textSecondary }]}>
-          Email address
+          Email address *
         </Text>
         <View style={[
           styles.inputContainer,
@@ -375,6 +378,28 @@ export default function SignUpOTPScreen() {
             </>
           )}
         </LinearGradient>
+      </Pressable>
+
+      <View style={styles.oauthDivider}>
+        <View style={[styles.oauthDividerLine, { backgroundColor: isDark ? 'rgba(255,255,255,0.15)' : '#E5E7EB' }]} />
+        <Text style={[styles.oauthDividerText, { color: isDark ? 'rgba(255,255,255,0.5)' : colors.textSecondary }]}>or</Text>
+        <View style={[styles.oauthDividerLine, { backgroundColor: isDark ? 'rgba(255,255,255,0.15)' : '#E5E7EB' }]} />
+      </View>
+
+      <Pressable
+        testID="google-sign-up-button"
+        onPress={handleGoogleSignIn}
+        disabled={loading}
+        style={({ pressed }) => [
+          styles.googleButton,
+          { borderColor: isDark ? 'rgba(255,255,255,0.2)' : '#D1D5DB', backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#fff' },
+          pressed && styles.buttonPressed,
+          loading && styles.buttonDisabled,
+        ]}>
+        <View style={styles.googleMark}>
+          <Text style={styles.googleMarkText}>G</Text>
+        </View>
+        <Text style={[styles.googleButtonText, { color: isDark ? '#fff' : colors.text }]}>Continue with Google</Text>
       </Pressable>
 
       {/* Footer */}
@@ -690,6 +715,48 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     marginTop: 8,
     marginBottom: 24,
+  },
+  oauthDivider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 16,
+  },
+  oauthDividerLine: {
+    flex: 1,
+    height: 1,
+  },
+  oauthDividerText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  googleButton: {
+    minHeight: 54,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    marginBottom: 24,
+    paddingHorizontal: 20,
+  },
+  googleMark: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+  },
+  googleMarkText: {
+    color: '#4285F4',
+    fontSize: 17,
+    fontWeight: '800',
+  },
+  googleButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
   },
   buttonPressed: {
     opacity: 0.9,

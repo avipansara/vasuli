@@ -7,12 +7,15 @@ import { useAuth } from '@/contexts/auth-context-otp';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { activityService } from '@/services/activity-service';
-import { expenseService, groupService, initDatabase, userService } from '@/services/api';
+import { expenseService } from '@/services/expense-service';
+import { groupService } from '@/services/group-service';
+import { userService } from '@/services/user-service';
 import { createExpenseUpdatedNotification, notificationService } from '@/services/notification-service';
 import { queryKeys } from '@/services/query-keys';
-import type { Expense, ExpenseSplit, Group, User } from '@/types/database';
+import type { Expense, ExpenseSplit, User } from '@/types/database';
 import { normalizeCurrencyInput } from '@/utils/validation';
-import { useQueryClient } from '@tanstack/react-query';
+import { getGroupExpenseParticipant } from '@/utils/group-expense-participants';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
@@ -61,15 +64,9 @@ export default function EditExpenseScreen() {
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
   const [splitType, setSplitType] = useState<SplitType>(SplitType.GROUP);
-  const [groups, setGroups] = useState<Group[]>([]);
-  const [friends, setFriends] = useState<User[]>([]);
   const [selectedGroupId, setSelectedGroupId] = useState<string>('');
   const [selectedFriendIds, setSelectedFriendIds] = useState<string[]>([]);
-  const [groupMembers, setGroupMembers] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
-  const [dataLoading, setDataLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [groupMembersLoadError, setGroupMembersLoadError] = useState<string | null>(null);
   const [splitMethod, setSplitMethod] = useState<SplitMethod>(SplitMethod.EQUAL);
   const [customAmounts, setCustomAmounts] = useState<Record<string, string>>({});
   const [customPercentages, setCustomPercentages] = useState<Record<string, string>>({});
@@ -84,92 +81,73 @@ export default function EditExpenseScreen() {
   // Input refs
   const amountInputRef = useRef<TextInput>(null);
   const descriptionInputRef = useRef<TextInput>(null);
-
-  const loadGroupMembersForSelection = useCallback(async () => {
-    if (!selectedGroupId) {
-      setGroupMembers([]);
-      setGroupMembersLoadError(null);
-      return;
-    }
-    try {
-      setGroupMembersLoadError(null);
-      const members = await groupService.getMembers(selectedGroupId);
-      setGroupMembers(members.map((m: { userId: string }) => m.userId));
-    } catch (error) {
-      console.error('Error loading group members:', error);
-      setGroupMembersLoadError(getFetchErrorMessage(error));
-    }
-  }, [selectedGroupId]);
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- Fetching members here intentionally syncs selected group state into the form.
-    void loadGroupMembersForSelection();
-  }, [loadGroupMembersForSelection]);
-
-  const loadExpenseData = useCallback(async () => {
-    setLoadError(null);
-    setDataLoading(true);
-    try {
-      await initDatabase();
-
+  const editFormQuery = useQuery({
+    queryKey: queryKeys.expenses.editForm(currentUserId, id),
+    enabled: !!currentUserId && !!id,
+    queryFn: async () => {
       const expense = await expenseService.getById(id);
-      if (!expense) {
-        setDataLoading(false);
-        Alert.alert('Error', 'Expense not found');
-        router.back();
-        return;
-      }
+      if (!expense) return null;
 
-      setDescription(expense.description);
-      setAmount(expense.amount.toString());
-      setOriginalExpense(expense);
-
-      if (expense.groupId) {
-        setSplitType(SplitType.GROUP);
-        setSelectedGroupId(expense.groupId);
-      } else {
-        setSplitType(SplitType.FRIENDS);
-      }
-
-      const [groupsData, userFriends, existingSplits] = await Promise.all([
+      const [groups, friends, splits] = await Promise.all([
         groupService.getUserGroups(currentUserId),
         userService.getUserFriends(currentUserId),
         expenseService.getSplits(id),
       ]);
-
-      const splitFriendIds = existingSplits
-        .map(split => split.userId)
-        .filter(userId => userId !== currentUserId);
-      setSelectedFriendIds(splitFriendIds);
-      setOriginalSplits(existingSplits);
-
-      setGroups(groupsData);
-      setFriends(userFriends);
-      setDataLoading(false);
-
-      Animated.parallel([
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 400,
-          useNativeDriver: true,
-        }),
-        Animated.timing(slideAnim, {
-          toValue: 0,
-          duration: 400,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    } catch (error) {
-      console.error('Error loading expense:', error);
-      setLoadError(getFetchErrorMessage(error));
-      setDataLoading(false);
-    }
-  }, [currentUserId, fadeAnim, id, slideAnim]);
+      return { expense, groups, friends, splits };
+    },
+  });
+  const groupMembersQuery = useQuery({
+    queryKey: queryKeys.expenses.formMembers(selectedGroupId),
+    enabled: !!selectedGroupId,
+    queryFn: async () => {
+      const members = await groupService.getMembers(selectedGroupId);
+      const memberIds = members.map(member => member.userId);
+      const memberUsers = await userService.getByIds(memberIds);
+      return { memberIds, memberUsers };
+    },
+  });
+  const groups = editFormQuery.data?.groups ?? [];
+  const friends = editFormQuery.data?.friends ?? [];
+  const groupMembers = groupMembersQuery.data?.memberIds ?? [];
+  const groupMemberUsers = groupMembersQuery.data?.memberUsers ?? [];
+  const dataLoading = editFormQuery.isLoading;
+  const loadError = editFormQuery.error;
+  const groupMembersLoadError = groupMembersQuery.error;
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- Initial async load hydrates local editable expense state.
-    loadExpenseData();
-  }, [loadExpenseData]);
+    const formData = editFormQuery.data;
+    if (!formData) return;
+
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Query data hydrates the editable form state once the server record is available.
+    setDescription(formData.expense.description);
+    setAmount(formData.expense.amount.toString());
+    setOriginalExpense(formData.expense);
+    setSplitType(formData.expense.groupId ? SplitType.GROUP : SplitType.FRIENDS);
+    setSelectedGroupId(formData.expense.groupId || '');
+    setSelectedFriendIds(formData.splits.map(split => split.userId).filter(userId => userId !== currentUserId));
+    setOriginalSplits(formData.splits);
+
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 400,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [currentUserId, editFormQuery.data, fadeAnim, slideAnim]);
+
+  const loadData = useCallback(async () => {
+    await editFormQuery.refetch();
+  }, [editFormQuery]);
+
+  const loadGroupMembersForSelection = useCallback(async () => {
+    await groupMembersQuery.refetch();
+  }, [groupMembersQuery]);
 
   const isValid =
     description.trim().length > 0 &&
@@ -295,8 +273,6 @@ export default function EditExpenseScreen() {
     let previousHomeFriends: HomeFriend[] | undefined;
     let didOptimisticallyUpdate = false;
     try {
-      await initDatabase();
-
       const newAmount = parseFloat(amount);
       const trimmedDescription = description.trim();
       const updatedExpense: Expense = {
@@ -356,14 +332,12 @@ export default function EditExpenseScreen() {
           participantIds,
         });
 
-        const usersToNotify = await Promise.all(
-          participantIds
-            .filter(userId => userId !== currentUserId)
-            .map(userId => userService.getById(userId))
+        const usersToNotify = await userService.getByIds(
+          participantIds.filter(userId => userId !== currentUserId)
         );
         const pushTokens = usersToNotify
-          .filter((u) => u && u.pushToken)
-          .map((u) => u!.pushToken!);
+          .filter(u => u.pushToken)
+          .map(u => u.pushToken!);
         if (pushTokens.length > 0) {
           const notification = createExpenseUpdatedNotification(
             trimmedDescription,
@@ -388,6 +362,7 @@ export default function EditExpenseScreen() {
 
       await Promise.allSettled([
         queryClient.invalidateQueries({ queryKey: friendsHomeQueryKey }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.expenses.detail(id) }),
         queryClient.invalidateQueries({ queryKey: queryKeys.expenses.list(currentUserId) }),
         queryClient.invalidateQueries({ queryKey: queryKeys.activity.list(currentUserId) }),
         ...affectedFriendIds.flatMap(friendId => [
@@ -432,8 +407,21 @@ export default function EditExpenseScreen() {
           onBack={() => router.back()}
         />
         <AsyncErrorState
-          message={loadError}
-          onRetry={() => void loadExpenseData()}
+          message={getFetchErrorMessage(loadError)}
+          onRetry={() => void loadData()}
+          title="Couldn't load expense"
+        />
+      </View>
+    );
+  }
+
+  if (editFormQuery.data === null) {
+    return (
+      <View style={styles.container}>
+        <LinearGradient colors={gradients.screenBackground} style={StyleSheet.absoluteFill} />
+        <AsyncErrorState
+          message="This expense is no longer available."
+          onRetry={() => void loadData()}
           title="Couldn't load expense"
         />
       </View>
@@ -575,7 +563,7 @@ export default function EditExpenseScreen() {
                 <AsyncErrorState
                   variant="compact"
                   title="Couldn't load members"
-                  message={groupMembersLoadError}
+                  message={getFetchErrorMessage(groupMembersLoadError)}
                   onRetry={() => void loadGroupMembersForSelection()}
                 />
               )}
@@ -767,7 +755,7 @@ export default function EditExpenseScreen() {
 
                 {/* Other participants */}
                 {(splitType === SplitType.FRIENDS ? selectedFriendIds : groupMembers.filter(m => m !== currentUserId)).map(userId => {
-                  const participant = friends.find(f => f.id === userId);
+                  const participant = getGroupExpenseParticipant(userId, groupMemberUsers, friends);
                   if (!participant) return null;
                   return (
                     <View key={userId} style={[styles.customSplitCard, {

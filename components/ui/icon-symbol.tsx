@@ -19,6 +19,8 @@ const MAPPING: IconMapping = {
   'house': 'home',
   'chevron.right': 'chevron-right',
   'chevron.left': 'chevron-left',
+  'chevron.up': 'expand-less',
+  'chevron.down': 'expand-more',
   'xmark': 'close',
   'xmark.circle.fill': 'cancel',
   'arrow.left': 'arrow-back',
@@ -34,6 +36,7 @@ const MAPPING: IconMapping = {
   'checkmark': 'check',
   'checkmark.circle': 'check-circle-outline',
   'checkmark.circle.fill': 'check-circle',
+  'checkmark.seal.fill': 'verified',
   'paperplane.fill': 'send',
   'paperplane': 'send',
   'trash': 'delete-outline',
@@ -41,6 +44,7 @@ const MAPPING: IconMapping = {
   'pencil': 'edit',
   'pencil.circle.fill': 'edit',
   'square.and.pencil': 'edit',
+  'ellipsis': 'more-vert',
   
   // People
   'person': 'person-outline',

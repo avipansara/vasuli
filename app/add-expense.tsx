@@ -7,17 +7,20 @@ import { useAuth } from '@/contexts/auth-context-otp';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { activityService } from '@/services/activity-service';
-import { expenseService, groupService, initDatabase, userService } from '@/services/api';
+import { expenseService } from '@/services/expense-service';
+import { groupService } from '@/services/group-service';
+import { userService } from '@/services/user-service';
 import type { FriendDetailData } from '@/services/friend-detail-service';
 import { calculateGroupBalances } from '@/services/group-balance';
 import type { GroupDetailData } from '@/services/group-detail-service';
 import { createExpenseNotification, notificationService } from '@/services/notification-service';
 import { queryKeys } from '@/services/query-keys';
-import type { Expense, Group, User } from '@/types/database';
+import type { Expense, User } from '@/types/database';
 import { filterFriendsForExpenseSearch } from '@/utils/friend-search';
+import { getGroupExpenseParticipant } from '@/utils/group-expense-participants';
 import { normalizeCurrencyInput } from '@/utils/validation';
-import { useQueryClient } from '@tanstack/react-query';
-import { BlurView } from 'expo-blur';
+import { getEvenSplitValues, getSplitProgress } from '@/utils/split-validation';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
@@ -26,6 +29,7 @@ import {
   Animated,
   Keyboard,
   Platform,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -64,21 +68,65 @@ export default function AddExpenseScreen() {
 
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
+  const [expenseStep, setExpenseStep] = useState<1 | 2>(preselectedGroupId || preselectedFriendId ? 2 : 1);
   const [splitType, setSplitType] = useState<SplitType>(preselectedFriendId ? SplitType.FRIENDS : (preselectedGroupId ? SplitType.GROUP : SplitType.GROUP));
-  const [groups, setGroups] = useState<Group[]>([]);
-  const [friends, setFriends] = useState<User[]>([]);
-  const [friendSearchQuery, setFriendSearchQuery] = useState('');
   const [selectedGroupId, setSelectedGroupId] = useState(preselectedGroupId || '');
+  const groupsQuery = useQuery({
+    queryKey: queryKeys.expenses.formGroups(currentUserId),
+    enabled: !!currentUserId,
+    queryFn: () => groupService.getUserGroups(currentUserId),
+  });
+  const friendsQuery = useQuery({
+    queryKey: queryKeys.expenses.formFriends(currentUserId),
+    enabled: !!currentUserId,
+    queryFn: () => userService.getUserFriends(currentUserId),
+  });
+  const groupMembersQuery = useQuery({
+    queryKey: queryKeys.expenses.formMembers(selectedGroupId),
+    enabled: !!selectedGroupId,
+    queryFn: async () => {
+      const members = await groupService.getMembers(selectedGroupId);
+      const memberIds = members.map(member => member.userId);
+      const memberUsers = await userService.getByIds(memberIds);
+      return { memberIds, memberUsers };
+    },
+  });
+  const groups = groupsQuery.data ?? [];
+  const friends = useMemo(() => friendsQuery.data ?? [], [friendsQuery.data]);
+  const [friendSearchQuery, setFriendSearchQuery] = useState('');
   const [selectedFriendIds, setSelectedFriendIds] = useState<string[]>(preselectedFriendId ? [preselectedFriendId] : []);
-  const [groupMembers, setGroupMembers] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
-  const [dataLoading, setDataLoading] = useState(true);
-  const [dataLoadError, setDataLoadError] = useState<string | null>(null);
-  const [groupMembersLoadError, setGroupMembersLoadError] = useState<string | null>(null);
+  const dataLoading = groupsQuery.isLoading || friendsQuery.isLoading;
+  const dataLoadError = groupsQuery.error || friendsQuery.error;
+  const groupMemberIds = groupMembersQuery.data?.memberIds;
+  const groupMembers = useMemo(() => groupMemberIds ?? [], [groupMemberIds]);
+  const groupMemberUsers = groupMembersQuery.data?.memberUsers ?? [];
+  const groupMembersLoadError = groupMembersQuery.error;
   const [splitMethod, setSplitMethod] = useState<SplitMethod>(SplitMethod.EQUAL);
   const [customAmounts, setCustomAmounts] = useState<Record<string, string>>({});
   const [customPercentages, setCustomPercentages] = useState<Record<string, string>>({});
   const [customShares, setCustomShares] = useState<Record<string, string>>({});
+
+  const activeUserIds = useMemo(
+    () => splitType === SplitType.GROUP ? groupMembers : [currentUserId, ...selectedFriendIds],
+    [currentUserId, groupMembers, selectedFriendIds, splitType]
+  );
+  const activeValues = splitMethod === SplitMethod.UNEQUAL
+    ? customAmounts
+    : splitMethod === SplitMethod.PERCENTAGE
+      ? customPercentages
+      : customShares;
+  const splitProgress = useMemo(
+    () => getSplitProgress(activeUserIds, parseFloat(amount) || 0, splitMethod, activeValues),
+    [activeUserIds, amount, splitMethod, activeValues]
+  );
+
+  const setEvenSplit = () => {
+    const values = getEvenSplitValues(activeUserIds, splitMethod, parseFloat(amount) || 0);
+    if (splitMethod === SplitMethod.PERCENTAGE) setCustomPercentages(values);
+    else if (splitMethod === SplitMethod.SHARES) setCustomShares(values);
+    else setCustomAmounts(values);
+  };
 
   // Animations
   const [fadeAnim] = useState(() => new Animated.Value(0));
@@ -96,49 +144,17 @@ export default function AddExpenseScreen() {
     return filterFriendsForExpenseSearch(friends, friendSearchQuery);
   }, [friends, friendSearchQuery, preselectedFriendId]);
 
-  const loadData = useCallback(async () => {
-    if (!currentUserId) return;
-    try {
-      setDataLoadError(null);
-      await initDatabase();
-      const [allGroups, userFriends] = await Promise.all([
-        groupService.getUserGroups(currentUserId),
-        userService.getUserFriends(currentUserId),
-      ]);
-      setGroups(allGroups);
-      setFriends(userFriends);
-    } catch (error) {
-      console.error('Error loading data:', error);
-      setDataLoadError(getFetchErrorMessage(error));
-    } finally {
-      setDataLoading(false);
-    }
-  }, [currentUserId]);
+  const displayedFriends = useMemo(() => {
+    const maxVisibleFriends = friendSearchQuery.trim() ? 40 : 20;
+    if (preselectedFriendId) return visibleFriends;
 
-  const loadGroupMembersForSelection = useCallback(async () => {
-    if (!selectedGroupId) {
-      setGroupMembers([]);
-      setGroupMembersLoadError(null);
-      return;
-    }
-    try {
-      setGroupMembersLoadError(null);
-      const members = await groupService.getMembers(selectedGroupId);
-      setGroupMembers(members.map((m: { userId: string }) => m.userId));
-    } catch (error) {
-      console.error('Error loading group members:', error);
-      setGroupMembersLoadError(getFetchErrorMessage(error));
-    }
-  }, [selectedGroupId]);
+    const selected = visibleFriends.filter(friend => selectedFriendIds.includes(friend.id));
+    const remaining = visibleFriends.filter(friend => !selectedFriendIds.includes(friend.id));
+    return [...selected, ...remaining].slice(0, maxVisibleFriends);
+  }, [friendSearchQuery, preselectedFriendId, selectedFriendIds, visibleFriends]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- Fetching members here intentionally syncs selected group state into the form.
-    void loadGroupMembersForSelection();
-  }, [loadGroupMembersForSelection]);
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- Initial async screen load hydrates local editable form state.
-    loadData();
+    if (dataLoading) return;
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
@@ -151,7 +167,15 @@ export default function AddExpenseScreen() {
         useNativeDriver: true,
       }),
     ]).start();
-  }, [fadeAnim, loadData, slideAnim]);
+  }, [dataLoading, fadeAnim, slideAnim]);
+
+  const loadData = useCallback(async () => {
+    await Promise.all([groupsQuery.refetch(), friendsQuery.refetch()]);
+  }, [friendsQuery, groupsQuery]);
+
+  const loadGroupMembersForSelection = useCallback(async () => {
+    await groupMembersQuery.refetch();
+  }, [groupMembersQuery]);
 
   const toggleFriend = (friendId: string) => {
     if (selectedFriendIds.includes(friendId)) {
@@ -163,6 +187,28 @@ export default function AddExpenseScreen() {
 
   const isValid = description.trim() && amount.trim() && parseFloat(amount) > 0 &&
     (splitType === SplitType.GROUP ? selectedGroupId : selectedFriendIds.length > 0);
+  const canContinue = splitType === SplitType.GROUP ? !!selectedGroupId : selectedFriendIds.length > 0;
+  const canSubmit = !!isValid && (splitMethod === SplitMethod.EQUAL || splitProgress.isBalanced);
+  const selectedGroup = groups.find(group => group.id === selectedGroupId);
+  const selectedFriendNames = selectedFriendIds
+    .map(friendId => friends.find(friend => friend.id === friendId)?.name)
+    .filter((name): name is string => !!name);
+
+  const handleHeaderBack = () => {
+    if (expenseStep === 2 && !preselectedGroupId && !preselectedFriendId) {
+      setExpenseStep(1);
+      return;
+    }
+    router.back();
+  };
+
+  const handleHeaderAction = () => {
+    if (expenseStep === 1) {
+      if (canContinue) setExpenseStep(2);
+      return;
+    }
+    void handleSubmit();
+  };
 
   const updateHomeFriendsForCreatedExpense = useCallback((
     expense: Expense,
@@ -427,14 +473,12 @@ export default function AddExpenseScreen() {
             groupName: group?.name,
           });
 
-          const usersToNotify = await Promise.all(
-            memberIds
-              .filter(memberId => memberId !== currentUserId)
-              .map(memberId => userService.getById(memberId))
+          const usersToNotify = await userService.getByIds(
+            memberIds.filter(memberId => memberId !== currentUserId)
           );
           const pushTokens = usersToNotify
-            .filter((u) => u && u.pushToken)
-            .map((u) => u!.pushToken!);
+            .filter(u => u.pushToken)
+            .map(u => u.pushToken!);
           if (pushTokens.length > 0) {
             const notification = createExpenseNotification(
               trimmedDescription,
@@ -627,7 +671,7 @@ export default function AddExpenseScreen() {
           onBack={() => router.back()}
         />
         <AsyncErrorState
-          message={dataLoadError}
+          message={getFetchErrorMessage(dataLoadError)}
           onRetry={() => void loadData()}
           title="Couldn't load"
         />
@@ -640,31 +684,79 @@ export default function AddExpenseScreen() {
       <LinearGradient colors={gradients.screenBackground} style={StyleSheet.absoluteFill} />
 
       <NavigationHeader
-        title="Add Expense"
-        onBack={() => router.back()}
+        title={expenseStep === 1 ? 'Choose people' : 'Add Expense'}
+        onBack={handleHeaderBack}
         rightAction={
           <TouchableOpacity
-            onPress={handleSubmit}
-            disabled={!isValid || loading}
+            onPress={handleHeaderAction}
+            disabled={expenseStep === 1 ? !canContinue : !canSubmit || loading}
             style={[
               styles.headerButton,
               {
-                backgroundColor: isValid && !loading ? (isDark ? '#2DD4BF' : '#22C55E') : (isDark ? '#374151' : '#E5E7EB'),
+                backgroundColor: (expenseStep === 1 ? canContinue : canSubmit && !loading)
+                  ? (isDark ? '#2DD4BF' : '#22C55E')
+                  : (isDark ? '#374151' : '#E5E7EB'),
               },
             ]}>
             {loading ? (
               <ThemedText style={[styles.headerButtonText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>...</ThemedText>
             ) : (
-              <ThemedText style={[styles.headerButtonText, { color: isValid ? '#0A0A0F' : (isDark ? '#9CA3AF' : '#6B7280') }]}>
-                Add
+              <ThemedText style={[styles.headerButtonText, { color: (expenseStep === 1 ? canContinue : canSubmit) ? '#0A0A0F' : (isDark ? '#9CA3AF' : '#6B7280') }]}>
+                {expenseStep === 1 ? 'Next' : 'Add'}
               </ThemedText>
             )}
           </TouchableOpacity>
         }
       />
 
+      {!preselectedGroupId && !preselectedFriendId && (
+        <View style={styles.stepIndicator} accessibilityLabel={`Step ${expenseStep} of 2`}>
+          <View style={styles.stepperRow}>
+            <View style={styles.stepItem}>
+              <View style={[styles.stepBadge, { backgroundColor: isDark ? '#2DD4BF' : colors.tint }]}>
+                {expenseStep === 2 ? (
+                  <IconSymbol name="checkmark" size={14} color="#0A0A0F" />
+                ) : (
+                  <ThemedText style={styles.stepBadgeText}>1</ThemedText>
+                )}
+              </View>
+              <ThemedText style={[styles.stepName, { color: isDark ? '#2DD4BF' : colors.tint }]}>People</ThemedText>
+            </View>
+            <View style={[styles.stepLine, { backgroundColor: expenseStep === 2 ? (isDark ? '#2DD4BF' : colors.tint) : colors.border }]} />
+            <View style={styles.stepItem}>
+              <View style={[styles.stepBadge, { backgroundColor: expenseStep === 2 ? (isDark ? '#2DD4BF' : colors.tint) : colors.border }]}>
+                <ThemedText style={[styles.stepBadgeText, { color: expenseStep === 2 ? '#0A0A0F' : colors.textSecondary }]}>2</ThemedText>
+              </View>
+              <ThemedText style={[styles.stepName, { color: expenseStep === 2 ? colors.text : colors.textSecondary }]}>Split</ThemedText>
+            </View>
+          </View>
+        </View>
+      )}
+
       <KeyboardAwareScroll contentContainerStyle={styles.scrollContent}>
         <Animated.View style={[styles.content, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+          {expenseStep === 2 && (
+            <>
+          <View style={[styles.participantSummary, {
+            backgroundColor: isDark ? 'rgba(20, 35, 38, 0.66)' : colors.card,
+            borderColor: colors.border,
+          }]}>
+            <View style={[styles.participantSummaryIcon, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.14)' : 'rgba(34, 197, 94, 0.1)' }]}>
+              <IconSymbol
+                name={splitType === SplitType.GROUP ? 'person.3.fill' : 'person.2.fill'}
+                size={18}
+                color={isDark ? '#2DD4BF' : colors.tint}
+              />
+            </View>
+            <View style={styles.participantSummaryCopy}>
+              <ThemedText style={[styles.participantSummaryLabel, { color: colors.textSecondary }]}>Splitting with</ThemedText>
+              <ThemedText style={[styles.participantSummaryNames, { color: colors.text }]} numberOfLines={2}>
+                {splitType === SplitType.GROUP
+                  ? selectedGroup?.name || 'Selected group'
+                  : selectedFriendNames.join(', ')}
+              </ThemedText>
+            </View>
+          </View>
           {/* Amount Input - Hero Style */}
           <View style={styles.amountSection}>
             <View
@@ -693,6 +785,8 @@ export default function AddExpenseScreen() {
                   returnKeyType="next"
                   onSubmitEditing={() => descriptionInputRef.current?.focus()}
                   blurOnSubmit={false}
+                  autoFocus={expenseStep === 2}
+                  testID="expense-amount-input"
                 />
               </View>
             </View>
@@ -717,12 +811,16 @@ export default function AddExpenseScreen() {
                 placeholderTextColor={isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'}
                 returnKeyType="done"
                 onSubmitEditing={() => Keyboard.dismiss()}
+                testID="expense-description-input"
               />
             </View>
           </View>
 
+            </>
+          )}
+
           {/* Split Type Toggle - only show if not pre-selected from friend/group screen */}
-          {!preselectedGroupId && !preselectedFriendId && (
+          {expenseStep === 1 && !preselectedGroupId && !preselectedFriendId && (
             <View style={styles.inputSection}>
               <ThemedText style={[styles.inputLabel, { color: colors.textSecondary }]}>
                 Split with
@@ -800,12 +898,19 @@ export default function AddExpenseScreen() {
             </View>
           )}
 
+          {expenseStep === 2 && (
+            <>
+
           {/* Split Method Selection */}
           <View style={styles.inputSection}>
             <ThemedText style={[styles.inputLabel, { color: colors.textSecondary }]}>
               Split method
             </ThemedText>
-            <View style={styles.splitMethodContainer}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.splitMethodContainer}
+              keyboardShouldPersistTaps="handled">
               {SPLIT_METHODS
                 .filter(method => {
                   // Hide shares option for friends
@@ -853,20 +958,24 @@ export default function AddExpenseScreen() {
                     </TouchableOpacity>
                   );
                 })}
-            </View>
+            </ScrollView>
           </View>
 
+            </>
+          )}
+
           {/* Selection List */}
+          {expenseStep === 1 && (
           <View style={styles.selectionSection}>
             <ThemedText style={[styles.inputLabel, { color: colors.textSecondary }]}>
               {splitType === SplitType.GROUP ? 'Select a group' : 'Select friends'}
             </ThemedText>
 
-            {splitType === SplitType.GROUP && selectedGroupId && groupMembersLoadError && !dataLoading && (
+            {splitType === SplitType.GROUP && selectedGroupId && groupMembersLoadError && !groupMembersQuery.isLoading && (
               <AsyncErrorState
                 variant="compact"
                 title="Couldn't load members"
-                message={groupMembersLoadError}
+                message={getFetchErrorMessage(groupMembersLoadError)}
                 onRetry={() => void loadGroupMembersForSelection()}
               />
             )}
@@ -935,41 +1044,6 @@ export default function AddExpenseScreen() {
                       No friends yet
                     </ThemedText>
                   </View>
-                ) : visibleFriends.length === 0 ? (
-                  <>
-                    {!preselectedFriendId && (
-                      <View style={[styles.searchContainer, {
-                        backgroundColor: isDark ? 'rgba(30, 41, 59, 0.6)' : 'rgba(241, 245, 249, 0.9)',
-                        borderColor: isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(34, 197, 94, 0.2)',
-                      }]}>
-                        <IconSymbol name="magnifyingglass" size={18} color={isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'} />
-                        <TextInput
-                          style={[styles.searchInput, { color: isDark ? '#fff' : colors.text }]}
-                          value={friendSearchQuery}
-                          onChangeText={setFriendSearchQuery}
-                          placeholder="Search friends"
-                          placeholderTextColor={isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'}
-                          autoCapitalize="none"
-                          autoCorrect={false}
-                          returnKeyType="search"
-                        />
-                        {friendSearchQuery.length > 0 && (
-                          <TouchableOpacity
-                            accessibilityLabel="Clear friend search"
-                            onPress={() => setFriendSearchQuery('')}
-                            style={styles.clearSearchButton}>
-                            <IconSymbol name="xmark.circle.fill" size={18} color={isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.35)'} />
-                          </TouchableOpacity>
-                        )}
-                      </View>
-                    )}
-                    <View style={styles.emptyState}>
-                      <IconSymbol name="magnifyingglass" size={32} color={isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)'} />
-                      <ThemedText style={[styles.emptyText, { color: colors.textSecondary }]}>
-                        No matching friends
-                      </ThemedText>
-                    </View>
-                  </>
                 ) : (
                   <>
                     {!preselectedFriendId && (
@@ -982,7 +1056,7 @@ export default function AddExpenseScreen() {
                           style={[styles.searchInput, { color: isDark ? '#fff' : colors.text }]}
                           value={friendSearchQuery}
                           onChangeText={setFriendSearchQuery}
-                          placeholder="Search friends"
+                          placeholder={`Search ${friends.length} friends`}
                           placeholderTextColor={isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'}
                           autoCapitalize="none"
                           autoCorrect={false}
@@ -998,51 +1072,68 @@ export default function AddExpenseScreen() {
                         )}
                       </View>
                     )}
-                    {visibleFriends.map(friend => {
-                    const isSelected = selectedFriendIds.includes(friend.id);
-                    return (
-                      <TouchableOpacity
-                        key={friend.id}
-                        style={[
-                          styles.optionCard,
-                          isSelected && styles.optionCardSelected,
-                          {
-                            backgroundColor: isDark ? 'rgba(30, 41, 59, 0.6)' : 'rgba(241, 245, 249, 0.9)',
-                            borderColor: isSelected
-                              ? (isDark ? '#2DD4BF' : colors.tint)
-                              : (isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(34, 197, 94, 0.2)'),
-                          },
-                        ]}
-                        onPress={() => !preselectedFriendId && toggleFriend(friend.id)}
-                        disabled={!!preselectedFriendId}>
-                        <View style={[styles.optionAvatar, {
-                          backgroundColor: isSelected
-                            ? (isDark ? '#2DD4BF' : colors.tint)
-                            : (isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)'),
-                        }]}>
-                          <ThemedText style={[styles.avatarText, {
-                            color: isSelected ? '#0A0A0F' : (isDark ? '#2DD4BF' : colors.tint),
-                          }]}>
-                            {friend.name.charAt(0).toUpperCase()}
+                    {visibleFriends.length === 0 ? (
+                      <View style={styles.emptyState}>
+                        <IconSymbol name="magnifyingglass" size={32} color={isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)'} />
+                        <ThemedText style={[styles.emptyText, { color: colors.textSecondary }]}>No matching friends</ThemedText>
+                      </View>
+                    ) : (
+                      <>
+                        {visibleFriends.length > displayedFriends.length && (
+                          <ThemedText style={[styles.friendListHint, { color: colors.textSecondary }]}>
+                            {friendSearchQuery.trim()
+                              ? `Showing ${displayedFriends.length} matches. Refine your search to see fewer.`
+                              : `Showing ${displayedFriends.length} of ${visibleFriends.length}. Search to find someone else.`}
                           </ThemedText>
-                        </View>
-                        <ThemedText style={[styles.optionText, !isDark && { color: colors.text }]}>
-                          {friend.name}
-                        </ThemedText>
-                        {isSelected && (
-                          <IconSymbol name="checkmark.circle.fill" size={22} color={isDark ? '#2DD4BF' : colors.tint} />
                         )}
-                      </TouchableOpacity>
-                    );
-                    })}
+                        {displayedFriends.map(friend => {
+                            const isSelected = selectedFriendIds.includes(friend.id);
+                            return (
+                              <TouchableOpacity
+                                key={friend.id}
+                                style={[
+                                  styles.optionCard,
+                                  isSelected && styles.optionCardSelected,
+                                  {
+                                    backgroundColor: isDark ? 'rgba(30, 41, 59, 0.6)' : 'rgba(241, 245, 249, 0.9)',
+                                    borderColor: isSelected
+                                      ? (isDark ? '#2DD4BF' : colors.tint)
+                                      : (isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(34, 197, 94, 0.2)'),
+                                  },
+                                ]}
+                                onPress={() => !preselectedFriendId && toggleFriend(friend.id)}
+                                disabled={!!preselectedFriendId}>
+                                <View style={[styles.optionAvatar, {
+                                  backgroundColor: isSelected
+                                    ? (isDark ? '#2DD4BF' : colors.tint)
+                                    : (isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)'),
+                                }]}>
+                                  <ThemedText style={[styles.avatarText, {
+                                    color: isSelected ? '#0A0A0F' : (isDark ? '#2DD4BF' : colors.tint),
+                                  }]}>
+                                    {friend.name.charAt(0).toUpperCase()}
+                                  </ThemedText>
+                                </View>
+                                <ThemedText style={[styles.optionText, !isDark && { color: colors.text }]}>
+                                  {friend.name}
+                                </ThemedText>
+                                {isSelected && (
+                                  <IconSymbol name="checkmark.circle.fill" size={22} color={isDark ? '#2DD4BF' : colors.tint} />
+                                )}
+                              </TouchableOpacity>
+                            );
+                        })}
+                      </>
+                    )}
                   </>
                 )}
               </View>
             )}
           </View>
+          )}
 
           {/* Custom Split Inputs - Show when non-equal split is selected */}
-          {splitMethod !== SplitMethod.EQUAL && (splitType === SplitType.FRIENDS ? selectedFriendIds.length > 0 : selectedGroupId) && amount && parseFloat(amount) > 0 && (() => {
+          {expenseStep === 2 && splitMethod !== SplitMethod.EQUAL && (splitType === SplitType.FRIENDS ? selectedFriendIds.length > 0 : selectedGroupId) && amount && parseFloat(amount) > 0 && (() => {
             // Calculate remaining balance for unequal split
             const totalAmount = parseFloat(amount);
             const userIds = splitType === SplitType.GROUP ? groupMembers : [currentUserId, ...selectedFriendIds];
@@ -1077,6 +1168,50 @@ export default function AddExpenseScreen() {
                         {isBalanced ? '✓ Balanced' : `${remaining > 0 ? 'Remaining' : 'Over'}: $${Math.abs(remaining).toFixed(2)}`}
                       </ThemedText>
                     </View>
+                  )}
+                </View>
+
+                <View style={[styles.splitSummary, {
+                  backgroundColor: isDark ? 'rgba(20, 35, 38, 0.72)' : colors.card,
+                  borderColor: splitProgress.isBalanced
+                    ? (isDark ? 'rgba(45, 212, 191, 0.32)' : 'rgba(34, 197, 94, 0.28)')
+                    : (isDark ? 'rgba(251, 191, 36, 0.32)' : 'rgba(245, 158, 11, 0.28)'),
+                }]}
+                  accessibilityLabel={`Split total $${splitProgress.allocated.toFixed(2)} of $${totalAmount.toFixed(2)}`}>
+                  <View style={styles.splitSummaryTopline}>
+                    <View>
+                      <ThemedText style={[styles.splitSummaryLabel, { color: colors.textSecondary }]}>Live split total</ThemedText>
+                      <View style={styles.splitSummaryTotalRow}>
+                        <ThemedText style={[styles.splitSummaryTotal, { color: colors.text }]}>{`$${splitProgress.allocated.toFixed(2)}`}</ThemedText>
+                        <ThemedText style={[styles.splitSummaryTotalContext, { color: colors.textSecondary }]}>{`of $${totalAmount.toFixed(2)}`}</ThemedText>
+                      </View>
+                    </View>
+                    <ThemedText style={[styles.splitSummaryStatus, { color: splitProgress.isBalanced ? (isDark ? '#2DD4BF' : '#16A34A') : (isDark ? '#FBBF24' : '#B45309') }]}>
+                      {splitProgress.isBalanced ? 'Ready to add' : `${splitProgress.remaining > 0 ? '$' + splitProgress.remaining.toFixed(2) + ' left' : '$' + Math.abs(splitProgress.remaining).toFixed(2) + ' over'}`}
+                    </ThemedText>
+                  </View>
+                  {splitProgress.people.map(person => {
+                    const personName = person.userId === currentUserId
+                      ? 'You'
+                      : friends.find(friend => friend.id === person.userId)?.name
+                        || groupMemberUsers.find(member => member.id === person.userId)?.name
+                        || 'Member';
+                    return (
+                      <View key={person.userId} style={styles.splitSummaryRow}>
+                        <ThemedText style={[styles.splitSummaryPerson, { color: colors.textSecondary }]}>{personName}</ThemedText>
+                        <ThemedText style={[styles.splitSummaryAmount, { color: colors.text }]}>${person.amount.toFixed(2)}</ThemedText>
+                      </View>
+                    );
+                  })}
+                  {!splitProgress.isBalanced && (
+                    <TouchableOpacity
+                      onPress={setEvenSplit}
+                      accessibilityRole="button"
+                      accessibilityLabel="Set equal amounts for everyone"
+                      style={[styles.balanceButton, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.16)' : 'rgba(34, 197, 94, 0.12)' }]}>
+                      <IconSymbol name="arrow.triangle.2.circlepath" size={16} color={isDark ? '#2DD4BF' : colors.tint} />
+                      <ThemedText style={[styles.balanceButtonText, { color: isDark ? '#2DD4BF' : colors.tint }]}>Set equal amounts</ThemedText>
+                    </TouchableOpacity>
                   )}
                 </View>
 
@@ -1194,7 +1329,7 @@ export default function AddExpenseScreen() {
 
                 {/* Group Members */}
                 {splitType === SplitType.GROUP && groupMembers.filter(memberId => memberId !== currentUserId).map(memberId => {
-                  const member = friends.find(f => f.id === memberId);
+                  const member = getGroupExpenseParticipant(memberId, groupMemberUsers, friends);
                   if (!member) return null;
                   return (
                     <View key={memberId} style={[styles.customSplitCard, {
@@ -1254,23 +1389,6 @@ export default function AddExpenseScreen() {
             );
           })()}
 
-          {/* Split Preview */}
-          {isValid && (
-            <BlurView intensity={isDark ? 20 : 40} tint={isDark ? 'dark' : 'light'} style={styles.previewCard}>
-              <View style={[styles.previewContent, !isDark && { backgroundColor: 'rgba(255,255,255,0.8)' }]}>
-                <IconSymbol name="divide.circle" size={20} color={isDark ? '#2DD4BF' : colors.tint} />
-                <ThemedText style={[styles.previewText, { color: colors.textSecondary }]}>
-                  {splitMethod === SplitMethod.EQUAL
-                    ? `Split equally: $${(parseFloat(amount) / (splitType === SplitType.GROUP ? groupMembers.length : selectedFriendIds.length + 1)).toFixed(2)} each`
-                    : splitMethod === SplitMethod.UNEQUAL
-                      ? 'Custom amounts per person'
-                      : splitMethod === SplitMethod.PERCENTAGE
-                        ? 'Split by percentage'
-                        : 'Split by shares'}
-                </ThemedText>
-              </View>
-            </BlurView>
-          )}
         </Animated.View>
       </KeyboardAwareScroll>
     </View>
@@ -1315,6 +1433,72 @@ const styles = StyleSheet.create({
   headerButtonText: {
     fontSize: 15,
     fontWeight: '600',
+  },
+  stepIndicator: {
+    marginHorizontal: 18,
+    marginBottom: 8,
+    paddingHorizontal: 18,
+  },
+  stepperRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  stepItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  stepBadge: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepLine: {
+    flex: 1,
+    height: 2,
+    borderRadius: 1,
+  },
+  stepBadgeText: {
+    color: '#0A0A0F',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  stepName: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  participantSummary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    marginBottom: 22,
+  },
+  participantSummaryIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  participantSummaryCopy: {
+    flex: 1,
+    gap: 2,
+  },
+  participantSummaryLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+  participantSummaryNames: {
+    fontSize: 15,
+    fontWeight: '700',
   },
   keyboardView: {
     flex: 1,
@@ -1422,17 +1606,17 @@ const styles = StyleSheet.create({
     color: '#2DD4BF',
   },
   splitMethodContainer: {
-    flexDirection: 'row',
     gap: 8,
+    paddingRight: 18,
   },
   splitMethodButton: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 5,
     minHeight: 44,
-    paddingHorizontal: 8,
+    minWidth: 112,
+    paddingHorizontal: 12,
     borderRadius: 12,
     borderWidth: 1,
   },
@@ -1448,6 +1632,82 @@ const styles = StyleSheet.create({
   },
   customSplitSection: {
     marginBottom: 16,
+  },
+  splitSummary: {
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 14,
+    paddingBottom: 16,
+    gap: 8,
+    marginBottom: 14,
+  },
+  splitSummaryTopline: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 12,
+    paddingBottom: 4,
+  },
+  splitSummaryLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+  splitSummaryTotal: {
+    fontSize: 20,
+    lineHeight: 26,
+    fontWeight: '800',
+    fontVariant: ['tabular-nums'],
+    marginTop: 2,
+  },
+  splitSummaryTotalRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 6,
+  },
+  splitSummaryTotalContext: {
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: '500',
+  },
+  splitSummaryStatus: {
+    fontSize: 13,
+    fontWeight: '700',
+    textAlign: 'right',
+    paddingTop: 4,
+  },
+  splitSummaryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    minHeight: 24,
+    paddingTop: 4,
+  },
+  splitSummaryPerson: {
+    fontSize: 13,
+    lineHeight: 22,
+    includeFontPadding: true,
+  },
+  splitSummaryAmount: {
+    fontSize: 13,
+    lineHeight: 22,
+    includeFontPadding: true,
+    fontWeight: '700',
+    fontVariant: ['tabular-nums'],
+  },
+  balanceButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    minHeight: 40,
+    borderRadius: 10,
+    marginTop: 6,
+  },
+  balanceButtonText: {
+    fontSize: 14,
+    fontWeight: '700',
   },
   customSplitHeader: {
     flexDirection: 'row',
@@ -1527,6 +1787,12 @@ const styles = StyleSheet.create({
     height: 46,
     fontSize: 15,
   },
+  friendListHint: {
+    fontSize: 12,
+    lineHeight: 17,
+    marginBottom: 2,
+    paddingHorizontal: 2,
+  },
   clearSearchButton: {
     width: 32,
     height: 32,
@@ -1573,21 +1839,6 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   emptyText: {
-    fontSize: 14,
-  },
-  previewCard: {
-    borderRadius: 14,
-    overflow: 'hidden',
-    marginBottom: 24,
-  },
-  previewContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    gap: 12,
-    backgroundColor: 'rgba(45, 212, 191, 0.1)',
-  },
-  previewText: {
     fontSize: 14,
   },
   footer: {

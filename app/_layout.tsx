@@ -17,11 +17,15 @@ import {
 } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
 
 SplashScreen.preventAutoHideAsync();
+SplashScreen.setOptions({
+  duration: 0,
+  fade: false,
+});
 
 export const unstable_settings = {
   initialRouteName: '(tabs)',
@@ -53,18 +57,26 @@ const AmbientLightTheme = {
   },
 };
 
-function useProtectedRoute() {
+function useProtectedRoute(animationComplete: boolean) {
   const { isAuthenticated, isLoading } = useAuth();
   const segments = useSegments();
   const router = useRouter();
   const navState = useRootNavigationState();
 
-  useEffect(() => {
+  useLayoutEffect(() => {
+    // Avoid navigation mutations while the splash screen is still visible;
+    // they can cause the root layout to remount and restart the animation.
+    // Using useLayoutEffect so the redirect happens synchronously when the
+    // Stack first paints, avoiding a flash of the initial route.
+    if (!animationComplete) return;
     if (isLoading) return;
     if (!navState?.key) return;
 
     const inAuthGroup = segments[0] === '(auth)';
+    const inOAuthCallback = segments[0] === 'auth' && segments[1] === 'callback';
     const inInviteRoute = segments[0] === 'invite';
+
+    if (inOAuthCallback) return;
 
     if (!isAuthenticated && !inAuthGroup && !inInviteRoute) {
       // Redirect to sign-in if not authenticated and not already in auth flow
@@ -80,32 +92,50 @@ function useProtectedRoute() {
         router.replace('/(auth)/sign-in-otp');
       }
     }
-  }, [isAuthenticated, isLoading, navState?.key, segments, router]);
+  }, [isAuthenticated, isLoading, navState?.key, segments, router, animationComplete]);
 
   return isLoading;
 }
 
 function RootLayoutNav() {
   const { isDark } = useTheme();
-  const isLoading = useProtectedRoute();
-  const router = useRouter();
   const [animationComplete, setAnimationComplete] = useState(false);
+  const isLoading = useProtectedRoute(animationComplete);
+  const router = useRouter();
+  const [nativeSplashHidden, setNativeSplashHidden] = useState(false);
 
-  // Ensure animation plays for at least 2.5 seconds
+  // Keep the native splash static while React Native initializes. The animated
+  // splash is started only after the native logo has fully handed off.
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setAnimationComplete(true);
-    }, 2500);
-    return () => clearTimeout(timer);
+    let isMounted = true;
+
+    SplashScreen.hideAsync().then(() => {
+      if (isMounted) {
+        setNativeSplashHidden(true);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
-  // Initialize notifications - must be inside AuthProvider to access user context
-  useNotifications();
+  const handleAnimationComplete = useCallback(() => {
+    setAnimationComplete(true);
+  }, []);
+
+  // Initialize notifications only after the splash has completed and the main
+  // navigation is visible, so the permission prompt never appears over splash.
+  useNotifications(animationComplete && !isLoading);
 
   // Handle deep links for invitations → full invite screen (with invitation id in query)
   useEffect(() => {
     const handleDeepLink = (event: { url: string }) => {
       if (!event.url) return;
+
+      // The OAuth callback is owned by the initiating auth screen and
+      // WebBrowser session, not the invitation deep-link handler.
+      if (event.url.startsWith('vasuli://auth/callback')) return;
 
       console.log('[DeepLink] Received URL:', event.url);
 
@@ -137,7 +167,12 @@ function RootLayoutNav() {
   }, [router]);
 
   if (isLoading || !animationComplete) {
-    return <AnimatedSplash />;
+    return (
+      <AnimatedSplash
+        startAnimation={nativeSplashHidden}
+        onAnimationComplete={handleAnimationComplete}
+      />
+    );
   }
 
   return (
@@ -146,7 +181,6 @@ function RootLayoutNav() {
         <Stack>
           <Stack.Screen name="(auth)" options={{ headerShown: false }} />
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
           <Stack.Screen name="group/[id]" options={{ headerShown: false }} />
           <Stack.Screen name="friend/[id]" options={{ headerShown: false }} />
           <Stack.Screen name="scan-qr" options={{ headerShown: false }} />
@@ -175,12 +209,6 @@ export default function RootLayout() {
     'Nunito_600SemiBold': require('@expo-google-fonts/nunito/600SemiBold/Nunito_600SemiBold.ttf'),
     'Nunito_700Bold': require('@expo-google-fonts/nunito/700Bold/Nunito_700Bold.ttf'),
   });
-
-  useEffect(() => {
-    if (fontsLoaded) {
-      SplashScreen.hideAsync();
-    }
-  }, [fontsLoaded]);
 
   if (!fontsLoaded) {
     return null;

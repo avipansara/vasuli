@@ -1,585 +1,290 @@
 import { ThemedText } from '@/components/themed-text';
-import { AsyncErrorState } from '@/components/ui/async-error-state';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { KeyboardAwareScroll } from '@/components/ui/keyboard-aware-scroll';
 import { NavigationHeader } from '@/components/ui/screen-header';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useThemeColors } from '@/hooks/use-theme-colors';
-import { getFetchErrorMessage } from '@/lib/fetch-error-message';
-import { initDatabase } from '@/services/api';
+import { buildInvitePath } from '@/lib/invite-deeplink';
 import { invitationService } from '@/services/invitation-service';
+import { userService } from '@/services/user-service';
+import type { User } from '@/types/database';
 import { isEmailValid, normalizeEmail } from '@/utils/validation';
 import { BlurView } from 'expo-blur';
-import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { useCallback, useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   Animated,
   Keyboard,
-  Platform,
+  Share,
   StyleSheet,
   TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
 
+type LookupState = 'idle' | 'checking' | 'found' | 'not-found' | 'error';
+
 export default function AddFriendScreen() {
-  const { gradients, colors, isDark } = useThemeColors();
+  const { colors, isDark } = useThemeColors();
   const { user } = useAuth();
-  const currentUserId = user?.id || '';
-
-  const [name, setName] = useState('');
+  const currentUserId = user?.id ?? '';
   const [email, setEmail] = useState('');
+  const [lookupState, setLookupState] = useState<LookupState>('idle');
+  const [matchedUser, setMatchedUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(false);
-  const [pendingInvites, setPendingInvites] = useState<any[]>([]);
-  const [invitesLoadError, setInvitesLoadError] = useState<string | null>(null);
+  const [resultOpacity] = useState(() => new Animated.Value(0));
 
-  const loadPendingInvites = useCallback(async () => {
-    try {
-      setInvitesLoadError(null);
-      const invites = await invitationService.getByInviter(currentUserId);
-      setPendingInvites(invites.filter(inv => inv.status === 'pending'));
-    } catch (error) {
-      console.error('Error loading pending invites:', error);
-      setInvitesLoadError(getFetchErrorMessage(error));
-    }
-  }, [currentUserId]);
+  const palette = isDark
+    ? {
+        accent: '#2DD4BF',
+        background: '#071416',
+        surface: 'rgba(20, 38, 42, 0.86)',
+        surfaceSoft: 'rgba(15, 31, 34, 0.84)',
+        border: 'rgba(45, 212, 191, 0.22)',
+        text: '#F4F7F7',
+        muted: '#A1AFB2',
+        privacyText: '#C3D0D0',
+        privacySurface: 'rgba(12, 46, 45, 0.78)',
+        iconSurface: 'rgba(45, 212, 191, 0.13)',
+        resultBorder: 'rgba(45, 212, 191, 0.3)',
+      }
+    : {
+        accent: colors.tint,
+        background: colors.background,
+        surface: 'rgba(255, 255, 255, 0.94)',
+        surfaceSoft: 'rgba(248, 250, 250, 0.96)',
+        border: 'rgba(15, 157, 141, 0.24)',
+        text: colors.text,
+        muted: colors.textSecondary,
+        privacyText: '#395250',
+        privacySurface: 'rgba(224, 246, 242, 0.96)',
+        iconSurface: 'rgba(15, 157, 141, 0.1)',
+        resultBorder: 'rgba(15, 157, 141, 0.3)',
+      };
+
+  const validEmail = isEmailValid(email);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- Initial async load populates the pending invitation list.
-    loadPendingInvites();
-  }, [loadPendingInvites]);
+    const normalized = normalizeEmail(email);
+    if (!normalized || !isEmailValid(normalized)) {
+      resultOpacity.setValue(0);
+      return;
+    }
 
-  async function handleDeleteInvite(inviteId: string) {
-    Alert.alert(
-      'Cancel Invite',
-      'Are you sure you want to cancel this invitation?',
-      [
-        { text: 'No', style: 'cancel' },
-        {
-          text: 'Yes',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await invitationService.delete(inviteId);
-              loadPendingInvites();
-            } catch (error) {
-              console.error('Error deleting invite:', error);
-              Alert.alert('Error', 'Failed to cancel invite');
-            }
-          }
-        }
-      ]
-    );
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      setLookupState('checking');
+      try {
+        const found = await userService.getByEmail(normalized);
+        if (cancelled) return;
+        setMatchedUser(found);
+        setLookupState(found ? 'found' : 'not-found');
+        Animated.timing(resultOpacity, { toValue: 1, duration: 180, useNativeDriver: true }).start();
+      } catch {
+        if (!cancelled) setLookupState('error');
+      }
+    }, 350);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [email, resultOpacity]);
+
+  function handleEmailChange(value: string) {
+    setEmail(value);
+    // Clear the previous result immediately. This prevents an earlier email's
+    // account from being shown while the new email is being checked.
+    setLookupState('idle');
+    setMatchedUser(null);
+    resultOpacity.setValue(0);
   }
 
-  // Animations
-  const [fadeAnim] = useState(() => new Animated.Value(0));
-  const [slideAnim] = useState(() => new Animated.Value(30));
-
-  // Input refs for focus management
-  const nameInputRef = useRef<TextInput>(null);
-  const emailInputRef = useRef<TextInput>(null);
-
-  useEffect(() => {
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 400,
-        useNativeDriver: true,
-      }),
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: 400,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, [fadeAnim, slideAnim]);
-
-  const isValid = isEmailValid(email);
-
-  async function handleSubmit() {
-    if (!currentUserId) {
-      Alert.alert('Error', 'You must be signed in to send an invitation.');
+  async function handlePrimaryAction() {
+    const normalized = normalizeEmail(email);
+    if (!currentUserId || !normalized || !validEmail) {
+      Alert.alert('Enter a valid email', 'Use an email address to check whether they already use Vasuli.');
       return;
     }
-
-    if (!name.trim()) {
-      Alert.alert('Error', 'Please enter a name');
-      return;
-    }
-
-    if (!email.trim()) {
-      Alert.alert('Error', 'Please enter an email address');
-      return;
-    }
-    if (!isEmailValid(email)) {
-      Alert.alert('Invalid Email', 'Please enter a valid email address');
+    if (lookupState !== 'found' && lookupState !== 'not-found') {
+      Alert.alert('Still checking', 'Wait for Vasuli to finish checking this email.');
       return;
     }
 
     setLoading(true);
     try {
-      await initDatabase();
-
-      const friendEmail = normalizeEmail(email);
-      if (!friendEmail) {
-        Alert.alert('Error', 'Please enter an email address');
-        return;
-      }
-      const friendName = name.trim() || friendEmail.split('@')[0];
-
-      await invitationService.create({
+      const result = await invitationService.sendRequestOrInvitation({
         inviterId: currentUserId,
-        inviteeEmail: friendEmail,
-        inviteeName: friendName,
+        inviteeEmail: normalized,
         inviterName: user?.name || 'A friend',
       });
-
       Alert.alert(
-        'Invite Sent!',
-        `An invitation has been sent to ${friendName}. They'll appear in your friends list once they accept.`,
-        [{
-          text: 'OK', onPress: () => {
-            // Stay on screen to see the new invite in list?
-            // Or go back? User flow typically implies "I'm done".
-            // But if they want to add another... let's keep them here.
-            // Wait, earlier code had router.back().
-            // Let's reload list and then decide.
-            loadPendingInvites();
-            setEmail('');
-            setName('');
-            router.back();
-          }
-        }]
+        result.type === 'friend_request' ? 'Friend request sent' : 'Invite sent',
+        result.type === 'friend_request'
+          ? `${matchedUser?.name || 'Your friend'} can accept your request from Invitations.`
+          : `An invite was sent to ${normalized}.`,
+        [{ text: 'Done', onPress: () => router.back() }],
       );
     } catch (error: any) {
-      console.error('Error adding friend:', error);
-
-      // Handle specific error cases
-      let errorMessage = 'Failed to send invite';
-
-      if (error?.code === '23505' || error?.message?.includes('duplicate key')) {
-        errorMessage = 'You have already sent an invitation to this email address.';
-      } else if (error?.message) {
-        errorMessage = error.message;
-      }
-
-      Alert.alert('Error', errorMessage);
+      Alert.alert('Couldn’t complete this', error?.message || 'Please try again.');
     } finally {
       setLoading(false);
     }
   }
 
+  async function handleShareInvite() {
+    if (!currentUserId) return;
+    try {
+      await Share.share({
+        title: 'Invite to Vasuli',
+        message: `Join me on Vasuli to split expenses: https://split-space.com${buildInvitePath(currentUserId)}`,
+      });
+    } catch {
+      // The native share sheet can be dismissed without an action.
+    }
+  }
+
   function handleScanQR() {
+    Keyboard.dismiss();
     router.push('/scan-qr');
   }
 
-  return (
-    <View style={styles.container}>
-      <LinearGradient colors={gradients.screenBackground} style={StyleSheet.absoluteFill} />
+  const displayName = matchedUser?.name || 'Vasuli user';
+  const initials = displayName.split(' ').map(part => part[0]).join('').slice(0, 2).toUpperCase();
 
-      <NavigationHeader
-        title="Invite Friend"
-        onBack={() => router.back()}
-        rightAction={
-          <TouchableOpacity
-            onPress={handleSubmit}
-            disabled={!isValid || loading}
-            style={[
-              styles.headerButton,
-              {
-                backgroundColor: isValid && !loading ? (isDark ? '#2DD4BF' : '#22C55E') : (isDark ? '#374151' : '#E5E7EB'),
-              },
-            ]}>
-            {loading ? (
-              <ThemedText style={[styles.headerButtonText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>...</ThemedText>
-            ) : (
-              <ThemedText style={[styles.headerButtonText, { color: isValid ? '#0A0A0F' : (isDark ? '#9CA3AF' : '#6B7280') }]}>
-                Send
-              </ThemedText>
-            )}
-          </TouchableOpacity>
-        }
-      />
+  return (
+      <View style={[styles.container, { backgroundColor: palette.background }]}>
+      <View style={[styles.ambientGlow, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.06)' : 'rgba(34, 197, 94, 0.06)' }]} />
+      <NavigationHeader title="Add people" onBack={() => router.back()} />
 
       <KeyboardAwareScroll contentContainerStyle={styles.scrollContent}>
-        <Animated.View style={[styles.content, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-          {/* Hero Section */}
-          <View style={styles.heroSection}>
-            {/* <View style={[styles.heroIcon, {
-                backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)',
-                borderColor: isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(34, 197, 94, 0.3)',
-              }]}>
-                <IconSymbol name="person.badge.plus" size={48} color={isDark ? '#2DD4BF' : colors.tint} />
-              </View>
-              <ThemedText style={[styles.heroTitle, !isDark && { color: colors.text }]}>
-                Invite a Friend
-              </ThemedText> */}
-            <ThemedText style={[styles.heroSubtitle, { color: colors.textSecondary }]}>
-              Split expenses and settle up easily
+        <View style={styles.content}>
+          <View style={styles.intro}>
+            <ThemedText selectable style={[styles.title, { color: palette.text }]}>Add people</ThemedText>
+            <ThemedText selectable style={[styles.helper, { color: palette.muted }]}>
+              Enter an email. We’ll check if they already use Vasuli.
             </ThemedText>
           </View>
 
-          {/* Name Input */}
-          <View style={styles.inputSection}>
-            <ThemedText style={[styles.inputLabel, { color: colors.textSecondary }]}>
-              Name (Optional)
-            </ThemedText>
-            <View style={[styles.inputContainer, {
-              backgroundColor: isDark ? 'rgba(30, 41, 59, 0.6)' : 'rgba(241, 245, 249, 0.9)',
-              borderColor: isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(34, 197, 94, 0.2)',
-            }]}>
-              <IconSymbol name="person" size={20} color={isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'} />
+          <View style={styles.fieldGroup}>
+            <ThemedText selectable style={[styles.label, { color: palette.text }]}>Email address</ThemedText>
+            <View style={[styles.inputShell, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }, validEmail && { backgroundColor: isDark ? 'rgba(20, 47, 49, 0.92)' : '#F0FBF8', borderColor: isDark ? 'rgba(45, 212, 191, 0.62)' : palette.accent }]}>
+              <IconSymbol name="envelope" size={21} color={palette.accent} />
               <TextInput
-                ref={nameInputRef}
-                style={[styles.textInput, { color: isDark ? '#fff' : colors.text }]}
-                value={name}
-                onChangeText={setName}
-                placeholder="e.g. John Doe"
-                placeholderTextColor={isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'}
-                returnKeyType="next"
-                onSubmitEditing={() => emailInputRef.current?.focus()}
-                blurOnSubmit={false}
-              />
-            </View>
-          </View>
-
-          <View style={styles.inputSection}>
-            <ThemedText style={[styles.inputLabel, { color: colors.textSecondary }]}>
-              Email Address *
-            </ThemedText>
-            <View style={[styles.inputContainer, {
-              backgroundColor: isDark ? 'rgba(30, 41, 59, 0.6)' : 'rgba(241, 245, 249, 0.9)',
-              borderColor: isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(34, 197, 94, 0.2)',
-            }]}>
-              <IconSymbol name="envelope" size={20} color={isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'} />
-              <TextInput
-                ref={emailInputRef}
-                style={[styles.textInput, { color: isDark ? '#fff' : colors.text }]}
                 value={email}
-                onChangeText={setEmail}
-                placeholder="friend@example.com"
-                placeholderTextColor={isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'}
+                onChangeText={handleEmailChange}
+                style={[styles.input, { color: palette.text }]}
                 keyboardType="email-address"
                 autoCapitalize="none"
-                returnKeyType="done"
                 autoCorrect={false}
-                onSubmitEditing={() => Keyboard.dismiss()}
+                returnKeyType="done"
+                onSubmitEditing={Keyboard.dismiss}
+                accessibilityLabel="Email address"
               />
+              {lookupState === 'checking' && <ActivityIndicator size="small" color={palette.accent} />}
+              {validEmail && lookupState !== 'checking' && (
+                <IconSymbol name={lookupState === 'error' ? 'exclamationmark.circle' : 'checkmark.circle.fill'} size={20} color={lookupState === 'error' ? '#F59E0B' : palette.accent} />
+              )}
             </View>
           </View>
 
-          {/* QR Code Option */}
-          <TouchableOpacity
-            style={[styles.qrButton, {
-              backgroundColor: isDark ? 'rgba(30, 41, 59, 0.6)' : 'rgba(241, 245, 249, 0.9)',
-              borderColor: isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(34, 197, 94, 0.2)',
-            }]}
-            onPress={handleScanQR}>
-            <View style={[styles.qrIconContainer, {
-              backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)',
-            }]}>
-              <IconSymbol name="qrcode.viewfinder" size={24} color={isDark ? '#2DD4BF' : colors.tint} />
-            </View>
-            <View style={styles.qrTextContainer}>
-              <ThemedText style={[styles.qrTitle, { color: colors.text }]}>
-                Scan QR Code
-              </ThemedText>
-              <ThemedText style={[styles.qrSubtitle, { color: colors.textSecondary }]}>
-                Instantly connect with nearby friends
-              </ThemedText>
-            </View>
-            <IconSymbol name="chevron.right" size={16} color={isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'} />
-          </TouchableOpacity>
-
-          {/* Info Card */}
-          <BlurView intensity={isDark ? 20 : 40} tint={isDark ? 'dark' : 'light'} style={styles.infoCard}>
-            <View style={[styles.infoContent, !isDark && { backgroundColor: 'rgba(255,255,255,0.8)' }]}>
-              <IconSymbol name="lock.shield" size={20} color={isDark ? '#2DD4BF' : colors.tint} />
-              <ThemedText style={[styles.infoText, { color: colors.textSecondary }]}>
-                We&apos;ll send them an invite to join Vasuli. Your contact info stays private.
-              </ThemedText>
-            </View>
-          </BlurView>
-
-          {/* Pending Invites Section */}
-          {(invitesLoadError || pendingInvites.length > 0) && (
-            <View style={styles.pendingSection}>
-              <ThemedText style={[styles.sectionTitle, { color: colors.text }]}>
-                Pending Invites
-              </ThemedText>
-              {invitesLoadError ? (
-                <AsyncErrorState
-                  variant="compact"
-                  title="Couldn't load invites"
-                  message={invitesLoadError}
-                  onRetry={() => void loadPendingInvites()}
-                />
-              ) : (
-              pendingInvites.map((invite) => (
-                <View key={invite.id} style={[styles.pendingItem, {
-                  backgroundColor: isDark ? 'rgba(30, 41, 59, 0.6)' : 'white',
-                  borderColor: isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(0,0,0,0.05)'
-                }]}>
-                  <View style={styles.pendingInfo}>
-                    <ThemedText style={[styles.pendingName, { color: colors.text }]}>
-                      {invite.inviteeName || invite.inviteeEmail}
-                    </ThemedText>
-                    <ThemedText style={[styles.pendingEmail, { color: colors.textSecondary }]}>
-                      {invite.inviteeEmail}
-                    </ThemedText>
-                  </View>
-                  <TouchableOpacity
-                    onPress={() => handleDeleteInvite(invite.id)}
-                    style={[styles.revokeButton, { backgroundColor: isDark ? 'rgba(239, 68, 68, 0.2)' : '#fee2e2' }]}
-                  >
-                    <ThemedText style={[styles.revokeText, { color: isDark ? '#ef4444' : '#dc2626' }]}>
-                      Revoke
-                    </ThemedText>
-                  </TouchableOpacity>
-                </View>
-              ))
-              )}
-            </View>
+          {(lookupState === 'found' || lookupState === 'not-found' || lookupState === 'error') && (
+            <Animated.View style={{ opacity: resultOpacity }}>
+              <View style={[styles.resultCard, { backgroundColor: palette.surface, borderColor: palette.resultBorder }]}>
+                {lookupState === 'found' ? (
+                  <>
+                    <View style={styles.resultRow}>
+                      <View style={[styles.avatar, { backgroundColor: palette.iconSurface, borderColor: palette.resultBorder }]}><ThemedText selectable style={[styles.avatarText, { color: palette.accent }]}>{initials}</ThemedText></View>
+                      <View style={styles.resultIdentity}>
+                        <ThemedText selectable style={[styles.resultName, { color: palette.text }]}>{displayName}</ThemedText>
+                        <View style={styles.badge}>
+                          <IconSymbol name="checkmark.circle.fill" size={13} color={palette.accent} />
+                          <ThemedText selectable style={[styles.badgeText, { color: palette.accent }]}>Already on Vasuli</ThemedText>
+                        </View>
+                      </View>
+                    </View>
+                    <TouchableOpacity style={[styles.primaryButton, { backgroundColor: palette.accent }]} onPress={handlePrimaryAction} disabled={loading} accessibilityLabel="Add friend">
+                      {loading ? <ActivityIndicator color={isDark ? '#061113' : '#FFFFFF'} /> : <ThemedText selectable style={[styles.primaryButtonText, { color: isDark ? '#061113' : '#FFFFFF' }]}>Add friend</ThemedText>}
+                    </TouchableOpacity>
+                  </>
+                ) : (
+                  <>
+                    <View style={styles.resultRow}>
+                      <View style={[styles.notFoundIcon, { backgroundColor: palette.iconSurface }]}><IconSymbol name="paperplane.fill" size={20} color={palette.accent} /></View>
+                      <View style={styles.resultIdentity}>
+                        <ThemedText selectable style={[styles.resultName, { color: palette.text }]}>{lookupState === 'error' ? 'Couldn’t check this email' : 'Not on Vasuli yet'}</ThemedText>
+                        <ThemedText selectable style={[styles.resultSupporting, { color: palette.muted }]}>{lookupState === 'error' ? 'Try again in a moment.' : 'They’ll get an invite to join you.'}</ThemedText>
+                      </View>
+                    </View>
+                    {lookupState === 'not-found' && (
+                      <TouchableOpacity style={[styles.primaryButton, { backgroundColor: palette.accent }]} onPress={handlePrimaryAction} disabled={loading} accessibilityLabel="Send invite">
+                        {loading ? <ActivityIndicator color={isDark ? '#061113' : '#FFFFFF'} /> : <ThemedText selectable style={[styles.primaryButtonText, { color: isDark ? '#061113' : '#FFFFFF' }]}>Send invite</ThemedText>}
+                      </TouchableOpacity>
+                    )}
+                  </>
+                )}
+              </View>
+            </Animated.View>
           )}
 
-        </Animated.View>
+          <View style={styles.optionsSection}>
+            <ThemedText selectable style={[styles.sectionEyebrow, { color: palette.muted }]}>More ways to connect</ThemedText>
+            <TouchableOpacity style={[styles.optionRow, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]} onPress={handleShareInvite} accessibilityLabel="Share invite link">
+              <View style={[styles.optionIcon, { backgroundColor: palette.iconSurface }]}><IconSymbol name="square.and.arrow.up" size={20} color={palette.accent} /></View>
+              <View style={styles.optionCopy}><ThemedText selectable style={[styles.optionTitle, { color: palette.text }]}>Share invite link</ThemedText><ThemedText selectable style={[styles.optionSubtitle, { color: palette.muted }]}>Invite someone any way you like</ThemedText></View>
+              <IconSymbol name="chevron.right" size={18} color={palette.muted} />
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.optionRow, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]} onPress={handleScanQR} accessibilityLabel="Scan QR code">
+              <View style={[styles.optionIcon, { backgroundColor: palette.iconSurface }]}><IconSymbol name="qrcode.viewfinder" size={21} color={palette.accent} /></View>
+              <View style={styles.optionCopy}><ThemedText selectable style={[styles.optionTitle, { color: palette.text }]}>Scan QR code</ThemedText><ThemedText selectable style={[styles.optionSubtitle, { color: palette.muted }]}>Add someone nearby instantly</ThemedText></View>
+              <IconSymbol name="chevron.right" size={18} color={palette.muted} />
+            </TouchableOpacity>
+          </View>
+
+          <BlurView intensity={isDark ? 22 : 30} tint={isDark ? 'dark' : 'light'} style={[styles.privacyCard, { backgroundColor: palette.privacySurface, borderColor: palette.border }]}>
+            <IconSymbol name="lock.shield" size={22} color={palette.accent} />
+            <ThemedText selectable style={[styles.privacyText, { color: palette.privacyText }]}>Your email stays private until they accept.</ThemedText>
+          </BlurView>
+        </View>
       </KeyboardAwareScroll>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'ios' ? 60 : 54,
-    paddingBottom: 16,
-  },
-  backButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  headerRight: {
-    width: 44,
-  },
-  headerButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 12,
-    minWidth: 60,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerButtonText: {
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  keyboardView: {
-    flex: 1,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingHorizontal: 20,
-    paddingBottom: 120,
-  },
-  content: {
-    flex: 1,
-  },
-  heroSection: {
-    alignItems: 'center',
-    paddingVertical: 24,
-    marginBottom: 8,
-  },
-  heroIcon: {
-    width: 100,
-    height: 100,
-    borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    marginBottom: 16,
-  },
-  heroTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    marginBottom: 8,
-  },
-  heroSubtitle: {
-    fontSize: 15,
-  },
-  methodSection: {
-    marginBottom: 24,
-  },
-  methodToggle: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  methodButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 16,
-    borderRadius: 14,
-    borderWidth: 1.5,
-  },
-  methodButtonActive: {
-    borderWidth: 2,
-  },
-  methodButtonText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  methodButtonTextActive: {
-    color: '#0A0A0F',
-  },
-  inputSection: {
-    marginBottom: 20,
-  },
-  inputLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 10,
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderRadius: 14,
-    borderWidth: 1,
-    gap: 12,
-  },
-  textInput: {
-    flex: 1,
-    fontSize: 16,
-  },
-  qrButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderRadius: 14,
-    borderWidth: 1,
-    marginBottom: 24,
-    gap: 14,
-  },
-  qrIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  qrTextContainer: {
-    flex: 1,
-  },
-  qrTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 2,
-  },
-  qrSubtitle: {
-    fontSize: 13,
-  },
-  infoCard: {
-    borderRadius: 14,
-    overflow: 'hidden',
-  },
-  infoContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    gap: 12,
-    backgroundColor: 'rgba(45, 212, 191, 0.1)',
-  },
-  infoText: {
-    flex: 1,
-    fontSize: 14,
-  },
-  footer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    padding: 20,
-    paddingBottom: Platform.OS === 'ios' ? 34 : 20,
-  },
-  submitButton: {
-    borderRadius: 16,
-    overflow: 'hidden',
-  },
-  submitButtonDisabled: {
-    opacity: 0.6,
-  },
-  submitButtonGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-    paddingVertical: 18,
-  },
-  submitButtonText: {
-    color: '#fff',
-    fontSize: 17,
-    fontWeight: '700',
-  },
-  pendingSection: {
-    marginTop: 32,
-    marginBottom: 20,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 16,
-  },
-  pendingItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 16,
-    borderRadius: 14,
-    borderWidth: 1,
-    marginBottom: 12,
-  },
-  pendingInfo: {
-    flex: 1,
-    marginRight: 12,
-  },
-  pendingName: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  pendingEmail: {
-    fontSize: 14,
-  },
-  revokeButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-  },
-  revokeText: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
+  container: { flex: 1 },
+  ambientGlow: { position: 'absolute', top: -150, right: -100, width: 330, height: 330, borderRadius: 200, backgroundColor: 'rgba(45, 212, 191, 0.06)' },
+  scrollContent: { paddingHorizontal: 20, paddingBottom: 48 },
+  content: { gap: 22 },
+  intro: { gap: 8, paddingTop: 10 },
+  title: { fontSize: 30, lineHeight: 36, fontFamily: 'Nunito_700Bold', letterSpacing: -0.5 },
+  helper: { fontSize: 15, lineHeight: 22, maxWidth: 350 },
+  fieldGroup: { gap: 9 },
+  label: { fontSize: 14, fontFamily: 'Nunito_600SemiBold' },
+  inputShell: { minHeight: 60, flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 17, borderRadius: 18, borderWidth: 1 },
+  inputShellActive: { borderColor: 'rgba(45, 212, 191, 0.62)', backgroundColor: 'rgba(20, 47, 49, 0.92)' },
+  input: { flex: 1, fontSize: 16, fontFamily: 'Nunito_500Medium', paddingVertical: 0 },
+  resultCard: { gap: 18, padding: 18, borderRadius: 20, borderWidth: 1, boxShadow: '0 10px 24px rgba(0, 0, 0, 0.18)' },
+  resultRow: { flexDirection: 'row', alignItems: 'center', gap: 13 },
+  avatar: { width: 50, height: 50, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(45, 212, 191, 0.18)', borderWidth: 1, borderColor: 'rgba(45, 212, 191, 0.42)' },
+  avatarText: { fontSize: 16, fontFamily: 'Nunito_700Bold' },
+  resultIdentity: { flex: 1, gap: 6 },
+  resultName: { fontSize: 17, fontFamily: 'Nunito_700Bold' },
+  badge: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  badgeText: { fontSize: 13, fontFamily: 'Nunito_600SemiBold' },
+  notFoundIcon: { width: 46, height: 46, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  resultSupporting: { fontSize: 13 },
+  primaryButton: { minHeight: 48, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
+  primaryButtonText: { color: '#061113', fontSize: 16, fontFamily: 'Nunito_700Bold' },
+  optionsSection: { gap: 10, marginTop: 2 },
+  sectionEyebrow: { fontSize: 13, fontFamily: 'Nunito_600SemiBold', marginBottom: 2 },
+  optionRow: { minHeight: 76, flexDirection: 'row', alignItems: 'center', gap: 13, paddingHorizontal: 14, borderRadius: 18, borderWidth: 1 },
+  optionIcon: { width: 42, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  optionCopy: { flex: 1, gap: 2 },
+  optionTitle: { fontSize: 16, fontFamily: 'Nunito_700Bold' },
+  optionSubtitle: { fontSize: 13 },
+  privacyCard: { minHeight: 74, flexDirection: 'row', alignItems: 'center', gap: 13, paddingHorizontal: 16, borderRadius: 18, overflow: 'hidden', borderWidth: 1 },
+  privacyText: { flex: 1, fontSize: 13, lineHeight: 19 },
 });
