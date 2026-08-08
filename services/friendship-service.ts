@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { userService } from '@/services/user-service';
 
 export interface Friendship {
   id: string;
@@ -6,6 +7,10 @@ export interface Friendship {
   friendId: string;
   status: 'pending' | 'accepted' | 'blocked';
   createdAt: number;
+}
+
+export interface PendingFriendshipRequest extends Friendship {
+  requesterName: string;
 }
 
 export const friendshipService = {
@@ -119,6 +124,33 @@ export const friendshipService = {
       friendId: r.friend_id,
       status: r.status as 'pending' | 'accepted' | 'blocked',
       createdAt: new Date(r.created_at).getTime(),
+    }));
+  },
+
+  /**
+   * Get pending requests with the requester's profile name.
+   *
+   * Friendships only store user IDs, so resolve the requester profiles in one
+   * batch and fail loudly if a referenced profile cannot be loaded. This keeps
+   * the UI from silently presenting an anonymous request.
+   */
+  async getPendingRequestsWithRequesters(userId: string): Promise<PendingFriendshipRequest[]> {
+    const requests = await this.getPendingRequests(userId);
+    if (requests.length === 0) return [];
+
+    const requesters = await userService.getByIds(requests.map((request) => request.userId));
+    const requesterNames = new Map(requesters.map((requester) => [requester.id, requester.name]));
+    const missingRequesterIds = requests
+      .map((request) => request.userId)
+      .filter((requesterId) => !requesterNames.has(requesterId));
+
+    if (missingRequesterIds.length > 0) {
+      throw new Error('Unable to load the profile for a pending friend request.');
+    }
+
+    return requests.map((request) => ({
+      ...request,
+      requesterName: requesterNames.get(request.userId)!,
     }));
   },
 
