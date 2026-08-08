@@ -4,6 +4,7 @@ const mocks = vi.hoisted(() => {
   const getSession = vi.fn()
   const from = vi.fn()
   const expenseSingle = vi.fn()
+  const expenseInsert = vi.fn()
   const splitsInsert = vi.fn()
   const linkAuthUserToProfile = vi.fn()
 
@@ -11,6 +12,7 @@ const mocks = vi.hoisted(() => {
     getSession,
     from,
     expenseSingle,
+    expenseInsert,
     splitsInsert,
     linkAuthUserToProfile,
   }
@@ -73,11 +75,11 @@ describe('expenseService.create auth bridge', () => {
     mocks.from.mockImplementation((table: string) => {
       if (table === 'expenses') {
         return {
-          insert: () => ({
+          insert: expenseInsert.mockImplementation(() => ({
             select: () => ({
               single: mocks.expenseSingle,
             }),
-          }),
+          })),
         }
       }
 
@@ -164,5 +166,22 @@ describe('expenseService.create auth bridge', () => {
 
     expect(mocks.linkAuthUserToProfile).not.toHaveBeenCalled()
     expect(mocks.expenseSingle).not.toHaveBeenCalled()
+  })
+
+  it('keeps the signed-in creator separate from the selected payer', async () => {
+    await expenseService.create({
+      description: 'Dinner',
+      amount: 40,
+      currency: 'USD',
+      paidBy: 'friend-user-id',
+      createdBy: 'current-user-id',
+      date: Date.parse('2026-01-01T00:00:00.000Z'),
+    }, [])
+
+    expect(mocks.linkAuthUserToProfile).toHaveBeenCalled()
+    expect(mocks.expenseInsert).toHaveBeenCalledWith(expect.objectContaining({
+      paid_by: 'friend-user-id',
+      created_by: 'current-user-id',
+    }))
   })
 })

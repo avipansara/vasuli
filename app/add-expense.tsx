@@ -95,6 +95,7 @@ export default function AddExpenseScreen() {
   const friends = useMemo(() => friendsQuery.data ?? [], [friendsQuery.data]);
   const [friendSearchQuery, setFriendSearchQuery] = useState('');
   const [selectedFriendIds, setSelectedFriendIds] = useState<string[]>(preselectedFriendId ? [preselectedFriendId] : []);
+  const [selectedPayerId, setSelectedPayerId] = useState(currentUserId);
   const [loading, setLoading] = useState(false);
   const dataLoading = groupsQuery.isLoading || friendsQuery.isLoading;
   const dataLoadError = groupsQuery.error || friendsQuery.error;
@@ -193,6 +194,17 @@ export default function AddExpenseScreen() {
   const selectedFriendNames = selectedFriendIds
     .map(friendId => friends.find(friend => friend.id === friendId)?.name)
     .filter((name): name is string => !!name);
+  const payerOptions = useMemo(() => {
+    const participants = splitType === SplitType.GROUP
+      ? groupMemberUsers
+      : friends.filter(friend => selectedFriendIds.includes(friend.id));
+    return [{ id: currentUserId, name: user?.name || 'You' }, ...participants.filter(person => person.id !== currentUserId)];
+  }, [currentUserId, friends, groupMemberUsers, selectedFriendIds, splitType, user?.name]);
+  const selectedPayerName = payerOptions.find(person => person.id === selectedPayerId)?.name || 'You';
+
+  useEffect(() => {
+    if (!payerOptions.some(person => person.id === selectedPayerId)) setSelectedPayerId(currentUserId);
+  }, [currentUserId, payerOptions, selectedPayerId]);
 
   const handleHeaderBack = () => {
     if (expenseStep === 2 && !preselectedGroupId && !preselectedFriendId) {
@@ -416,7 +428,8 @@ export default function AddExpenseScreen() {
         description: trimmedDescription,
         amount: amountNum,
         currency: 'USD',
-        paidBy: currentUserId,
+        paidBy: selectedPayerId,
+        createdBy: currentUserId,
         date: createdAt,
         createdAt,
         updatedAt: createdAt,
@@ -453,7 +466,8 @@ export default function AddExpenseScreen() {
             description: trimmedDescription,
             amount: amountNum,
             currency: 'USD',
-            paidBy: currentUserId,
+            paidBy: selectedPayerId,
+            createdBy: currentUserId,
             date: createdAt,
           },
           splits
@@ -483,7 +497,7 @@ export default function AddExpenseScreen() {
             const notification = createExpenseNotification(
               trimmedDescription,
               amountNum,
-              user?.name || 'Someone',
+              selectedPayerName,
               group?.name
             );
             await notificationService.sendNotificationToUsers(pushTokens, notification);
@@ -531,7 +545,8 @@ export default function AddExpenseScreen() {
             description: trimmedDescription,
             amount: amountNum,
             currency: 'USD',
-            paidBy: currentUserId,
+            paidBy: selectedPayerId,
+            createdBy: currentUserId,
             date: createdAt,
           },
           splits
@@ -555,7 +570,7 @@ export default function AddExpenseScreen() {
             const notification = createExpenseNotification(
               trimmedDescription,
               amountNum,
-              user?.name || 'Someone'
+              selectedPayerName
             );
             await notificationService.sendNotificationToUsers(friendPushTokens, notification);
           }
@@ -756,6 +771,30 @@ export default function AddExpenseScreen() {
                   : selectedFriendNames.join(', ')}
               </ThemedText>
             </View>
+          </View>
+          <View style={styles.inputSection}>
+            <ThemedText style={[styles.inputLabel, { color: colors.textSecondary }]}>Paid by</ThemedText>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.splitMethodContainer}>
+              {payerOptions.map(payer => {
+                const isSelected = payer.id === selectedPayerId;
+                return (
+                  <TouchableOpacity
+                    key={payer.id}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: isSelected }}
+                    accessibilityLabel={`Paid by ${payer.id === currentUserId ? 'you' : payer.name}`}
+                    style={[styles.splitMethodButton, isSelected && styles.splitMethodButtonActive, {
+                      backgroundColor: isSelected ? (isDark ? 'rgba(45, 212, 191, 0.14)' : 'rgba(34, 197, 94, 0.08)') : (isDark ? 'rgba(20, 35, 38, 0.66)' : colors.card),
+                      borderColor: isSelected ? (isDark ? '#2DD4BF' : colors.tint) : colors.border,
+                    }]}
+                    onPress={() => setSelectedPayerId(payer.id)}>
+                    <ThemedText style={[styles.splitMethodText, { color: isSelected ? (isDark ? '#2DD4BF' : colors.tint) : colors.text }]}>
+                      {payer.id === currentUserId ? 'You' : payer.name}
+                    </ThemedText>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
           </View>
           {/* Amount Input - Hero Style */}
           <View style={styles.amountSection}>

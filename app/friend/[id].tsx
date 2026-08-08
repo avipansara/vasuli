@@ -623,7 +623,7 @@ export default function FriendDetailScreen() {
             swipeableRefs.current.delete(expense.id);
           }
         }}
-        renderLeftActions={(progress, dragX) => (
+        renderLeftActions={(expense.createdBy === currentUserId || expense.paidBy === currentUserId) ? (progress, dragX) => (
           <Animated.View style={[styles.swipeActionLeft, {
             backgroundColor: friendDetailTheme.actionSurface,
             opacity: dragX.interpolate({ inputRange: [0, 80], outputRange: [0, 1], extrapolate: 'clamp' })
@@ -638,8 +638,8 @@ export default function FriendDetailScreen() {
               <ThemedText style={[styles.swipeActionText, { color: friendDetailTheme.actionIcon }]}>Edit</ThemedText>
             </TouchableOpacity>
           </Animated.View>
-        )}
-        renderRightActions={expense.paidBy === currentUserId ? (progress, dragX) => (
+        ) : undefined}
+        renderRightActions={(expense.createdBy === currentUserId || expense.paidBy === currentUserId) ? (progress, dragX) => (
           <Animated.View style={[styles.swipeActionRight, {
             backgroundColor: friendDetailTheme.dangerSurface,
             opacity: dragX.interpolate({ inputRange: [-80, 0], outputRange: [1, 0], extrapolate: 'clamp' })

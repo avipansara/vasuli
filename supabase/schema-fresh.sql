@@ -74,6 +74,7 @@ CREATE TABLE public.expenses (
   amount DECIMAL(12, 2) NOT NULL CHECK (amount > 0),
   currency TEXT NOT NULL DEFAULT 'USD',
   paid_by UUID NOT NULL REFERENCES public.users(id),
+  created_by UUID NOT NULL REFERENCES public.users(id),
   category TEXT,
   date TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   image_url TEXT,
@@ -253,13 +254,13 @@ CREATE POLICY "Users can view their expenses" ON public.expenses
   );
 
 CREATE POLICY "Users can create expenses" ON public.expenses
-  FOR INSERT WITH CHECK (paid_by = auth.uid());
+  FOR INSERT WITH CHECK (created_by = auth.uid());
 
 CREATE POLICY "Creator can update expenses" ON public.expenses
-  FOR UPDATE USING (paid_by = auth.uid());
+  FOR UPDATE USING (created_by = auth.uid());
 
 CREATE POLICY "Creator can delete expenses" ON public.expenses
-  FOR DELETE USING (paid_by = auth.uid());
+  FOR DELETE USING (created_by = auth.uid());
 
 -- EXPENSE SPLITS POLICIES
 CREATE POLICY "Users can view their splits" ON public.expense_splits
@@ -268,7 +269,7 @@ CREATE POLICY "Users can view their splits" ON public.expense_splits
     OR EXISTS (
       SELECT 1 FROM public.expenses 
       WHERE expenses.id = expense_splits.expense_id 
-      AND expenses.paid_by = auth.uid()
+      AND expenses.created_by = auth.uid()
     )
   );
 
@@ -277,7 +278,7 @@ CREATE POLICY "Creator can manage splits" ON public.expense_splits
     EXISTS (
       SELECT 1 FROM public.expenses 
       WHERE expenses.id = expense_splits.expense_id 
-      AND expenses.paid_by = auth.uid()
+      AND expenses.created_by = auth.uid()
     )
   );
 
