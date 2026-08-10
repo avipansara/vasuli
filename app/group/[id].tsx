@@ -85,6 +85,15 @@ export default function GroupDetailScreen() {
   });
   const loading = isLoading && !group;
   const loadError = error ? getFetchErrorMessage(error) : null;
+  const filteredExpenses = useMemo(() => {
+    const search = expenseSearch.trim().toLocaleLowerCase();
+    if (!search) return expenses;
+
+    return expenses.filter(expense => (
+      expense.description.toLocaleLowerCase().includes(search) ||
+      expense.paidByUser?.name.toLocaleLowerCase().includes(search)
+    ));
+  }, [expenseSearch, expenses]);
 
   useEffect(() => {
     if (groupDetail === undefined) return;
