@@ -1,3 +1,7 @@
+## 2026-08-10
+
+- Group expense rows now open their expense details when tapped.
+
 ## 2026-07-23
 
 - Fixed splash screen animation playing twice on launch. `useProtectedRoute` now

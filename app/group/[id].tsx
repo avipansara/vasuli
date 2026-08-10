@@ -509,10 +509,16 @@ export default function GroupDetailScreen() {
         overshootFriction={8}
         enableTrackpadTwoFingerGesture
         containerStyle={{ overflow: 'visible' }}>
-        <View style={[styles.expenseCard, {
-          backgroundColor: friendDetailTheme.surface,
-          borderColor: friendDetailTheme.surfaceBorder,
-        }]}>
+        <TouchableOpacity
+          activeOpacity={0.72}
+          accessibilityRole="button"
+          accessibilityLabel={`View details for ${item.description}`}
+          accessibilityHint="Opens the expense details"
+          onPress={() => router.push(`/expense-detail/${item.id}` as any)}
+          style={[styles.expenseCard, {
+            backgroundColor: friendDetailTheme.surface,
+            borderColor: friendDetailTheme.surfaceBorder,
+          }]}>
           <View style={[styles.expenseIcon, { backgroundColor: item.paidBy === currentUserId ? friendDetailTheme.positiveSurface : friendDetailTheme.mutedSurface }]}>
             <IconSymbol
               size={18}
@@ -529,7 +535,13 @@ export default function GroupDetailScreen() {
             </ThemedText>
           </View>
           <ThemedText style={[styles.expenseAmount, { color: colors.text }]}>${item.amount.toFixed(2)}</ThemedText>
-        </View>
+          <IconSymbol
+            size={17}
+            name="chevron.right"
+            color={colors.textSecondary}
+            style={styles.expenseChevron}
+          />
+        </TouchableOpacity>
       </Swipeable>
     );
   }
@@ -1392,6 +1404,9 @@ const styles = StyleSheet.create({
   expenseAmount: {
     fontSize: 15,
     fontWeight: '600',
+  },
+  expenseChevron: {
+    marginLeft: 8,
   },
   emptySection: {
     alignItems: 'center',
