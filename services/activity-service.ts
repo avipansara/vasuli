@@ -68,7 +68,7 @@ export const activityService = {
     }));
   },
 
-  async getUserActivities(userId: string, limit?: number, offset?: number): Promise<Activity[]> {
+  async getUserActivities(userId: string, limit?: number, offset?: number, search?: string): Promise<Activity[]> {
     // Get activities from groups the user is a member of
     const { data: memberData, error: memberError } = await supabase
       .from('group_members')
@@ -91,6 +91,17 @@ export const activityService = {
       query = query.or(`user_id.eq.${userId},group_id.in.(${groupIds.join(',')})`);
     } else {
       query = query.eq('user_id', userId);
+    }
+
+    const normalizedSearch = search
+      ?.trim()
+      .replace(/[^a-zA-Z0-9\s$-]/g, ' ')
+      .replace(/\s+/g, ' ');
+    if (normalizedSearch) {
+      const searchPattern = `%${normalizedSearch}%`;
+      query = query.or(
+        `description.ilike.${searchPattern},group_name.ilike.${searchPattern},user_name.ilike.${searchPattern}`
+      );
     }
 
     if (limit) {

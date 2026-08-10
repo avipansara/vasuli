@@ -1,6 +1,7 @@
 ## 2026-08-10
 
 - Group expense rows now open their expense details when tapped.
+- Added search across activity descriptions, groups, and people.
 
 ## 2026-07-23
 

@@ -14,7 +14,7 @@ import type { Activity } from '@/types/database';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Animated, Platform, RefreshControl, SectionList, StyleSheet, View } from 'react-native';
+import { Animated, Platform, RefreshControl, SectionList, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 
 function getTimePeriod(timestamp: number): string {
   const now = new Date();
@@ -31,6 +31,8 @@ function getTimePeriod(timestamp: number): string {
 export default function ActivityScreen() {
   const { gradients, colors, isDark } = useThemeColors();
   const [refreshing, setRefreshing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [activitySearch, setActivitySearch] = useState('');
   const PAGE_SIZE = 20;
 
   // Animations
@@ -39,7 +41,15 @@ export default function ActivityScreen() {
 
   const { user } = useAuth();
   const currentUserId = user?.id || '';
-  const activityQueryKey = useMemo(() => queryKeys.activity.list(currentUserId), [currentUserId]);
+  const activityQueryKey = useMemo(
+    () => queryKeys.activity.list(currentUserId, activitySearch),
+    [activitySearch, currentUserId]
+  );
+
+  useEffect(() => {
+    const timeoutId = setTimeout(() => setActivitySearch(searchQuery.trim()), 250);
+    return () => clearTimeout(timeoutId);
+  }, [searchQuery]);
 
   const {
     data,
@@ -57,7 +67,7 @@ export default function ActivityScreen() {
     enabled: !!currentUserId,
     initialPageParam: 0,
     queryFn: async ({ pageParam }) => {
-      return activityService.getUserActivities(currentUserId, PAGE_SIZE, pageParam);
+      return activityService.getUserActivities(currentUserId, PAGE_SIZE, pageParam, activitySearch);
     },
     getNextPageParam: (lastPage, allPages) => {
       if (lastPage.length < PAGE_SIZE) return undefined;
@@ -68,6 +78,7 @@ export default function ActivityScreen() {
   const deletedExpenseTargetIds = useMemo(() => getDeletedExpenseTargetIds(activities), [activities]);
   const loading = isLoading && activities.length === 0;
   const loadError = isError ? getFetchErrorMessage(error) : null;
+  const hasSearch = activitySearch.length > 0;
 
   useEffect(() => {
     if (!loading && !isFetchingNextPage) {
@@ -149,6 +160,40 @@ export default function ActivityScreen() {
       <View style={styles.header}>
         <ThemedText style={[styles.headerLabel, { color: colors.textSecondary }]}>Recent</ThemedText>
         <ThemedText type="header" style={[styles.headerTitle, { color: colors.text }]}>Activity</ThemedText>
+        <View style={[styles.searchContainer, {
+          backgroundColor: isDark ? 'rgba(30, 41, 59, 0.6)' : 'rgba(241, 245, 249, 0.9)',
+          borderColor: isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(34, 197, 94, 0.2)',
+        }]}>
+          <IconSymbol
+            name="magnifyingglass"
+            size={18}
+            color={isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'}
+          />
+          <TextInput
+            accessibilityLabel="Search activities"
+            autoCapitalize="none"
+            autoCorrect={false}
+            onChangeText={setSearchQuery}
+            placeholder="Search activities, groups, or people"
+            placeholderTextColor={isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'}
+            returnKeyType="search"
+            style={[styles.searchInput, { color: isDark ? '#fff' : colors.text }]}
+            value={searchQuery}
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity
+              accessibilityLabel="Clear activity search"
+              hitSlop={8}
+              onPress={() => setSearchQuery('')}
+              style={styles.clearSearchButton}>
+              <IconSymbol
+                name="xmark.circle.fill"
+                size={18}
+                color={isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.35)'}
+              />
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
 
       {loading ? (
@@ -165,13 +210,13 @@ export default function ActivityScreen() {
           { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }
         ]}>
           <View style={[styles.emptyIconContainer, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.1)' : 'rgba(34, 197, 94, 0.1)' }]}>
-            <IconSymbol size={48} name="clock" color={isDark ? '#2DD4BF' : colors.tint} />
+            <IconSymbol size={48} name={hasSearch ? 'magnifyingglass' : 'clock'} color={isDark ? '#2DD4BF' : colors.tint} />
           </View>
           <ThemedText type="subtitle" style={[styles.emptyTitle, { color: colors.text }]}>
-            No activity yet
+            {hasSearch ? 'No matching activity' : 'No activity yet'}
           </ThemedText>
           <ThemedText style={[styles.emptyText, { color: colors.textSecondary }]}>
-            Your expense and payment history will appear here
+            {hasSearch ? `No activities match “${activitySearch}”.` : 'Your expense and payment history will appear here'}
           </ThemedText>
         </Animated.View>
       ) : (
@@ -224,6 +269,23 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     color: '#fff',
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    minHeight: 46,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 10,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 15,
+    paddingVertical: 0,
+  },
+  clearSearchButton: {
+    padding: 2,
   },
   listContent: {
     padding: 16,
