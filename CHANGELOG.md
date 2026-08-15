@@ -1,8 +1,14 @@
+## 2026-08-08
+
+- Added the ability to record an expense paid by another group or friend participant while preserving the creator for authorization and audit history.
+- Allow both the expense creator and listed payer to edit or delete an expense.
+- Removed the duplicate group expense modal in favor of the shared full-screen expense flow.
+
 ## 2026-08-07
 
 - Fixed received friend requests showing an anonymous requester. Requester
   profiles are now resolved in the friendship service, with an explicit error
-  when a referenced profile cannot be loaded. Removed the unused legacy
+  when a referenced requester profile cannot be loaded. Removed the unused legacy
   invitations section and added coverage for requester-name resolution.
 
 ## 2026-08-15

@@ -1,7 +1,4 @@
-import {
-  AddExpenseModal,
-  AddMemberModal,
-} from '@/components/group';
+import { AddMemberModal } from '@/components/group';
 import { ThemedText } from '@/components/themed-text';
 import { AsyncErrorState } from '@/components/ui/async-error-state';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -21,7 +18,6 @@ import type { GroupDetailData } from '@/services/group-detail-service';
 import { areGroupBalancesSettled, calculateGroupBalances } from '@/services/group-balance';
 import {
   createExpenseDeletedNotification,
-  createExpenseNotification,
   createMemberAddedNotification,
   notificationService,
 } from '@/services/notification-service';
@@ -46,8 +42,6 @@ export default function GroupDetailScreen() {
   const [balances, setBalances] = useState<Map<string, number>>(new Map());
   const [expenseSplits, setExpenseSplits] = useState<ExpenseSplit[]>([]);
   const [settlements, setSettlements] = useState<Settlement[]>([]);
-  const [expenseModalVisible, setExpenseModalVisible] = useState(false);
-  const [isAddingExpense, setIsAddingExpense] = useState(false);
   const [isAddingMember, setIsAddingMember] = useState(false);
   const [deletingExpenseId, setDeletingExpenseId] = useState<string | null>(null);
   const [isDeletingGroup, setIsDeletingGroup] = useState(false);
@@ -60,8 +54,6 @@ export default function GroupDetailScreen() {
   const [slideAnim] = useState(() => new Animated.Value(30));
   const [scaleAnim] = useState(() => new Animated.Value(0.95));
   const [memberModalVisible, setMemberModalVisible] = useState(false);
-  const [description, setDescription] = useState('');
-  const [amount, setAmount] = useState('');
   const [availableUsers, setAvailableUsers] = useState<User[]>([]);
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
   const [friendshipStatus, setFriendshipStatus] = useState<Map<string, 'none' | 'pending_sent' | 'pending_received' | 'accepted'>>(new Map());
@@ -132,82 +124,6 @@ export default function GroupDetailScreen() {
     onChange: invalidateGroupDetail,
     enabled: !!id,
   });
-
-  const addExpense = async () => {
-    if (isAddingExpense) return;
-
-    if (!description.trim() || !amount.trim()) {
-      Alert.alert('Error', 'Please fill in all fields');
-      return;
-    }
-
-    const amountNum = parseFloat(amount);
-    if (isNaN(amountNum) || amountNum <= 0) {
-      Alert.alert('Error', 'Please enter a valid amount');
-      return;
-    }
-
-    try {
-      setIsAddingExpense(true);
-      const splitAmount = amountNum / members.length;
-
-      const expense = await expenseService.create(
-        {
-          groupId: id,
-          description: description.trim(),
-          amount: amountNum,
-          currency: 'USD',
-          paidBy: currentUserId,
-          date: Date.now(),
-        },
-        members.map(member => ({
-          userId: member.userId,
-          amount: splitAmount,
-          splitType: 'equal' as const,
-        }))
-      );
-
-      if (group && user) {
-        await activityService.logExpenseCreated({
-          expenseId: expense.id,
-          userId: currentUserId,
-          userName: user.name,
-          description: description.trim(),
-          amount: amountNum,
-          groupId: id,
-          groupName: group.name,
-        });
-
-        // Send push notifications to other members
-        const otherMembers = members.filter(m => m.userId !== currentUserId);
-        const usersToNotify = await userService.getByIds(otherMembers.map(member => member.userId));
-
-        const pushTokens = usersToNotify
-          .filter(u => u.pushToken)
-          .map(u => u.pushToken!);
-
-        if (pushTokens.length > 0) {
-          const notification = createExpenseNotification(
-            description.trim(),
-            amountNum,
-            user.name,
-            group.name
-          );
-          await notificationService.sendNotificationToUsers(pushTokens, notification);
-        }
-      }
-
-      setDescription('');
-      setAmount('');
-      setExpenseModalVisible(false);
-      loadGroupData();
-    } catch (error) {
-      console.error('Error adding expense:', error);
-      Alert.alert('Error', 'Failed to add expense');
-    } finally {
-      setIsAddingExpense(false);
-    }
-  };
 
   const addMember = async () => {
     if (isAddingMember) return;
@@ -501,8 +417,10 @@ export default function GroupDetailScreen() {
             expenseSwipeableRefs.current.delete(item.id);
           }
         }}
-        renderLeftActions={(progress, dragX) => renderLeftActions(progress, dragX, item.id)}
-        renderRightActions={item.paidBy === currentUserId ? (progress, dragX) => renderRightActions(progress, dragX, item.id) : undefined}
+        renderLeftActions={item.createdBy === currentUserId || item.paidBy === currentUserId
+          ? (progress, dragX) => renderLeftActions(progress, dragX, item.id)
+          : undefined}
+        renderRightActions={(item.createdBy === currentUserId || item.paidBy === currentUserId) ? (progress, dragX) => renderRightActions(progress, dragX, item.id) : undefined}
         overshootLeft={false}
         overshootRight={false}
         friction={2}
@@ -1044,16 +962,6 @@ export default function GroupDetailScreen() {
           )}
         </View>
       </ScrollView>
-
-      <AddExpenseModal
-        visible={expenseModalVisible}
-        onClose={() => setExpenseModalVisible(false)}
-        description={description}
-        setDescription={setDescription}
-        amount={amount}
-        setAmount={setAmount}
-        onSubmit={addExpense}
-      />
 
       <AddMemberModal
         visible={memberModalVisible}

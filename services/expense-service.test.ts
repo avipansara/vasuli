@@ -170,4 +170,21 @@ describe('expenseService.create auth bridge', () => {
     expect(mocks.linkAuthUserToProfile).not.toHaveBeenCalled()
     expect(mocks.expenseSingle).not.toHaveBeenCalled()
   })
+
+  it('keeps the signed-in creator separate from the selected payer', async () => {
+    await expenseService.create({
+      description: 'Dinner',
+      amount: 40,
+      currency: 'USD',
+      paidBy: 'friend-user-id',
+      createdBy: 'current-user-id',
+      date: Date.parse('2026-01-01T00:00:00.000Z'),
+    }, [])
+
+    expect(mocks.linkAuthUserToProfile).toHaveBeenCalled()
+    expect(mocks.expenseInsert).toHaveBeenCalledWith(expect.objectContaining({
+      paid_by: 'friend-user-id',
+      created_by: 'current-user-id',
+    }))
+  })
 })

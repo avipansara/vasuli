@@ -33,6 +33,7 @@ export interface Expense {
   amount: number;
   currency: string;
   paidBy: string;
+  createdBy?: string;
   category?: string;
   date: number;
   imageUrl?: string;
