@@ -120,6 +120,9 @@ describe('expenseService.create auth bridge', () => {
       name: 'Current User',
     })
     expect(mocks.expenseSingle).toHaveBeenCalled()
+    expect(mocks.expenseInsert).toHaveBeenCalledWith(expect.objectContaining({
+      date: '2026-01-01T00:00:00.000Z',
+    }))
   })
 
   it('rejects a mismatched Supabase Auth session before inserting', async () => {

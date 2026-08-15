@@ -22,6 +22,7 @@ import { normalizeCurrencyInput } from '@/utils/validation';
 import { getEvenSplitValues, getSplitProgress } from '@/utils/split-validation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import {
@@ -68,6 +69,8 @@ export default function AddExpenseScreen() {
 
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
+  const [expenseDate, setExpenseDate] = useState(() => new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [expenseStep, setExpenseStep] = useState<1 | 2>(preselectedGroupId || preselectedFriendId ? 2 : 1);
   const [splitType, setSplitType] = useState<SplitType>(preselectedFriendId ? SplitType.FRIENDS : (preselectedGroupId ? SplitType.GROUP : SplitType.GROUP));
   const [selectedGroupId, setSelectedGroupId] = useState(preselectedGroupId || '');
@@ -205,6 +208,11 @@ export default function AddExpenseScreen() {
   useEffect(() => {
     if (!payerOptions.some(person => person.id === selectedPayerId)) setSelectedPayerId(currentUserId);
   }, [currentUserId, payerOptions, selectedPayerId]);
+  const formattedExpenseDate = expenseDate.toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
 
   const handleHeaderBack = () => {
     if (expenseStep === 2 && !preselectedGroupId && !preselectedFriendId) {
@@ -430,7 +438,7 @@ export default function AddExpenseScreen() {
         currency: 'USD',
         paidBy: selectedPayerId,
         createdBy: currentUserId,
-        date: createdAt,
+        date: expenseDate.getTime(),
         createdAt,
         updatedAt: createdAt,
       };
@@ -468,7 +476,7 @@ export default function AddExpenseScreen() {
             currency: 'USD',
             paidBy: selectedPayerId,
             createdBy: currentUserId,
-            date: createdAt,
+            date: expenseDate.getTime(),
           },
           splits
         );
@@ -547,7 +555,7 @@ export default function AddExpenseScreen() {
             currency: 'USD',
             paidBy: selectedPayerId,
             createdBy: currentUserId,
-            date: createdAt,
+            date: expenseDate.getTime(),
           },
           splits
         );
@@ -853,6 +861,33 @@ export default function AddExpenseScreen() {
                 testID="expense-description-input"
               />
             </View>
+          </View>
+
+          <View style={styles.inputSection}>
+            <ThemedText style={[styles.inputLabel, { color: colors.textSecondary }]}>Date</ThemedText>
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel={`Expense date, ${formattedExpenseDate}`}
+              onPress={() => setShowDatePicker(current => !current)}
+              style={[styles.inputContainer, {
+                backgroundColor: isDark ? 'rgba(20, 35, 38, 0.66)' : colors.card,
+                borderColor: colors.border,
+              }]}>
+              <IconSymbol name="calendar" size={20} color={isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'} />
+              <ThemedText style={[styles.textInput, { color: colors.text }]}>{formattedExpenseDate}</ThemedText>
+            </TouchableOpacity>
+            {showDatePicker && (
+              <DateTimePicker
+                testID="expense-date-picker"
+                value={expenseDate}
+                mode="date"
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                onChange={(_, selectedDate) => {
+                  if (Platform.OS !== 'ios') setShowDatePicker(false);
+                  if (selectedDate) setExpenseDate(selectedDate);
+                }}
+              />
+            )}
           </View>
 
             </>

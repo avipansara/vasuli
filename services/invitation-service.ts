@@ -54,6 +54,9 @@ export const invitationService = {
       }
 
       const { friendshipService } = await import('@/services/friendship-service');
+      if (await friendshipService.areFriends(invitation.inviterId, existingUser.id)) {
+        throw new Error('You are already friends with this person');
+      }
       const friendship = await friendshipService.create(invitation.inviterId, existingUser.id);
       if (existingUser.pushToken) {
         try {
@@ -300,14 +303,23 @@ export const invitationService = {
       return [];
     }
 
-    const inviterIds = [...new Set(data.map((row) => row.inviter_id as string))];
+    const { friendshipService } = await import('@/services/friendship-service');
+    const acceptedFriendIds = new Set(await friendshipService.getFriends(
+      (await userService.getByEmail(normalized))?.id || ''
+    ));
+    const visibleData = data.filter((row) => !acceptedFriendIds.has(row.inviter_id));
+    if (visibleData.length === 0) {
+      return [];
+    }
+
+    const inviterIds = [...new Set(visibleData.map((row) => row.inviter_id as string))];
     const inviterNames = new Map<string, string>();
     const inviters = await userService.getByIds(inviterIds);
     for (const inviter of inviters) {
       if (inviter.name) inviterNames.set(inviter.id, inviter.name);
     }
 
-    return data.map((inv) => ({
+    return visibleData.map((inv) => ({
       id: inv.id,
       inviterId: inv.inviter_id,
       inviteeEmail: inv.invitee_email,
