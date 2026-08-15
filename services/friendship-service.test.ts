@@ -11,13 +11,22 @@ const friendshipRow = {
 const mocks = vi.hoisted(() => {
   const single = vi.fn()
   const updateEq = vi.fn()
+  const pendingStatusEq = vi.fn()
+  const pendingFriendIdEq = vi.fn(() => ({ eq: pendingStatusEq }))
   const from = vi.fn()
-  return { single, updateEq, from }
+  const getByIds = vi.fn()
+  return { single, updateEq, pendingStatusEq, pendingFriendIdEq, from, getByIds }
 })
 
 vi.mock('@/lib/supabase', () => ({
   supabase: {
     from: mocks.from,
+  },
+}))
+
+vi.mock('@/services/user-service', () => ({
+  userService: {
+    getByIds: mocks.getByIds,
   },
 }))
 
@@ -28,6 +37,8 @@ describe('friendshipService', () => {
     vi.clearAllMocks()
     mocks.single.mockResolvedValue({ data: friendshipRow, error: null })
     mocks.updateEq.mockResolvedValue({ error: null })
+    mocks.pendingStatusEq.mockResolvedValue({ data: [friendshipRow], error: null })
+    mocks.getByIds.mockResolvedValue([{ id: 'user-a', name: 'Alex Requester' }])
     mocks.from.mockImplementation((table: string) => {
       if (table !== 'friendships') {
         return {}
@@ -40,6 +51,9 @@ describe('friendshipService', () => {
         }),
         update: () => ({
           eq: mocks.updateEq,
+        }),
+        select: () => ({
+          eq: mocks.pendingFriendIdEq,
         }),
       }
     })
@@ -58,5 +72,23 @@ describe('friendshipService', () => {
     await friendshipService.accept('fs-1')
 
     expect(mocks.updateEq).toHaveBeenCalledWith('id', 'fs-1')
+  })
+
+  it('includes the requester profile name for pending requests', async () => {
+    const requests = await friendshipService.getPendingRequestsWithRequesters('user-b')
+
+    expect(requests).toEqual([expect.objectContaining({
+      id: 'fs-1',
+      requesterName: 'Alex Requester',
+    })])
+    expect(mocks.getByIds).toHaveBeenCalledWith(['user-a'])
+  })
+
+  it('fails instead of returning an anonymous pending request', async () => {
+    mocks.getByIds.mockResolvedValue([])
+
+    await expect(
+      friendshipService.getPendingRequestsWithRequesters('user-b')
+    ).rejects.toThrow('Unable to load the profile for a pending friend request.')
   })
 })
