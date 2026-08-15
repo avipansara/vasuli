@@ -4,6 +4,7 @@ const mocks = vi.hoisted(() => {
   const getSession = vi.fn()
   const from = vi.fn()
   const expenseSingle = vi.fn()
+  const expenseInsert = vi.fn()
   const splitsInsert = vi.fn()
   const linkAuthUserToProfile = vi.fn()
 
@@ -11,6 +12,7 @@ const mocks = vi.hoisted(() => {
     getSession,
     from,
     expenseSingle,
+    expenseInsert,
     splitsInsert,
     linkAuthUserToProfile,
   }
@@ -73,11 +75,11 @@ describe('expenseService.create auth bridge', () => {
     mocks.from.mockImplementation((table: string) => {
       if (table === 'expenses') {
         return {
-          insert: () => ({
+          insert: mocks.expenseInsert.mockImplementation(() => ({
             select: () => ({
               single: mocks.expenseSingle,
             }),
-          }),
+          })),
         }
       }
 
@@ -118,6 +120,9 @@ describe('expenseService.create auth bridge', () => {
       name: 'Current User',
     })
     expect(mocks.expenseSingle).toHaveBeenCalled()
+    expect(mocks.expenseInsert).toHaveBeenCalledWith(expect.objectContaining({
+      date: '2026-01-01T00:00:00.000Z',
+    }))
   })
 
   it('rejects a mismatched Supabase Auth session before inserting', async () => {
