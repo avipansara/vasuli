@@ -1,5 +1,9 @@
 ## 2026-08-15
 
+- Added an implementation-ready specification for exporting group expenses as
+  CSV from Group Stats across iOS, Android, and web.
+- Bumped the iOS/Android marketing version to `1.0.17` for the next store
+  release train.
 - Fixed Unequal and Shares expense splits to use consistent validation during
   entry and save, including rejecting negative or empty share allocations.
 - Fixed newly created expenses paid by another friend being rejected by the
