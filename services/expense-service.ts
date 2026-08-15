@@ -27,7 +27,8 @@ export const expenseService = {
     splits: Omit<ExpenseSplit, 'id' | 'expenseId'>[]
   ): Promise<Expense> {
     const now = new Date().toISOString();
-    await prepareExpenseWriteSession(expense.paidBy);
+    const createdBy = expense.createdBy || expense.paidBy;
+    await prepareExpenseWriteSession(createdBy);
 
     const { data, error } = await supabase
       .from('expenses')
@@ -37,6 +38,7 @@ export const expenseService = {
         amount: expense.amount,
         currency: expense.currency,
         paid_by: expense.paidBy,
+        created_by: createdBy,
         category: expense.category || null,
         date: new Date(expense.date).toISOString(),
         image_url: expense.imageUrl || null,
@@ -73,6 +75,7 @@ export const expenseService = {
       amount: data.amount,
       currency: data.currency,
       paidBy: data.paid_by,
+      createdBy: data.created_by || undefined,
       category: data.category || undefined,
       date: new Date(data.date).getTime(),
       imageUrl: data.image_url || undefined,
@@ -155,6 +158,7 @@ export const expenseService = {
       amount: data.amount,
       currency: data.currency,
       paidBy: data.paid_by,
+      createdBy: data.created_by || undefined,
       category: data.category || undefined,
       date: new Date(data.date).getTime(),
       imageUrl: data.image_url || undefined,
@@ -180,6 +184,7 @@ export const expenseService = {
       amount: r.amount,
       currency: r.currency,
       paidBy: r.paid_by,
+      createdBy: r.created_by || undefined,
       category: r.category || undefined,
       date: new Date(r.date).getTime(),
       imageUrl: r.image_url || undefined,
@@ -208,6 +213,7 @@ export const expenseService = {
       amount: r.amount,
       currency: r.currency,
       paidBy: r.paid_by,
+      createdBy: r.created_by || undefined,
       category: r.category || undefined,
       date: new Date(r.date).getTime(),
       imageUrl: r.image_url || undefined,
@@ -295,6 +301,7 @@ export const expenseService = {
       amount: r.amount,
       currency: r.currency,
       paidBy: r.paid_by,
+      createdBy: r.created_by || undefined,
       category: r.category || undefined,
       date: new Date(r.date).getTime(),
       imageUrl: r.image_url || undefined,
@@ -315,8 +322,8 @@ export const expenseService = {
     if (fetchError) throw fetchError;
 
     // Check if user is the payer
-    if (expense.paid_by !== userId) {
-      throw new Error('Only the person who paid for this expense can delete it.');
+    if (expense.created_by !== userId && expense.paid_by !== userId) {
+      throw new Error('Only the creator or payer can delete this expense.');
     }
 
     const { data: splitData, error: splitError } = await supabase

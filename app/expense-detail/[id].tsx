@@ -196,7 +196,9 @@ export default function ExpenseDetailScreen() {
     minute: '2-digit',
   });
 
+  const isCreator = expense.createdBy === currentUserId || (!expense.createdBy && expense.paidBy === currentUserId);
   const isPayer = expense.paidBy === currentUserId;
+  const canManageExpense = isCreator || isPayer;
   const payerName = isPayer ? 'You' : payer?.name || 'Unknown';
   const surfaceStyle = {
     backgroundColor: expenseDetail.surface,
@@ -224,18 +226,20 @@ export default function ExpenseDetailScreen() {
         onBack={() => router.back()}
         rightAction={
           <View style={styles.headerActions}>
-            <TouchableOpacity
-              onPress={() => router.push(`/edit-expense/${id}` as any)}
-              disabled={isDeleting}
-              style={[styles.actionButton, {
-                backgroundColor: expenseDetail.accentSurface,
-                borderColor: expenseDetail.accentSurfaceBorder,
-                opacity: isDeleting ? 0.5 : 1,
-              }]}
-              accessibilityLabel="Edit expense">
-              <IconSymbol name="pencil" size={18} color={expenseDetail.accent} />
-            </TouchableOpacity>
-            {isPayer && (
+            {canManageExpense && (
+              <TouchableOpacity
+                onPress={() => router.push(`/edit-expense/${id}` as any)}
+                disabled={isDeleting}
+                style={[styles.actionButton, {
+                  backgroundColor: expenseDetail.accentSurface,
+                  borderColor: expenseDetail.accentSurfaceBorder,
+                  opacity: isDeleting ? 0.5 : 1,
+                }]}
+                accessibilityLabel="Edit expense">
+                <IconSymbol name="pencil" size={18} color={expenseDetail.accent} />
+              </TouchableOpacity>
+            )}
+            {canManageExpense && (
               <TouchableOpacity
                 onPress={handleDelete}
                 disabled={isDeleting}

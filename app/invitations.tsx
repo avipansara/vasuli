@@ -10,10 +10,9 @@ import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { friendshipService } from '@/services/friendship-service';
 import { invitationService } from '@/services/invitation-service';
 import { queryKeys } from '@/services/query-keys';
-import { userService } from '@/services/user-service';
 import { normalizeEmail } from '@/utils/validation';
 import type { Invitation } from '@/types/database';
-import type { Friendship } from '@/services/friendship-service';
+import type { PendingFriendshipRequest } from '@/services/friendship-service';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -29,7 +28,6 @@ import {
 } from 'react-native';
 
 type InvitationWithDetails = Invitation & { inviterName?: string; inviteeName?: string };
-type FriendRequestWithDetails = Friendship & { requesterName: string };
 
 type TabType = 'received' | 'sent';
 
@@ -68,15 +66,7 @@ export default function InvitationsScreen() {
   const friendRequestsQuery = useQuery({
     queryKey: friendRequestsQueryKey,
     enabled: !!userId,
-    queryFn: async (): Promise<FriendRequestWithDetails[]> => {
-      const requests = await friendshipService.getPendingRequests(userId!);
-      const requesters = await userService.getByIds(requests.map((request) => request.userId));
-      const requesterNames = new Map(requesters.map((requester) => [requester.id, requester.name]));
-      return requests.map((request) => ({
-        ...request,
-        requesterName: requesterNames.get(request.userId) || 'Someone',
-      }));
-    },
+    queryFn: () => friendshipService.getPendingRequestsWithRequesters(userId!),
   });
 
   const { refetch: refetchReceivedInvitations } = receivedInvitationsQuery;
@@ -125,7 +115,7 @@ export default function InvitationsScreen() {
     enabled: !!userId,
   });
 
-  const handleAcceptFriendRequest = useCallback(async (request: FriendRequestWithDetails) => {
+  const handleAcceptFriendRequest = useCallback(async (request: PendingFriendshipRequest) => {
     setActionLoading(request.id);
     try {
       await friendshipService.accept(request.id);
@@ -139,7 +129,7 @@ export default function InvitationsScreen() {
     }
   }, [loadInvitations]);
 
-  const handleDeclineFriendRequest = useCallback(async (request: FriendRequestWithDetails) => {
+  const handleDeclineFriendRequest = useCallback(async (request: PendingFriendshipRequest) => {
     setActionLoading(request.id);
     try {
       await friendshipService.decline(request.id);
