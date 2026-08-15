@@ -47,9 +47,10 @@ export function SettleUpModal({ visible, onClose, friend, onConfirm }: SettleUpM
   };
 
   const currentAmount = parseFloat(editableAmount) || 0;
+  const amountExceedsBalance = currentAmount > maxAmount;
 
   const handleConfirm = () => {
-    if (currentAmount <= 0) return;
+    if (currentAmount <= 0 || amountExceedsBalance) return;
     onConfirm(friend.id, currentAmount);
     onClose();
   };
@@ -116,7 +117,7 @@ export function SettleUpModal({ visible, onClose, friend, onConfirm }: SettleUpM
                     selectTextOnFocus
                   />
                 </View>
-                {currentAmount > maxAmount && (
+                {amountExceedsBalance && (
                   <ThemedText style={styles.warningText}>
                     Amount exceeds total owed
                   </ThemedText>
@@ -141,12 +142,18 @@ export function SettleUpModal({ visible, onClose, friend, onConfirm }: SettleUpM
                   </ThemedText>
                 </TouchableOpacity>
 
-                <TouchableOpacity onPress={handleConfirm} activeOpacity={0.8}>
+                <TouchableOpacity
+                  onPress={handleConfirm}
+                  disabled={currentAmount <= 0 || amountExceedsBalance}
+                  activeOpacity={0.8}>
                   <LinearGradient
                     colors={isDark ? ['#2DD4BF', '#14B8A6'] : ['#22c55e', '#16a34a']}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
-                    style={styles.confirmButton}>
+                    style={[
+                      styles.confirmButton,
+                      (currentAmount <= 0 || amountExceedsBalance) && styles.confirmButtonDisabled,
+                    ]}>
                     <ThemedText style={styles.confirmButtonText}>
                       {isOwedToYou ? 'Record Payment' : 'Mark as Paid'}
                     </ThemedText>
@@ -291,6 +298,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     borderRadius: 12,
     alignItems: 'center',
+  },
+  confirmButtonDisabled: {
+    opacity: 0.45,
   },
   confirmButtonText: {
     fontSize: 16,

@@ -26,6 +26,7 @@ describe('group settle selection', () => {
   it('only enables submit for a selected member and positive amount', () => {
     expect(isSettleableGroupBalance(0.004)).toBe(false);
     expect(canSubmitGroupSettlement(member('owes', -12.5), '12.50', false)).toBe(true);
+    expect(canSubmitGroupSettlement(member('owes', -12.5), '12.51', false)).toBe(false);
     expect(canSubmitGroupSettlement(member('owes', -12.5), '0', false)).toBe(false);
     expect(canSubmitGroupSettlement(null, '12.50', false)).toBe(false);
     expect(canSubmitGroupSettlement(member('owes', -12.5), '12.50', true)).toBe(false);

@@ -1,3 +1,8 @@
+## 2026-08-15
+
+- Prevented Friend and Group settlements from recording amounts above the
+  outstanding balance.
+
 ## 2026-08-10
 
 - Group expense rows now open their expense details when tapped.

@@ -237,6 +237,11 @@ export default function FriendDetailScreen() {
     try {
       if (!friend || !user) return;
 
+      if (amount <= 0 || amount > Math.abs(friend.balance)) {
+        Alert.alert('Error', 'Settlement amount cannot exceed the outstanding balance.');
+        return;
+      }
+
       setIsSettlingUp(true);
       const optimisticBalance = friend.balance > 0
         ? friend.balance - amount
