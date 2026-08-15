@@ -15,7 +15,8 @@ const mocks = vi.hoisted(() => {
   const pendingFriendIdEq = vi.fn(() => ({ eq: pendingStatusEq }))
   const from = vi.fn()
   const getByIds = vi.fn()
-  return { single, updateEq, pendingStatusEq, pendingFriendIdEq, from, getByIds }
+  const getFriends = vi.fn()
+  return { single, updateEq, pendingStatusEq, pendingFriendIdEq, from, getByIds, getFriends }
 })
 
 vi.mock('@/lib/supabase', () => ({
@@ -32,6 +33,8 @@ vi.mock('@/services/user-service', () => ({
 
 import { friendshipService } from '@/services/friendship-service'
 
+vi.spyOn(friendshipService, 'getFriends').mockImplementation(mocks.getFriends)
+
 describe('friendshipService', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -39,6 +42,7 @@ describe('friendshipService', () => {
     mocks.updateEq.mockResolvedValue({ error: null })
     mocks.pendingStatusEq.mockResolvedValue({ data: [friendshipRow], error: null })
     mocks.getByIds.mockResolvedValue([{ id: 'user-a', name: 'Alex Requester' }])
+    mocks.getFriends.mockResolvedValue([])
     mocks.from.mockImplementation((table: string) => {
       if (table !== 'friendships') {
         return {}
@@ -90,5 +94,26 @@ describe('friendshipService', () => {
     await expect(
       friendshipService.getPendingRequestsWithRequesters('user-b')
     ).rejects.toThrow('Unable to load the profile for a pending friend request.')
+  })
+
+  it('does not show a pending request when the users are already friends', async () => {
+    mocks.getFriends.mockResolvedValue(['user-a'])
+
+    await expect(
+      friendshipService.getPendingRequestsWithRequesters('user-b')
+    ).resolves.toEqual([])
+    expect(mocks.getByIds).not.toHaveBeenCalled()
+  })
+
+  it('uses the profile email when the requester name is blank', async () => {
+    mocks.getByIds.mockResolvedValue([{
+      id: 'user-a',
+      name: '  ',
+      email: 'alex@example.com',
+    }])
+
+    const requests = await friendshipService.getPendingRequestsWithRequesters('user-b')
+
+    expect(requests[0].requesterName).toBe('alex')
   })
 })

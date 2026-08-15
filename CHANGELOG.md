@@ -5,6 +5,12 @@
   when a referenced profile cannot be loaded. Removed the unused legacy
   invitations section and added coverage for requester-name resolution.
 
+## 2026-08-15
+
+- Fixed pending friend requests remaining visible after the users became
+  friends, and added a profile-email fallback when a requester name is blank.
+- Prevented new friend requests from being created for existing friendships.
+
 ## 2026-07-23
 
 - Fixed splash screen animation playing twice on launch. `useProtectedRoute` now
