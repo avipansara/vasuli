@@ -11,8 +11,12 @@ const friendshipRow = {
 const mocks = vi.hoisted(() => {
   const single = vi.fn()
   const updateEq = vi.fn()
+  const pendingStatusEq = vi.fn()
+  const pendingFriendIdEq = vi.fn(() => ({ eq: pendingStatusEq }))
   const from = vi.fn()
-  return { single, updateEq, from }
+  const getByIds = vi.fn()
+  const getFriends = vi.fn()
+  return { single, updateEq, pendingStatusEq, pendingFriendIdEq, from, getByIds, getFriends }
 })
 
 vi.mock('@/lib/supabase', () => ({
@@ -21,13 +25,24 @@ vi.mock('@/lib/supabase', () => ({
   },
 }))
 
+vi.mock('@/services/user-service', () => ({
+  userService: {
+    getByIds: mocks.getByIds,
+  },
+}))
+
 import { friendshipService } from '@/services/friendship-service'
+
+vi.spyOn(friendshipService, 'getFriends').mockImplementation(mocks.getFriends)
 
 describe('friendshipService', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.single.mockResolvedValue({ data: friendshipRow, error: null })
     mocks.updateEq.mockResolvedValue({ error: null })
+    mocks.pendingStatusEq.mockResolvedValue({ data: [friendshipRow], error: null })
+    mocks.getByIds.mockResolvedValue([{ id: 'user-a', name: 'Alex Requester' }])
+    mocks.getFriends.mockResolvedValue([])
     mocks.from.mockImplementation((table: string) => {
       if (table !== 'friendships') {
         return {}
@@ -40,6 +55,9 @@ describe('friendshipService', () => {
         }),
         update: () => ({
           eq: mocks.updateEq,
+        }),
+        select: () => ({
+          eq: mocks.pendingFriendIdEq,
         }),
       }
     })
@@ -58,5 +76,44 @@ describe('friendshipService', () => {
     await friendshipService.accept('fs-1')
 
     expect(mocks.updateEq).toHaveBeenCalledWith('id', 'fs-1')
+  })
+
+  it('includes the requester profile name for pending requests', async () => {
+    const requests = await friendshipService.getPendingRequestsWithRequesters('user-b')
+
+    expect(requests).toEqual([expect.objectContaining({
+      id: 'fs-1',
+      requesterName: 'Alex Requester',
+    })])
+    expect(mocks.getByIds).toHaveBeenCalledWith(['user-a'])
+  })
+
+  it('fails instead of returning an anonymous pending request', async () => {
+    mocks.getByIds.mockResolvedValue([])
+
+    await expect(
+      friendshipService.getPendingRequestsWithRequesters('user-b')
+    ).rejects.toThrow('Unable to load the profile for a pending friend request.')
+  })
+
+  it('does not show a pending request when the users are already friends', async () => {
+    mocks.getFriends.mockResolvedValue(['user-a'])
+
+    await expect(
+      friendshipService.getPendingRequestsWithRequesters('user-b')
+    ).resolves.toEqual([])
+    expect(mocks.getByIds).not.toHaveBeenCalled()
+  })
+
+  it('uses the profile email when the requester name is blank', async () => {
+    mocks.getByIds.mockResolvedValue([{
+      id: 'user-a',
+      name: '  ',
+      email: 'alex@example.com',
+    }])
+
+    const requests = await friendshipService.getPendingRequestsWithRequesters('user-b')
+
+    expect(requests[0].requesterName).toBe('alex')
   })
 })

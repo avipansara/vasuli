@@ -17,6 +17,7 @@ import { normalizeCurrencyInput } from '@/utils/validation';
 import { getGroupExpenseParticipant } from '@/utils/group-expense-participants';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import {
@@ -63,6 +64,8 @@ export default function EditExpenseScreen() {
 
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
+  const [expenseDate, setExpenseDate] = useState(() => new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [splitType, setSplitType] = useState<SplitType>(SplitType.GROUP);
   const [selectedGroupId, setSelectedGroupId] = useState<string>('');
   const [selectedFriendIds, setSelectedFriendIds] = useState<string[]>([]);
@@ -121,6 +124,7 @@ export default function EditExpenseScreen() {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- Query data hydrates the editable form state once the server record is available.
     setDescription(formData.expense.description);
     setAmount(formData.expense.amount.toString());
+    setExpenseDate(new Date(formData.expense.date));
     setOriginalExpense(formData.expense);
     setSplitType(formData.expense.groupId ? SplitType.GROUP : SplitType.FRIENDS);
     setSelectedGroupId(formData.expense.groupId || '');
@@ -279,6 +283,7 @@ export default function EditExpenseScreen() {
         ...originalExpense,
         description: trimmedDescription,
         amount: newAmount,
+        date: expenseDate.getTime(),
         groupId: splitType === SplitType.GROUP ? selectedGroupId : undefined,
         updatedAt: Date.now(),
       };
@@ -312,6 +317,7 @@ export default function EditExpenseScreen() {
       await expenseService.update(id, {
         description: trimmedDescription,
         amount: newAmount,
+        date: expenseDate.getTime(),
         groupId: splitType === SplitType.GROUP ? selectedGroupId : undefined,
       }, splits);
 
@@ -501,6 +507,35 @@ export default function EditExpenseScreen() {
                 onSubmitEditing={() => Keyboard.dismiss()}
               />
             </View>
+          </View>
+
+          <View style={styles.inputSection}>
+            <ThemedText style={[styles.inputLabel, !isDark && { color: colors.textSecondary }]}>Date</ThemedText>
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel={`Expense date, ${expenseDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}`}
+              onPress={() => setShowDatePicker(current => !current)}
+              style={[styles.inputContainer, {
+                backgroundColor: isDark ? 'rgba(30, 41, 59, 0.6)' : 'rgba(241, 245, 249, 0.9)',
+                borderColor: isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(34, 197, 94, 0.2)',
+              }]}>
+              <IconSymbol name="calendar" size={20} color={isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'} />
+              <ThemedText style={[styles.textInput, { color: isDark ? '#fff' : colors.text }]}>
+                {expenseDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+              </ThemedText>
+            </TouchableOpacity>
+            {showDatePicker && (
+              <DateTimePicker
+                testID="edit-expense-date-picker"
+                value={expenseDate}
+                mode="date"
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                onChange={(_, selectedDate) => {
+                  if (Platform.OS !== 'ios') setShowDatePicker(false);
+                  if (selectedDate) setExpenseDate(selectedDate);
+                }}
+              />
+            )}
           </View>
 
           {/* Split Method Selection */}

@@ -244,6 +244,11 @@ export default function GroupSettleScreen() {
       return;
     }
 
+    if (amountNum > Math.abs(selectedMember.balance)) {
+      Alert.alert('Error', 'Settlement amount cannot exceed the outstanding balance.');
+      return;
+    }
+
     try {
       setSettling(true);
 

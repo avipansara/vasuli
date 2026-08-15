@@ -16,7 +16,7 @@ export const queryKeys = {
     editForm: (userId: string, expenseId: string) => ['expenses', 'edit-form', userId, expenseId] as const,
   },
   activity: {
-    list: (userId: string) => ['activity', 'list', userId] as const,
+    list: (userId: string, search = '') => ['activity', 'list', userId, search] as const,
   },
   invitations: {
     received: (userId: string, email: string) => ['invitations', 'received', userId, email] as const,

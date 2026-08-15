@@ -21,5 +21,11 @@ export function canSubmitGroupSettlement(
   amount: string,
   settling: boolean
 ): boolean {
-  return !!selectedMember && !settling && Number.parseFloat(amount) > 0;
+  const parsedAmount = Number.parseFloat(amount);
+  return (
+    !!selectedMember &&
+    !settling &&
+    parsedAmount > 0 &&
+    parsedAmount <= Math.abs(selectedMember.balance)
+  );
 }

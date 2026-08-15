@@ -19,9 +19,10 @@ import type { Expense, User } from '@/types/database';
 import { filterFriendsForExpenseSearch } from '@/utils/friend-search';
 import { getGroupExpenseParticipant } from '@/utils/group-expense-participants';
 import { normalizeCurrencyInput } from '@/utils/validation';
-import { getEvenSplitValues, getSplitProgress } from '@/utils/split-validation';
+import { calculateExpenseSplits, getEvenSplitValues, getSplitProgress } from '@/utils/split-validation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import {
@@ -68,6 +69,8 @@ export default function AddExpenseScreen() {
 
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
+  const [expenseDate, setExpenseDate] = useState(() => new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [expenseStep, setExpenseStep] = useState<1 | 2>(preselectedGroupId || preselectedFriendId ? 2 : 1);
   const [splitType, setSplitType] = useState<SplitType>(preselectedFriendId ? SplitType.FRIENDS : (preselectedGroupId ? SplitType.GROUP : SplitType.GROUP));
   const [selectedGroupId, setSelectedGroupId] = useState(preselectedGroupId || '');
@@ -95,6 +98,7 @@ export default function AddExpenseScreen() {
   const friends = useMemo(() => friendsQuery.data ?? [], [friendsQuery.data]);
   const [friendSearchQuery, setFriendSearchQuery] = useState('');
   const [selectedFriendIds, setSelectedFriendIds] = useState<string[]>(preselectedFriendId ? [preselectedFriendId] : []);
+  const [selectedPayerId, setSelectedPayerId] = useState(currentUserId);
   const [loading, setLoading] = useState(false);
   const dataLoading = groupsQuery.isLoading || friendsQuery.isLoading;
   const dataLoadError = groupsQuery.error || friendsQuery.error;
@@ -193,6 +197,22 @@ export default function AddExpenseScreen() {
   const selectedFriendNames = selectedFriendIds
     .map(friendId => friends.find(friend => friend.id === friendId)?.name)
     .filter((name): name is string => !!name);
+  const payerOptions = useMemo(() => {
+    const participants = splitType === SplitType.GROUP
+      ? groupMemberUsers
+      : friends.filter(friend => selectedFriendIds.includes(friend.id));
+    return [{ id: currentUserId, name: user?.name || 'You' }, ...participants.filter(person => person.id !== currentUserId)];
+  }, [currentUserId, friends, groupMemberUsers, selectedFriendIds, splitType, user?.name]);
+  const selectedPayerName = payerOptions.find(person => person.id === selectedPayerId)?.name || 'You';
+
+  useEffect(() => {
+    if (!payerOptions.some(person => person.id === selectedPayerId)) setSelectedPayerId(currentUserId);
+  }, [currentUserId, payerOptions, selectedPayerId]);
+  const formattedExpenseDate = expenseDate.toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
 
   const handleHeaderBack = () => {
     if (expenseStep === 2 && !preselectedGroupId && !preselectedFriendId) {
@@ -416,8 +436,9 @@ export default function AddExpenseScreen() {
         description: trimmedDescription,
         amount: amountNum,
         currency: 'USD',
-        paidBy: currentUserId,
-        date: createdAt,
+        paidBy: selectedPayerId,
+        createdBy: currentUserId,
+        date: expenseDate.getTime(),
         createdAt,
         updatedAt: createdAt,
       };
@@ -453,8 +474,9 @@ export default function AddExpenseScreen() {
             description: trimmedDescription,
             amount: amountNum,
             currency: 'USD',
-            paidBy: currentUserId,
-            date: createdAt,
+            paidBy: selectedPayerId,
+            createdBy: currentUserId,
+            date: expenseDate.getTime(),
           },
           splits
         );
@@ -483,7 +505,7 @@ export default function AddExpenseScreen() {
             const notification = createExpenseNotification(
               trimmedDescription,
               amountNum,
-              user?.name || 'Someone',
+              selectedPayerName,
               group?.name
             );
             await notificationService.sendNotificationToUsers(pushTokens, notification);
@@ -531,8 +553,9 @@ export default function AddExpenseScreen() {
             description: trimmedDescription,
             amount: amountNum,
             currency: 'USD',
-            paidBy: currentUserId,
-            date: createdAt,
+            paidBy: selectedPayerId,
+            createdBy: currentUserId,
+            date: expenseDate.getTime(),
           },
           splits
         );
@@ -555,7 +578,7 @@ export default function AddExpenseScreen() {
             const notification = createExpenseNotification(
               trimmedDescription,
               amountNum,
-              user?.name || 'Someone'
+              selectedPayerName
             );
             await notificationService.sendNotificationToUsers(friendPushTokens, notification);
           }
@@ -595,72 +618,21 @@ export default function AddExpenseScreen() {
     }
   }
 
-  const calculateSplits = (userIds: string[], totalAmount: number): { userId: string; amount: number; splitType: 'equal' | 'exact' | 'percentage' }[] | null => {
-    if (splitMethod === SplitMethod.EQUAL) {
-      const splitAmount = totalAmount / userIds.length;
-      return userIds.map(userId => ({
-        userId,
-        amount: splitAmount,
-        splitType: 'equal' as const,
-      }));
+  const calculateSplits = (userIds: string[], totalAmount: number) => {
+    const values = splitMethod === SplitMethod.UNEQUAL
+      ? customAmounts
+      : splitMethod === SplitMethod.PERCENTAGE
+        ? customPercentages
+        : customShares;
+    const result = calculateExpenseSplits(userIds, totalAmount, splitMethod, values);
+
+    if (!result.splits) {
+      Alert.alert('Invalid Split', result.error || 'Please check the split values');
+      return null;
     }
 
-    if (splitMethod === SplitMethod.UNEQUAL) {
-      const splits = userIds.map(userId => {
-        const customAmount = parseFloat(customAmounts[userId] || '0');
-        return { userId, amount: customAmount, splitType: 'exact' as const };
-      });
-
-      const total = splits.reduce((sum, s) => sum + s.amount, 0);
-      if (Math.abs(total - totalAmount) > 0.01) {
-        Alert.alert('Invalid Split', `Amounts must add up to $${totalAmount.toFixed(2)}. Current total: $${total.toFixed(2)}`);
-        return null;
-      }
-
-      return splits;
-    }
-
-    if (splitMethod === SplitMethod.PERCENTAGE) {
-      const percentages = userIds.map(userId => parseFloat(customPercentages[userId] || '0'));
-      const totalPercentage = percentages.reduce((sum, p) => sum + p, 0);
-
-      if (Math.abs(totalPercentage - 100) > 0.01) {
-        Alert.alert('Invalid Split', `Percentages must add up to 100%. Current total: ${totalPercentage.toFixed(1)}%`);
-        return null;
-      }
-
-      return userIds.map((userId, index) => ({
-        userId,
-        amount: (totalAmount * percentages[index]) / 100,
-        splitType: 'percentage' as const,
-      }));
-    }
-
-    if (splitMethod === SplitMethod.SHARES) {
-      const sharesData = userIds.map(userId => ({
-        userId,
-        shares: parseFloat(customShares[userId] || '0'),
-      }));
-
-      const totalShares = sharesData.reduce((sum, item) => sum + item.shares, 0);
-
-      if (totalShares === 0) {
-        Alert.alert('Invalid Split', 'Please enter at least one share');
-        return null;
-      }
-
-      // Only include users with shares > 0
-      return sharesData
-        .filter(item => item.shares > 0)
-        .map(item => ({
-          userId: item.userId,
-          amount: (totalAmount * item.shares) / totalShares,
-          splitType: 'exact' as const,
-        }));
-    }
-
-    return null;
-  }
+    return result.splits;
+  };
 
   if (dataLoadError && !dataLoading) {
     return (
@@ -757,6 +729,30 @@ export default function AddExpenseScreen() {
               </ThemedText>
             </View>
           </View>
+          <View style={styles.inputSection}>
+            <ThemedText style={[styles.inputLabel, { color: colors.textSecondary }]}>Paid by</ThemedText>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.splitMethodContainer}>
+              {payerOptions.map(payer => {
+                const isSelected = payer.id === selectedPayerId;
+                return (
+                  <TouchableOpacity
+                    key={payer.id}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: isSelected }}
+                    accessibilityLabel={`Paid by ${payer.id === currentUserId ? 'you' : payer.name}`}
+                    style={[styles.splitMethodButton, isSelected && styles.splitMethodButtonActive, {
+                      backgroundColor: isSelected ? (isDark ? 'rgba(45, 212, 191, 0.14)' : 'rgba(34, 197, 94, 0.08)') : (isDark ? 'rgba(20, 35, 38, 0.66)' : colors.card),
+                      borderColor: isSelected ? (isDark ? '#2DD4BF' : colors.tint) : colors.border,
+                    }]}
+                    onPress={() => setSelectedPayerId(payer.id)}>
+                    <ThemedText style={[styles.splitMethodText, { color: isSelected ? (isDark ? '#2DD4BF' : colors.tint) : colors.text }]}>
+                      {payer.id === currentUserId ? 'You' : payer.name}
+                    </ThemedText>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
           {/* Amount Input - Hero Style */}
           <View style={styles.amountSection}>
             <View
@@ -814,6 +810,33 @@ export default function AddExpenseScreen() {
                 testID="expense-description-input"
               />
             </View>
+          </View>
+
+          <View style={styles.inputSection}>
+            <ThemedText style={[styles.inputLabel, { color: colors.textSecondary }]}>Date</ThemedText>
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel={`Expense date, ${formattedExpenseDate}`}
+              onPress={() => setShowDatePicker(current => !current)}
+              style={[styles.inputContainer, {
+                backgroundColor: isDark ? 'rgba(20, 35, 38, 0.66)' : colors.card,
+                borderColor: colors.border,
+              }]}>
+              <IconSymbol name="calendar" size={20} color={isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'} />
+              <ThemedText style={[styles.textInput, { color: colors.text }]}>{formattedExpenseDate}</ThemedText>
+            </TouchableOpacity>
+            {showDatePicker && (
+              <DateTimePicker
+                testID="expense-date-picker"
+                value={expenseDate}
+                mode="date"
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                onChange={(_, selectedDate) => {
+                  if (Platform.OS !== 'ios') setShowDatePicker(false);
+                  if (selectedDate) setExpenseDate(selectedDate);
+                }}
+              />
+            )}
           </View>
 
             </>

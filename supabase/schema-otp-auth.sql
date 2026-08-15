@@ -95,6 +95,7 @@ CREATE TABLE public.expenses (
   amount DECIMAL(12, 2) NOT NULL CHECK (amount > 0),
   currency TEXT NOT NULL DEFAULT 'USD',
   paid_by UUID NOT NULL REFERENCES public.users(id),
+  created_by UUID NOT NULL REFERENCES public.users(id),
   category TEXT,
   date TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   image_url TEXT,
