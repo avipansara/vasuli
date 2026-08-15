@@ -75,7 +75,7 @@ describe('expenseService.create auth bridge', () => {
     mocks.from.mockImplementation((table: string) => {
       if (table === 'expenses') {
         return {
-          insert: expenseInsert.mockImplementation(() => ({
+          insert: mocks.expenseInsert.mockImplementation(() => ({
             select: () => ({
               single: mocks.expenseSingle,
             }),
