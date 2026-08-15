@@ -19,7 +19,7 @@ import type { Expense, User } from '@/types/database';
 import { filterFriendsForExpenseSearch } from '@/utils/friend-search';
 import { getGroupExpenseParticipant } from '@/utils/group-expense-participants';
 import { normalizeCurrencyInput } from '@/utils/validation';
-import { getEvenSplitValues, getSplitProgress } from '@/utils/split-validation';
+import { calculateExpenseSplits, getEvenSplitValues, getSplitProgress } from '@/utils/split-validation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -618,72 +618,21 @@ export default function AddExpenseScreen() {
     }
   }
 
-  const calculateSplits = (userIds: string[], totalAmount: number): { userId: string; amount: number; splitType: 'equal' | 'exact' | 'percentage' }[] | null => {
-    if (splitMethod === SplitMethod.EQUAL) {
-      const splitAmount = totalAmount / userIds.length;
-      return userIds.map(userId => ({
-        userId,
-        amount: splitAmount,
-        splitType: 'equal' as const,
-      }));
+  const calculateSplits = (userIds: string[], totalAmount: number) => {
+    const values = splitMethod === SplitMethod.UNEQUAL
+      ? customAmounts
+      : splitMethod === SplitMethod.PERCENTAGE
+        ? customPercentages
+        : customShares;
+    const result = calculateExpenseSplits(userIds, totalAmount, splitMethod, values);
+
+    if (!result.splits) {
+      Alert.alert('Invalid Split', result.error || 'Please check the split values');
+      return null;
     }
 
-    if (splitMethod === SplitMethod.UNEQUAL) {
-      const splits = userIds.map(userId => {
-        const customAmount = parseFloat(customAmounts[userId] || '0');
-        return { userId, amount: customAmount, splitType: 'exact' as const };
-      });
-
-      const total = splits.reduce((sum, s) => sum + s.amount, 0);
-      if (Math.abs(total - totalAmount) > 0.01) {
-        Alert.alert('Invalid Split', `Amounts must add up to $${totalAmount.toFixed(2)}. Current total: $${total.toFixed(2)}`);
-        return null;
-      }
-
-      return splits;
-    }
-
-    if (splitMethod === SplitMethod.PERCENTAGE) {
-      const percentages = userIds.map(userId => parseFloat(customPercentages[userId] || '0'));
-      const totalPercentage = percentages.reduce((sum, p) => sum + p, 0);
-
-      if (Math.abs(totalPercentage - 100) > 0.01) {
-        Alert.alert('Invalid Split', `Percentages must add up to 100%. Current total: ${totalPercentage.toFixed(1)}%`);
-        return null;
-      }
-
-      return userIds.map((userId, index) => ({
-        userId,
-        amount: (totalAmount * percentages[index]) / 100,
-        splitType: 'percentage' as const,
-      }));
-    }
-
-    if (splitMethod === SplitMethod.SHARES) {
-      const sharesData = userIds.map(userId => ({
-        userId,
-        shares: parseFloat(customShares[userId] || '0'),
-      }));
-
-      const totalShares = sharesData.reduce((sum, item) => sum + item.shares, 0);
-
-      if (totalShares === 0) {
-        Alert.alert('Invalid Split', 'Please enter at least one share');
-        return null;
-      }
-
-      // Only include users with shares > 0
-      return sharesData
-        .filter(item => item.shares > 0)
-        .map(item => ({
-          userId: item.userId,
-          amount: (totalAmount * item.shares) / totalShares,
-          splitType: 'exact' as const,
-        }));
-    }
-
-    return null;
-  }
+    return result.splits;
+  };
 
   if (dataLoadError && !dataLoading) {
     return (

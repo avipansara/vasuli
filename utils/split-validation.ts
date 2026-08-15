@@ -7,9 +7,30 @@ export interface SplitProgress {
   people: { userId: string; amount: number }[];
 }
 
-const toNumber = (value: string | undefined) => {
-  const parsed = Number.parseFloat(value || '0');
-  return Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
+export interface CalculatedSplit {
+  userId: string;
+  amount: number;
+  splitType: 'equal' | 'exact' | 'percentage';
+}
+
+export interface SplitCalculationResult {
+  splits: CalculatedSplit[] | null;
+  error?: string;
+}
+
+interface ParsedSplitValue {
+  value: number;
+  isValid: boolean;
+}
+
+const parseSplitValue = (value: string | undefined): ParsedSplitValue => {
+  if (!value?.trim()) return { value: 0, isValid: true };
+
+  const parsed = Number(value);
+  return {
+    value: Number.isFinite(parsed) && parsed >= 0 ? parsed : 0,
+    isValid: Number.isFinite(parsed) && parsed >= 0,
+  };
 };
 
 export function getSplitProgress(
@@ -19,7 +40,8 @@ export function getSplitProgress(
   values: Record<string, string>
 ): SplitProgress {
   const total = Math.max(0, totalAmount);
-  const rawValues = userIds.map(userId => ({ userId, value: toNumber(values[userId]) }));
+  const rawValues = userIds.map(userId => ({ userId, ...parseSplitValue(values[userId]) }));
+  const allValuesValid = rawValues.every(item => item.isValid);
 
   if (method === 'equal') {
     const amount = userIds.length > 0 ? total / userIds.length : 0;
@@ -37,7 +59,7 @@ export function getSplitProgress(
     return {
       allocated: total * percentageTotal / 100,
       remaining: total * (100 - percentageTotal) / 100,
-      isBalanced: Math.abs(percentageTotal - 100) < 0.01,
+      isBalanced: allValuesValid && Math.abs(percentageTotal - 100) < 0.01,
       people,
     };
   }
@@ -48,15 +70,88 @@ export function getSplitProgress(
       userId: item.userId,
       amount: totalShares > 0 ? total * item.value / totalShares : 0,
     }));
-    return { allocated: totalShares > 0 ? total : 0, remaining: totalShares > 0 ? 0 : total, isBalanced: totalShares > 0, people };
+    return {
+      allocated: totalShares > 0 ? total : 0,
+      remaining: totalShares > 0 ? 0 : total,
+      isBalanced: allValuesValid && totalShares > 0,
+      people,
+    };
   }
 
   const allocated = rawValues.reduce((sum, item) => sum + item.value, 0);
   return {
     allocated,
     remaining: total - allocated,
-    isBalanced: Math.abs(total - allocated) < 0.01,
+    isBalanced: allValuesValid && Math.abs(total - allocated) < 0.01,
     people: rawValues.map(item => ({ userId: item.userId, amount: item.value })),
+  };
+}
+
+export function calculateExpenseSplits(
+  userIds: string[],
+  totalAmount: number,
+  method: SplitMethod,
+  values: Record<string, string>
+): SplitCalculationResult {
+  if (userIds.length === 0) {
+    return { splits: null, error: 'Please select at least one participant' };
+  }
+
+  const total = Math.max(0, totalAmount);
+  const parsedValues = userIds.map(userId => ({ userId, ...parseSplitValue(values[userId]) }));
+  if (parsedValues.some(item => !item.isValid)) {
+    return { splits: null, error: 'Split values must be zero or greater' };
+  }
+
+  if (method === 'equal') {
+    const splitAmount = total / userIds.length;
+    return {
+      splits: userIds.map(userId => ({ userId, amount: splitAmount, splitType: 'equal' })),
+    };
+  }
+
+  if (method === 'unequal') {
+    const splits = parsedValues.map(item => ({ userId: item.userId, amount: item.value, splitType: 'exact' as const }));
+    const allocated = splits.reduce((sum, split) => sum + split.amount, 0);
+    if (Math.abs(allocated - total) > 0.01) {
+      return {
+        splits: null,
+        error: `Amounts must add up to $${total.toFixed(2)}. Current total: $${allocated.toFixed(2)}`,
+      };
+    }
+    return { splits };
+  }
+
+  if (method === 'percentage') {
+    const percentageTotal = parsedValues.reduce((sum, item) => sum + item.value, 0);
+    if (Math.abs(percentageTotal - 100) > 0.01) {
+      return {
+        splits: null,
+        error: `Percentages must add up to 100%. Current total: ${percentageTotal.toFixed(1)}%`,
+      };
+    }
+    return {
+      splits: parsedValues.map(item => ({
+        userId: item.userId,
+        amount: (total * item.value) / 100,
+        splitType: 'percentage',
+      })),
+    };
+  }
+
+  const totalShares = parsedValues.reduce((sum, item) => sum + item.value, 0);
+  if (totalShares <= 0) {
+    return { splits: null, error: 'Please enter at least one share' };
+  }
+
+  return {
+    splits: parsedValues
+      .filter(item => item.value > 0)
+      .map(item => ({
+        userId: item.userId,
+        amount: (total * item.value) / totalShares,
+        splitType: 'exact',
+      })),
   };
 }
 

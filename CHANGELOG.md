@@ -1,5 +1,9 @@
 ## 2026-08-15
 
+- Fixed Unequal and Shares expense splits to use consistent validation during
+  entry and save, including rejecting negative or empty share allocations.
+- Fixed newly created expenses paid by another friend being rejected by the
+  creator's immediate read policy.
 - Prevented Friend and Group settlements from recording amounts above the
   outstanding balance.
 
