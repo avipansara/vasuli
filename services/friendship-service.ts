@@ -135,12 +135,22 @@ export const friendshipService = {
    * the UI from silently presenting an anonymous request.
    */
   async getPendingRequestsWithRequesters(userId: string): Promise<PendingFriendshipRequest[]> {
-    const requests = await this.getPendingRequests(userId);
-    if (requests.length === 0) return [];
+    const [requests, friendIds] = await Promise.all([
+      this.getPendingRequests(userId),
+      this.getFriends(userId),
+    ]);
+    const acceptedFriendIds = new Set(friendIds);
+    const visibleRequests = requests.filter((request) => !acceptedFriendIds.has(request.userId));
+    if (visibleRequests.length === 0) return [];
 
-    const requesters = await userService.getByIds(requests.map((request) => request.userId));
-    const requesterNames = new Map(requesters.map((requester) => [requester.id, requester.name]));
-    const missingRequesterIds = requests
+    const requesters = await userService.getByIds(visibleRequests.map((request) => request.userId));
+    const requesterNames = new Map(
+      requesters.map((requester) => [
+        requester.id,
+        requester.name?.trim() || requester.email?.split('@')[0] || requester.phone || 'Someone',
+      ])
+    );
+    const missingRequesterIds = visibleRequests
       .map((request) => request.userId)
       .filter((requesterId) => !requesterNames.has(requesterId));
 
@@ -148,7 +158,7 @@ export const friendshipService = {
       throw new Error('Unable to load the profile for a pending friend request.');
     }
 
-    return requests.map((request) => ({
+    return visibleRequests.map((request) => ({
       ...request,
       requesterName: requesterNames.get(request.userId)!,
     }));

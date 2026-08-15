@@ -21,6 +21,7 @@ const mocks = vi.hoisted(() => {
   const deleteEq = vi.fn(() => Promise.resolve({ error: null }))
   const from = vi.fn()
   const getByEmail = vi.fn(() => Promise.resolve(null))
+  const getFriends = vi.fn(() => Promise.resolve([]))
   const createFriendship = vi.fn(() => Promise.resolve({
     id: 'friendship-1',
     userId: 'inviter-uuid',
@@ -28,7 +29,8 @@ const mocks = vi.hoisted(() => {
     status: 'pending',
     createdAt: Date.now(),
   }))
-  return { invoke, insertSelectSingle, deleteEq, from, getByEmail, createFriendship }
+  const areFriends = vi.fn(() => Promise.resolve(false))
+  return { invoke, insertSelectSingle, deleteEq, from, getByEmail, getFriends, createFriendship, areFriends }
 })
 
 vi.mock('@/lib/supabase', () => ({
@@ -43,7 +45,11 @@ vi.mock('@/services/user-service', () => ({
 }))
 
 vi.mock('@/services/friendship-service', () => ({
-  friendshipService: { create: mocks.createFriendship },
+  friendshipService: {
+    create: mocks.createFriendship,
+    areFriends: mocks.areFriends,
+    getFriends: mocks.getFriends,
+  },
 }))
 
 vi.mock('@/services/notification-service', () => ({
@@ -62,6 +68,8 @@ describe('invitationService.create', () => {
     mocks.insertSelectSingle.mockResolvedValue({ data: inviteRow, error: null })
     mocks.deleteEq.mockResolvedValue({ error: null })
     mocks.getByEmail.mockResolvedValue(null)
+    mocks.getFriends.mockResolvedValue([])
+    mocks.areFriends.mockResolvedValue(false)
     mocks.from.mockImplementation((table: string) => {
       if (table !== 'invitations') {
         return {}
@@ -130,6 +138,25 @@ describe('invitationService.create', () => {
     })
 
     expect(mocks.invoke).not.toHaveBeenCalled()
+  })
+
+  it('does not create a new pending request for an existing friendship', async () => {
+    mocks.getByEmail.mockResolvedValueOnce({
+      id: 'existing-user',
+      name: 'Existing Friend',
+      email: 'friend@example.com',
+      isActive: true,
+      createdAt: Date.now(),
+    })
+    mocks.areFriends.mockResolvedValueOnce(true)
+
+    await expect(
+      invitationService.sendRequestOrInvitation({
+        inviterId: 'inviter-uuid',
+        inviteeEmail: 'friend@example.com',
+      })
+    ).rejects.toThrow('You are already friends with this person')
+    expect(mocks.createFriendship).not.toHaveBeenCalled()
   })
 
   it('deletes invitation row when invoke returns error', async () => {
