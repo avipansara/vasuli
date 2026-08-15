@@ -1,3 +1,8 @@
+## 2026-08-10
+
+- Group expense rows now open their expense details when tapped.
+- Added search across activity descriptions, groups, and people.
+
 ## 2026-08-08
 
 - Added the ability to record an expense paid by another group or friend participant while preserving the creator for authorization and audit history.

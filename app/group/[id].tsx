@@ -27,7 +27,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Animated, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Alert, Animated, Platform, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
 
@@ -54,6 +54,9 @@ export default function GroupDetailScreen() {
   const [slideAnim] = useState(() => new Animated.Value(30));
   const [scaleAnim] = useState(() => new Animated.Value(0.95));
   const [memberModalVisible, setMemberModalVisible] = useState(false);
+  const [description, setDescription] = useState('');
+  const [amount, setAmount] = useState('');
+  const [expenseSearch, setExpenseSearch] = useState('');
   const [availableUsers, setAvailableUsers] = useState<User[]>([]);
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
   const [friendshipStatus, setFriendshipStatus] = useState<Map<string, 'none' | 'pending_sent' | 'pending_received' | 'accepted'>>(new Map());
@@ -76,6 +79,15 @@ export default function GroupDetailScreen() {
   });
   const loading = isLoading && !group;
   const loadError = error ? getFetchErrorMessage(error) : null;
+  const filteredExpenses = useMemo(() => {
+    const search = expenseSearch.trim().toLocaleLowerCase();
+    if (!search) return expenses;
+
+    return expenses.filter(expense => (
+      expense.description.toLocaleLowerCase().includes(search) ||
+      expense.paidByUser?.name.toLocaleLowerCase().includes(search)
+    ));
+  }, [expenseSearch, expenses]);
 
   useEffect(() => {
     if (groupDetail === undefined) return;
@@ -427,10 +439,16 @@ export default function GroupDetailScreen() {
         overshootFriction={8}
         enableTrackpadTwoFingerGesture
         containerStyle={{ overflow: 'visible' }}>
-        <View style={[styles.expenseCard, {
-          backgroundColor: friendDetailTheme.surface,
-          borderColor: friendDetailTheme.surfaceBorder,
-        }]}>
+        <TouchableOpacity
+          activeOpacity={0.72}
+          accessibilityRole="button"
+          accessibilityLabel={`View details for ${item.description}`}
+          accessibilityHint="Opens the expense details"
+          onPress={() => router.push(`/expense-detail/${item.id}` as any)}
+          style={[styles.expenseCard, {
+            backgroundColor: friendDetailTheme.surface,
+            borderColor: friendDetailTheme.surfaceBorder,
+          }]}>
           <View style={[styles.expenseIcon, { backgroundColor: item.paidBy === currentUserId ? friendDetailTheme.positiveSurface : friendDetailTheme.mutedSurface }]}>
             <IconSymbol
               size={18}
@@ -447,7 +465,13 @@ export default function GroupDetailScreen() {
             </ThemedText>
           </View>
           <ThemedText style={[styles.expenseAmount, { color: colors.text }]}>${item.amount.toFixed(2)}</ThemedText>
-        </View>
+          <IconSymbol
+            size={17}
+            name="chevron.right"
+            color={colors.textSecondary}
+            style={styles.expenseChevron}
+          />
+        </TouchableOpacity>
       </Swipeable>
     );
   }
@@ -935,8 +959,37 @@ export default function GroupDetailScreen() {
               Expenses
             </ThemedText>
             <ThemedText style={[styles.expenseCount, !isDark && { color: colors.textSecondary }]}>
-              {expenses.length} {expenses.length === 1 ? 'expense' : 'expenses'}
+              {expenseSearch.trim() ? `${filteredExpenses.length} of ${expenses.length}` : `${expenses.length} ${expenses.length === 1 ? 'expense' : 'expenses'}`}
             </ThemedText>
+          </View>
+          <View style={[styles.searchContainer, {
+            backgroundColor: friendDetailTheme.surface,
+            borderColor: friendDetailTheme.surfaceBorder,
+          }]}>
+            <IconSymbol
+              name="magnifyingglass"
+              size={17}
+              color={friendDetailTheme.actionIcon}
+            />
+            <TextInput
+              accessibilityLabel={`Search expenses in ${group.name}`}
+              autoCapitalize="none"
+              autoCorrect={false}
+              onChangeText={setExpenseSearch}
+              placeholder="Search expenses or people"
+              placeholderTextColor={colors.textSecondary}
+              style={[styles.searchInput, { color: colors.text }]}
+              value={expenseSearch}
+            />
+            {expenseSearch.length > 0 && (
+              <TouchableOpacity
+                accessibilityLabel="Clear group expense search"
+                hitSlop={8}
+                onPress={() => setExpenseSearch('')}
+                style={styles.clearSearchButton}>
+                <IconSymbol name="xmark.circle.fill" size={18} color={colors.textSecondary} />
+              </TouchableOpacity>
+            )}
           </View>
           {expenses.length === 0 ? (
             <View style={styles.emptySection}>
@@ -948,8 +1001,18 @@ export default function GroupDetailScreen() {
                 Add an expense to start splitting costs
               </ThemedText>
             </View>
+          ) : filteredExpenses.length === 0 ? (
+            <View style={styles.emptySection}>
+              <View style={[styles.emptyIconWrapper, { backgroundColor: friendDetailTheme.avatarSurface }]}>
+                <IconSymbol size={28} name="magnifyingglass" color={friendDetailTheme.actionIcon} />
+              </View>
+              <ThemedText style={[styles.emptyTitle, { color: colors.text }]}>No matching expenses</ThemedText>
+              <ThemedText style={[styles.emptyText, { color: colors.textSecondary }]}>
+                Try a different description or person
+              </ThemedText>
+            </View>
           ) : (
-            expenses.map((expense, index) => (
+            filteredExpenses.map((expense, index) => (
               <Animated.View
                 key={expense.id}
                 style={{
@@ -1300,6 +1363,27 @@ const styles = StyleSheet.create({
   expenseAmount: {
     fontSize: 15,
     fontWeight: '600',
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    minHeight: 44,
+    paddingHorizontal: 12,
+    marginBottom: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 10,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 15,
+    paddingVertical: 0,
+  },
+  clearSearchButton: {
+    padding: 2,
+  },
+  expenseChevron: {
+    marginLeft: 8,
   },
   emptySection: {
     alignItems: 'center',
