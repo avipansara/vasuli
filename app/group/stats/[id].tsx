@@ -7,13 +7,15 @@ import { useAuth } from '@/contexts/auth-context-otp';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { groupDetailService } from '@/services/group-detail-service';
+import { exportGroupExpensesCsv } from '@/services/group-expense-csv';
 import { calculateGroupStats, type GroupBalanceStat, type GroupPayerStat } from '@/services/group-stats';
 import { queryKeys } from '@/services/query-keys';
 import { useQuery } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { useState } from 'react';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 const AVATAR_COLORS = ['#7C5CFC', '#22C55E', '#F59E0B', '#3B82F6', '#EC4899'];
 
@@ -119,6 +121,7 @@ export default function GroupStatsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user } = useAuth();
   const { colors, gradients, friendDetail: theme, isDark } = useThemeColors();
+  const [isExporting, setIsExporting] = useState(false);
   const currentUserId = user?.id || '';
   const queryKey = queryKeys.groups.detail(currentUserId, id);
   const { data, error, isLoading, refetch } = useQuery({
@@ -155,6 +158,24 @@ export default function GroupStatsScreen() {
   const getsBack = stats.memberBalances.filter(member => member.balance > 0);
   const owes = stats.memberBalances.filter(member => member.balance < 0);
   const stackedColors = ['#7C5CFC', '#22C55E', '#F59E0B', '#3B82F6', '#EC4899'];
+  const hasExpenses = data.expenses.length > 0;
+
+  const handleExport = async () => {
+    if (isExporting || !hasExpenses) return;
+
+    try {
+      setIsExporting(true);
+      await exportGroupExpensesCsv(data);
+    } catch (error) {
+      console.error('Error exporting group expenses:', error);
+      Alert.alert(
+        'Export failed',
+        error instanceof Error ? error.message : 'We could not create the CSV file. Please try again.',
+      );
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -176,6 +197,35 @@ export default function GroupStatsScreen() {
           <StatCard label="Unsettled members" value={String(stats.unsettledMemberCount)} detail={`${data.members.length ? Math.round((stats.unsettledMemberCount / data.members.length) * 100) : 0}% of group`} icon="person.2.fill" color={theme.warning} surface={theme.surface} />
           <StatCard label="Outstanding" value={formatCurrency(stats.totalOutstanding)} detail="Payable between members" icon="creditcard.fill" color={theme.negative} surface={theme.surface} />
         </View>
+
+        <Pressable
+          testID="export-group-expenses"
+          accessibilityRole="button"
+          accessibilityLabel={hasExpenses ? 'Export group expenses as CSV' : 'Export group expenses as CSV. Add an expense first.'}
+          accessibilityState={{ disabled: !hasExpenses || isExporting, busy: isExporting }}
+          disabled={!hasExpenses || isExporting}
+          onPress={() => { void handleExport(); }}
+          style={({ pressed }) => [
+            styles.exportButton,
+            {
+              backgroundColor: hasExpenses ? theme.surface : theme.mutedSurface,
+              borderColor: hasExpenses ? theme.surfaceBorder : theme.surfaceBorder,
+              opacity: pressed && hasExpenses && !isExporting ? 0.82 : hasExpenses ? 1 : 0.62,
+            },
+          ]}>
+          {isExporting ? (
+            <ActivityIndicator size="small" color={theme.actionIcon} />
+          ) : (
+            <IconSymbol name="doc.text.fill" size={18} color={hasExpenses ? theme.actionIcon : colors.textSecondary} />
+          )}
+          <View style={styles.exportCopy}>
+            <ThemedText style={[styles.exportTitle, !isDark && { color: colors.text }]}>Export CSV</ThemedText>
+            <ThemedText style={[styles.exportHint, !isDark && { color: colors.textSecondary }]}>
+              {isExporting ? 'Preparing your file…' : hasExpenses ? 'Download the group expense ledger' : 'Add an expense to enable export'}
+            </ThemedText>
+          </View>
+          {!isExporting && hasExpenses && <IconSymbol name="chevron.right" size={17} color={colors.textSecondary} />}
+        </Pressable>
 
         <View style={[styles.section, { backgroundColor: theme.surface, borderColor: theme.surfaceBorder }]}>
           <View style={styles.sectionHeader}>
@@ -219,6 +269,10 @@ const styles = StyleSheet.create({
   groupMarkFallback: { overflow: 'visible' },
   groupMarkText: { color: '#fff', fontSize: 24, fontWeight: '700', lineHeight: 30, textAlign: 'center', includeFontPadding: false },
   statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 10 },
+  exportButton: { flexDirection: 'row', alignItems: 'center', gap: 11, minHeight: 64, borderRadius: 14, borderWidth: 1, paddingHorizontal: 14, marginBottom: 12 },
+  exportCopy: { flex: 1, gap: 3 },
+  exportTitle: { fontSize: 15, fontWeight: '700' },
+  exportHint: { fontSize: 12, opacity: 0.68 },
   statCard: { width: '48.8%', borderRadius: 12, padding: 11, minHeight: 108 },
   statIcon: { width: 26, height: 26, borderRadius: 13, justifyContent: 'center', alignItems: 'center', marginBottom: 7 },
   statLabel: { fontSize: 11, opacity: 0.7, marginBottom: 4 },

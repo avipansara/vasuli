@@ -6,10 +6,9 @@ import { GroupsListSkeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useDebouncedQueryInvalidation } from '@/hooks/use-debounced-query-invalidation';
 import { useRefetchOnFocus } from '@/hooks/use-refetch-on-focus';
-import { useRealtime } from '@/hooks/use-realtime';
+import { useGroupsHomeRealtime } from '@/hooks/use-realtime';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
-import { calculateGroupBalances } from '@/services/balance-utils';
 import { groupService } from '@/services/group-service';
 import { userService } from '@/services/user-service';
 import { queryKeys } from '@/services/query-keys';
@@ -46,13 +45,7 @@ export default function GroupsScreen() {
     queryKey: groupsQueryKey,
     enabled: !!currentUserId,
     queryFn: async () => {
-      const allGroups = await groupService.getUserGroups(currentUserId);
-      const balancesByGroupId = await calculateGroupBalances(allGroups.map(group => group.id));
-
-      return allGroups.map(group => ({
-        ...group,
-        yourBalance: balancesByGroupId.get(group.id)?.get(currentUserId) || 0,
-      }));
+      return groupService.getHomeSummaries(currentUserId);
     },
   });
   const loading = isLoading && groups.length === 0;
@@ -86,12 +79,7 @@ export default function GroupsScreen() {
     }
   }, [fadeAnim, loading, slideAnim]);
 
-  useRealtime({
-    table: 'group_members',
-    filter: currentUserId ? `user_id=eq.${currentUserId}` : undefined,
-    onChange: invalidateGroups,
-    enabled: !!currentUserId,
-  });
+  useGroupsHomeRealtime(currentUserId, invalidateGroups);
 
   const renderGroupItem = useCallback(
     ({ item, index }: { item: GroupWithMembers; index: number }) => (

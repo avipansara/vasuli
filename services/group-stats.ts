@@ -1,4 +1,4 @@
-import type { GroupDetailData } from './group-detail-service';
+import type { GroupDetailReadModel } from './group-detail-read-model';
 import { SETTLED_BALANCE_THRESHOLD } from './group-balance';
 
 export interface GroupPayerStat {
@@ -23,7 +23,7 @@ export interface GroupStats {
   memberBalances: GroupBalanceStat[];
 }
 
-export function calculateGroupStats(detail: GroupDetailData): GroupStats {
+export function calculateGroupStats(detail: GroupDetailReadModel): GroupStats {
   const namesById = new Map(
     detail.members.map(member => [member.userId, member.user?.name || 'Unknown'])
   );

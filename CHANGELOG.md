@@ -1,5 +1,31 @@
+## 2026-08-16
+
+- Added the Friends home read-model adapter and a secured Supabase RPC
+  migration that returns display-ready summaries without downloading the full
+  expense and split history to the device.
+- Corrected an RPC balance-column ambiguity discovered during linked-database
+  verification.
+- Restricted the Friends home RPC to authenticated callers explicitly.
+- Added the Groups home read model RPC, replacing the startup balance query
+  waterfall with a single authenticated projection.
+- Expanded Groups home realtime invalidation to refresh balances when group,
+  membership, expense, split, or settlement data changes.
+- Prefetched the initial Friends home data while the existing splash screen is
+  visible, reusing the shared React Query cache after the splash and
+  deduplicating concurrent startup requests.
+- Centralized optimistic query-cache capture, restore, and invalidation for expense workflows, and made group-detail data fetching injectable for independent substitution.
+- Restored the group-not-found error state, centralized React Query cache adapter wiring, and moved expense-deletion balance projection into the group read-model service.
+- Deepened group detail into an indexed read model with nested, relationship-resolved expense splits and centralized optimistic expense/settlement transitions.
+- Deepened expense intake into a tested workflow module that centralizes
+  optimistic updates, rollback, persistence, and best-effort follow-up effects
+  for both group and friend expenses.
+
 ## 2026-08-15
 
+- Added an implementation-ready specification for exporting group expenses as
+  CSV from Group Stats across iOS, Android, and web.
+- Bumped the iOS/Android marketing version to `1.0.17` for the next store
+  release train.
 - Fixed Unequal and Shares expense splits to use consistent validation during
   entry and save, including rejecting negative or empty share allocations.
 - Fixed newly created expenses paid by another friend being rejected by the

@@ -5,6 +5,8 @@ import { ThemeProvider as AppThemeProvider, useTheme } from '@/contexts/theme-co
 import { useNotifications } from '@/hooks/use-notifications';
 import { buildInvitePath, parseInviteFromUrl } from '@/lib/invite-deeplink';
 import { queryClient } from '@/lib/query-client';
+import { friendSummaryService } from '@/services/friend-summary-service';
+import { createPostSplashStartup } from '@/services/post-splash-startup';
 import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router/react-navigation';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { useFonts } from 'expo-font';
@@ -57,6 +59,11 @@ const AmbientLightTheme = {
   },
 };
 
+const postSplashStartup = createPostSplashStartup({
+  queryClient,
+  getHomeSummaries: friendSummaryService.getHomeSummaries,
+});
+
 function useProtectedRoute(animationComplete: boolean) {
   const { isAuthenticated, isLoading } = useAuth();
   const segments = useSegments();
@@ -99,6 +106,7 @@ function useProtectedRoute(animationComplete: boolean) {
 
 function RootLayoutNav() {
   const { isDark } = useTheme();
+  const { user } = useAuth();
   const [animationComplete, setAnimationComplete] = useState(false);
   const isLoading = useProtectedRoute(animationComplete);
   const router = useRouter();
@@ -123,6 +131,14 @@ function RootLayoutNav() {
   const handleAnimationComplete = useCallback(() => {
     setAnimationComplete(true);
   }, []);
+
+  useEffect(() => {
+    if (!user?.id) return;
+
+    void postSplashStartup.prefetchInitialHome(user.id).catch(error => {
+      console.warn('Initial home prefetch failed:', error);
+    });
+  }, [user?.id]);
 
   // Initialize notifications only after the splash has completed and the main
   // navigation is visible, so the permission prompt never appears over splash.

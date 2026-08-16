@@ -113,6 +113,46 @@ export function useGroupExpensesRealtime(
   });
 }
 
+export function useGroupsHomeRealtime(
+  userId: string | undefined,
+  onGroupChange: () => void,
+  enabled: boolean = true,
+) {
+  const isEnabled = enabled && !!userId;
+
+  useRealtime({
+    table: 'groups',
+    onChange: onGroupChange,
+    enabled: isEnabled,
+  });
+
+  useRealtime({
+    table: 'group_members',
+    filter: userId ? `user_id=eq.${userId}` : undefined,
+    onChange: onGroupChange,
+    enabled: isEnabled,
+  });
+
+  useRealtime({
+    table: 'expenses',
+    onChange: onGroupChange,
+    enabled: isEnabled,
+  });
+
+  useRealtime({
+    table: 'expense_splits',
+    filter: userId ? `user_id=eq.${userId}` : undefined,
+    onChange: onGroupChange,
+    enabled: isEnabled,
+  });
+
+  useRealtime({
+    table: 'settlements',
+    onChange: onGroupChange,
+    enabled: isEnabled,
+  });
+}
+
 export function useFriendExpensesRealtime(
   userId: string | undefined,
   onExpenseChange: () => void,

@@ -14,15 +14,18 @@ import { groupDetailService } from '@/services/group-detail-service';
 import { groupService } from '@/services/group-service';
 import { userService } from '@/services/user-service';
 import { friendshipService } from '@/services/friendship-service';
-import type { GroupDetailData } from '@/services/group-detail-service';
-import { areGroupBalancesSettled, calculateGroupBalances } from '@/services/group-balance';
+import type { GroupDetailReadModel, GroupExpenseView } from '@/services/group-detail-read-model';
+import { removeExpenseFromGroupReadModel, removeExpenseFromHomeFriends } from '@/services/group-detail-read-model';
+import { areGroupBalancesSettled } from '@/services/group-balance';
 import {
   createExpenseDeletedNotification,
   createMemberAddedNotification,
   notificationService,
 } from '@/services/notification-service';
 import { queryKeys } from '@/services/query-keys';
-import type { Expense, ExpenseSplit, Group, GroupMember, Settlement, User } from '@/types/database';
+import { createReactQueryCacheAdapter } from '@/services/query-cache-adapter';
+import type { QueryCacheSnapshot } from '@/services/query-cache-adapter';
+import type { Expense, GroupMember, User } from '@/types/database';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -32,16 +35,11 @@ import { ScrollView } from 'react-native-gesture-handler';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
 
 const MIN_TOUCH_HIT_SLOP = { top: 8, right: 8, bottom: 8, left: 8 };
+const EMPTY_EXPENSES: GroupExpenseView[] = [];
 
 export default function GroupDetailScreen() {
   const { gradients, colors, friendDetail: friendDetailTheme, isDark } = useThemeColors();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const [group, setGroup] = useState<Group | null>(null);
-  const [expenses, setExpenses] = useState<(Expense & { paidByUser?: User })[]>([]);
-  const [members, setMembers] = useState<(GroupMember & { user?: User })[]>([]);
-  const [balances, setBalances] = useState<Map<string, number>>(new Map());
-  const [expenseSplits, setExpenseSplits] = useState<ExpenseSplit[]>([]);
-  const [settlements, setSettlements] = useState<Settlement[]>([]);
   const [isAddingMember, setIsAddingMember] = useState(false);
   const [deletingExpenseId, setDeletingExpenseId] = useState<string | null>(null);
   const [isDeletingGroup, setIsDeletingGroup] = useState(false);
@@ -54,18 +52,15 @@ export default function GroupDetailScreen() {
   const [slideAnim] = useState(() => new Animated.Value(30));
   const [scaleAnim] = useState(() => new Animated.Value(0.95));
   const [memberModalVisible, setMemberModalVisible] = useState(false);
-  const [description, setDescription] = useState('');
-  const [amount, setAmount] = useState('');
   const [expenseSearch, setExpenseSearch] = useState('');
-  const [availableUsers, setAvailableUsers] = useState<User[]>([]);
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
-  const [friendshipStatus, setFriendshipStatus] = useState<Map<string, 'none' | 'pending_sent' | 'pending_received' | 'accepted'>>(new Map());
   const { user } = useAuth();
   const currentUserId = user?.id || '';
   const queryClient = useQueryClient();
   const friendsHomeQueryKey = useMemo(() => queryKeys.friends.home(currentUserId), [currentUserId]);
   const groupDetailQueryKey = useMemo(() => queryKeys.groups.detail(currentUserId, id), [currentUserId, id]);
   const invalidateGroupDetail = useDebouncedQueryInvalidation(groupDetailQueryKey, 500);
+  const queryCache = useMemo(() => createReactQueryCacheAdapter(queryClient), [queryClient]);
 
   const {
     data: groupDetail,
@@ -77,6 +72,13 @@ export default function GroupDetailScreen() {
     enabled: !!currentUserId && !!id,
     queryFn: () => groupDetailService.getDetail(currentUserId, id),
   });
+  const group = groupDetail?.group ?? null;
+  const expenses = groupDetail?.expenses ?? EMPTY_EXPENSES;
+  const members = groupDetail?.members ?? [];
+  const balances = groupDetail?.balances ?? new Map<string, number>();
+  const expenseSplits = useMemo(() => expenses.flatMap(expense => expense.splits), [expenses]);
+  const availableUsers = groupDetail?.availableUsers ?? [];
+  const friendshipStatus = groupDetail?.friendshipStatus ?? new Map();
   const loading = isLoading && !group;
   const loadError = error ? getFetchErrorMessage(error) : null;
   const filteredExpenses = useMemo(() => {
@@ -89,28 +91,16 @@ export default function GroupDetailScreen() {
     ));
   }, [expenseSearch, expenses]);
 
-  useEffect(() => {
-    if (groupDetail === undefined) return;
-    if (!groupDetail) {
-      Alert.alert('Error', 'Group not found');
-      router.back();
-      return;
-    }
-
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- Query data is mirrored so optimistic local mutations can update immediately.
-    setGroup(groupDetail.group);
-    setExpenses(groupDetail.expenses);
-    setMembers(groupDetail.members);
-    setBalances(groupDetail.balances);
-    setAvailableUsers(groupDetail.availableUsers);
-    setFriendshipStatus(groupDetail.friendshipStatus);
-    setExpenseSplits(groupDetail.splits);
-    setSettlements(groupDetail.settlements);
-  }, [groupDetail]);
-
   const loadGroupData = useCallback(async () => {
     await refetch();
   }, [refetch]);
+
+  useEffect(() => {
+    if (groupDetail === null) {
+      Alert.alert('Error', 'Group not found');
+      router.back();
+    }
+  }, [groupDetail]);
 
   useRealtime({
     table: 'groups',
@@ -200,10 +190,11 @@ export default function GroupDetailScreen() {
     try {
       await friendshipService.create(currentUserId, memberUserId);
 
-      setFriendshipStatus(prev => {
-        const newMap = new Map(prev);
-        newMap.set(memberUserId, 'pending_sent');
-        return newMap;
+      queryClient.setQueryData<GroupDetailReadModel | null>(groupDetailQueryKey, current => {
+        if (!current) return null;
+        const friendshipStatus = new Map(current.friendshipStatus);
+        friendshipStatus.set(memberUserId, 'pending_sent');
+        return { ...current, friendshipStatus };
       });
 
       Alert.alert('Success', 'Friend request sent');
@@ -277,63 +268,33 @@ export default function GroupDetailScreen() {
           style: 'destructive',
           onPress: async () => {
             const expenseToDelete = expenses.find(expense => expense.id === expenseId);
-            const previousExpenses = expenses;
-            const previousBalances = balances;
-            const previousSplits = expenseSplits;
-            let previousHomeFriends: (User & { balance: number; recentExpenses?: Expense[] })[] | undefined;
+            let cacheSnapshot: QueryCacheSnapshot | undefined;
             try {
               setDeletingExpenseId(expenseId);
               expenseSwipeableRefs.current.get(expenseId)?.close();
 
-              const nextExpenses = expenses.filter(expense => expense.id !== expenseId);
-              const nextSplits = expenseSplits.filter(split => split.expenseId !== expenseId);
-              const nextBalances = calculateGroupBalances(nextExpenses, nextSplits, settlements);
-              setExpenses(nextExpenses);
-              setExpenseSplits(nextSplits);
-              setBalances(nextBalances);
-              queryClient.setQueryData<GroupDetailData | null>(groupDetailQueryKey, current => current ? {
-                ...current,
-                expenses: nextExpenses,
-                splits: nextSplits,
-                balances: nextBalances,
-              } : current);
+              const deletedExpenseSplits = expenseToDelete
+                ? expenseSplits.filter(split => split.expenseId === expenseId)
+                : [];
+              const currentUserSplit = deletedExpenseSplits.find(split => split.userId === currentUserId);
+              cacheSnapshot = await queryCache.capture([
+                groupDetailQueryKey,
+                ...(currentUserSplit ? [friendsHomeQueryKey] : []),
+              ]);
 
-              if (expenseToDelete) {
-                const deletedExpenseSplits = expenseSplits.filter(split => split.expenseId === expenseId);
-                const currentUserSplit = deletedExpenseSplits.find(split => split.userId === currentUserId);
+              queryClient.setQueryData<GroupDetailReadModel | null>(groupDetailQueryKey, current => current
+                ? removeExpenseFromGroupReadModel(current, expenseId)
+                : null);
 
-                if (currentUserSplit) {
-                  await queryClient.cancelQueries({ queryKey: friendsHomeQueryKey });
-                  previousHomeFriends = queryClient.getQueryData(friendsHomeQueryKey);
-                  queryClient.setQueryData<(User & { balance: number; recentExpenses?: Expense[] })[]>(
-                    friendsHomeQueryKey,
-                    current => current?.map(friend => {
-                      const friendSplit = deletedExpenseSplits.find(split => split.userId === friend.id);
-                      if (!friendSplit) return friend;
-
-                      let balanceDelta = 0;
-                      if (expenseToDelete.paidBy === currentUserId) {
-                        balanceDelta = -friendSplit.amount;
-                      } else if (expenseToDelete.paidBy === friend.id) {
-                        balanceDelta = currentUserSplit.amount;
-                      }
-
-                      if (balanceDelta === 0) return friend;
-
-                      const nextBalance = friend.balance + balanceDelta;
-                      return {
-                        ...friend,
-                        balance: Math.abs(nextBalance) < 0.01 ? 0 : nextBalance,
-                        recentExpenses: friend.recentExpenses?.filter(expense => expense.id !== expenseId),
-                      };
-                    })
-                  );
-                }
+              if (currentUserSplit && expenseToDelete) {
+                queryClient.setQueryData<(User & { balance: number; recentExpenses?: Expense[] })[]>(
+                  friendsHomeQueryKey,
+                  current => removeExpenseFromHomeFriends(current, expenseToDelete, deletedExpenseSplits, currentUserId)
+                );
               }
 
               await expenseService.delete(expenseId, currentUserId, user?.name || 'Unknown');
               if (expenseToDelete) {
-                const deletedExpenseSplits = expenseSplits.filter(split => split.expenseId === expenseId);
                 const usersToNotify = await userService.getByIds(
                   deletedExpenseSplits
                     .map(split => split.userId)
@@ -354,11 +315,8 @@ export default function GroupDetailScreen() {
               }
               queryClient.invalidateQueries({ queryKey: groupDetailQueryKey });
             } catch (error) {
-              setExpenses(previousExpenses);
-              setBalances(previousBalances);
-              setExpenseSplits(previousSplits);
-              if (previousHomeFriends) {
-                queryClient.setQueryData(friendsHomeQueryKey, previousHomeFriends);
+              if (cacheSnapshot) {
+                await queryCache.restore(cacheSnapshot);
               }
               console.error('Error deleting expense:', error);
               Alert.alert('Error', 'Failed to delete expense');
@@ -732,6 +690,18 @@ export default function GroupDetailScreen() {
           message={loadError}
           onRetry={() => loadGroupData()}
           title="Couldn't load group"
+        />
+      </View>
+    );
+  }
+
+  if (groupDetail === null) {
+    return (
+      <View style={styles.container}>
+        <AsyncErrorState
+          message="This group could not be found."
+          onRetry={() => loadGroupData()}
+          title="Group not found"
         />
       </View>
     );

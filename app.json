@@ -2,7 +2,7 @@
   "expo": {
     "name": "Vasuli",
     "slug": "vasuli",
-    "version": "1.0.16",
+    "version": "1.0.17",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "vasuli",
@@ -88,8 +88,9 @@
       "expo-sqlite",
       "expo-web-browser",
       "expo-image",
-      "expo-status-bar",
       "@react-native-community/datetimepicker"
+      "expo-status-bar",
+      "expo-sharing"
     ],
     "experiments": {
       "typedRoutes": true,

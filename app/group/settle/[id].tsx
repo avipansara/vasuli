@@ -12,7 +12,8 @@ import { calculateBalances } from '@/services/balance-utils';
 import { groupService } from '@/services/group-service';
 import { settlementService } from '@/services/settlement-service';
 import { userService } from '@/services/user-service';
-import { applySettlementsToGroupDetailData, type GroupDetailData } from '@/services/group-detail-service';
+import { applySettlementToGroupReadModel } from '@/services/group-detail-read-model';
+import type { GroupDetailReadModel } from '@/services/group-detail-read-model';
 import { queryKeys } from '@/services/query-keys';
 import type { Group, GroupMember, User } from '@/types/database';
 import {
@@ -151,7 +152,7 @@ export default function GroupSettleScreen() {
   const [amount, setAmount] = useState('');
   const [settling, setSettling] = useState(false);
 
-  const applyGroupDetail = useCallback((groupDetail: GroupDetailData) => {
+  const applyGroupDetail = useCallback((groupDetail: GroupDetailReadModel) => {
     const membersWithBalances = groupDetail.members
       .filter(member => member.userId !== currentUserId)
       .map(member => ({
@@ -170,7 +171,7 @@ export default function GroupSettleScreen() {
     try {
       setLoadError(null);
       const groupDetailQueryKey = queryKeys.groups.detail(currentUserId, id);
-      const cachedGroupDetail = queryClient.getQueryData<GroupDetailData | null>(groupDetailQueryKey);
+      const cachedGroupDetail = queryClient.getQueryData<GroupDetailReadModel | null>(groupDetailQueryKey);
 
       if (cachedGroupDetail) {
         applyGroupDetail(cachedGroupDetail);
@@ -268,9 +269,9 @@ export default function GroupSettleScreen() {
         date: Date.now(),
       });
       const groupDetailQueryKey = queryKeys.groups.detail(currentUserId, id);
-      queryClient.setQueryData<GroupDetailData | null>(
+      queryClient.setQueryData<GroupDetailReadModel | null>(
         groupDetailQueryKey,
-        current => current ? applySettlementsToGroupDetailData(current, [settlement]) : current
+        current => current ? applySettlementToGroupReadModel(current, settlement) : current
       );
       queryClient.invalidateQueries({ queryKey: groupDetailQueryKey });
       queryClient.invalidateQueries({ queryKey: queryKeys.groups.list(currentUserId) });
