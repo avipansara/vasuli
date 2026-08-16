@@ -1,10 +1,15 @@
 import { AnimatedSplash } from '@/components/ui/animated-splash';
+import { AppUpdatePrompt } from '@/components/ui/app-update-prompt';
 import { RouteErrorBoundary } from '@/components/ui/route-error-boundary';
 import { AuthProvider, useAuth } from '@/contexts/auth-context-otp';
 import { ThemeProvider as AppThemeProvider, useTheme } from '@/contexts/theme-context';
 import { useNotifications } from '@/hooks/use-notifications';
 import { buildInvitePath, parseInviteFromUrl } from '@/lib/invite-deeplink';
 import { queryClient } from '@/lib/query-client';
+import { getInstalledAppVersion } from '@/lib/app-version';
+import { supabase } from '@/lib/supabase';
+import { checkForAppUpdate } from '@/services/app-update-coordinator';
+import { createAppUpdateService } from '@/services/app-update-service';
 import { friendSummaryService } from '@/services/friend-summary-service';
 import { createPostSplashStartup } from '@/services/post-splash-startup';
 import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router/react-navigation';
@@ -19,7 +24,9 @@ import {
 } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { AppState, Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
 
@@ -63,6 +70,8 @@ const postSplashStartup = createPostSplashStartup({
   queryClient,
   getHomeSummaries: friendSummaryService.getHomeSummaries,
 });
+
+const appUpdateService = createAppUpdateService({ supabase });
 
 function useProtectedRoute(animationComplete: boolean) {
   const { isAuthenticated, isLoading } = useAuth();
@@ -111,6 +120,9 @@ function RootLayoutNav() {
   const isLoading = useProtectedRoute(animationComplete);
   const router = useRouter();
   const [nativeSplashHidden, setNativeSplashHidden] = useState(false);
+  const [appUpdateDecision, setAppUpdateDecision] = useState<Parameters<typeof AppUpdatePrompt>[0]['decision']>(null);
+  const updateCheckInFlight = useRef(false);
+  const shownReleaseIds = useRef(new Set<string>());
 
   // Keep the native splash static while React Native initializes. The animated
   // splash is started only after the native logo has fully handed off.
@@ -139,6 +151,69 @@ function RootLayoutNav() {
       console.warn('Initial home prefetch failed:', error);
     });
   }, [user?.id]);
+
+  const checkAppUpdate = useCallback(async () => {
+    if (Platform.OS === 'web' || !animationComplete || isLoading || updateCheckInFlight.current) return;
+
+    updateCheckInFlight.current = true;
+    try {
+      const platform = Platform.OS === 'ios' || Platform.OS === 'android' ? Platform.OS : null;
+      if (!platform) return;
+
+      const decision = await checkForAppUpdate({
+        installedVersion: getInstalledAppVersion(),
+        platform,
+        getActiveRelease: appUpdateService.getActiveRelease,
+      });
+
+      if (decision.kind === 'current' || shownReleaseIds.current.has(decision.releaseId)) return;
+
+      const dismissed = decision.kind === 'optional'
+        ? await AsyncStorage.getItem(`vasuli:update-dismissed:${decision.releaseId}`)
+        : null;
+      if (dismissed === 'true') return;
+
+      shownReleaseIds.current.add(decision.releaseId);
+      setAppUpdateDecision(decision);
+    } catch (error) {
+      console.warn('App update check failed:', error);
+    } finally {
+      updateCheckInFlight.current = false;
+    }
+  }, [animationComplete, isLoading]);
+
+  useEffect(() => {
+    const initialCheck = setTimeout(() => void checkAppUpdate(), 0);
+    const subscription = AppState.addEventListener('change', state => {
+      if (state === 'active') void checkAppUpdate();
+    });
+    return () => {
+      clearTimeout(initialCheck);
+      subscription.remove();
+    };
+  }, [checkAppUpdate]);
+
+  const handleAppUpdate = useCallback(() => {
+    if (!appUpdateDecision) return;
+    void Linking.openURL(appUpdateDecision.storeUrl).catch(error => {
+      console.warn('Could not open app store:', error);
+    });
+  }, [appUpdateDecision]);
+
+  const dismissAppUpdate = useCallback(() => {
+    if (appUpdateDecision?.kind === 'optional') {
+      void AsyncStorage.setItem(`vasuli:update-dismissed:${appUpdateDecision.releaseId}`, 'true');
+    }
+    setAppUpdateDecision(null);
+  }, [appUpdateDecision]);
+
+  const retryAppUpdate = useCallback(() => {
+    if (appUpdateDecision) {
+      shownReleaseIds.current.delete(appUpdateDecision.releaseId);
+      setAppUpdateDecision(null);
+    }
+    void checkAppUpdate();
+  }, [appUpdateDecision, checkAppUpdate]);
 
   // Initialize notifications only after the splash has completed and the main
   // navigation is visible, so the permission prompt never appears over splash.
@@ -213,6 +288,12 @@ function RootLayoutNav() {
           <Stack.Screen name="invitations" options={{ headerShown: false }} />
         </Stack>
       </RouteErrorBoundary>
+      <AppUpdatePrompt
+        decision={appUpdateDecision}
+        onUpdate={handleAppUpdate}
+        onDismiss={dismissAppUpdate}
+        onRetry={retryAppUpdate}
+      />
       <StatusBar style={isDark ? 'light' : 'dark'} />
     </ThemeProvider>
   );

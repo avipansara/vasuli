@@ -1,5 +1,10 @@
 ## 2026-08-16
 
+- Added store-only in-app update prompts with Supabase-backed release notes,
+  optional and mandatory update states, platform-specific store links, and
+  safe version checking.
+- Fixed a recursive expenses RLS path that caused friend detail requests to
+  fail with a Supabase 500 for split participants.
 - Added the Friends home read-model adapter and a secured Supabase RPC
   migration that returns display-ready summaries without downloading the full
   expense and split history to the device.

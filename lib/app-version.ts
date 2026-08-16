@@ -3,6 +3,19 @@ import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { Platform } from 'react-native';
 
 /**
+ * Returns the user-facing version used for release comparisons.
+ */
+export function getInstalledAppVersion(): string | null {
+  const configVersion = Constants.expoConfig?.version?.trim() || null;
+
+  if (Platform.OS === 'web' || Constants.executionEnvironment === ExecutionEnvironment.StoreClient) {
+    return configVersion;
+  }
+
+  return Application.nativeApplicationVersion?.trim() || configVersion;
+}
+
+/**
  * User-facing version string.
  *
  * - **Store / dev builds:** Uses the native binary's marketing version + build
