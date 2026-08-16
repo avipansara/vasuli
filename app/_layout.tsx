@@ -197,8 +197,6 @@ function RootLayoutNav() {
         <Stack>
           <Stack.Screen name="(auth)" options={{ headerShown: false }} />
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="group/[id]" options={{ headerShown: false }} />
-          <Stack.Screen name="friend/[id]" options={{ headerShown: false }} />
           <Stack.Screen name="scan-qr" options={{ headerShown: false }} />
           <Stack.Screen name="add-expense" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
           <Stack.Screen name="create-group" options={{ headerShown: false, presentation: 'fullScreenModal' }} />

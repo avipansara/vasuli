@@ -1,5 +1,4 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { router } from 'expo-router';
 import { NativeTabs } from 'expo-router/unstable-native-tabs';
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -24,14 +23,6 @@ export default function TabLayout() {
       <View style={styles.container}>
         <NativeTabs
           key={colorScheme}
-          screenListeners={{
-            tabPress: (e) => {
-              const routeName = e.target?.split('-')[0];
-              if (routeName === 'friends') {
-                router.navigate('/friends');
-              }
-            },
-          }}
           tintColor={colors.tint}
           iconColor={{
             default: defaultTabColor,

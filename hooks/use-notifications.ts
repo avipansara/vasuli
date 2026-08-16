@@ -87,7 +87,7 @@ export function useNotifications(enabled = true) {
       case 'group_created':
       case 'member_added':
         if (data.groupId) {
-          router.push(`/group/${data.groupId}` as any);
+          router.push(`/groups/${data.groupId}` as any);
         }
         break;
       case 'invitation_sent':
@@ -95,14 +95,14 @@ export function useNotifications(enabled = true) {
         break;
       case 'invitation_accepted':
         if (data.groupId) {
-          router.push(`/group/${data.groupId}` as any);
+          router.push(`/groups/${data.groupId}` as any);
         } else if (data.friendId) {
           router.push(`/friends/${data.friendId}` as any);
         }
         break;
       case 'settlement_created':
         if (data.groupId) {
-          router.push(`/group/${data.groupId}` as any);
+          router.push(`/groups/${data.groupId}` as any);
         }
         break;
       default:

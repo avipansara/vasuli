@@ -131,7 +131,7 @@ function GroupCardInner({ group, index, onRefresh }: GroupCardProps) {
           <TouchableOpacity
             activeOpacity={0.7}
             style={styles.content}
-            onPress={() => router.push(`/group/${group.id}` as any)}
+            onPress={() => router.push(`/groups/${group.id}` as any)}
             accessibilityRole="button"
             accessibilityLabel={`${group.name}, ${isSettled ? 'all settled up' : `${isPositive ? 'you are owed' : 'you owe'} $${Math.abs(balance).toFixed(2)}`}`}
             accessibilityHint="Opens this group">

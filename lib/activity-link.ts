@@ -2,7 +2,7 @@ import { ActivityType, type Activity } from '@/types/database';
 
 export type ActivityHref =
   | `/expense-detail/${string}`
-  | `/group/${string}`
+  | `/groups/${string}`
   | `/friends/${string}`;
 
 const expenseDetailTypes = new Set<ActivityType>([
@@ -38,23 +38,23 @@ export function getActivityHref(
 ): ActivityHref | null {
   if (expenseDetailTypes.has(activity.type)) {
     if (deletedExpenseTargetIds?.has(activity.targetId)) {
-      return activity.groupId ? `/group/${activity.groupId}` : null;
+      return activity.groupId ? `/groups/${activity.groupId}` : null;
     }
 
     return `/expense-detail/${activity.targetId}`;
   }
 
   if (activity.type === ActivityType.EXPENSE_DELETED) {
-    return activity.groupId ? `/group/${activity.groupId}` : null;
+    return activity.groupId ? `/groups/${activity.groupId}` : null;
   }
 
   if (groupTypes.has(activity.type)) {
-    return `/group/${activity.groupId ?? activity.targetId}`;
+    return `/groups/${activity.groupId ?? activity.targetId}`;
   }
 
   if (settlementTypes.has(activity.type)) {
     if (activity.groupId) {
-      return `/group/${activity.groupId}`;
+      return `/groups/${activity.groupId}`;
     }
 
     if (currentUserId && activity.userId !== currentUserId) {

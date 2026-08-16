@@ -24,12 +24,12 @@ describe('getActivityHref', () => {
   it('links deleted expense activities to the group when available', () => {
     expect(
       getActivityHref(activity({ type: ActivityType.EXPENSE_DELETED, groupId: 'group-1' }))
-    ).toBe('/group/group-1');
+    ).toBe('/groups/group-1');
   });
 
   it('links group and member activities to the group detail', () => {
-    expect(getActivityHref(activity({ type: ActivityType.GROUP_CREATED, targetId: 'group-1' }))).toBe('/group/group-1');
-    expect(getActivityHref(activity({ type: ActivityType.MEMBER_ADDED, groupId: 'group-2' }))).toBe('/group/group-2');
+    expect(getActivityHref(activity({ type: ActivityType.GROUP_CREATED, targetId: 'group-1' }))).toBe('/groups/group-1');
+    expect(getActivityHref(activity({ type: ActivityType.MEMBER_ADDED, groupId: 'group-2' }))).toBe('/groups/group-2');
   });
 
   it('links ungrouped settlement activities to the other user when known', () => {
