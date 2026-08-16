@@ -6,6 +6,12 @@
   native safe-area inset.
 - Made Group Details quick actions responsive on narrow phones so “Add Expense”
   and other labels stay within their buttons.
+- Added a trip snapshot to Group Stats and moved CSV export into the top action
+  bar as a quieter utility action.
+- Made the Top contributors section expandable so groups can inspect every payer
+  without making the default view taller.
+- Refined the Group Stats trip snapshot so total spending leads, with per-person
+  and expense count metrics grouped into a quieter footer.
 - Added store-only in-app update prompts with Supabase-backed release notes,
   optional and mandatory update states, platform-specific store links, and
   safe version checking.
