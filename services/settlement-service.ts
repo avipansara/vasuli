@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { measureStartup } from '@/lib/startup-telemetry';
 import type { Expense, ExpenseSplit, Settlement } from '@/types/database';
 import { expenseService } from './expense-service';
 
@@ -146,11 +147,14 @@ export const settlementService = {
   },
 
   async getUserSettlements(userId: string): Promise<Settlement[]> {
-    const { data, error } = await supabase
-      .from('settlements')
-      .select('*')
-      .or(`from_user_id.eq.${userId},to_user_id.eq.${userId}`)
-      .order('created_at', { ascending: false });
+    const { data, error } = await measureStartup(
+      'friends.home.settlements_query',
+      () => supabase
+        .from('settlements')
+        .select('*')
+        .or(`from_user_id.eq.${userId},to_user_id.eq.${userId}`)
+        .order('created_at', { ascending: false }),
+    );
 
     if (error) throw error;
 

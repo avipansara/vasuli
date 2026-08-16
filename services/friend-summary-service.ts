@@ -1,11 +1,72 @@
+import { supabase } from '@/lib/supabase';
 import type { Expense, ExpenseSplit, Settlement, User } from '@/types/database';
-import { expenseService } from './expense-service';
-import { settlementService } from './settlement-service';
-import { userService } from './user-service';
+import { measureStartup } from '@/lib/startup-telemetry';
 
 export interface FriendSummary extends User {
   balance: number;
   recentExpenses?: Expense[];
+}
+
+type FriendHomeExpenseRow = {
+  id: string;
+  group_id: string | null;
+  description: string;
+  amount: number;
+  currency: string;
+  paid_by: string;
+  created_by: string | null;
+  category: string | null;
+  date: string;
+  image_url: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type FriendHomeRow = {
+  id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  avatar: string | null;
+  push_token: string | null;
+  is_active: boolean;
+  created_at: string;
+  balance: number;
+  recent_expenses: FriendHomeExpenseRow[] | null;
+};
+
+function mapFriendHomeExpense(row: FriendHomeExpenseRow): Expense {
+  return {
+    id: row.id,
+    groupId: row.group_id || undefined,
+    description: row.description,
+    amount: row.amount,
+    currency: row.currency,
+    paidBy: row.paid_by,
+    createdBy: row.created_by || undefined,
+    category: row.category || undefined,
+    date: new Date(row.date).getTime(),
+    imageUrl: row.image_url || undefined,
+    notes: row.notes || undefined,
+    createdAt: new Date(row.created_at).getTime(),
+    updatedAt: new Date(row.updated_at).getTime(),
+  };
+}
+
+function mapFriendHomeRow(row: FriendHomeRow): FriendSummary {
+  return {
+    id: row.id,
+    name: row.name,
+    email: row.email || undefined,
+    phone: row.phone || undefined,
+    avatar: row.avatar || undefined,
+    pushToken: row.push_token || undefined,
+    isActive: row.is_active,
+    createdAt: new Date(row.created_at).getTime(),
+    balance: row.balance,
+    recentExpenses: (row.recent_expenses || []).map(mapFriendHomeExpense),
+  };
 }
 
 const SETTLED_BALANCE_THRESHOLD = 0.01;
@@ -112,15 +173,11 @@ export function buildFriendSummaries(
 
 export const friendSummaryService = {
   async getHomeSummaries(currentUserId: string): Promise<FriendSummary[]> {
-    const friends = await userService.getUserFriends(currentUserId);
-    if (friends.length === 0) return [];
+    const { data, error } = await measureStartup('friends.home.rpc', async () =>
+      supabase.rpc('get_friend_home_summaries')
+    );
 
-    const [expenses, settlements] = await Promise.all([
-      expenseService.getUserExpenses(currentUserId),
-      settlementService.getUserSettlements(currentUserId),
-    ]);
-    const splits = await expenseService.getSplitsForExpenses(expenses.map(expense => expense.id));
-
-    return buildFriendSummaries(currentUserId, friends, expenses, splits, settlements);
+    if (error) throw error;
+    return ((data || []) as FriendHomeRow[]).map(mapFriendHomeRow);
   },
 };
