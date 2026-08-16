@@ -2,7 +2,7 @@ import { CreateGroupModal, GroupCard } from '@/components/groups';
 import { ThemedText } from '@/components/themed-text';
 import { AsyncErrorState } from '@/components/ui/async-error-state';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { LoadingState } from '@/components/ui/loading-state';
+import { GroupsListSkeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useDebouncedQueryInvalidation } from '@/hooks/use-debounced-query-invalidation';
 import { useRefetchOnFocus } from '@/hooks/use-refetch-on-focus';
@@ -187,7 +187,7 @@ export default function GroupsScreen() {
       </View>
 
       {loading ? (
-        <LoadingState message="Loading your groups..." />
+        <GroupsListSkeleton />
       ) : loadError ? (
         <AsyncErrorState
           message={loadError}

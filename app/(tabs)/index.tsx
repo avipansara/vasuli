@@ -2,7 +2,7 @@ import { FriendCard } from '@/components/friends/friend-card';
 import { ThemedText } from '@/components/themed-text';
 import { AsyncErrorState } from '@/components/ui/async-error-state';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { LoadingState } from '@/components/ui/loading-state';
+import { FriendsListSkeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useDebouncedQueryInvalidation } from '@/hooks/use-debounced-query-invalidation';
 import { useRealtime } from '@/hooks/use-realtime';
@@ -172,7 +172,7 @@ export default function FriendsScreen() {
       </View>
 
       {loading ? (
-        <LoadingState message="Loading friends..." />
+        <FriendsListSkeleton />
       ) : loadError ? (
         <AsyncErrorState
           message={loadError}

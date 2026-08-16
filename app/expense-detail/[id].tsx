@@ -1,7 +1,7 @@
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { AsyncErrorState } from '@/components/ui/async-error-state';
-import { LoadingState } from '@/components/ui/loading-state';
+import { ExpenseDetailSkeleton } from '@/components/ui/skeleton';
 import { NavigationHeader } from '@/components/ui/screen-header';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useRefetchOnFocus } from '@/hooks/use-refetch-on-focus';
@@ -181,7 +181,7 @@ export default function ExpenseDetailScreen() {
       <View style={styles.container}>
         <Stack.Screen options={{ headerShown: false }} />
         <LinearGradient colors={gradients.screenBackground} style={StyleSheet.absoluteFill} />
-        <LoadingState message="Loading expense details..." />
+        <ExpenseDetailSkeleton />
       </View>
     );
   }

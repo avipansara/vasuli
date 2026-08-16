@@ -4,7 +4,7 @@ import { useThemeColors } from '@/hooks/use-theme-colors';
 import { groupService } from '@/services/group-service';
 import type { GroupWithMembers } from '@/types/database';
 import { router } from 'expo-router';
-import React, { memo, useRef } from 'react';
+import { memo, useRef } from 'react';
 import { Alert, Animated as RNAnimated, StyleSheet, TouchableOpacity, View } from 'react-native';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
 import Animated, { FadeInDown } from 'react-native-reanimated';
@@ -65,24 +65,6 @@ function GroupCardInner({ group, index, onRefresh }: GroupCardProps) {
         },
       ]
     );
-  }
-
-  function handleOpenActions() {
-    Alert.alert(`Actions for ${group.name}`, undefined, [
-      {
-        text: 'Edit group',
-        onPress: handleEditGroup,
-      },
-      {
-        text: 'Delete group',
-        style: 'destructive',
-        onPress: handleDeleteGroup,
-      },
-      {
-        text: 'Cancel',
-        style: 'cancel',
-      },
-    ]);
   }
 
   function renderLeftActions(progress: any, dragX: any) {
@@ -146,54 +128,53 @@ function GroupCardInner({ group, index, onRefresh }: GroupCardProps) {
             styles.card,
             isDark ? styles.cardDark : { backgroundColor: colors.card, borderColor: colors.border },
           ]}>
-            <TouchableOpacity
-              activeOpacity={0.7}
-              style={styles.content}
-              onPress={() => router.push(`/group/${group.id}` as any)}
-              accessibilityRole="button"
-              accessibilityLabel={`${group.name}, ${isSettled ? 'all settled up' : `${isPositive ? 'you are owed' : 'you owe'} $${Math.abs(balance).toFixed(2)}`}`}
-              accessibilityHint="Opens this group">
-              <View style={styles.header}>
-                <View
-                  style={[
-                    styles.iconContainer,
-                    {
-                      backgroundColor: isDark
-                        ? 'rgba(45, 212, 191, 0.15)'
-                        : 'rgba(34, 197, 94, 0.1)',
-                    },
-                  ]}>
-                  <IconSymbol
-                    size={28}
-                    name="person.3.fill"
-                    color={isDark ? '#2DD4BF' : colors.tint}
-                  />
-                </View>
-                <View style={styles.info}>
-                  <ThemedText style={[styles.name, !isDark && { color: colors.text }]}>
-                    {group.name}
-                  </ThemedText>
-                  {group.description && (
-                    <ThemedText
-                      style={[styles.description, !isDark && { color: colors.textSecondary }]}>
-                      {group.description}
-                    </ThemedText>
-                  )}
-                </View>
-              </View>
-
+          <TouchableOpacity
+            activeOpacity={0.7}
+            style={styles.content}
+            onPress={() => router.push(`/group/${group.id}` as any)}
+            accessibilityRole="button"
+            accessibilityLabel={`${group.name}, ${isSettled ? 'all settled up' : `${isPositive ? 'you are owed' : 'you owe'} $${Math.abs(balance).toFixed(2)}`}`}
+            accessibilityHint="Opens this group">
+            <View style={styles.row}>
               <View
                 style={[
-                  styles.balanceSection,
-                  { borderTopColor: isDark ? 'rgba(45, 212, 191, 0.2)' : colors.border },
+                  styles.iconContainer,
+                  {
+                    backgroundColor: isDark
+                      ? 'rgba(45, 212, 191, 0.15)'
+                      : 'rgba(34, 197, 94, 0.1)',
+                  },
                 ]}>
-                <View style={styles.balanceContent}>
+                <IconSymbol
+                  size={28}
+                  name="person.3.fill"
+                  color={isDark ? '#2DD4BF' : colors.tint}
+                />
+              </View>
+              <View style={styles.info}>
+                <ThemedText style={[styles.name, !isDark && { color: colors.text }]} numberOfLines={1}>
+                  {group.name}
+                </ThemedText>
+                {group.description && (
                   <ThemedText
-                    style={[styles.balanceLabel, { color: colors.textSecondary }]}>
-                    {isSettled ? 'All settled up' : isPositive ? 'You are owed' : 'You owe'}
+                    style={[styles.description, { color: colors.textSecondary }]}
+                    numberOfLines={1}>
+                    {group.description}
                   </ThemedText>
-                  {!isSettled && (
+                )}
+              </View>
+              <View style={styles.balanceContainer}>
+                {isSettled ? (
+                  <ThemedText style={[styles.settledText, { color: colors.textSecondary }]}>
+                    settled up
+                  </ThemedText>
+                ) : (
+                  <>
+                    <ThemedText style={[styles.balanceLabel, { color: colors.textSecondary }]}>
+                      {isPositive ? "you're owed" : "you owe"}
+                    </ThemedText>
                     <ThemedText
+                      type='title'
                       style={[
                         styles.balanceAmount,
                         {
@@ -202,19 +183,12 @@ function GroupCardInner({ group, index, onRefresh }: GroupCardProps) {
                       ]}>
                       ${Math.abs(balance).toFixed(2)}
                     </ThemedText>
-                  )}
-                </View>
+                  </>
+                )}
               </View>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.moreButton}
-              onPress={handleOpenActions}
-              accessibilityRole="button"
-              accessibilityLabel={`More actions for ${group.name}`}
-              accessibilityHint="Shows options to edit or delete this group">
-              <IconSymbol name="ellipsis" size={22} color={colors.textSecondary} />
-            </TouchableOpacity>
-          </View>
+            </View>
+          </TouchableOpacity>
+        </View>
       </Swipeable>
     </Animated.View>
   );
@@ -235,23 +209,10 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 16,
-    paddingRight: 64,
   },
-  header: {
+  row: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
-  },
-  moreButton: {
-    position: 'absolute',
-    top: 16,
-    right: 16,
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginLeft: 8,
   },
   iconContainer: {
     width: 44,
@@ -263,31 +224,33 @@ const styles = StyleSheet.create({
   },
   info: {
     flex: 1,
+    marginRight: 8,
   },
   name: {
     fontSize: 16,
     fontWeight: 'bold',
     color: '#fff',
-    marginBottom: 2,
   },
   description: {
     fontSize: 12,
+    marginTop: 2,
   },
-  balanceSection: {
-    marginTop: 8,
-  },
-  balanceContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  balanceContainer: {
+    alignItems: 'flex-end',
+    justifyContent: 'center',
   },
   balanceLabel: {
     fontSize: 12,
     fontWeight: '500',
+    marginBottom: 2,
   },
   balanceAmount: {
     fontSize: 18,
     fontWeight: 'bold',
+  },
+  settledText: {
+    fontSize: 13,
+    fontWeight: '500',
   },
   swipeActionLeft: {
     backgroundColor: '#3b82f6',

@@ -1,6 +1,6 @@
 import { AsyncErrorState } from '@/components/ui/async-error-state';
 import { IconSymbol, type IconSymbolName } from '@/components/ui/icon-symbol';
-import { LoadingState } from '@/components/ui/loading-state';
+import { GenericSkeleton } from '@/components/ui/skeleton';
 import { NavigationHeader } from '@/components/ui/screen-header';
 import { ThemedText } from '@/components/themed-text';
 import { useAuth } from '@/contexts/auth-context-otp';
@@ -127,7 +127,16 @@ export default function GroupStatsScreen() {
     queryFn: () => groupDetailService.getDetail(currentUserId, id),
   });
 
-  if (isLoading) return <LoadingState message="Loading group stats..." />;
+  if (isLoading) {
+    return (
+      <View style={styles.container}>
+        <LinearGradient colors={gradients.screenBackground} style={StyleSheet.absoluteFill} />
+        <Stack.Screen options={{ headerShown: false }} />
+        <NavigationHeader title="Group stats" onBack={() => router.back()} />
+        <GenericSkeleton />
+      </View>
+    );
+  }
 
   if (error || !data) {
     return (

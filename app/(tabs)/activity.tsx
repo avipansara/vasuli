@@ -2,7 +2,7 @@ import { ActivityCard } from '@/components/activity/activity-card';
 import { ThemedText } from '@/components/themed-text';
 import { AsyncErrorState } from '@/components/ui/async-error-state';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { LoadingState } from '@/components/ui/loading-state';
+import { ActivityListSkeleton, Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useRefetchOnFocus } from '@/hooks/use-refetch-on-focus';
 import { useThemeColors } from '@/hooks/use-theme-colors';
@@ -133,8 +133,8 @@ export default function ActivityScreen() {
   const renderFooter = () => {
     if (!isFetchingNextPage) return null;
     return (
-      <View style={styles.footerLoader}>
-        <LoadingState message="Loading more..." />
+      <View style={{ paddingVertical: 12, paddingHorizontal: 16 }}>
+        <Skeleton height={50} borderRadius={10} />
       </View>
     );
   };
@@ -197,7 +197,7 @@ export default function ActivityScreen() {
       </View>
 
       {loading ? (
-        <LoadingState message="Loading activity..." />
+        <ActivityListSkeleton />
       ) : loadError ? (
         <AsyncErrorState
           message={loadError}

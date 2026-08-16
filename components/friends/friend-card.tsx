@@ -61,7 +61,7 @@ function FriendCardInner({ friend, onPress, onDelete }: FriendCardProps) {
 
   const balanceColor =
     balance > 0
-      ? (isLightMode ? '#064E3B' : colors.success)
+      ? colors.success
       : balance < 0
         ? colors.error
         : colors.tint;

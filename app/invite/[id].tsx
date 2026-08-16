@@ -1,6 +1,6 @@
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { LoadingState } from '@/components/ui/loading-state';
+import { GenericSkeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { PENDING_INVITE_PATH_KEY, buildInvitePath } from '@/lib/invite-deeplink';
@@ -99,7 +99,12 @@ export default function InviteScreen() {
     };
 
     if (loading) {
-        return <LoadingState message="Loading invitation..." />;
+        return (
+            <View style={styles.container}>
+                <LinearGradient colors={gradients.screenBackground} style={StyleSheet.absoluteFill} />
+                <GenericSkeleton />
+            </View>
+        );
     }
 
     if (!inviter) {

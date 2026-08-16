@@ -1,7 +1,7 @@
 import { ThemedText } from '@/components/themed-text';
 import { AsyncErrorState } from '@/components/ui/async-error-state';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { LoadingState } from '@/components/ui/loading-state';
+import { GenericSkeleton } from '@/components/ui/skeleton';
 import { NavigationHeader } from '@/components/ui/screen-header';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useThemeColors } from '@/hooks/use-theme-colors';
@@ -428,7 +428,7 @@ export default function InvitationsScreen() {
 
         {/* Content */}
         {loading ? (
-          <LoadingState message="Loading invitations..." />
+          <GenericSkeleton />
         ) : loadError ? (
           <AsyncErrorState
             message={loadError}

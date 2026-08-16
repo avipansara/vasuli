@@ -2,7 +2,7 @@ import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { KeyboardAwareScroll } from '@/components/ui/keyboard-aware-scroll';
 import { AsyncErrorState } from '@/components/ui/async-error-state';
-import { LoadingState } from '@/components/ui/loading-state';
+import { GenericSkeleton } from '@/components/ui/skeleton';
 import { NavigationHeader } from '@/components/ui/screen-header';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useThemeColors } from '@/hooks/use-theme-colors';
@@ -329,7 +329,7 @@ export default function GroupSettleScreen() {
         <Stack.Screen options={{ headerShown: false }} />
         <View style={styles.container}>
           <LinearGradient colors={gradients.screenBackground} style={StyleSheet.absoluteFill} />
-          <LoadingState message="Loading members..." />
+          <GenericSkeleton />
         </View>
       </>
     );

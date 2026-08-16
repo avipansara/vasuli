@@ -2,7 +2,7 @@ import { AddMemberModal } from '@/components/group';
 import { ThemedText } from '@/components/themed-text';
 import { AsyncErrorState } from '@/components/ui/async-error-state';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { LoadingState } from '@/components/ui/loading-state';
+import { DetailSkeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useDebouncedQueryInvalidation } from '@/hooks/use-debounced-query-invalidation';
 import { useRealtime } from '@/hooks/use-realtime';
@@ -687,7 +687,26 @@ export default function GroupDetailScreen() {
   }, [fadeAnim, group, loading, scaleAnim, slideAnim]);
 
   if (loading) {
-    return <LoadingState message="Loading group details..." />;
+    return (
+      <View style={styles.container}>
+        <LinearGradient colors={gradients.screenBackground} style={StyleSheet.absoluteFill} />
+        <View style={styles.header}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
+            accessibilityHint="Returns to the previous screen"
+            hitSlop={MIN_TOUCH_HIT_SLOP}
+            style={[styles.backButtonRect, {
+              backgroundColor: friendDetailTheme.actionSurface,
+              borderColor: friendDetailTheme.actionBorder,
+            }]}>
+            <IconSymbol size={20} name="chevron.left" color={friendDetailTheme.actionIcon} />
+          </TouchableOpacity>
+        </View>
+        <DetailSkeleton />
+      </View>
+    );
   }
 
   if (loadError) {
