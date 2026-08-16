@@ -8,6 +8,8 @@
 - Restricted the Friends home RPC to authenticated callers explicitly.
 - Added the Groups home read model RPC, replacing the startup balance query
   waterfall with a single authenticated projection.
+- Expanded Groups home realtime invalidation to refresh balances when group,
+  membership, expense, split, or settlement data changes.
 - Prefetched the initial Friends home data while the existing splash screen is
   visible, reusing the shared React Query cache after the splash and
   deduplicating concurrent startup requests.
