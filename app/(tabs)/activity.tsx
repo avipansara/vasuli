@@ -158,7 +158,6 @@ export default function ActivityScreen() {
       colors={gradients.screenBackground}
       style={styles.container}>
       <View style={styles.header}>
-        <ThemedText style={[styles.headerLabel, { color: colors.textSecondary }]}>Recent</ThemedText>
         <ThemedText type="header" style={[styles.headerTitle, { color: colors.text }]}>Activity</ThemedText>
         <View style={[styles.searchContainer, {
           backgroundColor: isDark ? 'rgba(30, 41, 59, 0.6)' : 'rgba(241, 245, 249, 0.9)',
@@ -261,11 +260,8 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
     padding: 20,
     paddingTop: Platform.OS === 'ios' ? 60 : 54,
-    gap: 4,
-  },
-  headerLabel: {
-    fontSize: 15,
-    fontWeight: '500',
+    paddingBottom: 12,
+    gap: 12,
   },
   headerTitle: {
     color: '#fff',
@@ -289,12 +285,12 @@ const styles = StyleSheet.create({
   },
   listContent: {
     padding: 16,
+    paddingTop: 0,
     paddingBottom: 120,
   },
   sectionHeader: {
     paddingVertical: 8,
     paddingHorizontal: 4,
-    marginTop: 8,
   },
   sectionTitle: {
     fontSize: 13,

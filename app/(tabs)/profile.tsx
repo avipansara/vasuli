@@ -24,7 +24,6 @@ import {
   ActivityIndicator,
   Alert,
   Animated,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -452,7 +451,7 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'ios' ? 58 : 52,
+    paddingTop: 16,
     paddingBottom: 10,
   },
   headerLabel: {

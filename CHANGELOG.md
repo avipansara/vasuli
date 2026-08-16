@@ -1,5 +1,11 @@
 ## 2026-08-16
 
+- Polished the Activity screen hierarchy by removing the redundant Recent label
+  and tightening the spacing between search and the activity feed.
+- Reduced the redundant top spacing on the Profile screen while preserving its
+  native safe-area inset.
+- Made Group Details quick actions responsive on narrow phones so “Add Expense”
+  and other labels stay within their buttons.
 - Added store-only in-app update prompts with Supabase-backed release notes,
   optional and mandatory update states, platform-specific store links, and
   safe version checking.
