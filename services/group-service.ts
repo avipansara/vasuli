@@ -1,10 +1,39 @@
 import { supabase } from '@/lib/supabase';
-import type { Group, GroupMember } from '@/types/database';
+import type { Group, GroupMember, GroupWithMembers } from '@/types/database';
 import { calculateGroupBalances, isGroupSettled, SETTLED_BALANCE_THRESHOLD } from './group-balance';
 import { expenseService } from './expense-service';
 import { settlementService } from './settlement-service';
 
+type GroupHomeRow = {
+  id: string;
+  name: string;
+  description: string | null;
+  image_url: string | null;
+  created_at: string;
+  updated_at: string;
+  your_balance: number;
+};
+
+function mapGroupHomeRow(row: GroupHomeRow): GroupWithMembers {
+  return {
+    id: row.id,
+    name: row.name,
+    description: row.description || undefined,
+    imageUrl: row.image_url || undefined,
+    createdAt: new Date(row.created_at).getTime(),
+    updatedAt: new Date(row.updated_at).getTime(),
+    yourBalance: row.your_balance,
+  };
+}
+
 export const groupService = {
+  async getHomeSummaries(_currentUserId: string): Promise<GroupWithMembers[]> {
+    const { data, error } = await supabase.rpc('get_groups_home_summaries');
+
+    if (error) throw error;
+    return ((data || []) as GroupHomeRow[]).map(mapGroupHomeRow);
+  },
+
   async create(group: Omit<Group, 'id' | 'createdAt' | 'updatedAt'>): Promise<Group> {
     const now = new Date().toISOString();
 

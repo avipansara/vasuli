@@ -2,7 +2,6 @@ import { otpService } from '@/services/otp-service';
 import { userService } from '@/services/user-service';
 import type { User } from '@/types/database';
 import { withTimeout } from '@/lib/with-timeout';
-import { markStartup, measureStartup } from '@/lib/startup-telemetry';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
 interface AuthContextType {
@@ -23,10 +22,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let mounted = true;
 
-    markStartup('auth.initialization.start');
-
     withTimeout(
-      measureStartup('auth.session_and_profile', loadSession),
+      loadSession(),
       AUTH_INITIALIZATION_TIMEOUT_MS,
       'Auth initialization timed out',
     )
@@ -34,7 +31,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.error('Error loading session:', error);
       })
       .finally(() => {
-        markStartup('auth.initialization.settled');
         if (mounted) setIsLoading(false);
       });
 
@@ -45,7 +41,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function loadSession() {
     const appUser = await otpService.syncSupabaseAuthSessionToAppProfile();
-    markStartup('auth.app_profile.ready', { authenticated: !!appUser });
     setUser(appUser);
   }
 

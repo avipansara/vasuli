@@ -2,7 +2,6 @@ import { supabase } from '@/lib/supabase';
 import { linkAuthUserToProfile } from '@/services/auth-profile-service';
 import { ensureAppReviewDemoData } from '@/services/app-review-demo-service';
 import { normalizeEmail } from '@/utils/validation';
-import { markStartup, measureStartup } from '@/lib/startup-telemetry';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Set to true for development/testing without real Supabase
@@ -449,9 +448,8 @@ export async function signInWithGoogle(): Promise<{ success: boolean; error?: st
  * still be empty until we link it here.
  */
 export async function syncSupabaseAuthSessionToAppProfile(expectedEmail?: string): Promise<User | null> {
-  const { data: { session } } = await measureStartup('auth.session_lookup', () => supabase.auth.getSession());
+  const { data: { session } } = await supabase.auth.getSession();
   const authUser = session?.user;
-  markStartup('auth.session_lookup.result', { hasSession: !!authUser });
   const email = normalizeEmail(authUser?.email);
   const expected = normalizeEmail(expectedEmail);
 
@@ -461,13 +459,11 @@ export async function syncSupabaseAuthSessionToAppProfile(expectedEmail?: string
     return null;
   }
 
-  const profile = await measureStartup('auth.profile_reconciliation', () =>
-    linkAuthUserToProfile({
-      authUserId: authUser.id,
-      email,
-      name: typeof authUser.user_metadata?.name === 'string' ? authUser.user_metadata.name : undefined,
-    })
-  );
+  const profile = await linkAuthUserToProfile({
+    authUserId: authUser.id,
+    email,
+    name: typeof authUser.user_metadata?.name === 'string' ? authUser.user_metadata.name : undefined,
+  });
   return createAppUserFromProfile(profile);
 }
 

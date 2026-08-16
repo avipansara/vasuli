@@ -1,6 +1,5 @@
 import { queryKeys } from '@/services/query-keys';
 import type { FriendSummary } from '@/services/friend-summary-service';
-import { measureStartup } from '@/lib/startup-telemetry';
 
 type StartupQueryClient = {
   prefetchQuery<TData>(options: {
@@ -25,14 +24,12 @@ export function createPostSplashStartup({
       const existingPrefetch = inFlightPrefetches.get(userId);
       if (existingPrefetch) return existingPrefetch;
 
-      const prefetch = measureStartup('friends.home_prefetch', () =>
-        queryClient
-          .prefetchQuery({
-            queryKey: queryKeys.friends.home(userId),
-            queryFn: () => getHomeSummaries(userId),
-          })
-          .then(() => undefined)
-      );
+      const prefetch = queryClient
+        .prefetchQuery({
+          queryKey: queryKeys.friends.home(userId),
+          queryFn: () => getHomeSummaries(userId),
+        })
+        .then(() => undefined);
 
       inFlightPrefetches.set(userId, prefetch);
       void prefetch.then(

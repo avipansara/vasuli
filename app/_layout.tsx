@@ -5,7 +5,6 @@ import { ThemeProvider as AppThemeProvider, useTheme } from '@/contexts/theme-co
 import { useNotifications } from '@/hooks/use-notifications';
 import { buildInvitePath, parseInviteFromUrl } from '@/lib/invite-deeplink';
 import { queryClient } from '@/lib/query-client';
-import { markStartup } from '@/lib/startup-telemetry';
 import { friendSummaryService } from '@/services/friend-summary-service';
 import { createPostSplashStartup } from '@/services/post-splash-startup';
 import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router/react-navigation';
@@ -29,8 +28,6 @@ SplashScreen.setOptions({
   duration: 0,
   fade: false,
 });
-
-markStartup('runtime.module_loaded');
 
 export const unstable_settings = {
   initialRouteName: '(tabs)',
@@ -120,11 +117,8 @@ function RootLayoutNav() {
   useEffect(() => {
     let isMounted = true;
 
-    markStartup('native_splash.hide.start');
-
     SplashScreen.hideAsync().then(() => {
       if (isMounted) {
-        markStartup('native_splash.hide.complete');
         setNativeSplashHidden(true);
       }
     });
@@ -135,7 +129,6 @@ function RootLayoutNav() {
   }, []);
 
   const handleAnimationComplete = useCallback(() => {
-    markStartup('animated_splash.complete');
     setAnimationComplete(true);
   }, []);
 
@@ -143,15 +136,9 @@ function RootLayoutNav() {
     if (!user?.id) return;
 
     void postSplashStartup.prefetchInitialHome(user.id).catch(error => {
-      console.warn('[Startup] Initial home prefetch failed:', error);
+      console.warn('Initial home prefetch failed:', error);
     });
   }, [user?.id]);
-
-  useEffect(() => {
-    if (!isLoading && animationComplete) {
-      markStartup('protected_shell.visible');
-    }
-  }, [animationComplete, isLoading]);
 
   // Initialize notifications only after the splash has completed and the main
   // navigation is visible, so the permission prompt never appears over splash.

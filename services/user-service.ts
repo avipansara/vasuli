@@ -1,5 +1,4 @@
 import { supabase } from '@/lib/supabase';
-import { measureStartup } from '@/lib/startup-telemetry';
 import type { User } from '@/types/database';
 import { normalizeEmail } from '@/utils/validation';
 
@@ -137,14 +136,11 @@ export const userService = {
 
   async getUserFriends(userId: string): Promise<User[]> {
     // Get friend IDs from friendships table
-    const { data: friendships, error: friendshipsError } = await measureStartup(
-      'friends.home.friendships_query',
-      () => supabase
-        .from('friendships')
-        .select('user_id, friend_id')
-        .eq('status', 'accepted')
-        .or(`user_id.eq.${userId},friend_id.eq.${userId}`),
-    );
+    const { data: friendships, error: friendshipsError } = await supabase
+      .from('friendships')
+      .select('user_id, friend_id')
+      .eq('status', 'accepted')
+      .or(`user_id.eq.${userId},friend_id.eq.${userId}`);
 
     if (friendshipsError) throw friendshipsError;
 
@@ -158,15 +154,11 @@ export const userService = {
     }
 
     // Get user details for all friends
-    const { data, error } = await measureStartup(
-      'friends.home.friend_profiles_query',
-      () => supabase
-        .from('users')
-        .select('*')
-        .in('id', friendIds)
-        .order('name'),
-      { friendIdCount: friendIds.length },
-    );
+    const { data, error } = await supabase
+      .from('users')
+      .select('*')
+      .in('id', friendIds)
+      .order('name');
 
     if (error) throw error;
 

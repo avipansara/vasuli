@@ -1,14 +1,13 @@
 ## 2026-08-16
 
-- Added development-only startup timing logs for runtime, auth/session/profile
-  readiness, splash completion, shell visibility, home prefetch, and Friends/
-  Groups query phases to measure launch bottlenecks.
 - Added the Friends home read-model adapter and a secured Supabase RPC
   migration that returns display-ready summaries without downloading the full
   expense and split history to the device.
 - Corrected an RPC balance-column ambiguity discovered during linked-database
   verification.
 - Restricted the Friends home RPC to authenticated callers explicitly.
+- Added the Groups home read model RPC, replacing the startup balance query
+  waterfall with a single authenticated projection.
 - Prefetched the initial Friends home data while the existing splash screen is
   visible, reusing the shared React Query cache after the splash and
   deduplicating concurrent startup requests.

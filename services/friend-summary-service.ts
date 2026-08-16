@@ -1,6 +1,5 @@
 import { supabase } from '@/lib/supabase';
 import type { Expense, ExpenseSplit, Settlement, User } from '@/types/database';
-import { measureStartup } from '@/lib/startup-telemetry';
 
 export interface FriendSummary extends User {
   balance: number;
@@ -173,9 +172,7 @@ export function buildFriendSummaries(
 
 export const friendSummaryService = {
   async getHomeSummaries(currentUserId: string): Promise<FriendSummary[]> {
-    const { data, error } = await measureStartup('friends.home.rpc', async () =>
-      supabase.rpc('get_friend_home_summaries')
-    );
+    const { data, error } = await supabase.rpc('get_friend_home_summaries');
 
     if (error) throw error;
     return ((data || []) as FriendHomeRow[]).map(mapFriendHomeRow);

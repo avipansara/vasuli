@@ -9,8 +9,6 @@ import { useRefetchOnFocus } from '@/hooks/use-refetch-on-focus';
 import { useRealtime } from '@/hooks/use-realtime';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
-import { markStartup } from '@/lib/startup-telemetry';
-import { calculateGroupBalances } from '@/services/balance-utils';
 import { groupService } from '@/services/group-service';
 import { userService } from '@/services/user-service';
 import { queryKeys } from '@/services/query-keys';
@@ -47,28 +45,7 @@ export default function GroupsScreen() {
     queryKey: groupsQueryKey,
     enabled: !!currentUserId,
     queryFn: async () => {
-      markStartup('groups.home_query.start');
-      const startedAt = Date.now();
-      try {
-        const allGroups = await groupService.getUserGroups(currentUserId);
-        markStartup('groups.home_groups.complete', { durationMs: Date.now() - startedAt, resultCount: allGroups.length });
-        const balancesStartedAt = Date.now();
-        const balancesByGroupId = await calculateGroupBalances(allGroups.map(group => group.id));
-        markStartup('groups.home_balances.complete', { durationMs: Date.now() - balancesStartedAt });
-
-        const result = allGroups.map(group => ({
-          ...group,
-          yourBalance: balancesByGroupId.get(group.id)?.get(currentUserId) || 0,
-        }));
-        markStartup('groups.home_query.complete', { durationMs: Date.now() - startedAt, resultCount: result.length });
-        return result;
-      } catch (error) {
-        markStartup('groups.home_query.error', {
-          durationMs: Date.now() - startedAt,
-          error: error instanceof Error ? error.message : 'unknown',
-        });
-        throw error;
-      }
+      return groupService.getHomeSummaries(currentUserId);
     },
   });
   const loading = isLoading && groups.length === 0;

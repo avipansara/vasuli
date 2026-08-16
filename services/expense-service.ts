@@ -1,5 +1,4 @@
 import { supabase } from '@/lib/supabase';
-import { measureStartup } from '@/lib/startup-telemetry';
 import { linkAuthUserToProfile } from '@/services/auth-profile-service';
 import type { Expense, ExpenseSplit } from '@/types/database';
 
@@ -245,14 +244,10 @@ export const expenseService = {
   async getSplitsForExpenses(expenseIds: string[]): Promise<ExpenseSplit[]> {
     if (expenseIds.length === 0) return [];
 
-    const { data, error } = await measureStartup(
-      'friends.home.expense_splits_query',
-      () => supabase
-        .from('expense_splits')
-        .select('*')
-        .in('expense_id', expenseIds),
-      { expenseIdCount: expenseIds.length },
-    );
+    const { data, error } = await supabase
+      .from('expense_splits')
+      .select('*')
+      .in('expense_id', expenseIds);
 
     if (error) throw error;
 
@@ -268,24 +263,18 @@ export const expenseService = {
 
   async getUserExpenses(userId: string): Promise<Expense[]> {
     // Get expense IDs where user is involved (either paid or split with them)
-    const { data: splitData, error: splitError } = await measureStartup(
-      'friends.home.expense_ids_from_splits_query',
-      () => supabase
-        .from('expense_splits')
-        .select('expense_id')
-        .eq('user_id', userId),
-    );
+    const { data: splitData, error: splitError } = await supabase
+      .from('expense_splits')
+      .select('expense_id')
+      .eq('user_id', userId);
 
     if (splitError) throw splitError;
 
     // Also get expenses paid by the user
-    const { data: paidData, error: paidError } = await measureStartup(
-      'friends.home.expense_ids_from_paid_query',
-      () => supabase
-        .from('expenses')
-        .select('id')
-        .eq('paid_by', userId),
-    );
+    const { data: paidData, error: paidError } = await supabase
+      .from('expenses')
+      .select('id')
+      .eq('paid_by', userId);
 
     if (paidError) throw paidError;
 
@@ -297,15 +286,11 @@ export const expenseService = {
     if (allExpenseIds.length === 0) return [];
 
     // Fetch full expense details
-    const { data, error } = await measureStartup(
-      'friends.home.expenses_query',
-      () => supabase
-        .from('expenses')
-        .select('*')
-        .in('id', allExpenseIds)
-        .order('date', { ascending: false }),
-      { expenseIdCount: allExpenseIds.length },
-    );
+    const { data, error } = await supabase
+      .from('expenses')
+      .select('*')
+      .in('id', allExpenseIds)
+      .order('date', { ascending: false });
 
     if (error) throw error;
 
