@@ -190,39 +190,45 @@ export const notificationService = {
 };
 
 export const createExpenseNotification = (
+  expenseId: string,
   expenseName: string,
   amount: number,
   paidBy: string,
-  groupName?: string
+  groupName?: string,
+  groupId?: string,
 ): PushNotificationData => ({
   type: 'expense_added',
   title: '💸 New Expense Added',
   body: `${paidBy} added "${expenseName}" for $${amount.toFixed(2)}${groupName ? ` in ${groupName}` : ''}`,
-  data: { expenseName, amount, paidBy, groupName },
+  data: { expenseId, expenseName, amount, paidBy, groupName, groupId },
 });
 
 export const createExpenseUpdatedNotification = (
+  expenseId: string,
   expenseName: string,
   amount: number,
   updatedBy: string,
-  groupName?: string
+  groupName?: string,
+  groupId?: string,
 ): PushNotificationData => ({
   type: 'expense_updated',
   title: 'Expense Updated',
   body: `${updatedBy} updated "${expenseName}" to $${amount.toFixed(2)}${groupName ? ` in ${groupName}` : ''}`,
-  data: { expenseName, amount, updatedBy, groupName },
+  data: { expenseId, expenseName, amount, updatedBy, groupName, groupId },
 });
 
 export const createExpenseDeletedNotification = (
+  expenseId: string,
   expenseName: string,
   amount: number,
   deletedBy: string,
-  groupName?: string
+  groupName?: string,
+  groupId?: string,
 ): PushNotificationData => ({
   type: 'expense_deleted',
   title: 'Expense Deleted',
   body: `${deletedBy} deleted "${expenseName}" for $${amount.toFixed(2)}${groupName ? ` in ${groupName}` : ''}`,
-  data: { expenseName, amount, deletedBy, groupName },
+  data: { expenseId, expenseName, amount, deletedBy, groupName, groupId },
 });
 
 export const createGroupNotification = (

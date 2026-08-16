@@ -307,10 +307,12 @@ export default function GroupDetailScreen() {
                   .map((u) => u!.pushToken!);
                 if (pushTokens.length > 0) {
                   const notification = createExpenseDeletedNotification(
+                    expenseToDelete.id,
                     expenseToDelete.description,
                     expenseToDelete.amount,
                     user?.name || 'Someone',
-                    group?.name
+                    group?.name,
+                    id
                   );
                   await notificationService.sendNotificationToUsers(pushTokens, notification);
                 }

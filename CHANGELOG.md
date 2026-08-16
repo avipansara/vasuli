@@ -1,5 +1,8 @@
 ## 2026-08-16
 
+- Fixed push notification taps so they navigate to the related expense, group,
+  friend, or invitations screen, including when the app was closed. Notification
+  payloads now include the destination IDs needed for navigation.
 - Polished the Activity screen hierarchy by removing the redundant Recent label
   and tightening the spacing between search and the activity feed.
 - Reduced the redundant top spacing on the Profile screen while preserving its
