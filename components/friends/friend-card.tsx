@@ -3,7 +3,7 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import type { User } from '@/types/database';
 import { getDisplayName } from '@/utils/validation';
-import React, { memo, useMemo } from 'react';
+import { memo, useMemo } from 'react';
 import { Animated, StyleSheet, TouchableOpacity, View } from 'react-native';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
 
@@ -53,9 +53,15 @@ function FriendCardInner({ friend, onPress, onDelete }: FriendCardProps) {
   const { colors, friends: friendsTheme } = useThemeColors();
   const balance = normalizeDisplayBalance(friend.balance);
   const displayName = getDisplayName(friend.name, friend.email);
+
+  const isLightMode = colors.tint === '#22C55E';
+  const avatarTextColor = isLightMode ? '#064E3B' : colors.tint;
+  const emailColor = isLightMode ? '#8E8E93' : colors.textSecondary;
+  const branchTextColor = isLightMode ? '#4B5563' : colors.textSecondary;
+
   const balanceColor =
     balance > 0
-      ? colors.success
+      ? (isLightMode ? '#064E3B' : colors.success)
       : balance < 0
         ? colors.error
         : colors.tint;
@@ -100,83 +106,95 @@ function FriendCardInner({ friend, onPress, onDelete }: FriendCardProps) {
         style={[styles.card, cardStyle]}
         onPress={() => onPress?.(friend)}
         activeOpacity={0.7}>
-        <View
-          style={[
-            styles.avatar,
-            { backgroundColor: friendsTheme.avatarSurface },
-          ]}>
-          <ThemedText style={[styles.avatarText, { color: colors.tint }]}>
-            {displayName.charAt(0).toUpperCase()}
-          </ThemedText>
-        </View>
-        <View style={styles.info}>
-          <ThemedText
-            type="defaultSemiBold"
-            style={[styles.name, { color: colors.text }]}>
-            {displayName}
-          </ThemedText>
-          {friend.email ? (
-            <ThemedText numberOfLines={1} style={[styles.email, { color: colors.textSecondary }]}>
-              {friend.email}
+        <View style={styles.topSection}>
+          <View
+            style={[
+              styles.avatar,
+              { backgroundColor: friendsTheme.avatarSurface },
+            ]}>
+            <ThemedText style={[styles.avatarText, { color: avatarTextColor }]}>
+              {displayName.charAt(0).toUpperCase()}
             </ThemedText>
-          ) : null}
-          {balance !== 0 ? (
-            <View style={styles.recentExpenses}>
-              {friend.recentExpenses && friend.recentExpenses.length > 0 ? (
-                friend.recentExpenses.map((expense, index) => (
-                  <View key={expense.id} style={styles.expenseBranchItem}>
-                    <View style={styles.branchGraphics}>
-                      <View
-                        style={[
-                          styles.vLine,
-                          {
-                            backgroundColor: friendsTheme.branch,
-                            height: index === (friend.recentExpenses?.length ?? 0) - 1 ? '50%' : '100%'
-                          }
-                        ]}
-                      />
-                      <View style={[styles.hLine, { backgroundColor: friendsTheme.branch }]} />
-                    </View>
-                    <ThemedText
-                      numberOfLines={1}
-                      style={[styles.expenseDescription, { color: colors.textSecondary }]}>
-                      {expense.description}
-                    </ThemedText>
-                  </View>
-                ))
-              ) : (
-                <View style={styles.expenseBranchItem}>
-                  <View style={styles.branchGraphics}>
-                    <View style={[styles.vLine, { backgroundColor: friendsTheme.branch, height: '50%' }]} />
-                    <View style={[styles.hLine, { backgroundColor: friendsTheme.branch }]} />
-                  </View>
-                  <ThemedText style={[styles.noExpenses, { color: colors.textSecondary }]}>
-                    No pending expenses
+          </View>
+
+          <View style={styles.headerInfoContainer}>
+            <View style={styles.mainInfo}>
+              <ThemedText
+                type="defaultSemiBold"
+                style={[styles.name, { color: colors.text }]}>
+                {displayName}
+              </ThemedText>
+              {friend.email ? (
+                <ThemedText numberOfLines={1} style={[styles.email, { color: emailColor }]}>
+                  {friend.email}
+                </ThemedText>
+              ) : null}
+            </View>
+
+            <View style={styles.balanceContainer}>
+              {balance !== 0 ? (
+                <>
+                  <ThemedText type='title' style={[styles.balanceAmount, { color: balanceColor }]}>
+                    ${Math.abs(balance).toFixed(2)}
                   </ThemedText>
-                </View>
+                  <ThemedText style={[styles.balanceLabel, { color: colors.textSecondary }]}>
+                    {balance > 0 ? 'owes you' : 'you owe'}
+                  </ThemedText>
+                </>
+              ) : (
+                <ThemedText style={[styles.settledText, { color: colors.tint }]}>
+                  settled up ✓
+                </ThemedText>
               )}
             </View>
-          ) : (
-            <ThemedText style={[styles.settledNote, { color: colors.textSecondary }]}>
-              All settled up
-            </ThemedText>
-          )}
+          </View>
         </View>
-        <View style={styles.balanceContainer}>
-          {balance !== 0 ? (
-            <>
-              <ThemedText style={[styles.balanceAmount, { color: balanceColor }]}>
-                ${Math.abs(balance).toFixed(2)}
+
+        <View style={styles.bottomSection}>
+          <View style={styles.branchSpacer} />
+          <View style={styles.branchContainer}>
+            {balance !== 0 ? (
+              <View style={styles.recentExpenses}>
+                {friend.recentExpenses && friend.recentExpenses.length > 0 ? (
+                  friend.recentExpenses.map((expense, index) => (
+                    <View key={expense.id} style={styles.expenseBranchItem}>
+                      <View style={styles.branchGraphics}>
+                        <View
+                          style={[
+                            styles.vLine,
+                            {
+                              backgroundColor: friendsTheme.branch,
+                              height: index === (friend.recentExpenses?.length ?? 0) - 1 ? '50%' : '100%'
+                            }
+                          ]}
+                        />
+                        <View style={[styles.hLine, { backgroundColor: friendsTheme.branch }]} />
+                      </View>
+                      <ThemedText
+                        numberOfLines={1}
+                        style={[styles.expenseDescription, { color: branchTextColor }]}>
+                        {expense.description}
+                      </ThemedText>
+                    </View>
+                  ))
+                ) : (
+                  <View style={styles.expenseBranchItem}>
+                    <View style={styles.branchGraphics}>
+                      <View style={[styles.vLine, { backgroundColor: friendsTheme.branch, height: '50%' }]} />
+                      <View style={[styles.hLine, { backgroundColor: friendsTheme.branch }]} />
+                    </View>
+                    <ThemedText style={[styles.noExpenses, { color: colors.textSecondary }]}>
+                      No pending expenses
+                    </ThemedText>
+                  </View>
+                )}
+              </View>
+            ) : (
+              <ThemedText style={[styles.settledNote, { color: colors.textSecondary }]}>
+                All settled up
               </ThemedText>
-              <ThemedText style={[styles.balanceLabel, { color: colors.textSecondary }]}>
-                {balance > 0 ? 'owes you' : 'you owe'}
-              </ThemedText>
-            </>
-          ) : (
-            <ThemedText style={[styles.settledText, { color: colors.tint }]}>
-              settled up ✓
-            </ThemedText>
-          )}
+            )}
+          </View>
         </View>
       </TouchableOpacity>
     </Swipeable>
@@ -187,18 +205,21 @@ export const FriendCard = memo(FriendCardInner, areFriendCardPropsEqual);
 
 const styles = StyleSheet.create({
   card: {
+    flexDirection: 'column',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    marginBottom: 12,
+    borderRadius: 16,
+    // borderWidth: 1,
+  },
+  topSection: {
     flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    marginBottom: 8,
-    borderRadius: 12,
-    borderWidth: 1,
+    alignItems: 'flex-start',
   },
   avatar: {
-    width: 42,
-    height: 42,
-    borderRadius: 11,
+    width: 44,
+    height: 44,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -208,16 +229,34 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     lineHeight: 22,
   },
-  info: {
+  headerInfoContainer: {
     flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  mainInfo: {
+    flex: 1,
+    marginRight: 8,
   },
   name: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 17,
+    fontWeight: '700',
+    lineHeight: 22,
   },
   email: {
     fontSize: 13,
-    marginTop: 3,
+    marginTop: 2,
+  },
+  bottomSection: {
+    flexDirection: 'row',
+    marginTop: 6,
+  },
+  branchSpacer: {
+    width: 56, // avatar width (44) + avatar marginRight (12)
+  },
+  branchContainer: {
+    flex: 1,
   },
   settledNote: {
     fontSize: 12,
@@ -252,6 +291,7 @@ const styles = StyleSheet.create({
   },
   expenseDescription: {
     fontSize: 12,
+    fontWeight: '500',
     lineHeight: 16,
     flex: 1,
   },
@@ -263,8 +303,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   balanceAmount: {
-    fontSize: 17,
-    fontWeight: '700',
+    fontSize: 18,
   },
   balanceLabel: {
     fontSize: 12,
@@ -281,9 +320,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'flex-end',
     paddingRight: 16,
-    marginBottom: 8,
-    borderTopRightRadius: 12,
-    borderBottomRightRadius: 12,
+    marginBottom: 10,
+    borderTopRightRadius: 16,
+    borderBottomRightRadius: 16,
   },
   swipeActionButton: {
     justifyContent: 'center',

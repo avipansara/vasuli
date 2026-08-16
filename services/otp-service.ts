@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabase';
-import { linkAuthUserToProfile } from '@/services/auth-profile-service';
 import { ensureAppReviewDemoData } from '@/services/app-review-demo-service';
+import { linkAuthUserToProfile } from '@/services/auth-profile-service';
 import { normalizeEmail } from '@/utils/validation';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 

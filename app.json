@@ -88,7 +88,8 @@
       "expo-sqlite",
       "expo-web-browser",
       "expo-image",
-      "expo-status-bar"
+      "expo-status-bar",
+      "@react-native-community/datetimepicker"
     ],
     "experiments": {
       "typedRoutes": true,
