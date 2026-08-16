@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { applySettlementsToGroupDetailData, buildFriendshipStatus, buildGroupDetailData, calculateGroupBalances } from '@/services/group-detail-service';
-import { isGroupSettled } from '@/services/group-balance';
+import { buildFriendshipStatus, buildGroupDetailReadModel, applySettlementToGroupReadModel } from '@/services/group-detail-read-model';
+import { calculateGroupBalances, isGroupSettled } from '@/services/group-balance';
 import type { Expense, ExpenseSplit, Group, GroupMember, Settlement, User } from '@/types/database';
 import type { Friendship } from '@/services/friendship-service';
 
@@ -135,7 +135,7 @@ describe('group detail builders', () => {
       user('friend-b', 'Ben'),
       user('available', 'Casey'),
     ];
-    const detail = buildGroupDetailData({
+    const detail = buildGroupDetailReadModel({
       currentUserId,
       group,
       expenses: [expense('meal', 'friend-a', 60)],
@@ -161,7 +161,7 @@ describe('group detail builders', () => {
   });
 
   it('applies new settlement rows to cached group detail balances', () => {
-    const detail = buildGroupDetailData({
+    const detail = buildGroupDetailReadModel({
       currentUserId,
       group,
       expenses: [expense('meal', currentUserId, 60)],
@@ -176,9 +176,7 @@ describe('group detail builders', () => {
       settlements: [],
     });
 
-    const updated = applySettlementsToGroupDetailData(detail, [
-      settlement('settle-a', 'friend-a', currentUserId, 30),
-    ]);
+    const updated = applySettlementToGroupReadModel(detail, settlement('settle-a', 'friend-a', currentUserId, 30));
 
     expect(updated.settlements).toHaveLength(1);
     expect(updated.balances.get(currentUserId)).toBe(0);

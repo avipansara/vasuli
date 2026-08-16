@@ -1,5 +1,8 @@
 ## 2026-08-16
 
+- Centralized optimistic query-cache capture, restore, and invalidation for expense workflows, and made group-detail data fetching injectable for independent substitution.
+- Restored the group-not-found error state, centralized React Query cache adapter wiring, and moved expense-deletion balance projection into the group read-model service.
+- Deepened group detail into an indexed read model with nested, relationship-resolved expense splits and centralized optimistic expense/settlement transitions.
 - Deepened expense intake into a tested workflow module that centralizes
   optimistic updates, rollback, persistence, and best-effort follow-up effects
   for both group and friend expenses.

@@ -1,4 +1,4 @@
-import type { GroupDetailData, GroupExpenseWithUser } from './group-detail-service';
+import type { GroupDetailReadModel, GroupExpenseView } from './group-detail-read-model';
 
 const CSV_BOM = '\uFEFF';
 const CSV_MIME_TYPE = 'text/csv';
@@ -53,49 +53,38 @@ function safeFileNamePart(value: string): string {
 }
 
 function buildSplitDetails(
-  expense: GroupExpenseWithUser,
-  detail: Pick<GroupDetailData, 'members' | 'splits'>,
+  expense: GroupExpenseView,
 ): string {
-  const namesById = new Map(
-    detail.members.map(member => [member.userId, member.user?.name || 'Unknown'])
-  );
-
-  return detail.splits
-    .filter(split => split.expenseId === expense.id)
-    .map(split => `${namesById.get(split.userId) || 'Unknown'}: ${formatAmount(split.amount)} ${expense.currency}`)
+  return expense.splits
+    .map(split => `${split.user?.name || 'Unknown'}: ${formatAmount(split.amount)} ${expense.currency}`)
     .join('; ');
 }
 
 function buildExpenseRow(
-  expense: GroupExpenseWithUser,
-  detail: Pick<GroupDetailData, 'members' | 'splits'>,
+  expense: GroupExpenseView,
 ): string[] {
-  const namesById = new Map(
-    detail.members.map(member => [member.userId, member.user?.name || 'Unknown'])
-  );
-
   return [
     expense.id,
     formatDate(expense.date),
     expense.description,
     formatAmount(expense.amount),
     expense.currency,
-    expense.paidByUser?.name || namesById.get(expense.paidBy) || 'Unknown',
+    expense.paidByUser?.name || 'Unknown',
     expense.category || '',
     expense.notes || '',
     formatDate(expense.createdAt),
     formatDate(expense.updatedAt),
-    buildSplitDetails(expense, detail),
+    buildSplitDetails(expense),
   ];
 }
 
 export function createGroupExpenseCsv(
-  detail: Pick<GroupDetailData, 'group' | 'expenses' | 'members' | 'splits'>,
+  detail: Pick<GroupDetailReadModel, 'group' | 'expenses'>,
   exportDate = new Date(),
 ): GroupExpenseCsvFile {
   const rows = [
     CSV_HEADERS as readonly string[],
-    ...detail.expenses.map(expense => buildExpenseRow(expense, detail)),
+    ...detail.expenses.map(expense => buildExpenseRow(expense)),
   ];
   const content = `${CSV_BOM}${rows.map(row => row.map(escapeCsvField).join(',')).join('\r\n')}\r\n`;
   const date = formatDate(exportDate.getTime());
@@ -152,7 +141,7 @@ async function shareCsvOnNative(file: GroupExpenseCsvFile): Promise<void> {
 }
 
 export async function exportGroupExpensesCsv(
-  detail: Pick<GroupDetailData, 'group' | 'expenses' | 'members' | 'splits'>,
+  detail: Pick<GroupDetailReadModel, 'group' | 'expenses'>,
   exportDate = new Date(),
 ): Promise<void> {
   const file = createGroupExpenseCsv(detail, exportDate);

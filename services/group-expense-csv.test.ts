@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import type { GroupDetailData } from './group-detail-service';
+import type { GroupDetailReadModel } from './group-detail-read-model';
 import { createGroupExpenseCsv } from './group-expense-csv';
 
-function detail(overrides: Partial<GroupDetailData> = {}): GroupDetailData {
+function detail(overrides: Partial<GroupDetailReadModel> = {}): GroupDetailReadModel {
   return {
     group: { id: 'group-1', name: 'Trip / Miami', createdAt: 0, updatedAt: 0 },
     expenses: [],
@@ -13,7 +13,6 @@ function detail(overrides: Partial<GroupDetailData> = {}): GroupDetailData {
     balances: new Map(),
     availableUsers: [],
     friendshipStatus: new Map(),
-    splits: [],
     settlements: [],
     ...overrides,
   };
@@ -34,11 +33,12 @@ describe('createGroupExpenseCsv', () => {
         date: Date.UTC(2026, 7, 15),
         createdAt: Date.UTC(2026, 7, 15),
         updatedAt: Date.UTC(2026, 7, 16),
+        paidByUser: { id: 'user-a', name: 'Alex', isActive: true, createdAt: 0 },
+        splits: [
+          { id: 'split-a', expenseId: 'expense-1', userId: 'user-a', amount: 30, splitType: 'equal', user: { id: 'user-a', name: 'Alex', isActive: true, createdAt: 0 } },
+          { id: 'split-b', expenseId: 'expense-1', userId: 'user-b', amount: 30, splitType: 'equal', user: { id: 'user-b', name: 'Blair', isActive: true, createdAt: 0 } },
+        ],
       }],
-      splits: [
-        { id: 'split-a', expenseId: 'expense-1', userId: 'user-a', amount: 30, splitType: 'equal' },
-        { id: 'split-b', expenseId: 'expense-1', userId: 'user-b', amount: 30, splitType: 'equal' },
-      ],
     }), new Date(Date.UTC(2026, 7, 15)));
 
     expect(result.fileName).toBe('Trip - Miami-expenses-2026-08-15.csv');
@@ -57,8 +57,8 @@ describe('createGroupExpenseCsv', () => {
         date: Date.UTC(2026, 0, 2),
         createdAt: Date.UTC(2026, 0, 2),
         updatedAt: Date.UTC(2026, 0, 2),
+        splits: [{ id: 'split-c', expenseId: 'expense-2', userId: 'user-missing', amount: 12.5, splitType: 'exact' }],
       }],
-      splits: [{ id: 'split-c', expenseId: 'expense-2', userId: 'user-missing', amount: 12.5, splitType: 'exact' }],
     }));
 
     expect(result.content).toContain('expense-2,2026-01-02,Taxi,12.50,EUR,Unknown,,,2026-01-02,2026-01-02,Unknown: 12.50 EUR');

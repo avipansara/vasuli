@@ -1,12 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { Expense } from '@/types/database';
 import { submitExpense } from './expense-intake';
+import { createQueryCacheAdapter } from './query-cache-adapter';
 
 function createCache() {
   const values = new Map<string, unknown>();
   const events: string[] = [];
 
-  return {
+  const baseCache = {
     events,
     get<T>(key: string): T | undefined {
       return values.get(key) as T | undefined;
@@ -26,6 +27,8 @@ function createCache() {
       values.set(key, value);
     },
   };
+
+  return Object.assign(createQueryCacheAdapter(baseCache), { events, seed: baseCache.seed });
 }
 
 const group = { id: 'group-1', name: 'Trip', createdAt: 0, updatedAt: 0 };
@@ -86,7 +89,15 @@ describe('submitExpense', () => {
 
   it('rolls back optimistic state when persistence fails without navigating again', async () => {
     const cache = createCache();
-    const original = { expenses: [], splits: [], settlements: [], balances: new Map() };
+    const original = {
+      group,
+      expenses: [],
+      members: [{ id: 'member-a', groupId: group.id, userId: user.id, role: 'admin', joinedAt: 0, user }],
+      settlements: [],
+      balances: new Map(),
+      availableUsers: [],
+      friendshipStatus: new Map(),
+    };
     cache.seed('group-detail', original);
     const navigateBack = vi.fn();
     const persistenceError = new Error('write failed');

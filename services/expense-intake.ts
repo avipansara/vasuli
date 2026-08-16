@@ -1,6 +1,6 @@
 import type { FriendDetailData } from './friend-detail-service';
-import type { GroupDetailData } from './group-detail-service';
-import { calculateGroupBalances } from './group-balance';
+import { addExpenseToGroupReadModel, type GroupDetailReadModel } from './group-detail-read-model';
+import type { QueryCacheAdapter, QueryCacheKey } from './query-cache-adapter';
 import type { Expense, User } from '@/types/database';
 
 export type ExpenseSplitInput = {
@@ -9,14 +9,9 @@ export type ExpenseSplitInput = {
   splitType: 'equal' | 'exact' | 'percentage';
 };
 
-export type ExpenseIntakeCacheKey = string | readonly unknown[];
+export type ExpenseIntakeCacheKey = QueryCacheKey;
 
-export type ExpenseIntakeCache = {
-  get<T>(key: ExpenseIntakeCacheKey): T | undefined;
-  set<T>(key: ExpenseIntakeCacheKey, updater: T | ((current: T | undefined) => T)): void;
-  cancel(key: ExpenseIntakeCacheKey): Promise<void>;
-  invalidate(key: ExpenseIntakeCacheKey): Promise<void>;
-};
+export type ExpenseIntakeCache = QueryCacheAdapter;
 
 type ExpenseTarget =
   | { kind: 'group'; groupId: string; memberIds: string[] }
@@ -92,28 +87,13 @@ function updateHomeFriends(
 }
 
 function updateGroupDetail(
-  current: GroupDetailData | null | undefined,
+  current: GroupDetailReadModel | null | undefined,
   expense: Expense,
   splits: ExpenseSplitInput[],
-  currentUser: User,
-): GroupDetailData | null {
+): GroupDetailReadModel | null {
   if (!current) return null;
 
-  const nextExpenses = [
-    { ...expense, paidByUser: currentUser },
-    ...current.expenses.filter(item => item.id !== expense.id),
-  ];
-  const nextSplits = [
-    ...buildCachedSplits(expense.id, splits),
-    ...current.splits.filter(split => split.expenseId !== expense.id),
-  ];
-
-  return {
-    ...current,
-    expenses: nextExpenses,
-    splits: nextSplits,
-    balances: calculateGroupBalances(nextExpenses, nextSplits, current.settlements),
-  };
+  return addExpenseToGroupReadModel(current, expense, buildCachedSplits(expense.id, splits));
 }
 
 function updateFriendDetail(
@@ -165,12 +145,11 @@ export async function submitExpense(input: SubmitExpenseInput): Promise<void> {
   };
 
   const keys = [input.keys.home, ...(input.keys.groupDetail ? [input.keys.groupDetail] : []), ...(input.keys.friendDetails ?? [])];
-  await Promise.all(keys.map(key => input.cache.cancel(key)));
-  const previous = new Map<ExpenseIntakeCacheKey, unknown>(keys.map(key => [key, input.cache.get(key)]));
+  const previous = await input.cache.capture(keys);
 
   input.cache.set<HomeFriend[]>(input.keys.home, current => updateHomeFriends(current, optimisticExpense, input.splits, input.currentUserId) ?? []);
   if (input.target.kind === 'group' && input.keys.groupDetail) {
-    input.cache.set<GroupDetailData | null>(input.keys.groupDetail, current => updateGroupDetail(current, optimisticExpense, input.splits, input.currentUser) ?? null);
+    input.cache.set<GroupDetailReadModel | null>(input.keys.groupDetail, current => updateGroupDetail(current, optimisticExpense, input.splits) ?? null);
   }
   if (input.target.kind === 'friends') {
     input.keys.friendDetails?.forEach((key, index) => {
@@ -191,14 +170,9 @@ export async function submitExpense(input: SubmitExpenseInput): Promise<void> {
     }, input.splits);
 
     if (input.target.kind === 'group' && input.keys.groupDetail) {
-      input.cache.set<GroupDetailData | null>(input.keys.groupDetail, current => current ? {
-        ...current,
-        expenses: current.expenses.map(item => item.id === optimisticExpense.id ? { ...item, ...expense } : item),
-        splits: [
-          ...buildCachedSplits(expense.id, input.splits),
-          ...current.splits.filter(split => split.expenseId !== optimisticExpense.id && split.expenseId !== expense.id),
-        ],
-      } : null);
+      input.cache.set<GroupDetailReadModel | null>(input.keys.groupDetail, current => current
+        ? addExpenseToGroupReadModel(current, expense, buildCachedSplits(expense.id, input.splits))
+        : null);
     }
     input.cache.set<HomeFriend[]>(input.keys.home, current => current?.map(friend => ({
       ...friend,
@@ -231,8 +205,8 @@ export async function submitExpense(input: SubmitExpenseInput): Promise<void> {
       input.cache.invalidate(input.keys.activity),
     ]);
   } catch (error) {
-    previous.forEach((value, key) => input.cache.set(key, value));
-    await Promise.allSettled(keys.map(key => input.cache.invalidate(key)));
+    await input.cache.restore(previous);
+    await Promise.allSettled([input.cache.invalidateSnapshot(previous)]);
     throw error;
   }
 }

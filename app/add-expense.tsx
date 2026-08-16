@@ -9,6 +9,7 @@ import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { activityService } from '@/services/activity-service';
 import { expenseService } from '@/services/expense-service';
 import { submitExpense } from '@/services/expense-intake';
+import { createReactQueryCacheAdapter } from '@/services/query-cache-adapter';
 import { groupService } from '@/services/group-service';
 import { createExpenseNotification, notificationService } from '@/services/notification-service';
 import { userService } from '@/services/user-service';
@@ -273,12 +274,7 @@ export default function AddExpenseScreen() {
         currentUser: user!,
         splits,
         group,
-        cache: {
-          get: key => queryClient.getQueryData(key as readonly unknown[]),
-          set: (key, updater) => queryClient.setQueryData(key as readonly unknown[], updater),
-          cancel: key => queryClient.cancelQueries({ queryKey: key as readonly unknown[] }),
-          invalidate: key => queryClient.invalidateQueries({ queryKey: key as readonly unknown[] }),
-        },
+        cache: createReactQueryCacheAdapter(queryClient),
         keys,
         save: (expense, expenseSplits) => expenseService.create(expense, expenseSplits),
         navigateBack: () => router.back(),

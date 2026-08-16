@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import type { GroupDetailData } from './group-detail-service';
+import type { GroupDetailReadModel } from './group-detail-read-model';
 import { calculateGroupStats } from './group-stats';
 
-function detail(overrides: Partial<GroupDetailData> = {}): GroupDetailData {
+function detail(overrides: Partial<GroupDetailReadModel> = {}): GroupDetailReadModel {
   return {
     group: { id: 'group-1', name: 'Trip', createdAt: 0, updatedAt: 0 },
     expenses: [],
@@ -13,7 +13,6 @@ function detail(overrides: Partial<GroupDetailData> = {}): GroupDetailData {
     balances: new Map([['user-a', 30], ['user-b', -30]]),
     availableUsers: [],
     friendshipStatus: new Map(),
-    splits: [],
     settlements: [],
     ...overrides,
   };
@@ -23,8 +22,8 @@ describe('calculateGroupStats', () => {
   it('summarizes spending, payers, balances, and settlement progress', () => {
     const stats = calculateGroupStats(detail({
       expenses: [
-        { id: 'expense-1', groupId: 'group-1', description: 'Dinner', amount: 60, currency: 'USD', paidBy: 'user-a', date: 0, createdAt: 0, updatedAt: 0 },
-        { id: 'expense-2', groupId: 'group-1', description: 'Coffee', amount: 20, currency: 'USD', paidBy: 'user-b', date: 0, createdAt: 0, updatedAt: 0 },
+        { id: 'expense-1', groupId: 'group-1', description: 'Dinner', amount: 60, currency: 'USD', paidBy: 'user-a', date: 0, createdAt: 0, updatedAt: 0, splits: [] },
+        { id: 'expense-2', groupId: 'group-1', description: 'Coffee', amount: 20, currency: 'USD', paidBy: 'user-b', date: 0, createdAt: 0, updatedAt: 0, splits: [] },
       ],
     }));
 

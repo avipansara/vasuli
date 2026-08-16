@@ -13,7 +13,8 @@ import { expenseService } from '@/services/expense-service';
 import { friendDetailService } from '@/services/friend-detail-service';
 import { settlementService } from '@/services/settlement-service';
 import type { FriendActivityItem, FriendDetailData } from '@/services/friend-detail-service';
-import { applySettlementsToGroupDetailData, type GroupDetailData } from '@/services/group-detail-service';
+import { applySettlementToGroupReadModel } from '@/services/group-detail-read-model';
+import type { GroupDetailReadModel } from '@/services/group-detail-read-model';
 import { friendshipService } from '@/services/friendship-service';
 import { createExpenseDeletedNotification, notificationService } from '@/services/notification-service';
 import { queryKeys } from '@/services/query-keys';
@@ -293,9 +294,12 @@ export default function FriendDetailScreen() {
       const settledGroupIds = [...new Set(settlements.flatMap(settlement => settlement.groupId ? [settlement.groupId] : []))];
       for (const groupId of settledGroupIds) {
         const groupSettlements = settlements.filter(settlement => settlement.groupId === groupId);
-        queryClient.setQueryData<GroupDetailData | null>(
+        queryClient.setQueryData<GroupDetailReadModel | null>(
           queryKeys.groups.detail(currentUserId, groupId),
-          current => current ? applySettlementsToGroupDetailData(current, groupSettlements) : current
+          current => groupSettlements.reduce(
+            (model, settlement) => model ? applySettlementToGroupReadModel(model, settlement) : model,
+            current,
+          )
         );
       }
 
