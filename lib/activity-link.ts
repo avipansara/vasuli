@@ -3,7 +3,7 @@ import { ActivityType, type Activity } from '@/types/database';
 export type ActivityHref =
   | `/expense-detail/${string}`
   | `/group/${string}`
-  | `/friend/${string}`;
+  | `/friends/${string}`;
 
 const expenseDetailTypes = new Set<ActivityType>([
   ActivityType.EXPENSE_CREATED,
@@ -58,7 +58,7 @@ export function getActivityHref(
     }
 
     if (currentUserId && activity.userId !== currentUserId) {
-      return `/friend/${activity.userId}`;
+      return `/friends/${activity.userId}`;
     }
   }
 

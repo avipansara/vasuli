@@ -48,7 +48,7 @@ export default function ScanQRScreen() {
                 text: 'Add Friend',
                 onPress: () => {
                   router.back();
-                  router.push(`/friend/${friendId}` as any);
+                  router.push(`/friends/${friendId}` as any);
                 },
               },
             ]

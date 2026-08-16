@@ -39,7 +39,7 @@ export default function TabLayout() {
             selected: { color: colors.tint },
           }}
         >
-          <NativeTabs.Trigger name="index" contentStyle={{ backgroundColor: colors.background }}>
+          <NativeTabs.Trigger name="friends" contentStyle={{ backgroundColor: colors.background }}>
             {process.env.EXPO_OS === 'ios' ? (
               <NativeTabs.Trigger.Icon sf={iosPair('person.2', 'person.2.fill')} />
             ) : (

@@ -85,7 +85,7 @@ export default function TabLayoutWeb() {
           }}
         >
           <Tabs.Screen
-            name="index"
+            name="friends"
             options={{
               title: 'Friends',
               tabBarIcon: ({ color }) => <IconSymbol size={28} name="person.2.fill" color={color} />,
@@ -112,6 +112,18 @@ export default function TabLayoutWeb() {
               tabBarIcon: ({ color }) => (
                 <IconSymbol size={28} name="person.circle.fill" color={color} />
               ),
+            }}
+          />
+          <Tabs.Screen
+            name="friends/[id]"
+            options={{
+              href: null,
+            }}
+          />
+          <Tabs.Screen
+            name="index"
+            options={{
+              href: null,
             }}
           />
         </Tabs>

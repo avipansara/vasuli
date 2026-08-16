@@ -24,7 +24,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Animated, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
-import { ScrollView } from 'react-native-gesture-handler';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Reanimated, {
   Easing as ReanimatedEasing,
   FadeInDown,
@@ -58,7 +58,7 @@ const ACTIVITY_FILTERS: { id: ActivityFilter; label: string; icon: IconSymbolNam
 
 export default function FriendDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { gradients, colors, friendDetail: friendDetailTheme } = useThemeColors();
+  const { gradients, colors, friendDetail: friendDetailTheme, isDark } = useThemeColors();
   const [friend, setFriend] = useState<UserWithBalance | null>(null);
   const [expenses, setExpenses] = useState<ExpenseWithSplit[]>([]);
   const [activity, setActivity] = useState<FriendActivityItem[]>([]);
@@ -77,6 +77,37 @@ export default function FriendDetailScreen() {
   const swipeableRefs = useRef<Map<string, Swipeable>>(new Map());
 
   // Animations
+  const insets = useSafeAreaInsets();
+  const scrollY = useRef(new Animated.Value(0)).current;
+
+  // Collapsible summary card and header animation interpolations
+  const summaryOpacity = scrollY.interpolate({
+    inputRange: [0, 80],
+    outputRange: [1, 0],
+    extrapolate: 'clamp',
+  });
+  const summaryScale = scrollY.interpolate({
+    inputRange: [0, 80],
+    outputRange: [1, 0.95],
+    extrapolate: 'clamp',
+  });
+  const summaryTranslateY = scrollY.interpolate({
+    inputRange: [0, 80],
+    outputRange: [0, -10],
+    extrapolate: 'clamp',
+  });
+
+  const headerTitleOpacity = scrollY.interpolate({
+    inputRange: [40, 80],
+    outputRange: [0, 1],
+    extrapolate: 'clamp',
+  });
+  const headerTitleTranslateY = scrollY.interpolate({
+    inputRange: [40, 80],
+    outputRange: [10, 0],
+    extrapolate: 'clamp',
+  });
+
   const [fadeAnim] = useState(() => new Animated.Value(0));
   const [slideAnim] = useState(() => new Animated.Value(30));
   const [scaleAnim] = useState(() => new Animated.Value(0.98));
@@ -94,6 +125,39 @@ export default function FriendDetailScreen() {
     opacity: feedOpacity.value,
     transform: [{ translateY: feedTranslateY.value }],
   }));
+
+  const filteredActivity = activityFilter === 'expenses'
+    ? activity.filter(item => item.type === 'expense')
+    : activityFilter === 'updates'
+      ? activity.filter(item => item.type !== 'expense')
+      : activity;
+  const expenseActivityCount = filteredActivity.filter(item => item.type === 'expense').length;
+  const updateActivityCount = filteredActivity.length - expenseActivityCount;
+  const activityCountLabel = activityFilter === 'expenses'
+    ? `${expenseActivityCount} ${expenseActivityCount === 1 ? 'expense' : 'expenses'}`
+    : activityFilter === 'updates'
+      ? `${updateActivityCount} ${updateActivityCount === 1 ? 'update' : 'updates'}`
+      : `${filteredActivity.length} items`;
+
+  const groupedActivity = useMemo(() => {
+    const groups: { monthYear: string; monthKey: string; items: FriendActivityItem[] }[] = [];
+    const sorted = [...filteredActivity].sort((a, b) => b.date - a.date);
+
+    for (const item of sorted) {
+      const dateObj = new Date(item.date);
+      const monthYear = dateObj.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+      const monthKey = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}`;
+
+      let group = groups.find(g => g.monthKey === monthKey);
+      if (!group) {
+        group = { monthYear, monthKey, items: [] };
+        groups.push(group);
+      }
+      group.items.push(item);
+    }
+
+    return groups.sort((a, b) => b.monthKey.localeCompare(a.monthKey));
+  }, [filteredActivity]);
 
   const {
     data: friendDetail,
@@ -565,18 +629,7 @@ export default function FriendDetailScreen() {
       ? `You owe ${friend.name.split(' ')[0]}`
       : 'All settled up';
   const balanceAccessibilityValue = `${balanceCopy}, $${Math.abs(balance).toFixed(2)}`;
-  const filteredActivity = activityFilter === 'expenses'
-    ? activity.filter(item => item.type === 'expense')
-    : activityFilter === 'updates'
-      ? activity.filter(item => item.type !== 'expense')
-      : activity;
-  const expenseActivityCount = filteredActivity.filter(item => item.type === 'expense').length;
-  const updateActivityCount = filteredActivity.length - expenseActivityCount;
-  const activityCountLabel = activityFilter === 'expenses'
-    ? `${expenseActivityCount} ${expenseActivityCount === 1 ? 'expense' : 'expenses'}`
-    : activityFilter === 'updates'
-      ? `${updateActivityCount} ${updateActivityCount === 1 ? 'update' : 'updates'}`
-      : `${filteredActivity.length} items`;
+
 
   const renderSettlementActivity = (item: Extract<FriendActivityItem, { type: 'settlement' }>, index: number) => {
     const youPaid = item.direction === 'you_paid_friend';
@@ -842,18 +895,6 @@ export default function FriendDetailScreen() {
   return (
     <View style={styles.container}>
       <LinearGradient colors={gradients.screenBackground} style={StyleSheet.absoluteFill} />
-
-      <View
-        pointerEvents="none"
-        accessible={false}
-        accessibilityElementsHidden
-        importantForAccessibility="no-hide-descendants"
-        style={styles.ambientLayer}>
-        <View style={[styles.ambientShape, styles.ambientTop, { backgroundColor: friendDetailTheme.backgroundAccentTop }]} />
-        <View style={[styles.ambientShape, styles.ambientMiddle, { backgroundColor: friendDetailTheme.backgroundAccentMiddle }]} />
-        <View style={[styles.ambientShape, styles.ambientBottom, { backgroundColor: friendDetailTheme.backgroundAccentBottom }]} />
-      </View>
-
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity
@@ -868,6 +909,19 @@ export default function FriendDetailScreen() {
           }]}>
           <IconSymbol size={20} name="chevron.left" color={friendDetailTheme.actionIcon} />
         </TouchableOpacity>
+
+        {/* Floating Header Title (Friend Name) */}
+        <View style={styles.headerTitleContainer} pointerEvents="none">
+          <Animated.View style={{
+            opacity: headerTitleOpacity,
+            transform: [{ translateY: headerTitleTranslateY }],
+          }}>
+            <ThemedText style={[styles.headerTitle, { color: colors.text }]} numberOfLines={1}>
+              {friend?.name}
+            </ThemedText>
+          </Animated.View>
+        </View>
+
         <View style={styles.headerActions}>
           <TouchableOpacity
             onPress={handleRemind}
@@ -902,10 +956,15 @@ export default function FriendDetailScreen() {
         </View>
       </View>
 
-      <ScrollView
+      <Animated.ScrollView
         style={styles.content}
         contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}>
+        showsVerticalScrollIndicator={false}
+        scrollEventThrottle={16}
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+          { useNativeDriver: true }
+        )}>
 
         <Animated.View style={[
           styles.summarySection,
@@ -914,45 +973,53 @@ export default function FriendDetailScreen() {
             transform: [{ translateY: slideAnim }, { scale: scaleAnim }],
           }
         ]}>
-          <View
-            accessible
-            accessibilityRole="summary"
-            accessibilityLabel={`${friend.name}${friend.email ? `, ${friend.email}` : ''}, ${balanceAccessibilityValue}`}
-            accessibilityLiveRegion="polite"
-            style={[styles.summaryCard, {
-              backgroundColor: balanceSurface,
-              borderColor: friendDetailTheme.surfaceBorder,
-            }]}>
-            <View style={styles.summaryTopRow}>
-              <View style={[styles.summaryAvatar, {
-                backgroundColor: friendDetailTheme.avatarSurface,
-                borderColor: friendDetailTheme.avatarBorder,
+          <Animated.View style={{
+            opacity: summaryOpacity,
+            transform: [
+              { translateY: summaryTranslateY },
+              { scale: summaryScale }
+            ]
+          }}>
+            <View
+              accessible
+              accessibilityRole="summary"
+              accessibilityLabel={`${friend.name}${friend.email ? `, ${friend.email}` : ''}, ${balanceAccessibilityValue}`}
+              accessibilityLiveRegion="polite"
+              style={[styles.summaryCard, {
+                backgroundColor: isDark ? friendDetailTheme.surface : '#F3F7F5',
+                borderWidth: 0,
               }]}>
-                <ThemedText style={[styles.summaryAvatarText, { color: friendDetailTheme.actionIcon }]}>
-                  {friend.name.charAt(0).toUpperCase()}
-                </ThemedText>
-              </View>
-              <View style={styles.summaryIdentity}>
-                <ThemedText type="title" numberOfLines={1} style={[styles.summaryName, { color: colors.text }]}>
-                  {friend.name}
-                </ThemedText>
-                {friend.email && (
-                  <ThemedText numberOfLines={1} style={[styles.summaryEmail, { color: colors.textSecondary }]}>
-                    {friend.email}
+              <View style={styles.summaryTopRow}>
+                <View style={[styles.summaryAvatar, {
+                  backgroundColor: friendDetailTheme.avatarSurface,
+                  borderColor: friendDetailTheme.avatarBorder,
+                }]}>
+                  <ThemedText style={[styles.summaryAvatarText, { color: friendDetailTheme.actionIcon }]}>
+                    {friend.name.charAt(0).toUpperCase()}
                   </ThemedText>
-                )}
+                </View>
+                <View style={styles.summaryIdentity}>
+                  <ThemedText type="title" numberOfLines={1} style={[styles.summaryName, { color: colors.text }]}>
+                    {friend.name}
+                  </ThemedText>
+                  {friend.email && (
+                    <ThemedText numberOfLines={1} style={[styles.summaryEmail, { color: colors.textSecondary }]}>
+                      {friend.email}
+                    </ThemedText>
+                  )}
+                </View>
               </View>
-            </View>
-            <View style={styles.summaryBalanceRow}>
-              <View style={[styles.balanceIndicator, { backgroundColor: balanceColor }]} />
-              <ThemedText style={[styles.balanceLabel, { color: colors.textSecondary }]}>
-                {balanceCopy}
+              <View style={styles.summaryBalanceRow}>
+                <View style={[styles.balanceIndicator, { backgroundColor: balanceColor }]} />
+                <ThemedText style={[styles.balanceLabel, { color: colors.textSecondary }]}>
+                  {balanceCopy}
+                </ThemedText>
+              </View>
+              <ThemedText style={[styles.balanceAmount, { color: balanceColor }]}>
+                ${Math.abs(balance).toFixed(2)}
               </ThemedText>
             </View>
-            <ThemedText style={[styles.balanceAmount, { color: balanceColor }]}>
-              ${Math.abs(balance).toFixed(2)}
-            </ThemedText>
-          </View>
+          </Animated.View>
         </Animated.View>
 
         {/* Quick Actions */}
@@ -963,31 +1030,32 @@ export default function FriendDetailScreen() {
             accessibilityLabel={`Add expense with ${friend.name}`}
             accessibilityHint="Opens the add expense screen for this friend"
             onPress={() => router.push({ pathname: '/add-expense', params: { friendId: id } })}>
-            <LinearGradient
-              colors={gradients.buttonPrimary}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.quickActionGradient}>
-              <IconSymbol size={18} name="plus.circle.fill" color={friendDetailTheme.onPrimary} />
-              <ThemedText style={[styles.quickActionTextDark, { color: friendDetailTheme.onPrimary }]}>Add Expense</ThemedText>
-            </LinearGradient>
+            <View style={[styles.quickActionSolidButton, {
+              backgroundColor: isDark ? '#0D9488' : '#0F4C3A',
+            }]}>
+              <IconSymbol size={18} name="plus" color="#ffffff" />
+              <ThemedText style={styles.quickActionTextSolid}>Add Expense</ThemedText>
+            </View>
           </TouchableOpacity>
-          {balance !== 0 && (
-            <TouchableOpacity
-              style={[styles.quickActionButton, styles.secondaryQuickActionButton, {
-                backgroundColor: friendDetailTheme.positiveSurface,
-                borderColor: friendDetailTheme.positiveBorder,
-              }]}
-              accessibilityRole="button"
-              accessibilityLabel={`Settle up with ${friend.name}`}
-              accessibilityHint="Opens the settlement form for this balance"
-              accessibilityState={{ disabled: isSettlingUp, busy: isSettlingUp }}
-              disabled={isSettlingUp}
-              onPress={() => setSettleModalVisible(true)}>
-              <IconSymbol size={18} name="checkmark.circle.fill" color={friendDetailTheme.positive} />
-              <ThemedText style={[styles.quickActionTextDark, { color: friendDetailTheme.positive }]}>Settle Up</ThemedText>
-            </TouchableOpacity>
-          )}
+          
+          <TouchableOpacity
+            style={[styles.quickActionButton, {
+              opacity: balance === 0 ? 0.5 : 1,
+            }]}
+            accessibilityRole="button"
+            accessibilityLabel={`Settle up with ${friend.name}`}
+            accessibilityHint="Opens the settlement form for this balance"
+            accessibilityState={{ disabled: isSettlingUp || balance === 0, busy: isSettlingUp }}
+            disabled={isSettlingUp || balance === 0}
+            onPress={() => setSettleModalVisible(true)}>
+            <View style={[styles.quickActionOutlineButton, {
+              backgroundColor: isDark ? 'transparent' : '#ffffff',
+              borderColor: isDark ? '#0D9488' : '#0F4C3A',
+            }]}>
+              <IconSymbol size={18} name="checkmark" color={isDark ? '#0D9488' : '#0F4C3A'} />
+              <ThemedText style={[styles.quickActionTextOutline, { color: isDark ? '#0D9488' : '#0F4C3A' }]}>Settle Up</ThemedText>
+            </View>
+          </TouchableOpacity>
         </View>
 
         <View
@@ -1055,7 +1123,7 @@ export default function FriendDetailScreen() {
           </View>
 
           <Reanimated.View style={feedTransitionStyle}>
-            {filteredActivity.length === 0 ? (
+            {groupedActivity.length === 0 ? (
               <View style={styles.emptyHistory}>
                 <View style={[styles.emptyIconWrapper, { backgroundColor: friendDetailTheme.avatarSurface }]}>
                   <IconSymbol size={32} name="doc.text" color={friendDetailTheme.actionIcon} />
@@ -1070,22 +1138,53 @@ export default function FriendDetailScreen() {
                 </ThemedText>
               </View>
             ) : (
-              filteredActivity.map((item, index) => (
-                <Reanimated.View
-                  key={`${activityFilter}:${item.id}`}
-                  entering={FadeInDown.duration(180).delay(Math.min(index, 6) * 24).easing(ReanimatedEasing.out(ReanimatedEasing.cubic))}>
-                  {item.type === 'expense'
-                    ? renderExpenseActivity(item, index)
-                    : item.type === 'settlement'
-                      ? renderSettlementActivity(item, index)
-                      : renderExpenseActivityEvent(item, index)}
-                </Reanimated.View>
+              groupedActivity.map((group) => (
+                <View key={group.monthKey} style={styles.monthSection}>
+                  <View style={styles.monthHeaderContainer}>
+                    <ThemedText style={[styles.monthHeaderText, { color: colors.textSecondary }]}>
+                      {group.monthYear}
+                    </ThemedText>
+                  </View>
+                  {group.items.map((item, index) => (
+                    <Reanimated.View
+                      key={`${activityFilter}:${item.id}`}
+                      entering={FadeInDown.duration(180).delay(Math.min(index, 6) * 24).easing(ReanimatedEasing.out(ReanimatedEasing.cubic))}>
+                      {item.type === 'expense'
+                        ? renderExpenseActivity(item, index)
+                        : item.type === 'settlement'
+                          ? renderSettlementActivity(item, index)
+                          : renderExpenseActivityEvent(item, index)}
+                    </Reanimated.View>
+                  ))}
+                </View>
               ))
             )}
           </Reanimated.View>
         </View>
 
-      </ScrollView>
+      </Animated.ScrollView>
+
+      {/* Floating Add Expense Button */}
+      <View style={[styles.floatingButtonContainer, {
+        bottom: Math.max(insets.bottom, 12) + 20,
+        right: Math.max(insets.right, 0) + 18,
+      }]}>
+        <TouchableOpacity
+          accessibilityLabel="Add expense"
+          accessibilityRole="button"
+          onPress={() => router.push({ pathname: '/add-expense', params: { friendId: id } })}
+          style={[styles.floatingButton, isDark ? styles.darkShadow : styles.lightShadow]}
+        >
+          <LinearGradient
+            colors={gradients.buttonPrimary}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.floatingButtonGradient}
+          >
+            <IconSymbol name="plus" size={25} color="#fff" />
+          </LinearGradient>
+        </TouchableOpacity>
+      </View>
 
       <SettleUpModal
         visible={settleModalVisible}
@@ -1160,99 +1259,157 @@ const styles = StyleSheet.create({
   },
   summarySection: {
     paddingHorizontal: 16,
-    paddingTop: 6,
-    paddingBottom: 12,
+    paddingTop: 4,
+    paddingBottom: 8,
   },
   summaryCard: {
-    borderRadius: 14,
+    borderRadius: 12,
     borderWidth: 1,
-    padding: 14,
+    padding: 12,
   },
   summaryTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 14,
+    marginBottom: 8,
   },
   summaryAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 13,
+    width: 40,
+    height: 40,
+    borderRadius: 11,
     borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: 10,
   },
   summaryIdentity: {
     flex: 1,
     minWidth: 0,
   },
   summaryAvatarText: {
-    fontSize: 22,
+    fontSize: 18,
     fontWeight: '700',
-    lineHeight: 26,
+    lineHeight: 22,
   },
   summaryName: {
-    fontSize: 19,
+    fontSize: 16,
     fontWeight: '700',
-    lineHeight: 24,
+    lineHeight: 20,
   },
   summaryEmail: {
-    fontSize: 14,
-    lineHeight: 18,
-    marginTop: 2,
+    fontSize: 12,
+    lineHeight: 16,
+    marginTop: 1,
   },
   summaryBalanceRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   balanceIndicator: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginRight: 8,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginRight: 6,
   },
   balanceLabel: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
   },
   balanceAmount: {
-    fontSize: 34,
+    fontSize: 26,
     fontWeight: '700',
-    lineHeight: 40,
+    lineHeight: 32,
+  },
+  headerTitleContainer: {
+    position: 'absolute',
+    left: 60,
+    right: 110,
+    bottom: 8,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  monthSection: {
+    marginBottom: 16,
+  },
+  monthHeaderContainer: {
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+    marginBottom: 8,
+  },
+  monthHeaderText: {
+    fontSize: 12,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  floatingButtonContainer: {
+    position: 'absolute',
+    zIndex: 20,
+  },
+  floatingButton: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    overflow: 'hidden',
+  },
+  floatingButtonGradient: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  darkShadow: {
+    elevation: 6,
+    shadowColor: '#2DD4BF',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.22,
+    shadowRadius: 14,
+  },
+  lightShadow: {
+    elevation: 6,
+    shadowColor: '#166534',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.16,
+    shadowRadius: 14,
   },
   quickActions: {
     flexDirection: 'row',
     paddingHorizontal: 16,
-    gap: 10,
-    marginBottom: 18,
+    gap: 12,
+    marginBottom: 16,
   },
   quickActionButton: {
     flex: 1,
-    borderRadius: 12,
-    overflow: 'hidden',
-    minHeight: 48,
   },
-  secondaryQuickActionButton: {
-    borderWidth: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 48,
-    gap: 8,
-  },
-  quickActionGradient: {
-    flex: 1,
+  quickActionSolidButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 12,
-    minHeight: 48,
+    height: 48,
     gap: 8,
   },
-  quickActionTextDark: {
-    fontWeight: '600',
+  quickActionOutlineButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 12,
+    borderWidth: 1.5,
+    height: 48,
+    gap: 8,
+  },
+  quickActionTextSolid: {
+    color: '#ffffff',
     fontSize: 14,
+    fontWeight: '700',
+  },
+  quickActionTextOutline: {
+    fontSize: 14,
+    fontWeight: '700',
   },
   segmentedControl: {
     flexDirection: 'row',
@@ -1271,7 +1428,12 @@ const styles = StyleSheet.create({
     bottom: SEGMENTED_CONTROL_PADDING,
     left: SEGMENTED_CONTROL_PADDING,
     borderRadius: 9,
-    borderWidth: 1,
+    borderWidth: 0,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
   },
   segmentedOption: {
     flex: 1,
@@ -1286,7 +1448,7 @@ const styles = StyleSheet.create({
   },
   segmentedLabel: {
     fontSize: 12,
-    fontWeight: '650',
+    fontWeight: '600',
   },
   content: {
     flex: 1,
@@ -1380,7 +1542,7 @@ const styles = StyleSheet.create({
   updateTitle: {
     flexShrink: 1,
     fontSize: 13,
-    fontWeight: '650',
+    fontWeight: '600',
   },
   updateMeta: {
     fontSize: 11,
@@ -1479,4 +1641,4 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
   },
-});
+}) as any;

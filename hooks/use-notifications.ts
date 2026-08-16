@@ -97,7 +97,7 @@ export function useNotifications(enabled = true) {
         if (data.groupId) {
           router.push(`/group/${data.groupId}` as any);
         } else if (data.friendId) {
-          router.push(`/friend/${data.friendId}` as any);
+          router.push(`/friends/${data.friendId}` as any);
         }
         break;
       case 'settlement_created':

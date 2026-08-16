@@ -38,7 +38,7 @@ describe('getActivityHref', () => {
         activity({ type: ActivityType.SETTLEMENT_CREATED, userId: 'friend-1', targetId: 'settlement-1' }),
         'current-user'
       )
-    ).toBe('/friend/friend-1');
+    ).toBe('/friends/friend-1');
   });
 
   it('does not link deleted ungrouped expenses or current-user-only settlements', () => {
