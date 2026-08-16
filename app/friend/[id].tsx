@@ -652,8 +652,7 @@ export default function FriendDetailScreen() {
           styles.updateRow,
           {
             backgroundColor: friendDetailTheme.surface,
-            shadowColor: isDark ? '#000000' : '#64748B',
-            shadowOpacity: isDark ? 0.22 : 0.06,
+            borderColor: friendDetailTheme.surfaceBorder,
           },
           {
             opacity: fadeAnim,
@@ -751,8 +750,7 @@ export default function FriendDetailScreen() {
               styles.expenseCard,
               {
                 backgroundColor: friendDetailTheme.surface,
-                shadowColor: isDark ? '#000000' : '#64748B',
-                shadowOpacity: isDark ? 0.22 : 0.06,
+                borderColor: friendDetailTheme.surfaceBorder,
               },
               {
                 opacity: fadeAnim,
@@ -826,8 +824,7 @@ export default function FriendDetailScreen() {
           styles.updateRow,
           {
             backgroundColor: friendDetailTheme.surface,
-            shadowColor: isDark ? '#000000' : '#64748B',
-            shadowOpacity: isDark ? 0.22 : 0.06,
+            borderColor: friendDetailTheme.surfaceBorder,
           },
           {
             opacity: fadeAnim,
@@ -898,6 +895,18 @@ export default function FriendDetailScreen() {
   return (
     <View style={styles.container}>
       <LinearGradient colors={gradients.screenBackground} style={StyleSheet.absoluteFill} />
+
+      <View
+        pointerEvents="none"
+        accessible={false}
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+        style={styles.ambientLayer}>
+        <View style={[styles.ambientShape, styles.ambientTop, { backgroundColor: friendDetailTheme.backgroundAccentTop }]} />
+        <View style={[styles.ambientShape, styles.ambientMiddle, { backgroundColor: friendDetailTheme.backgroundAccentMiddle }]} />
+        <View style={[styles.ambientShape, styles.ambientBottom, { backgroundColor: friendDetailTheme.backgroundAccentBottom }]} />
+      </View>
+
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity
@@ -989,13 +998,8 @@ export default function FriendDetailScreen() {
               accessibilityLabel={`${friend.name}${friend.email ? `, ${friend.email}` : ''}, ${balanceAccessibilityValue}`}
               accessibilityLiveRegion="polite"
               style={[styles.summaryCard, {
-                backgroundColor: isDark ? 'rgba(20, 35, 38, 0.95)' : '#ffffff',
-                borderWidth: 0,
-                shadowColor: isDark ? '#000000' : '#64748B',
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: isDark ? 0.35 : 0.08,
-                shadowRadius: 12,
-                elevation: 4,
+                backgroundColor: balanceSurface,
+                borderColor: friendDetailTheme.surfaceBorder,
               }]}>
               <View style={styles.summaryTopRow}>
                 <View style={[styles.summaryAvatar, {
@@ -1031,25 +1035,24 @@ export default function FriendDetailScreen() {
         </Animated.View>
 
         {/* Quick Actions */}
-        <View style={styles.quickActions}>
-          <TouchableOpacity
-            style={[styles.quickActionButton, {
-              opacity: balance === 0 ? 0.5 : 1,
-            }]}
-            accessibilityRole="button"
-            accessibilityLabel={`Settle up with ${friend.name}`}
-            accessibilityHint="Opens the settlement form for this balance"
-            accessibilityState={{ disabled: isSettlingUp || balance === 0, busy: isSettlingUp }}
-            disabled={isSettlingUp || balance === 0}
-            onPress={() => setSettleModalVisible(true)}>
-            <View style={[styles.quickActionSolidButton, {
-              backgroundColor: isDark ? '#0D9488' : '#0F4C3A',
-            }]}>
-              <IconSymbol size={18} name="checkmark" color="ffffff" />
-              <ThemedText style={[styles.quickActionTextSolid]}>Settle Up</ThemedText>
-            </View>
-          </TouchableOpacity>
-        </View>
+        {balance !== 0 && (
+          <View style={styles.quickActions}>
+            <TouchableOpacity
+              style={[styles.quickActionButton, styles.secondaryQuickActionButton, {
+                backgroundColor: friendDetailTheme.positiveSurface,
+                borderColor: friendDetailTheme.positiveBorder,
+              }]}
+              accessibilityRole="button"
+              accessibilityLabel={`Settle up with ${friend.name}`}
+              accessibilityHint="Opens the settlement form for this balance"
+              accessibilityState={{ disabled: isSettlingUp, busy: isSettlingUp }}
+              disabled={isSettlingUp}
+              onPress={() => setSettleModalVisible(true)}>
+              <IconSymbol size={18} name="checkmark.circle.fill" color={friendDetailTheme.positive} />
+              <ThemedText style={[styles.quickActionTextDark, { color: friendDetailTheme.positive }]}>Settle Up</ThemedText>
+            </TouchableOpacity>
+          </View>
+        )}
 
         <View
           accessibilityRole="toolbar"
@@ -1066,9 +1069,8 @@ export default function FriendDetailScreen() {
                 styles.segmentedIndicator,
                 {
                   width: segmentWidth,
-                  backgroundColor: isDark ? 'rgba(13, 148, 136, 0.08)' : '#ffffff',
-                  borderColor: isDark ? '#0D9488' : '#0F4C3A',
-                  borderWidth: 1,
+                  backgroundColor: friendDetailTheme.actionSurface,
+                  borderColor: friendDetailTheme.actionBorder,
                 },
                 tabIndicatorStyle,
               ]}
@@ -1076,7 +1078,6 @@ export default function FriendDetailScreen() {
           )}
           {ACTIVITY_FILTERS.map(filter => {
             const isSelected = activityFilter === filter.id;
-            const activeColor = isDark ? '#0D9488' : '#0F4C3A';
 
             return (
               <TouchableOpacity
@@ -1092,12 +1093,12 @@ export default function FriendDetailScreen() {
                 <IconSymbol
                   size={14}
                   name={filter.icon}
-                  color={isSelected ? activeColor : colors.textSecondary}
+                  color={isSelected ? friendDetailTheme.actionIcon : colors.textSecondary}
                 />
                 <ThemedText
                   style={[
                     styles.segmentedLabel,
-                    { color: isSelected ? activeColor : colors.textSecondary },
+                    { color: isSelected ? friendDetailTheme.actionIcon : colors.textSecondary },
                   ]}>
                   {filter.label}
                 </ThemedText>
@@ -1259,7 +1260,7 @@ const styles = StyleSheet.create({
   },
   summaryCard: {
     borderRadius: 12,
-    borderWidth: 0,
+    borderWidth: 1,
     padding: 12,
   },
   summaryTopRow: {
@@ -1319,8 +1320,8 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 60,
     right: 110,
-    bottom: 8,
-    height: 40,
+    top: 0,
+    bottom: 0,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1374,37 +1375,35 @@ const styles = StyleSheet.create({
   quickActions: {
     flexDirection: 'row',
     paddingHorizontal: 16,
-    gap: 12,
-    marginBottom: 16,
+    gap: 10,
+    marginBottom: 18,
   },
   quickActionButton: {
     flex: 1,
+    borderRadius: 12,
+    overflow: 'hidden',
+    minHeight: 48,
   },
-  quickActionSolidButton: {
+  secondaryQuickActionButton: {
+    borderWidth: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 48,
+    gap: 8,
+  },
+  quickActionGradient: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 12,
-    height: 48,
+    minHeight: 48,
     gap: 8,
   },
-  quickActionOutlineButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 12,
-    borderWidth: 1.5,
-    height: 48,
-    gap: 8,
-  },
-  quickActionTextSolid: {
-    color: '#ffffff',
+  quickActionTextDark: {
+    fontWeight: '600',
     fontSize: 14,
-    fontWeight: '700',
-  },
-  quickActionTextOutline: {
-    fontSize: 14,
-    fontWeight: '700',
   },
   segmentedControl: {
     flexDirection: 'row',
@@ -1423,12 +1422,7 @@ const styles = StyleSheet.create({
     bottom: SEGMENTED_CONTROL_PADDING,
     left: SEGMENTED_CONTROL_PADDING,
     borderRadius: 9,
-    borderWidth: 0,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.15,
-    shadowRadius: 3,
+    borderWidth: 1,
   },
   segmentedOption: {
     flex: 1,
@@ -1501,10 +1495,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     marginBottom: 8,
     borderRadius: 12,
-    borderWidth: 0,
-    shadowOffset: { width: 0, height: 1 },
-    shadowRadius: 3,
-    elevation: 2,
+    borderWidth: 1,
   },
   updateRow: {
     flexDirection: 'row',
@@ -1513,11 +1504,8 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     marginBottom: 7,
     borderRadius: 10,
-    borderWidth: 0,
+    borderWidth: 1,
     gap: 9,
-    shadowOffset: { width: 0, height: 1 },
-    shadowRadius: 2,
-    elevation: 1,
   },
   updateMarker: {
     width: 3,

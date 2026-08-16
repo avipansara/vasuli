@@ -1,5 +1,5 @@
 import { BlurView } from 'expo-blur';
-import { Tabs } from 'expo-router';
+import { router, Tabs } from 'expo-router';
 import React from 'react';
 import { Platform, StyleSheet, View, useWindowDimensions } from 'react-native';
 
@@ -24,6 +24,15 @@ export default function TabLayoutWeb() {
     <RouteErrorBoundary homeHref="/(tabs)">
       <View style={styles.container}>
         <Tabs
+          screenListeners={{
+            tabPress: (e) => {
+              const routeName = e.target?.split('-')[0];
+              if (routeName === 'friends') {
+                e.preventDefault();
+                router.navigate('/friends');
+              }
+            },
+          }}
           screenOptions={{
             tabBarActiveTintColor: colors.tint,
             tabBarInactiveTintColor: isDark ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.4)',

@@ -251,7 +251,7 @@ export const Gradients = {
     cardPrimary: ['#FFFFFF', '#FFFFFF'] as [string, string],
     cardAccent: ['#FFFFFF', '#FFFFFF'] as [string, string],
     hero: ['#F5F5F5', '#F5F5F5'] as [string, string],
-    buttonPrimary: ['#22C55E', '#16A34A'] as [string, string],
+    buttonPrimary: ['#22C55E', '#0F4C3A'] as [string, string],
     purpleAccent: ['#FACC15', '#EAB308'] as [string, string],
     glassOverlay: ['#FFFFFF', '#FFFFFF'] as [string, string],
     cardGlass: ['#FFFFFF', '#FFFFFF'] as [string, string],

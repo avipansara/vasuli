@@ -10,21 +10,21 @@ import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { activityService } from '@/services/activity-service';
 import { expenseService } from '@/services/expense-service';
-import { groupDetailService } from '@/services/group-detail-service';
-import { groupService } from '@/services/group-service';
-import { userService } from '@/services/user-service';
 import { friendshipService } from '@/services/friendship-service';
+import { areGroupBalancesSettled } from '@/services/group-balance';
 import type { GroupDetailReadModel, GroupExpenseView } from '@/services/group-detail-read-model';
 import { removeExpenseFromGroupReadModel, removeExpenseFromHomeFriends } from '@/services/group-detail-read-model';
-import { areGroupBalancesSettled } from '@/services/group-balance';
+import { groupDetailService } from '@/services/group-detail-service';
+import { groupService } from '@/services/group-service';
 import {
   createExpenseDeletedNotification,
   createMemberAddedNotification,
   notificationService,
 } from '@/services/notification-service';
-import { queryKeys } from '@/services/query-keys';
-import { createReactQueryCacheAdapter } from '@/services/query-cache-adapter';
 import type { QueryCacheSnapshot } from '@/services/query-cache-adapter';
+import { createReactQueryCacheAdapter } from '@/services/query-cache-adapter';
+import { queryKeys } from '@/services/query-keys';
+import { userService } from '@/services/user-service';
 import type { Expense, GroupMember, User } from '@/types/database';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -872,7 +872,7 @@ export default function GroupDetailScreen() {
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.quickActionGradient}>
-              <IconSymbol size={18} name="plus.circle.fill" color={friendDetailTheme.onPrimary} />
+              <IconSymbol size={18} name="doc.text.fill" color={friendDetailTheme.onPrimary} />
               <ThemedText style={[styles.quickActionText, { color: friendDetailTheme.onPrimary }]}>Add Expense</ThemedText>
             </LinearGradient>
           </TouchableOpacity>

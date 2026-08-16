@@ -20,7 +20,7 @@ export function FloatingAddExpenseButton({
   const bottom = Math.max(insets.bottom, 12) + bottomOffset;
   const right = Math.max(insets.right, 0) + rightOffset;
 
-  if (pathname === '/profile') {
+  if (pathname === '/profile' || pathname.startsWith('/friends/')) {
     return null;
   }
 
@@ -40,7 +40,7 @@ export function FloatingAddExpenseButton({
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.gradient}>
-          <IconSymbol name="plus" size={25} color="#fff" />
+          <IconSymbol name="doc.text.fill" size={25} color="#fff" />
         </LinearGradient>
       </Pressable>
     </View>
