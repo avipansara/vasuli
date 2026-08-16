@@ -1,3 +1,9 @@
+## 2026-08-16
+
+- Deepened expense intake into a tested workflow module that centralizes
+  optimistic updates, rollback, persistence, and best-effort follow-up effects
+  for both group and friend expenses.
+
 ## 2026-08-15
 
 - Added an implementation-ready specification for exporting group expenses as
