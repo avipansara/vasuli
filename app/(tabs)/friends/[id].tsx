@@ -8,16 +8,14 @@ import { useDebouncedQueryInvalidation } from '@/hooks/use-debounced-query-inval
 import { useRealtime } from '@/hooks/use-realtime';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
-import { activityService } from '@/services/activity-service';
 import { expenseService } from '@/services/expense-service';
 import type { FriendActivityItem, FriendDetailData } from '@/services/friend-detail-service';
-import { friendDetailService } from '@/services/friend-detail-service';
+import { friendDetailModule } from '@/services/friend-detail-module';
 import { friendshipService } from '@/services/friendship-service';
 import type { GroupDetailReadModel } from '@/services/group-detail-read-model';
 import { applySettlementToGroupReadModel } from '@/services/group-detail-read-model';
 import { createExpenseDeletedNotification, notificationService } from '@/services/notification-service';
 import { queryKeys } from '@/services/query-keys';
-import { settlementService } from '@/services/settlement-service';
 import type { Expense, User } from '@/types/database';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -160,7 +158,7 @@ export default function FriendDetailScreen() {
     queryKey: friendDetailQueryKey,
     enabled: !!currentUserId && !!id,
     queryFn: async () => {
-      return friendDetailService.getDetail(currentUserId, id);
+      return friendDetailModule.getDetail(currentUserId, id);
     },
   });
   const loading = isLoading && !friend;
@@ -310,29 +308,16 @@ export default function FriendDetailScreen() {
       });
       setSettleModalVisible(false);
 
-      const settlements = await settlementService.createPairSettlements({
+      const settlements = await friendDetailModule.settleUp({
         currentUserId,
         friendId,
         amount: Math.abs(amount),
+        balance: friend.balance,
         currency: 'USD',
         date: Date.now(),
+        currentUserName: user.name,
+        friendName: friend.name,
       });
-
-      try {
-        for (const settlement of settlements) {
-          const currentUserPaid = settlement.fromUserId === currentUserId;
-          await activityService.logSettlementCreated({
-            settlementId: settlement.id,
-            fromUserId: settlement.fromUserId,
-            fromUserName: currentUserPaid ? user.name : friend.name,
-            toUserName: currentUserPaid ? friend.name : user.name,
-            amount: settlement.amount,
-            groupId: settlement.groupId,
-          });
-        }
-      } catch {
-        // Activity logging should not block a completed settlement.
-      }
 
       const settledGroupIds = [...new Set(settlements.flatMap(settlement => settlement.groupId ? [settlement.groupId] : []))];
       for (const groupId of settledGroupIds) {
