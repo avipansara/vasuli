@@ -20,6 +20,7 @@ import {
   Alert,
   Keyboard,
   StyleSheet,
+  Text,
   TextInput,
   TouchableOpacity,
   TouchableWithoutFeedback,
@@ -35,7 +36,7 @@ export default function FriendSettleScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
-  const { gradients, colors, isDark } = useThemeColors();
+  const { colors, settle, isDark } = useThemeColors();
   const currentUserId = user?.id || '';
   const queryClient = useQueryClient();
 
@@ -50,7 +51,6 @@ export default function FriendSettleScreen() {
       setLoadError(null);
       setLoading(true);
 
-      const friendDetailQueryKey = queryKeys.friends.detail(currentUserId, id);
       const data = await friendDetailService.getDetail(currentUserId, id);
       if (!data || !data.friend) {
         Alert.alert('Error', 'Friend not found');
@@ -85,8 +85,9 @@ export default function FriendSettleScreen() {
       return;
     }
 
-    const maxAmount = Math.abs(friend.balance);
-    if (amountNum > maxAmount) {
+    const amountCents = Math.round(amountNum * 100);
+    const maxCents = Math.round(Math.abs(friend.balance) * 100);
+    if (amountCents > maxCents) {
       Alert.alert('Error', 'Settlement amount cannot exceed the outstanding balance.');
       return;
     }
@@ -204,11 +205,11 @@ export default function FriendSettleScreen() {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <Stack.Screen options={{ headerShown: false }} />
-        <NavigationHeader title="Settle Up" onBack={() => router.back()} />
+        <NavigationHeader title="SETTLE UP" onBack={() => router.back()} />
         <View style={styles.skeletonContainer}>
-          <View style={{ height: 60, borderRadius: 14, backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F3F4F6', marginBottom: 16 }} />
-          <View style={{ height: 120, borderRadius: 14, backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F3F4F6', marginBottom: 16 }} />
-          <View style={{ height: 48, borderRadius: 14, backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F3F4F6', marginBottom: 16 }} />
+          <View style={{ height: 60, borderRadius: 24, backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F3F4F6', marginBottom: 16 }} />
+          <View style={{ height: 120, borderRadius: 24, backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F3F4F6', marginBottom: 16 }} />
+          <View style={{ height: 48, borderRadius: 12, backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F3F4F6', marginBottom: 16 }} />
         </View>
       </View>
     );
@@ -218,7 +219,7 @@ export default function FriendSettleScreen() {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <Stack.Screen options={{ headerShown: false }} />
-        <NavigationHeader title="Settle Up" onBack={() => router.back()} />
+        <NavigationHeader title="SETTLE UP" onBack={() => router.back()} />
         <AsyncErrorState
           message={loadError || 'Unable to load friend details'}
           onRetry={loadData}
@@ -230,11 +231,8 @@ export default function FriendSettleScreen() {
 
   const isOwed = friend.balance > 0;
   const maxAmount = Math.abs(friend.balance);
-  const isValidAmount = parseFloat(amount) > 0;
-
-  const brandAccent = isDark ? '#2DD4BF' : '#0F4C3A';
-  const brandGradient = isDark ? (['#2DD4BF', '#14B8A6'] as const) : (['#22c55e', '#16a34a'] as const);
-  const avatarBg = isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(15, 76, 58, 0.1)';
+  const amountNum = parseFloat(amount) || 0;
+  const isValidAmount = amountNum > 0 && Math.round(amountNum * 100) <= Math.round(maxAmount * 100);
 
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
@@ -245,98 +243,103 @@ export default function FriendSettleScreen() {
         <KeyboardAwareScroll
           contentContainerStyle={styles.scrollContent}>
 
-          {/* Friend Profile Card */}
-          <View style={[styles.profileCard, { backgroundColor: isDark ? 'rgba(20, 35, 38, 0.95)' : '#ffffff' }]}>
+          {/* User Identity Card */}
+          <View style={[styles.profileCard, { backgroundColor: settle.cardBackground, borderColor: settle.cardBorder }]}>
             <View style={styles.profileRow}>
-              <View style={[styles.avatar, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : '#E8FDF5' }]}>
-                <ThemedText style={[styles.avatarText, { color: isDark ? '#2DD4BF' : '#0F4C3A' }]}>
+              <View style={[styles.avatar, { backgroundColor: settle.avatarBackground }]}>
+                <Text style={[styles.avatarText, { color: settle.avatarText }]}>
                   {friend.name.charAt(0).toUpperCase()}
-                </ThemedText>
+                </Text>
               </View>
               <View style={styles.profileTextContainer}>
-                <ThemedText type="subtitle" style={{ color: colors.text, fontWeight: '600' }}>
+                <ThemedText style={[styles.profileName, { color: colors.text }]}>
                   {friend.name}
                 </ThemedText>
-                <ThemedText style={{ color: colors.textSecondary, fontSize: 13, marginTop: 2 }}>
-                  {friend.email || `${friend.name.toLowerCase().replace(' ', '.')}@vasuli.app`}
+                <ThemedText style={[styles.profileEmail, { color: colors.textSecondary }]}>
+                  {friend.email || `${friend.name.toLowerCase().replace(/\s+/g, '.')}@vasuli.app`}
                 </ThemedText>
               </View>
             </View>
-            <View style={[styles.divider, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#F3F4F6' }]} />
+            <View style={[styles.divider, { backgroundColor: settle.cardBorder }]} />
             <View style={styles.balanceRow}>
               <ThemedText style={[styles.balanceLabelText, { color: colors.textSecondary }]}>
                 Total balance
               </ThemedText>
-              <ThemedText type='subtitle' style={[styles.balanceValueText, { color: isDark ? '#2DD4BF' : '#0F4C3A' }]}>
+              <ThemedText style={[styles.balanceValueText, { color: settle.accentText }]}>
                 ${maxAmount.toFixed(2)}
               </ThemedText>
             </View>
           </View>
 
-          {/* Amount Form */}
+          {/* Amount to Settle Display */}
           <View style={styles.formContainer}>
             <ThemedText style={[styles.inputLabel, { color: colors.textSecondary }]}>
-              Amount to Settle
+              AMOUNT TO SETTLE
             </ThemedText>
-            <View style={[styles.inputWrapper, { backgroundColor: isDark ? 'rgba(243, 244, 253, 0.06)' : '#EAEFFF' }]}>
-              <ThemedText style={[styles.currency, { color: isDark ? '#2DD4BF' : '#0F4C3A' }]}>$</ThemedText>
-              <TextInput
-                style={[styles.input, { color: isDark ? '#2DD4BF' : '#0F4C3A' }]}
-                value={amount}
-                onChangeText={handleAmountChange}
-                keyboardType="decimal-pad"
-                placeholder="0.00"
-                placeholderTextColor={isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(15, 76, 58, 0.3)'}
-                selectTextOnFocus
-              />
+            <View style={[styles.inputWrapper, {
+              backgroundColor: settle.heroBackground,
+              borderColor: settle.heroBorder,
+            }]}>
+              <View style={styles.inputInnerRow}>
+                <Text style={[styles.currency, { color: settle.accentText }]}>$</Text>
+                <TextInput
+                  style={[styles.input, { color: settle.accentText }]}
+                  value={amount}
+                  onChangeText={handleAmountChange}
+                  keyboardType="decimal-pad"
+                  placeholder="0.00"
+                  placeholderTextColor={isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(6, 78, 59, 0.3)'}
+                  selectTextOnFocus
+                />
+              </View>
             </View>
 
-            {/* Quick selectors */}
+            {/* Quick Action Pills */}
             <View style={styles.quickSelectRow}>
               <TouchableOpacity
                 onPress={() => handleQuickPercent(0.5)}
-                style={[styles.quickSelectButton, { backgroundColor: isDark ? 'rgba(243, 244, 253, 0.08)' : '#E0E7FF' }]}>
-                <ThemedText style={[styles.quickSelectText, { color: colors.textSecondary }]}>50%</ThemedText>
+                style={[styles.quickSelectButton, { backgroundColor: settle.pillBackground }]}>
+                <Text style={[styles.quickSelectText, { color: colors.text }]}>50%</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => handleQuickPercent(1.0)}
-                style={[styles.quickSelectButton, { backgroundColor: isDark ? 'rgba(243, 244, 253, 0.08)' : '#E0E7FF' }]}>
-                <ThemedText style={[styles.quickSelectText, { color: colors.textSecondary }]}>Full Balance</ThemedText>
+                style={[styles.quickSelectButton, { backgroundColor: settle.pillBackground }]}>
+                <Text style={[styles.quickSelectText, { color: colors.text }]}>Full Balance</Text>
               </TouchableOpacity>
             </View>
           </View>
 
-          <ThemedText style={[styles.helperText, { color: colors.textSecondary, marginTop: 12 }]}>
-            This records that {friend.name} paid you{' '}
-            <ThemedText style={{ fontWeight: '700', color: colors.text }}>
-              ${(parseFloat(amount) || 0).toFixed(2)}
-            </ThemedText>{' '}
-            to settle up.
+          {/* Confirmation Text */}
+          <ThemedText style={[styles.helperText, { color: colors.textSecondary }]}>
+            This records that {isOwed ? `${friend.name} paid you ` : `you paid ${friend.name} `}
+            <Text style={[styles.helperBoldAmount, { color: colors.text }]}>
+              ${amountNum.toFixed(2)}
+            </Text>
+            {' to settle up.'}
           </ThemedText>
         </KeyboardAwareScroll>
 
-        {/* Bottom Sticky Action Buttons */}
+        {/* Bottom Action Area */}
         <View style={[styles.bottomActionsContainer, { paddingBottom: Math.max(insets.bottom, 16) }]}>
           <TouchableOpacity
             onPress={() => router.back()}
             style={styles.cancelButton}>
-            <ThemedText style={[styles.cancelButtonText, { color: colors.textSecondary }]}>
+            <Text style={[styles.cancelButtonText, { color: colors.textSecondary }]}>
               Cancel
-            </ThemedText>
+            </Text>
           </TouchableOpacity>
 
-          {/* Confirm Button */}
           <TouchableOpacity
             disabled={!isValidAmount || settling}
             onPress={handleSettle}
             style={[
               styles.submitButton,
-              { backgroundColor: isDark ? '#0F3E3A' : '#0F4C3A' },
+              { backgroundColor: settle.buttonBackground },
               (!isValidAmount || settling) && styles.submitButtonDisabled
             ]}>
-            <ThemedText style={styles.submitButtonText}>
+            <Text style={styles.submitButtonText}>
               {settling ? 'Recording...' : 'Record Payment'}
-            </ThemedText>
+            </Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -352,25 +355,24 @@ const styles = StyleSheet.create({
     padding: 20,
     gap: 16,
   },
-  skeleton: {
-    width: '100%',
-  },
   scrollContent: {
-    padding: 16,
-    gap: 24,
+    padding: 20,
+    gap: 28,
   },
   profileCard: {
-    padding: 18,
-    borderRadius: 18,
+    padding: 20,
+    borderRadius: 24,
+    borderWidth: 1,
     shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.04,
-    shadowRadius: 12,
+    shadowRadius: 15,
     elevation: 2,
   },
   profileRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 16,
   },
   avatar: {
     width: 48,
@@ -378,19 +380,27 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 16,
   },
   avatarText: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 20,
+    fontWeight: '600',
   },
   profileTextContainer: {
     flex: 1,
   },
+  profileName: {
+    fontSize: 20,
+    fontWeight: '600',
+    lineHeight: 26,
+  },
+  profileEmail: {
+    fontSize: 14,
+    marginTop: 2,
+  },
   divider: {
     height: 1,
     width: '100%',
-    marginVertical: 16,
+    marginVertical: 20,
   },
   balanceRow: {
     flexDirection: 'row',
@@ -398,39 +408,47 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   balanceLabelText: {
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: 15,
+    fontWeight: '400',
   },
   balanceValueText: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 20,
+    fontWeight: '600',
   },
   formContainer: {
     gap: 12,
   },
   inputLabel: {
-    fontSize: 11,
-    fontWeight: '700',
+    fontSize: 12,
+    fontWeight: '500',
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 1,
+    marginLeft: 4,
   },
   inputWrapper: {
-    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 24,
     height: 110,
     paddingHorizontal: 24,
+    borderWidth: 1,
+  },
+  inputInnerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+    height: '100%',
   },
   currency: {
-    fontSize: 32,
-    fontWeight: '600',
-    marginRight: 6,
+    fontSize: 44,
+    fontWeight: '800',
+    marginRight: 4,
     textAlignVertical: 'center',
   },
   input: {
-    fontSize: 38,
-    fontWeight: '700',
+    fontSize: 44,
+    fontWeight: '800',
     minWidth: 180,
     paddingVertical: 0,
     margin: 0,
@@ -439,11 +457,12 @@ const styles = StyleSheet.create({
   quickSelectRow: {
     flexDirection: 'row',
     gap: 12,
+    marginTop: 4,
   },
   quickSelectButton: {
     flex: 1,
     height: 48,
-    borderRadius: 14,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -451,21 +470,26 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
-  bottomActionsContainer: {
-    width: '100%',
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    gap: 16,
-    alignItems: 'center',
-  },
   helperText: {
     fontSize: 15,
     lineHeight: 22,
     textAlign: 'center',
-    paddingHorizontal: 24,
+    paddingHorizontal: 16,
+  },
+  helperBoldAmount: {
+    fontWeight: '700',
+  },
+  bottomActionsContainer: {
+    width: '100%',
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    gap: 8,
+    alignItems: 'center',
   },
   cancelButton: {
     paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
   },
   cancelButtonText: {
     fontSize: 15,
@@ -474,13 +498,13 @@ const styles = StyleSheet.create({
   submitButton: {
     width: '100%',
     height: 56,
-    borderRadius: 16,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
+    shadowColor: '#003527',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
     elevation: 3,
   },
   submitButtonDisabled: {
@@ -490,6 +514,6 @@ const styles = StyleSheet.create({
   submitButtonText: {
     color: '#ffffff',
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '600',
   },
 });

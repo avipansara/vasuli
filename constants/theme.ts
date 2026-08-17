@@ -234,6 +234,31 @@ export const FriendDetailTheme = {
   },
 };
 
+export const SettleTheme = {
+  light: {
+    heroBackground: '#FFFFFF',
+    heroBorder: 'rgba(191, 201, 195, 0.3)',
+    pillBackground: '#E1E8FD',
+    buttonBackground: '#003527',
+    accentText: '#064E3B',
+    cardBackground: '#FFFFFF',
+    cardBorder: 'rgba(191, 201, 195, 0.35)',
+    avatarBackground: '#95D3BA',
+    avatarText: '#0B513D',
+  },
+  dark: {
+    heroBackground: 'rgba(243, 244, 253, 0.06)',
+    heroBorder: 'rgba(255, 255, 255, 0.05)',
+    pillBackground: 'rgba(243, 244, 253, 0.08)',
+    buttonBackground: '#0F3E3A',
+    accentText: '#2DD4BF',
+    cardBackground: 'rgba(20, 35, 38, 0.95)',
+    cardBorder: 'rgba(255, 255, 255, 0.08)',
+    avatarBackground: 'rgba(45, 212, 191, 0.18)',
+    avatarText: '#2DD4BF',
+  },
+};
+
 // Gradient presets for liquid glass effects - Dark mode
 export const Gradients = {
   dark: {

@@ -30,7 +30,6 @@ import {
   Alert,
   FlatList,
   Keyboard,
-  Platform,
   StyleSheet,
   Text,
   TextInput,
@@ -133,7 +132,7 @@ export default function GroupSettleScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
-  const { colors, isDark } = useThemeColors();
+  const { colors, settle, isDark } = useThemeColors();
   const currentUserId = user?.id || '';
   const queryClient = useQueryClient();
 
@@ -355,11 +354,11 @@ export default function GroupSettleScreen() {
             </View>
 
             {/* Amount Input - Hero Card */}
-            <View style={[styles.amountSection, { backgroundColor: isDark ? 'rgba(243, 244, 253, 0.08)' : '#EAEFFF' }]}>
+            <View style={[styles.amountSection, { backgroundColor: settle.heroBackground }]}>
               <View style={styles.amountInputRow}>
-                <Text style={[styles.currencySymbol, { color: isDark ? '#2DD4BF' : '#0F4C3A' }]}>$</Text>
+                <Text style={[styles.currencySymbol, { color: settle.accentText }]}>$</Text>
                 <TextInput
-                  style={[styles.amountInput, { color: isDark ? '#2DD4BF' : '#0F4C3A' }]}
+                  style={[styles.amountInput, { color: settle.accentText }]}
                   value={amount}
                   onChangeText={(text) => setAmount(normalizeCurrencyInput(text))}
                   placeholder="0.00"
@@ -409,7 +408,7 @@ export default function GroupSettleScreen() {
               styles.settleButton,
               {
                 backgroundColor: canSubmitSettlement
-                  ? (isDark ? '#0F3E3A' : '#0F4C3A')
+                  ? settle.buttonBackground
                   : (isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'),
               },
             ]}>
