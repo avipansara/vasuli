@@ -8,14 +8,19 @@ import { useFriendDetailController } from '@/hooks/use-friend-detail-controller'
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import type { FriendActivityItem, FriendDetailData } from '@/services/friend-detail-service';
-import { friendDetailModule } from '@/services/friend-detail-module';
+import {
+  filterFriendActivity,
+  friendDetailModule,
+  groupFriendActivityByMonth,
+  type FriendActivityFilter,
+} from '@/services/friend-detail-module';
 import type { GroupDetailReadModel } from '@/services/group-detail-read-model';
 import { applySettlementToGroupReadModel } from '@/services/group-detail-read-model';
 import { queryKeys } from '@/services/query-keys';
 import type { Expense, User } from '@/types/database';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Animated, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
 import Reanimated, {
@@ -34,7 +39,7 @@ interface UserWithBalance extends User {
 const MIN_TOUCH_HIT_SLOP = { top: 8, right: 8, bottom: 8, left: 8 };
 const SEGMENTED_CONTROL_PADDING = 3;
 const SEGMENTED_CONTROL_GAP = 3;
-type ActivityFilter = 'all' | 'expenses' | 'updates';
+type ActivityFilter = FriendActivityFilter;
 
 const ACTIVITY_FILTERS: { id: ActivityFilter; label: string; icon: IconSymbolName }[] = [
   { id: 'all', label: 'All', icon: 'list.bullet' },
@@ -113,11 +118,7 @@ export default function FriendDetailScreen() {
   const loading = isLoading && !friendDetail;
   const loadError = error ? getFetchErrorMessage(error) : null;
 
-  const filteredActivity = activityFilter === 'expenses'
-    ? activity.filter(item => item.type === 'expense')
-    : activityFilter === 'updates'
-      ? activity.filter(item => item.type !== 'expense')
-      : activity;
+  const filteredActivity = filterFriendActivity(activity, activityFilter);
   const expenseActivityCount = filteredActivity.filter(item => item.type === 'expense').length;
   const updateActivityCount = filteredActivity.length - expenseActivityCount;
   const activityCountLabel = activityFilter === 'expenses'
@@ -126,25 +127,7 @@ export default function FriendDetailScreen() {
       ? `${updateActivityCount} ${updateActivityCount === 1 ? 'update' : 'updates'}`
       : `${filteredActivity.length} items`;
 
-  const groupedActivity = useMemo(() => {
-    const groups: { monthYear: string; monthKey: string; items: FriendActivityItem[] }[] = [];
-    const sorted = [...filteredActivity].sort((a, b) => b.date - a.date);
-
-    for (const item of sorted) {
-      const dateObj = new Date(item.date);
-      const monthYear = dateObj.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-      const monthKey = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}`;
-
-      let group = groups.find(g => g.monthKey === monthKey);
-      if (!group) {
-        group = { monthYear, monthKey, items: [] };
-        groups.push(group);
-      }
-      group.items.push(item);
-    }
-
-    return groups.sort((a, b) => b.monthKey.localeCompare(a.monthKey));
-  }, [filteredActivity]);
+  const groupedActivity = groupFriendActivityByMonth(filteredActivity);
 
   useEffect(() => {
     if (friendDetail === undefined) return;

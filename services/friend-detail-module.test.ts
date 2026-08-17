@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import type { FriendDetailData } from '@/services/friend-detail-service';
-import { createFriendDetailModule } from '@/services/friend-detail-module';
+import {
+  createFriendDetailModule,
+  filterFriendActivity,
+  groupFriendActivityByMonth,
+} from '@/services/friend-detail-module';
+import type { FriendActivityItem } from '@/services/friend-detail-service';
 import type { Settlement } from '@/types/database';
 
 const detail: FriendDetailData = {
@@ -92,5 +97,47 @@ describe('Friend detail module', () => {
       currentUserName: 'You',
       balance: 0,
     })).rejects.toThrow('No outstanding balance');
+  });
+
+  it('filters and groups Friend activity without changing chronological order', () => {
+    const activity = [
+      {
+        id: 'expense:later',
+        type: 'expense' as const,
+        date: new Date('2026-02-03T12:00:00Z').getTime(),
+        expense: { id: 'later' } as FriendDetailData['expenses'][number],
+      },
+      {
+        id: 'settlement:older',
+        type: 'settlement' as const,
+        date: new Date('2026-01-20T12:00:00Z').getTime(),
+        settlementId: 'older',
+        amount: 10,
+        currency: 'USD',
+        direction: 'friend_paid_you' as const,
+      },
+      {
+        id: 'activity:update',
+        type: 'expense_activity' as const,
+        date: new Date('2026-02-01T12:00:00Z').getTime(),
+        activityId: 'update',
+        activityType: 'expense_updated' as const,
+        targetId: 'later',
+        description: 'Updated: Later',
+        userId: 'friend-a',
+        isDeleted: false,
+        isUpdated: true,
+      },
+    ] as unknown as FriendActivityItem[];
+
+    expect(filterFriendActivity(activity, 'expenses').map(item => item.id)).toEqual(['expense:later']);
+    expect(filterFriendActivity(activity, 'updates').map(item => item.id)).toEqual([
+      'activity:update',
+      'settlement:older',
+    ]);
+    expect(groupFriendActivityByMonth(activity)).toMatchObject([
+      { monthKey: '2026-02', items: [{ id: 'expense:later' }, { id: 'activity:update' }] },
+      { monthKey: '2026-01', items: [{ id: 'settlement:older' }] },
+    ]);
   });
 });

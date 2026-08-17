@@ -1,4 +1,4 @@
-import type { FriendDetailData } from '@/services/friend-detail-service';
+import type { FriendActivityItem, FriendDetailData } from '@/services/friend-detail-service';
 import { friendDetailReadModel } from '@/services/friend-detail-read-model';
 import { activityService } from '@/services/activity-service';
 import { settlementService } from '@/services/settlement-service';
@@ -82,6 +82,45 @@ export type FriendDetailModule = {
     balance: number;
   }): Promise<boolean>;
 };
+
+export type FriendActivityFilter = 'all' | 'expenses' | 'updates';
+
+export type FriendActivityMonth = {
+  monthYear: string;
+  monthKey: string;
+  items: FriendActivityItem[];
+};
+
+export function filterFriendActivity(
+  activity: FriendActivityItem[],
+  filter: FriendActivityFilter
+): FriendActivityItem[] {
+  const filtered = filter === 'expenses'
+    ? activity.filter(item => item.type === 'expense')
+    : filter === 'updates'
+      ? activity.filter(item => item.type !== 'expense')
+      : activity;
+  return [...filtered].sort((a, b) => b.date - a.date);
+}
+
+export function groupFriendActivityByMonth(activity: FriendActivityItem[]): FriendActivityMonth[] {
+  const groups: FriendActivityMonth[] = [];
+  const sorted = [...activity].sort((a, b) => b.date - a.date);
+
+  for (const item of sorted) {
+    const date = new Date(item.date);
+    const monthYear = date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    let group = groups.find(candidate => candidate.monthKey === monthKey);
+    if (!group) {
+      group = { monthYear, monthKey, items: [] };
+      groups.push(group);
+    }
+    group.items.push(item);
+  }
+
+  return groups;
+}
 
 export function createFriendDetailModule(
   dependencies: FriendDetailModuleDependencies = {}
