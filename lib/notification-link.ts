@@ -20,15 +20,15 @@ export function getNotificationHref(data: NotificationLinkData): string | null {
     case 'expense_reminder':
       return expenseId ? `/expense-detail/${expenseId}` : null;
     case 'expense_deleted':
-      return groupId ? `/group/${groupId}` : null;
+      return groupId ? `/groups/${groupId}` : null;
     case 'group_created':
     case 'member_added':
     case 'settlement_created':
-      return groupId ? `/group/${groupId}` : friendId ? `/friend/${friendId}` : null;
+      return groupId ? `/groups/${groupId}` : friendId ? `/friends/${friendId}` : null;
     case 'invitation_sent':
       return '/invitations';
     case 'invitation_accepted':
-      return groupId ? `/group/${groupId}` : friendId ? `/friend/${friendId}` : null;
+      return groupId ? `/groups/${groupId}` : friendId ? `/friends/${friendId}` : null;
     default:
       return null;
   }
