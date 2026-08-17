@@ -61,7 +61,7 @@ function areSettleMemberRowEqual(prev: SettleMemberRowProps, next: SettleMemberR
 }
 
 const SettleMemberRow = memo(function SettleMemberRow({ item, isSelected, onSelect }: SettleMemberRowProps) {
-  const { colors, isDark } = useThemeColors();
+  const { colors, settle, isDark } = useThemeColors();
   const balance = item.balance;
   const owesYou = balance < 0;
   const youOwe = balance > 0;
@@ -69,13 +69,12 @@ const SettleMemberRow = memo(function SettleMemberRow({ item, isSelected, onSele
 
   const cardStyle = {
     backgroundColor: isSelected
-      ? (isDark ? 'rgba(45, 212, 191, 0.15)' : '#E8FDF5')
-      : (isDark ? 'rgba(20, 35, 38, 0.95)' : '#ffffff'),
-    borderRadius: 16,
-    borderWidth: 0,
+      ? settle.selectedCardBackground
+      : (isDark ? 'rgba(20, 35, 38, 0.95)' : '#FFFFFF'),
+    borderRadius: 12,
+    borderWidth: isSelected ? 0 : 1,
+    borderColor: isSelected ? 'transparent' : (isDark ? 'rgba(255,255,255,0.08)' : 'rgba(191, 201, 195, 0.3)'),
   };
-
-  const brandAccent = isDark ? '#2DD4BF' : '#0F4C3A';
 
   return (
     <TouchableOpacity
@@ -88,24 +87,24 @@ const SettleMemberRow = memo(function SettleMemberRow({ item, isSelected, onSele
       ]}>
       <View style={styles.memberContent}>
         <View style={styles.memberLeft}>
-          <View style={[styles.avatar, { backgroundColor: isSelected ? '#ffffff' : (isDark ? 'rgba(255,255,255,0.08)' : '#F3F4F6') }]}>
-            <ThemedText style={[styles.avatarText, { color: isSelected ? brandAccent : colors.text }]}>
+          <View style={[styles.avatar, { backgroundColor: '#ffffff' }]}>
+            <Text style={[styles.avatarText, { color: isSelected ? settle.accentText : colors.text }]}>
               {item.user?.name?.charAt(0).toUpperCase() || 'U'}
-            </ThemedText>
+            </Text>
           </View>
           <View style={styles.memberInfo}>
-            <ThemedText style={[styles.memberName, { color: colors.text }]}>
+            <Text style={[styles.memberName, { color: isSelected ? settle.accentText : colors.text }]}>
               {item.user?.name || 'Unknown'}
-            </ThemedText>
+            </Text>
             {balance !== 0 && (
-              <ThemedText
+              <Text
                 style={[
                   styles.balanceText,
                   {
                     color: owesYou
-                      ? (isDark ? '#2DD4BF' : '#0F4C3A')
+                      ? (isDark ? '#2DD4BF' : '#004F34')
                       : youOwe
-                        ? (isDark ? '#F87171' : '#DC2626')
+                        ? (isDark ? '#F87171' : '#A83639')
                         : colors.textSecondary,
                   },
                 ]}>
@@ -114,14 +113,16 @@ const SettleMemberRow = memo(function SettleMemberRow({ item, isSelected, onSele
                   : youOwe
                     ? `You owe $${Math.abs(balance).toFixed(2)}`
                     : 'Settled up'}
-              </ThemedText>
+              </Text>
             )}
           </View>
         </View>
         {isSelected ? (
-          <IconSymbol size={24} name="checkmark.circle.fill" color={brandAccent} />
+          <View style={[styles.checkCircle, { backgroundColor: settle.buttonBackground }]}>
+            <IconSymbol size={14} name="checkmark" color="#ffffff" />
+          </View>
         ) : (
-          <View style={[styles.radioCircle, { borderColor: isDark ? 'rgba(255,255,255,0.3)' : '#D1D5DB' }]} />
+          <View style={[styles.radioCircle, { borderColor: isDark ? 'rgba(255,255,255,0.3)' : '#707974' }]} />
         )}
       </View>
     </TouchableOpacity>
@@ -354,7 +355,7 @@ export default function GroupSettleScreen() {
             </View>
 
             {/* Amount Input - Hero Card */}
-            <View style={[styles.amountSection, { backgroundColor: settle.heroBackground }]}>
+            <View style={[styles.amountSection, { backgroundColor: settle.heroBackground, borderColor: settle.heroBorder }]}>
               <View style={styles.amountInputRow}>
                 <Text style={[styles.currencySymbol, { color: settle.accentText }]}>$</Text>
                 <TextInput
@@ -362,7 +363,7 @@ export default function GroupSettleScreen() {
                   value={amount}
                   onChangeText={(text) => setAmount(normalizeCurrencyInput(text))}
                   placeholder="0.00"
-                  placeholderTextColor={isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(15, 76, 58, 0.3)'}
+                  placeholderTextColor={isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(6, 78, 59, 0.3)'}
                   keyboardType="decimal-pad"
                   returnKeyType="done"
                   onSubmitEditing={() => Keyboard.dismiss()}
@@ -433,20 +434,20 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     paddingVertical: 16,
   },
   content: {
-    gap: 20,
+    gap: 24,
   },
   groupInfo: {
     marginTop: 4,
   },
   groupLabel: {
-    fontSize: 11,
-    fontWeight: '700',
+    fontSize: 12,
+    fontWeight: '500',
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 1,
   },
   groupName: {
     fontSize: 24,
@@ -460,6 +461,12 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     height: 110,
     paddingHorizontal: 24,
+    borderWidth: 1,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 6,
+    elevation: 1,
   },
   amountInputRow: {
     flexDirection: 'row',
@@ -469,39 +476,39 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   currencySymbol: {
-    fontSize: 32,
+    fontSize: 24,
     fontWeight: '600',
-    marginRight: 6,
-    textAlignVertical: 'center',
+    marginRight: 4,
   },
   amountInput: {
-    fontSize: 38,
-    fontWeight: '700',
-    minWidth: 180,
+    fontSize: 36,
+    fontWeight: '800',
+    minWidth: 60,
     padding: 0,
     margin: 0,
     textAlignVertical: 'center',
+    textAlign: 'center',
   },
   membersSection: {
     marginTop: 4,
   },
   sectionLabel: {
-    fontSize: 11,
-    fontWeight: '700',
+    fontSize: 12,
+    fontWeight: '500',
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 1,
     marginBottom: 12,
   },
   membersList: {
     gap: 12,
   },
   memberCard: {
-    borderRadius: 16,
+    borderRadius: 12,
     shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 1,
   },
   memberCardDisabled: {
     opacity: 0.55,
@@ -524,10 +531,15 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   avatarText: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 20,
+    fontWeight: '600',
   },
   memberInfo: {
     flex: 1,
@@ -547,6 +559,13 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1.5,
   },
+  checkCircle: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -557,23 +576,24 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   bottomActionsContainer: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     paddingTop: 8,
   },
   settleButton: {
     width: '100%',
     height: 56,
-    borderRadius: 16,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
+    shadowColor: '#003527',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
     elevation: 3,
   },
   settleButtonText: {
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: 14,
+    fontWeight: '600',
+    letterSpacing: 0.5,
   },
 });

@@ -443,16 +443,17 @@ const styles = StyleSheet.create({
   currency: {
     fontSize: 44,
     fontWeight: '800',
-    marginRight: 4,
+    marginRight: 2,
     textAlignVertical: 'center',
   },
   input: {
     fontSize: 44,
     fontWeight: '800',
-    minWidth: 180,
-    paddingVertical: 0,
+    minWidth: 60,
+    padding: 0,
     margin: 0,
     textAlignVertical: 'center',
+    textAlign: 'left',
   },
   quickSelectRow: {
     flexDirection: 'row',

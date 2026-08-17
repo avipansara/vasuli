@@ -20,7 +20,7 @@ export function SelectableOption({ label, selected, onPress }: SelectableOptionP
     : { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 };
 
   const textColor = selected
-    ? '#0A0A0F'
+    ? '#FFFFFF'
     : isDark
     ? '#f4f4f5'
     : colors.text;
