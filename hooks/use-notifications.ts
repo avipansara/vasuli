@@ -1,7 +1,7 @@
 import { useAuth } from '@/contexts/auth-context-otp';
-import { userService } from '@/services/user-service';
-import { notificationService } from '@/services/notification-service';
 import { getNotificationHref } from '@/lib/notification-link';
+import { notificationService } from '@/services/notification-service';
+import { userService } from '@/services/user-service';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
@@ -23,6 +23,7 @@ export function useNotifications(enabled = true) {
     const onboardingKey = `${NOTIFICATION_ONBOARDING_PREFIX}${user.id}`;
 
     async function syncPushToken() {
+      if (!user) return;
       const preference = await notificationService.getNotificationPreference(user.id);
       if (preference === false || cancelled) return;
 
