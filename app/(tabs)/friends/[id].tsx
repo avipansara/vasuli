@@ -1,11 +1,10 @@
 import { FriendExpenseActivity } from '@/components/friends/friend-expense-activity';
 import { FriendExpenseActivityEvent } from '@/components/friends/friend-expense-activity-event';
 import { FriendSettlementActivity } from '@/components/friends/friend-settlement-activity';
-import { SettleUpModal } from '@/components/friends/settle-up-modal';
 import { ThemedText } from '@/components/themed-text';
 import { AsyncErrorState } from '@/components/ui/async-error-state';
 import { IconSymbol, type IconSymbolName } from '@/components/ui/icon-symbol';
-import { DetailSkeleton } from '@/components/ui/skeleton';
+import { FriendDetailSkeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useFriendDetailController } from '@/hooks/use-friend-detail-controller';
 import { useThemeColors } from '@/hooks/use-theme-colors';
@@ -47,7 +46,6 @@ const ACTIVITY_FILTERS: { id: ActivityFilter; label: string; icon: IconSymbolNam
 export default function FriendDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { gradients, colors, friendDetail: friendDetailTheme, isDark } = useThemeColors();
-  const [settleModalVisible, setSettleModalVisible] = useState(false);
   const [isRemovingFriend, setIsRemovingFriend] = useState(false);
   const [isSettlingUp, setIsSettlingUp] = useState(false);
   const [deletingExpenseId, setDeletingExpenseId] = useState<string | null>(null);
@@ -147,88 +145,7 @@ export default function FriendDetailScreen() {
     }
   }, [fadeAnim, friend, loading, scaleAnim, slideAnim]);
 
-  const handleSettleUp = async (friendId: string, amount: number) => {
-    if (isSettlingUp) return;
 
-    const previousDetail = friendDetail;
-    let previousHomeFriends: UserWithBalance[] | undefined;
-    try {
-      if (!friend || !user) return;
-
-      if (amount <= 0 || amount > Math.abs(friend.balance)) {
-        Alert.alert('Error', 'Settlement amount cannot exceed the outstanding balance.');
-        return;
-      }
-
-      setIsSettlingUp(true);
-      const optimisticBalance = friend.balance > 0
-        ? friend.balance - amount
-        : friend.balance + amount;
-      const normalizedOptimisticBalance = Math.abs(optimisticBalance) < 0.01 ? 0 : optimisticBalance;
-
-      await queryClient.cancelQueries({ queryKey: friendsHomeQueryKey });
-      previousHomeFriends = queryClient.getQueryData<UserWithBalance[]>(friendsHomeQueryKey);
-      queryClient.setQueryData<UserWithBalance[]>(friendsHomeQueryKey, current => current?.map(homeFriend => (
-        homeFriend.id === friendId
-          ? {
-            ...homeFriend,
-            balance: normalizedOptimisticBalance,
-            recentExpenses: normalizedOptimisticBalance === 0 ? [] : homeFriend.recentExpenses,
-          }
-          : homeFriend
-      )));
-
-      queryClient.setQueryData<FriendDetailData | null>(friendDetailQueryKey, current => current ? {
-        ...current,
-        friend: { ...current.friend, balance: normalizedOptimisticBalance },
-      } : current);
-      setSettleModalVisible(false);
-
-      const settlements = await friendDetailModule.settleUp({
-        currentUserId,
-        friendId,
-        amount: Math.abs(amount),
-        balance: friend.balance,
-        currency: 'USD',
-        date: Date.now(),
-        currentUserName: user.name,
-        friendName: friend.name,
-      });
-
-      const settledGroupIds = [...new Set(settlements.flatMap(settlement => settlement.groupId ? [settlement.groupId] : []))];
-      for (const groupId of settledGroupIds) {
-        const groupSettlements = settlements.filter(settlement => settlement.groupId === groupId);
-        queryClient.setQueryData<GroupDetailReadModel | null>(
-          queryKeys.groups.detail(currentUserId, groupId),
-          current => groupSettlements.reduce(
-            (model, settlement) => model ? applySettlementToGroupReadModel(model, settlement) : model,
-            current,
-          )
-        );
-      }
-
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: friendDetailQueryKey }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.groups.list(currentUserId) }),
-        ...settledGroupIds.map(groupId => queryClient.invalidateQueries({
-          queryKey: queryKeys.groups.detail(currentUserId, groupId),
-        })),
-      ]);
-      await refetch();
-    } catch (error) {
-      if (previousDetail) {
-        queryClient.setQueryData(friendDetailQueryKey, previousDetail);
-      }
-      if (previousHomeFriends) {
-        queryClient.setQueryData(friendsHomeQueryKey, previousHomeFriends);
-      }
-      console.error('Error settling up:', error);
-      Alert.alert('Error', 'Failed to settle up');
-    } finally {
-      setIsSettlingUp(false);
-      queryClient.invalidateQueries({ queryKey: friendsHomeQueryKey });
-    }
-  };
 
   function handleEditExpense(expenseId: string) {
     swipeableRefs.current.get(expenseId)?.close();
@@ -396,7 +313,7 @@ export default function FriendDetailScreen() {
             <IconSymbol size={20} name="chevron.left" color={friendDetailTheme.actionIcon} />
           </TouchableOpacity>
         </View>
-        <DetailSkeleton />
+        <FriendDetailSkeleton />
       </View>
     );
   }
@@ -590,8 +507,7 @@ export default function FriendDetailScreen() {
                     accessibilityLabel={`Settle up with ${friend.name}`}
                     accessibilityHint="Opens the settlement form for this balance"
                     accessibilityState={{ disabled: isSettlingUp, busy: isSettlingUp }}
-                    disabled={isSettlingUp}
-                    onPress={() => setSettleModalVisible(true)}>
+                    onPress={() => router.push(`/friend-settle/${id}`)}>
                     <IconSymbol size={18} name="banknote" color="#ffffff" />
                     <ThemedText style={styles.cardQuickActionText}>Settle Up</ThemedText>
                   </TouchableOpacity>
@@ -705,12 +621,7 @@ export default function FriendDetailScreen() {
         </TouchableOpacity>
       </View>
 
-      <SettleUpModal
-        visible={settleModalVisible}
-        onClose={() => setSettleModalVisible(false)}
-        friend={friend}
-        onConfirm={handleSettleUp}
-      />
+
     </View>
   );
 }

@@ -930,7 +930,7 @@ const styles = StyleSheet.create({
     minWidth: 50,
     fontSize: 48,
     fontWeight: '700',
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'Manrope_700Bold',
     textAlign: 'center',
   },
   inputSection: {
@@ -953,7 +953,7 @@ const styles = StyleSheet.create({
   textInput: {
     flex: 1,
     fontSize: 16,
-    fontFamily: 'Nunito_400Regular',
+    fontFamily: 'Manrope_400Regular',
   },
   toggleSection: {
     gap: 8,

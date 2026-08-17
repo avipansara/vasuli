@@ -24,8 +24,6 @@ import {
 } from '@/utils/group-settle-selection';
 import { normalizeCurrencyInput } from '@/utils/validation';
 import { useQueryClient } from '@tanstack/react-query';
-import { BlurView } from 'expo-blur';
-import { LinearGradient } from 'expo-linear-gradient';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { memo, useCallback, useEffect, useState } from 'react';
 import {
@@ -40,6 +38,7 @@ import {
   TouchableWithoutFeedback,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface MemberWithBalance extends GroupMember {
   user?: User;
@@ -70,19 +69,14 @@ const SettleMemberRow = memo(function SettleMemberRow({ item, isSelected, onSele
   const isSettleable = isSettleableGroupBalance(balance);
 
   const cardStyle = {
-    backgroundColor: isDark ? 'rgba(20, 35, 38, 0.95)' : '#ffffff',
-    borderWidth: isSelected ? 2 : 0,
-    borderColor: isSelected ? (isDark ? '#0D9488' : '#0F4C3A') : 'transparent',
-    shadowColor: isDark ? '#000000' : '#475569',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: isDark ? 0.35 : 0.09,
-    shadowRadius: 10,
-    elevation: 3,
-    borderRadius: 14,
+    backgroundColor: isSelected
+      ? (isDark ? 'rgba(45, 212, 191, 0.15)' : '#E8FDF5')
+      : (isDark ? 'rgba(20, 35, 38, 0.95)' : '#ffffff'),
+    borderRadius: 16,
+    borderWidth: 0,
   };
 
   const brandAccent = isDark ? '#2DD4BF' : '#0F4C3A';
-  const avatarBg = isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(15, 76, 58, 0.1)';
 
   return (
     <TouchableOpacity
@@ -95,8 +89,8 @@ const SettleMemberRow = memo(function SettleMemberRow({ item, isSelected, onSele
       ]}>
       <View style={styles.memberContent}>
         <View style={styles.memberLeft}>
-          <View style={[styles.avatar, { backgroundColor: avatarBg }]}>
-            <ThemedText style={[styles.avatarText, { color: brandAccent }]}>
+          <View style={[styles.avatar, { backgroundColor: isSelected ? '#ffffff' : (isDark ? 'rgba(255,255,255,0.08)' : '#F3F4F6') }]}>
+            <ThemedText style={[styles.avatarText, { color: isSelected ? brandAccent : colors.text }]}>
               {item.user?.name?.charAt(0).toUpperCase() || 'U'}
             </ThemedText>
           </View>
@@ -110,7 +104,7 @@ const SettleMemberRow = memo(function SettleMemberRow({ item, isSelected, onSele
                   styles.balanceText,
                   {
                     color: owesYou
-                      ? (isDark ? '#2DD4BF' : '#22C55E')
+                      ? (isDark ? '#2DD4BF' : '#0F4C3A')
                       : youOwe
                         ? (isDark ? '#F87171' : '#DC2626')
                         : colors.textSecondary,
@@ -125,8 +119,10 @@ const SettleMemberRow = memo(function SettleMemberRow({ item, isSelected, onSele
             )}
           </View>
         </View>
-        {isSelected && (
+        {isSelected ? (
           <IconSymbol size={24} name="checkmark.circle.fill" color={brandAccent} />
+        ) : (
+          <View style={[styles.radioCircle, { borderColor: isDark ? 'rgba(255,255,255,0.3)' : '#D1D5DB' }]} />
         )}
       </View>
     </TouchableOpacity>
@@ -135,8 +131,9 @@ const SettleMemberRow = memo(function SettleMemberRow({ item, isSelected, onSele
 
 export default function GroupSettleScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const insets = useSafeAreaInsets();
   const { user } = useAuth();
-  const { gradients, colors, isDark } = useThemeColors();
+  const { colors, isDark } = useThemeColors();
   const currentUserId = user?.id || '';
   const queryClient = useQueryClient();
 
@@ -176,7 +173,6 @@ export default function GroupSettleScreen() {
         setLoading(true);
       }
 
-      // Load group
       const groupData = await groupService.getById(id);
       if (!groupData) {
         Alert.alert('Error', 'Group not found');
@@ -185,7 +181,6 @@ export default function GroupSettleScreen() {
       }
       setGroup(groupData);
 
-      // Load members
       const groupMembers = await groupService.getMembers(id);
 
       const [memberUsers, balances] = await Promise.all([
@@ -198,7 +193,6 @@ export default function GroupSettleScreen() {
         user: usersById.get(member.userId),
       }));
 
-      // Combine members with balances, excluding current user
       const membersWithBalances = membersWithUsers
         .filter(m => m.userId !== currentUserId)
         .map(member => ({
@@ -220,9 +214,13 @@ export default function GroupSettleScreen() {
   }, [applyGroupDetail, currentUserId, id, queryClient]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- Initial async load hydrates settlement choices and cached group detail state.
     loadData();
   }, [loadData]);
+
+  const handleSelectMember = useCallback((member: MemberWithBalance) => {
+    setSelectedMember(member);
+    setAmount(getGroupSettleAmount(member.balance));
+  }, []);
 
   const handleSettle = async () => {
     if (!selectedMember) {
@@ -241,7 +239,9 @@ export default function GroupSettleScreen() {
       return;
     }
 
-    if (amountNum > Math.abs(selectedMember.balance)) {
+    const amountCents = Math.round(amountNum * 100);
+    const maxCents = Math.round(Math.abs(selectedMember.balance) * 100);
+    if (amountCents > maxCents) {
       Alert.alert('Error', 'Settlement amount cannot exceed the outstanding balance.');
       return;
     }
@@ -249,9 +249,6 @@ export default function GroupSettleScreen() {
     try {
       setSettling(true);
 
-      // Determine payer/receiver based on balance direction
-      // If balance < 0 (They owe), then 'from' = Them, 'to' = Me
-      // If balance > 0 (I owe), then 'from' = Me, 'to' = Them
       const isReceiving = selectedMember.balance < 0;
       const fromUserId = isReceiving ? selectedMember.userId : currentUserId;
       const toUserId = isReceiving ? currentUserId : selectedMember.userId;
@@ -285,7 +282,7 @@ export default function GroupSettleScreen() {
             groupName: group.name,
           });
         } catch {
-          // Activity logging should not block a completed settlement.
+          // Activity logging non-blocking
         }
       }
 
@@ -297,17 +294,7 @@ export default function GroupSettleScreen() {
     } finally {
       setSettling(false);
     }
-  }
-
-  const handleSelectMember = useCallback((item: MemberWithBalance) => {
-    if (!isSettleableGroupBalance(item.balance)) {
-      return;
-    }
-    setSelectedMember(item);
-    setAmount(getGroupSettleAmount(item.balance));
-  }, []);
-
-  const canSubmitSettlement = canSubmitGroupSettlement(selectedMember, amount, settling);
+  };
 
   const renderMember = useCallback(
     ({ item }: { item: MemberWithBalance }) => (
@@ -317,142 +304,128 @@ export default function GroupSettleScreen() {
         onSelect={handleSelectMember}
       />
     ),
-    [selectedMember?.userId, handleSelectMember]
+    [handleSelectMember, selectedMember?.userId]
   );
 
-  const cardStyle = {
-    backgroundColor: isDark ? 'rgba(20, 35, 38, 0.95)' : '#ffffff',
-    borderWidth: 0,
-    shadowColor: isDark ? '#000000' : '#475569',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: isDark ? 0.35 : 0.09,
-    shadowRadius: 10,
-    elevation: 3,
-    borderRadius: 14,
-  };
+  const canSubmitSettlement = canSubmitGroupSettlement(selectedMember, amount, settling);
 
-  const primaryBtnColor = isDark ? '#0D9488' : '#0F4C3A';
-
-  if (loading) {
+  if (loading && !group) {
     return (
-      <>
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
         <Stack.Screen options={{ headerShown: false }} />
-        <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <NavigationHeader title="Settle Up" onBack={() => router.back()} />
+        <View style={{ padding: 20 }}>
           <GenericSkeleton />
         </View>
-      </>
+      </View>
     );
   }
 
   if (loadError) {
     return (
-      <>
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
         <Stack.Screen options={{ headerShown: false }} />
-        <View style={[styles.container, { backgroundColor: colors.background }]}>
-          <NavigationHeader title="Settle Up" onBack={() => router.back()} />
-          <AsyncErrorState
-            message={loadError}
-            onRetry={() => void loadData()}
-            title="Couldn't load group"
-          />
-        </View>
-      </>
+        <NavigationHeader title="Settle Up" onBack={() => router.back()} />
+        <AsyncErrorState
+          message={loadError}
+          onRetry={() => void loadData()}
+          title="Couldn't load group"
+        />
+      </View>
     );
   }
 
   return (
-    <>
-      <Stack.Screen options={{ headerShown: false }} />
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
       <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <Stack.Screen options={{ headerShown: false }} />
         <NavigationHeader title="Settle Up" onBack={() => router.back()} />
 
-        <KeyboardAwareScroll contentContainerStyle={styles.scrollContent}>
-          <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-            <View style={styles.content}>
-              {/* Group Info */}
-              <View style={styles.groupInfo}>
-                <ThemedText style={[styles.groupLabel, { color: colors.textSecondary }]}>
-                  Settling in
-                </ThemedText>
-                <ThemedText type="subtitle" style={[styles.groupName, { color: colors.text }]}>
-                  {group?.name}
-                </ThemedText>
-              </View>
+        <KeyboardAwareScroll
+          contentContainerStyle={styles.scrollContent}>
+          <View style={styles.content}>
+            {/* Group Info */}
+            <View style={styles.groupInfo}>
+              <ThemedText style={[styles.groupLabel, { color: colors.textSecondary }]}>
+                SETTLING IN
+              </ThemedText>
+              <ThemedText style={[styles.groupName, { color: colors.text }]}>
+                {group?.name}
+              </ThemedText>
+            </View>
 
-              {/* Amount Input - Hero Card */}
-              <View style={[styles.amountSection, cardStyle]}>
-                <ThemedText style={[styles.amountLabel, { color: colors.textSecondary }]}>
-                  How much?
-                </ThemedText>
-                <View style={styles.amountInputRow}>
-                  <Text style={[styles.currencySymbol, { color: isDark ? '#2DD4BF' : '#0F4C3A' }]}>$</Text>
-                  <TextInput
-                    style={[styles.amountInput, { color: colors.text }]}
-                    value={amount}
-                    onChangeText={(text) => setAmount(normalizeCurrencyInput(text))}
-                    placeholder="0.00"
-                    placeholderTextColor={colors.textSecondary}
-                    keyboardType="decimal-pad"
-                    returnKeyType="done"
-                    onSubmitEditing={() => Keyboard.dismiss()}
-                  />
-                </View>
-              </View>
-
-              {/* Members List */}
-              <View style={styles.membersSection}>
-                <ThemedText style={[styles.sectionLabel, { color: colors.textSecondary }]}>
-                  Select member to settle with
-                </ThemedText>
-                <FlatList
-                  data={members}
-                  renderItem={renderMember}
-                  keyExtractor={(item) => item.userId}
-                  contentContainerStyle={styles.membersList}
-                  showsVerticalScrollIndicator={false}
-                  scrollEnabled={false}
-                  ListEmptyComponent={
-                    <View style={styles.emptyState}>
-                      <IconSymbol
-                        size={48}
-                        name="person.2.slash"
-                        color={colors.textSecondary}
-                      />
-                      <ThemedText style={[styles.emptyText, { color: colors.textSecondary }]}>
-                        No other members in this group
-                      </ThemedText>
-                    </View>
-                  }
+            {/* Amount Input - Hero Card */}
+            <View style={[styles.amountSection, { backgroundColor: isDark ? 'rgba(243, 244, 253, 0.08)' : '#EAEFFF' }]}>
+              <View style={styles.amountInputRow}>
+                <Text style={[styles.currencySymbol, { color: isDark ? '#2DD4BF' : '#0F4C3A' }]}>$</Text>
+                <TextInput
+                  style={[styles.amountInput, { color: isDark ? '#2DD4BF' : '#0F4C3A' }]}
+                  value={amount}
+                  onChangeText={(text) => setAmount(normalizeCurrencyInput(text))}
+                  placeholder="0.00"
+                  placeholderTextColor={isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(15, 76, 58, 0.3)'}
+                  keyboardType="decimal-pad"
+                  returnKeyType="done"
+                  onSubmitEditing={() => Keyboard.dismiss()}
                 />
               </View>
-
-              {/* Settle Button */}
-              <TouchableOpacity
-                onPress={handleSettle}
-                disabled={!canSubmitSettlement}
-                style={[
-                  styles.settleButton,
-                  {
-                    backgroundColor: canSubmitSettlement
-                      ? primaryBtnColor
-                      : (isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'),
-                  },
-                ]}>
-                <ThemedText
-                  style={[
-                    styles.settleButtonText,
-                    {
-                      color: canSubmitSettlement ? '#ffffff' : colors.textSecondary,
-                    },
-                  ]}>
-                  {settling ? 'Settling...' : 'Record Settlement'}
-                </ThemedText>
-              </TouchableOpacity>
             </View>
-          </TouchableWithoutFeedback>
+
+            {/* Members List */}
+            <View style={styles.membersSection}>
+              <ThemedText style={[styles.sectionLabel, { color: colors.textSecondary }]}>
+                SELECT MEMBER TO SETTLE WITH
+              </ThemedText>
+              <FlatList
+                data={members}
+                renderItem={renderMember}
+                keyExtractor={(item) => item.userId}
+                contentContainerStyle={styles.membersList}
+                showsVerticalScrollIndicator={false}
+                scrollEnabled={false}
+                ListEmptyComponent={
+                  <View style={styles.emptyState}>
+                    <IconSymbol
+                      size={48}
+                      name="person.2.slash"
+                      color={colors.textSecondary}
+                    />
+                    <ThemedText style={[styles.emptyText, { color: colors.textSecondary }]}>
+                      No other members in this group
+                    </ThemedText>
+                  </View>
+                }
+              />
+            </View>
+          </View>
         </KeyboardAwareScroll>
+
+        {/* Bottom Action Button */}
+        <View style={[styles.bottomActionsContainer, { paddingBottom: Math.max(insets.bottom, 16) }]}>
+          <TouchableOpacity
+            onPress={handleSettle}
+            disabled={!canSubmitSettlement}
+            style={[
+              styles.settleButton,
+              {
+                backgroundColor: canSubmitSettlement
+                  ? (isDark ? '#0F3E3A' : '#0F4C3A')
+                  : (isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'),
+              },
+            ]}>
+            <Text
+              style={[
+                styles.settleButtonText,
+                {
+                  color: canSubmitSettlement ? '#ffffff' : colors.textSecondary,
+                },
+              ]}>
+              {settling ? 'Settling...' : 'Record Settlement'}
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
-    </>
+    </TouchableWithoutFeedback>
   );
 }
 
@@ -461,62 +434,75 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: 20,
-    paddingBottom: 120,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
   },
   content: {
-    flex: 1,
+    gap: 20,
   },
   groupInfo: {
-    marginBottom: 24,
+    marginTop: 4,
   },
   groupLabel: {
-    fontSize: 14,
-    opacity: 0.7,
-    marginBottom: 4,
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   groupName: {
     fontSize: 24,
     fontWeight: '700',
+    lineHeight: 32,
+    marginTop: 2,
   },
   amountSection: {
     alignItems: 'center',
-    paddingVertical: 32,
-    marginBottom: 24,
-  },
-  amountLabel: {
-    fontSize: 16,
-    opacity: 0.7,
-    marginBottom: 12,
+    justifyContent: 'center',
+    borderRadius: 24,
+    height: 110,
+    paddingHorizontal: 24,
   },
   amountInputRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+    height: '100%',
   },
   currencySymbol: {
-    fontSize: 48,
-    fontWeight: '700',
-    marginRight: 4,
+    fontSize: 32,
+    fontWeight: '600',
+    marginRight: 6,
+    textAlignVertical: 'center',
   },
   amountInput: {
-    fontSize: 48,
+    fontSize: 38,
     fontWeight: '700',
-    minWidth: 100,
-    maxWidth: 250,
+    minWidth: 180,
     padding: 0,
+    margin: 0,
+    textAlignVertical: 'center',
   },
   membersSection: {
-    marginBottom: 16,
+    marginTop: 4,
   },
   sectionLabel: {
-    fontSize: 14,
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
     marginBottom: 12,
   },
   membersList: {
-    gap: 10,
+    gap: 12,
   },
   memberCard: {
-    borderRadius: 14,
+    borderRadius: 16,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
   memberCardDisabled: {
     opacity: 0.55,
@@ -525,18 +511,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 14,
+    padding: 16,
   },
   memberLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 14,
     flex: 1,
   },
   avatar: {
-    width: 42,
-    height: 42,
-    borderRadius: 12,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -554,6 +540,13 @@ const styles = StyleSheet.create({
   },
   balanceText: {
     fontSize: 13,
+    fontWeight: '500',
+  },
+  radioCircle: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 1.5,
   },
   emptyState: {
     alignItems: 'center',
@@ -564,13 +557,21 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginTop: 12,
   },
+  bottomActionsContainer: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+  },
   settleButton: {
-    paddingVertical: 14,
-    borderRadius: 12,
+    width: '100%',
+    height: 56,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: Platform.OS === 'ios' ? 20 : 16,
-    minHeight: 48,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
   },
   settleButtonText: {
     fontSize: 16,

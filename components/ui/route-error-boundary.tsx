@@ -131,7 +131,7 @@ const styles = StyleSheet.create({
   },
   buttonPrimaryLabel: {
     fontSize: 16,
-    fontFamily: 'Nunito_600SemiBold',
+    fontFamily: 'Manrope_600SemiBold',
     color: '#FFFFFF',
   },
   buttonSecondary: {

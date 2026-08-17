@@ -38,37 +38,37 @@ export function ThemedText({
 
 const styles = StyleSheet.create({
   base: {
-    fontFamily: 'Nunito_400Regular',
+    fontFamily: 'Manrope_400Regular',
   },
   default: {
     fontSize: 14,
     lineHeight: 20,
-    fontFamily: 'Nunito_400Regular',
+    fontFamily: 'Manrope_400Regular',
   },
   defaultSemiBold: {
     fontSize: 14,
     lineHeight: 20,
-    fontFamily: 'Nunito_600SemiBold',
+    fontFamily: 'Manrope_600SemiBold',
   },
   header: {
     fontSize: 30,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'Manrope_700Bold',
     lineHeight: 36,
     letterSpacing: -0.5,
   },
   title: {
     fontSize: 24,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'Manrope_700Bold',
     lineHeight: 28,
     letterSpacing: -0.3,
   },
   subtitle: {
     fontSize: 16,
-    fontFamily: 'Nunito_600SemiBold',
+    fontFamily: 'Manrope_600SemiBold',
   },
   link: {
     lineHeight: 24,
     fontSize: 14,
-    fontFamily: 'Nunito_500Medium',
+    fontFamily: 'Manrope_500Medium',
   },
 });

@@ -66,7 +66,7 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontSize: 16,
-    fontFamily: 'Nunito_400Regular',
+    fontFamily: 'Manrope_400Regular',
     paddingVertical: 0,
     textAlignVertical: 'center',
   },

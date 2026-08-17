@@ -299,10 +299,16 @@ function RootLayoutNav() {
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
-    'Nunito_400Regular': require('@expo-google-fonts/nunito/400Regular/Nunito_400Regular.ttf'),
-    'Nunito_500Medium': require('@expo-google-fonts/nunito/500Medium/Nunito_500Medium.ttf'),
-    'Nunito_600SemiBold': require('@expo-google-fonts/nunito/600SemiBold/Nunito_600SemiBold.ttf'),
-    'Nunito_700Bold': require('@expo-google-fonts/nunito/700Bold/Nunito_700Bold.ttf'),
+    'Manrope_400Regular': require('@expo-google-fonts/manrope/400Regular/Manrope_400Regular.ttf'),
+    'Manrope_500Medium': require('@expo-google-fonts/manrope/500Medium/Manrope_500Medium.ttf'),
+    'Manrope_600SemiBold': require('@expo-google-fonts/manrope/600SemiBold/Manrope_600SemiBold.ttf'),
+    'Manrope_700Bold': require('@expo-google-fonts/manrope/700Bold/Manrope_700Bold.ttf'),
+    'Manrope_800ExtraBold': require('@expo-google-fonts/manrope/800ExtraBold/Manrope_800ExtraBold.ttf'),
+    // Aliases so any residual Nunito reference uses Manrope seamlessly
+    'Nunito_400Regular': require('@expo-google-fonts/manrope/400Regular/Manrope_400Regular.ttf'),
+    'Nunito_500Medium': require('@expo-google-fonts/manrope/500Medium/Manrope_500Medium.ttf'),
+    'Nunito_600SemiBold': require('@expo-google-fonts/manrope/600SemiBold/Manrope_600SemiBold.ttf'),
+    'Nunito_700Bold': require('@expo-google-fonts/manrope/700Bold/Manrope_700Bold.ttf'),
   });
 
   if (!fontsLoaded) {

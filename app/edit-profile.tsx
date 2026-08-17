@@ -233,7 +233,7 @@ const styles = StyleSheet.create({
   textInput: {
     flex: 1,
     fontSize: 16,
-    fontFamily: 'Nunito_400Regular',
+    fontFamily: 'Manrope_400Regular',
   },
   infoCard: {
     flexDirection: 'row',

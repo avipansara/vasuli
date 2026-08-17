@@ -264,12 +264,12 @@ const styles = StyleSheet.create({
   textInput: {
     flex: 1,
     fontSize: 16,
-    fontFamily: 'Nunito_400Regular',
+    fontFamily: 'Manrope_400Regular',
   },
   textArea: {
     flex: 1,
     fontSize: 16,
-    fontFamily: 'Nunito_400Regular',
+    fontFamily: 'Manrope_400Regular',
     minHeight: 80,
   },
 });

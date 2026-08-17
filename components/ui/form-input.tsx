@@ -32,7 +32,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     paddingHorizontal: 16,
     fontSize: 16,
-    fontFamily: 'Nunito_400Regular',
+    fontFamily: 'Manrope_400Regular',
     color: '#f4f4f5',
     textAlign: 'left',
     textAlignVertical: 'center',

@@ -22,10 +22,10 @@ export function canSubmitGroupSettlement(
   settling: boolean
 ): boolean {
   const parsedAmount = Number.parseFloat(amount);
-  return (
-    !!selectedMember &&
-    !settling &&
-    parsedAmount > 0 &&
-    parsedAmount <= Math.abs(selectedMember.balance)
-  );
+  if (!selectedMember || settling || Number.isNaN(parsedAmount) || parsedAmount <= 0) {
+    return false;
+  }
+  const amountCents = Math.round(parsedAmount * 100);
+  const maxCents = Math.round(Math.abs(selectedMember.balance) * 100);
+  return amountCents <= maxCents;
 }

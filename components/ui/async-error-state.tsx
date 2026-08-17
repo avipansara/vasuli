@@ -127,7 +127,7 @@ const styles = StyleSheet.create({
   },
   retryLabel: {
     fontSize: 16,
-    fontFamily: 'Nunito_600SemiBold',
+    fontFamily: 'Manrope_600SemiBold',
     color: '#0A0A0F',
   },
 });

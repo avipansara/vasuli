@@ -2,7 +2,7 @@ import { AddMemberModal } from '@/components/group';
 import { ThemedText } from '@/components/themed-text';
 import { AsyncErrorState } from '@/components/ui/async-error-state';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { DetailSkeleton } from '@/components/ui/skeleton';
+import { GroupDetailSkeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useDebouncedQueryInvalidation } from '@/hooks/use-debounced-query-invalidation';
 import { useRealtime } from '@/hooks/use-realtime';
@@ -737,7 +737,7 @@ export default function GroupDetailScreen() {
             <IconSymbol size={20} name="chevron.left" color={friendDetailTheme.actionIcon} />
           </TouchableOpacity>
         </View>
-        <DetailSkeleton />
+        <GroupDetailSkeleton />
       </View>
     );
   }
