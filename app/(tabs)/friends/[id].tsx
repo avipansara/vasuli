@@ -4,8 +4,7 @@ import { AsyncErrorState } from '@/components/ui/async-error-state';
 import { IconSymbol, type IconSymbolName } from '@/components/ui/icon-symbol';
 import { DetailSkeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/auth-context-otp';
-import { useDebouncedQueryInvalidation } from '@/hooks/use-debounced-query-invalidation';
-import { useRealtime } from '@/hooks/use-realtime';
+import { useFriendDetailController } from '@/hooks/use-friend-detail-controller';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import type { FriendActivityItem, FriendDetailData } from '@/services/friend-detail-service';
@@ -14,7 +13,6 @@ import type { GroupDetailReadModel } from '@/services/group-detail-read-model';
 import { applySettlementToGroupReadModel } from '@/services/group-detail-read-model';
 import { queryKeys } from '@/services/query-keys';
 import type { Expense, User } from '@/types/database';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -55,10 +53,6 @@ export default function FriendDetailScreen() {
   const [deletingExpenseId, setDeletingExpenseId] = useState<string | null>(null);
   const { user } = useAuth();
   const currentUserId = user?.id || '';
-  const queryClient = useQueryClient();
-  const friendsHomeQueryKey = useMemo(() => queryKeys.friends.home(currentUserId), [currentUserId]);
-  const friendDetailQueryKey = useMemo(() => queryKeys.friends.detail(currentUserId, id), [currentUserId, id]);
-  const invalidateFriendDetail = useDebouncedQueryInvalidation(friendDetailQueryKey, 500);
   const swipeableRefs = useRef<Map<string, Swipeable>>(new Map());
 
   // Animations
@@ -109,16 +103,13 @@ export default function FriendDetailScreen() {
     error,
     isLoading,
     refetch,
-  } = useQuery({
-    queryKey: friendDetailQueryKey,
-    enabled: !!currentUserId && !!id,
-    queryFn: async () => {
-      return friendDetailModule.getDetail(currentUserId, id);
-    },
-  });
-  const friend = friendDetail?.friend ?? null;
-  const expenses = friendDetail?.expenses ?? [];
-  const activity = friendDetail?.activity ?? [];
+    friend,
+    expenses,
+    activity,
+    friendDetailQueryKey,
+    friendsHomeQueryKey,
+    queryClient,
+  } = useFriendDetailController({ currentUserId, friendId: id });
   const loading = isLoading && !friendDetail;
   const loadError = error ? getFetchErrorMessage(error) : null;
 
@@ -208,55 +199,6 @@ export default function FriendDetailScreen() {
 
     }
   }, [fadeAnim, friend, loading, scaleAnim, slideAnim]);
-
-  useRealtime({
-    table: 'expenses',
-    filter: currentUserId ? `paid_by=eq.${currentUserId}` : undefined,
-    onChange: invalidateFriendDetail,
-    enabled: !!currentUserId && !!id,
-  });
-  useRealtime({
-    table: 'expenses',
-    filter: id ? `paid_by=eq.${id}` : undefined,
-    onChange: invalidateFriendDetail,
-    enabled: !!currentUserId && !!id,
-  });
-  useRealtime({
-    table: 'expense_splits',
-    filter: currentUserId ? `user_id=eq.${currentUserId}` : undefined,
-    onChange: invalidateFriendDetail,
-    enabled: !!currentUserId && !!id,
-  });
-  useRealtime({
-    table: 'expense_splits',
-    filter: id ? `user_id=eq.${id}` : undefined,
-    onChange: invalidateFriendDetail,
-    enabled: !!currentUserId && !!id,
-  });
-  useRealtime({
-    table: 'settlements',
-    filter: currentUserId ? `from_user_id=eq.${currentUserId}` : undefined,
-    onChange: invalidateFriendDetail,
-    enabled: !!currentUserId && !!id,
-  });
-  useRealtime({
-    table: 'settlements',
-    filter: currentUserId ? `to_user_id=eq.${currentUserId}` : undefined,
-    onChange: invalidateFriendDetail,
-    enabled: !!currentUserId && !!id,
-  });
-  useRealtime({
-    table: 'settlements',
-    filter: id ? `from_user_id=eq.${id}` : undefined,
-    onChange: invalidateFriendDetail,
-    enabled: !!currentUserId && !!id,
-  });
-  useRealtime({
-    table: 'settlements',
-    filter: id ? `to_user_id=eq.${id}` : undefined,
-    onChange: invalidateFriendDetail,
-    enabled: !!currentUserId && !!id,
-  });
 
   const handleSettleUp = async (friendId: string, amount: number) => {
     if (isSettlingUp) return;
