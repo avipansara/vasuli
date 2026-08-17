@@ -68,5 +68,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: 'Nunito_400Regular',
     paddingVertical: 0,
+    textAlignVertical: 'center',
   },
 });

@@ -252,15 +252,13 @@ const styles = StyleSheet.create({
   currencySymbol: {
     fontSize: 32,
     fontWeight: '700',
-    lineHeight: 40,
     marginRight: 4,
   },
   amountInput: {
     fontSize: 32,
     fontWeight: '700',
-    lineHeight: 40,
     minWidth: 120,
-    textAlign: 'center',
+    textAlign: 'left',
     textAlignVertical: 'center',
     paddingVertical: 0,
     paddingHorizontal: 0,

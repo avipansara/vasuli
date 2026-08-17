@@ -596,6 +596,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
     paddingVertical: 0,
+    textAlignVertical: 'center',
   },
   primaryButton: {
     height: 50,
