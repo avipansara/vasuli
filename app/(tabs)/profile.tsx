@@ -273,36 +273,36 @@ export default function ProfileScreen() {
   ];
 
   const cardStyle = {
-    backgroundColor: isDark ? 'rgba(20, 35, 38, 0.95)' : '#ffffff',
+    backgroundColor: isDark ? '#0f172a' : '#ffffff',
     borderWidth: 0,
     shadowColor: isDark ? '#000000' : '#475569',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: isDark ? 0.35 : 0.09,
-    shadowRadius: 10,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: isDark ? 0.4 : 0.09,
+    shadowRadius: 12,
+    elevation: 4,
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <View style={[styles.container, { backgroundColor: isDark ? '#040914' : colors.background }]}>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         contentInsetAdjustmentBehavior="automatic"
         showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <ThemedText style={[styles.headerLabel, { color: colors.textSecondary }]}>Account</ThemedText>
+          <ThemedText style={[styles.headerLabel, { color: isDark ? '#9ba6b8' : colors.textSecondary }]}>Account</ThemedText>
         </View>
 
         <View style={[styles.profileCard, cardStyle]}>
-          <View style={[styles.avatarLarge, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)' }]}>
-            <ThemedText style={[styles.avatarLargeText, { color: isDark ? '#2DD4BF' : colors.tint }]}>
+          <View style={[styles.avatarLarge, { backgroundColor: isDark ? '#064e3b' : 'rgba(34, 197, 94, 0.1)' }]}>
+            <ThemedText style={[styles.avatarLargeText, { color: isDark ? '#10b981' : colors.tint }]}>
               {currentUser?.name?.charAt(0).toUpperCase() || 'U'}
             </ThemedText>
           </View>
           <View style={styles.profileInfo}>
-            <ThemedText type="subtitle" style={[styles.userName, { color: colors.text }]} numberOfLines={1}>
+            <ThemedText type="subtitle" style={[styles.userName, { color: isDark ? '#f8fafc' : colors.text }]} numberOfLines={1}>
               {currentUser?.name || 'User'}
             </ThemedText>
-            <ThemedText style={[styles.userEmail, { color: colors.textSecondary }]} numberOfLines={1}>
+            <ThemedText style={[styles.userEmail, { color: isDark ? '#9ba6b8' : colors.textSecondary }]} numberOfLines={1}>
               {currentUser?.email || 'No email set'}
             </ThemedText>
           </View>
@@ -313,13 +313,13 @@ export default function ProfileScreen() {
             style={({ pressed }) => [
               styles.editButton,
               {
-                backgroundColor: isDark ? 'rgba(45, 212, 191, 0.14)' : 'rgba(34, 197, 94, 0.1)',
-                borderColor: isDark ? 'rgba(45, 212, 191, 0.26)' : 'rgba(34, 197, 94, 0.22)',
+                backgroundColor: isDark ? '#064e3b' : 'rgba(34, 197, 94, 0.1)',
+                borderWidth: 0,
               },
               pressed && styles.pressed,
             ]}
             onPress={handleEditProfile}>
-            <IconSymbol name="pencil" size={18} color={isDark ? '#2DD4BF' : colors.tint} />
+            <IconSymbol name="pencil" size={18} color={isDark ? '#10b981' : colors.tint} />
           </Pressable>
         </View>
 
@@ -331,7 +331,7 @@ export default function ProfileScreen() {
           ]}>
           {statsLoading ? (
             <View style={styles.statsLoading}>
-              <ActivityIndicator size="small" color={isDark ? '#2DD4BF' : colors.tint} />
+              <ActivityIndicator size="small" color={isDark ? '#10b981' : colors.tint} />
             </View>
           ) : statsError ? (
             <AsyncErrorState
@@ -343,44 +343,44 @@ export default function ProfileScreen() {
           ) : (
             <>
               <View style={styles.statItem}>
-                <ThemedText type='title' style={[styles.statValue, { color: isDark ? '#2DD4BF' : colors.tint }]}>
+                <ThemedText type='title' style={[styles.statValue, { color: isDark ? '#10b981' : colors.tint }]}>
                   ${totalOwed.toFixed(2)}
                 </ThemedText>
-                <ThemedText style={[styles.statLabel, { color: colors.textSecondary }]}>You are owed</ThemedText>
+                <ThemedText style={[styles.statLabel, { color: isDark ? '#9ba6b8' : colors.textSecondary }]}>You are owed</ThemedText>
               </View>
-              <View style={[styles.statDivider, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)' }]} />
+              <View style={[styles.statDivider, { backgroundColor: isDark ? '#2a3441' : 'rgba(0, 0, 0, 0.08)' }]} />
               <View style={styles.statItem}>
-                <ThemedText type='title' style={[styles.statValue, { color: isDark ? '#F87171' : '#DC2626' }]}>
+                <ThemedText type='title' style={[styles.statValue, { color: isDark ? '#ffb4ab' : '#DC2626' }]}>
                   ${totalOwing.toFixed(2)}
                 </ThemedText>
-                <ThemedText style={[styles.statLabel, { color: colors.textSecondary }]}>You owe</ThemedText>
+                <ThemedText style={[styles.statLabel, { color: isDark ? '#9ba6b8' : colors.textSecondary }]}>You owe</ThemedText>
               </View>
             </>
           )}
         </View>
 
         <View style={styles.settingsSection}>
-          <ThemedText style={[styles.sectionTitle, { color: colors.textSecondary }]}>Settings</ThemedText>
+          <ThemedText style={[styles.sectionTitle, { color: isDark ? '#9ba6b8' : colors.textSecondary }]}>Settings</ThemedText>
           {pendingInvitationCount > 0 && (
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={`${pendingInvitationCount} pending invitation${pendingInvitationCount === 1 ? '' : 's'}`}
               style={({ pressed }) => [
                 styles.invitationAlert,
-                { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.14)' : 'rgba(34, 197, 94, 0.1)', borderColor: isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(34, 197, 94, 0.25)' },
+                { backgroundColor: isDark ? '#064e3b' : 'rgba(34, 197, 94, 0.1)', borderWidth: 0 },
                 pressed && styles.pressed,
               ]}
               onPress={() => router.push('/invitations')}>
-              <View style={[styles.invitationAlertIcon, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(34, 197, 94, 0.16)' }]}>
-                <IconSymbol name="envelope.badge" size={18} color={isDark ? '#2DD4BF' : colors.tint} />
+              <View style={[styles.invitationAlertIcon, { backgroundColor: isDark ? '#004f34' : 'rgba(34, 197, 94, 0.16)' }]}>
+                <IconSymbol name="envelope.badge" size={18} color={isDark ? '#10b981' : colors.tint} />
               </View>
               <View style={styles.invitationAlertContent}>
-                <ThemedText style={[styles.invitationAlertTitle, { color: colors.text }]}>
+                <ThemedText style={[styles.invitationAlertTitle, { color: isDark ? '#f8fafc' : colors.text }]}>
                   You have {pendingInvitationCount} pending invitation{pendingInvitationCount === 1 ? '' : 's'}
                 </ThemedText>
-                <ThemedText style={[styles.invitationAlertSubtitle, { color: colors.textSecondary }]}>Review and accept or decline now</ThemedText>
+                <ThemedText style={[styles.invitationAlertSubtitle, { color: isDark ? '#9ba6b8' : colors.textSecondary }]}>Review and accept or decline now</ThemedText>
               </View>
-              <IconSymbol name="chevron.right" size={16} color={isDark ? '#2DD4BF' : colors.tint} />
+              <IconSymbol name="chevron.right" size={16} color={isDark ? '#10b981' : colors.tint} />
             </Pressable>
           )}
           <View style={[styles.settingsList, cardStyle]}>
@@ -389,35 +389,31 @@ export default function ProfileScreen() {
                 key={item.title}
                 style={({ pressed }) => [
                   styles.settingItem,
-                  index < settingsItems.length - 1 && [
-                    styles.settingItemBorder,
-                    { borderBottomColor: isDark ? 'rgba(255,255,255,0.06)' : colors.border },
-                  ],
                   pressed && !item.hasSwitch && styles.pressed,
                 ]}
                 onPress={item.onPress}
                 disabled={item.hasSwitch}>
                 <View style={styles.settingLeft}>
-                  <View style={[styles.settingIcon, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.12)' : 'rgba(34, 197, 94, 0.08)' }]}>
-                    <IconSymbol name={item.icon as any} size={19} color={isDark ? '#2DD4BF' : colors.tint} />
+                  <View style={[styles.settingIcon, { backgroundColor: isDark ? '#064e3b' : 'rgba(34, 197, 94, 0.08)' }]}>
+                    <IconSymbol name={item.icon as any} size={19} color={isDark ? '#10b981' : colors.tint} />
                   </View>
-                  <ThemedText style={[styles.settingTitle, { color: colors.text }]}>{item.title}</ThemedText>
+                  <ThemedText style={[styles.settingTitle, { color: isDark ? '#f8fafc' : colors.text }]}>{item.title}</ThemedText>
                 </View>
                 {item.hasSwitch ? (
                   <Switch
                     value={item.value}
                     onValueChange={item.onToggle}
-                    trackColor={{ false: isDark ? '#333' : '#D4D4D4', true: isDark ? 'rgba(45, 212, 191, 0.4)' : 'rgba(34, 197, 94, 0.4)' }}
-                    thumbColor={item.value ? (isDark ? '#2DD4BF' : colors.tint) : (isDark ? '#666' : '#999')}
+                    trackColor={{ false: isDark ? '#2a3441' : '#D4D4D4', true: isDark ? 'rgba(16, 185, 129, 0.4)' : 'rgba(34, 197, 94, 0.4)' }}
+                    thumbColor={item.value ? (isDark ? '#10b981' : colors.tint) : (isDark ? '#64748b' : '#999')}
                   />
                 ) : (
                   <View style={styles.settingRight}>
                     {item.badge ? (
-                      <View style={[styles.invitationBadge, { backgroundColor: isDark ? '#2DD4BF' : colors.tint }]}>
-                        <ThemedText style={[styles.invitationBadgeText, { color: isDark ? '#0A0A0F' : '#FFFFFF' }]}>{item.badge > 9 ? '9+' : item.badge}</ThemedText>
+                      <View style={[styles.invitationBadge, { backgroundColor: isDark ? '#10b981' : colors.tint }]}>
+                        <ThemedText style={[styles.invitationBadgeText, { color: isDark ? '#003827' : '#FFFFFF' }]}>{item.badge > 9 ? '9+' : item.badge}</ThemedText>
                       </View>
                     ) : null}
-                    <IconSymbol name="chevron.right" size={16} color={isDark ? 'rgba(255,255,255,0.35)' : colors.textSecondary} />
+                    <IconSymbol name="chevron.right" size={16} color={isDark ? '#64748b' : colors.textSecondary} />
                   </View>
                 )}
               </Pressable>
@@ -429,10 +425,10 @@ export default function ProfileScreen() {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Logout"
-            style={({ pressed }) => [styles.logoutButton, { backgroundColor: isDark ? 'rgba(239, 68, 68, 0.12)' : 'rgba(239, 68, 68, 0.08)', borderColor: isDark ? 'rgba(239, 68, 68, 0.26)' : 'rgba(239, 68, 68, 0.22)' }, pressed && styles.pressed]}
+            style={({ pressed }) => [styles.logoutButton, { backgroundColor: isDark ? 'rgba(147, 0, 10, 0.3)' : 'rgba(239, 68, 68, 0.08)', borderWidth: 0 }, pressed && styles.pressed]}
             onPress={handleLogout}>
-            <IconSymbol name="rectangle.portrait.and.arrow.right" size={18} color={isDark ? '#F87171' : '#DC2626'} />
-            <ThemedText style={[styles.logoutText, { color: isDark ? '#F87171' : '#DC2626' }]}>Logout</ThemedText>
+            <IconSymbol name="rectangle.portrait.and.arrow.right" size={18} color={isDark ? '#ffb4ab' : '#DC2626'} />
+            <ThemedText style={[styles.logoutText, { color: isDark ? '#ffb4ab' : '#DC2626' }]}>Logout</ThemedText>
           </Pressable>
 
           <Pressable
@@ -443,7 +439,7 @@ export default function ProfileScreen() {
           </Pressable>
         </View>
 
-        <ThemedText style={[styles.versionText, { color: colors.textSecondary }]}>
+        <ThemedText style={[styles.versionText, { color: isDark ? '#64748b' : colors.textSecondary }]}>
           {getAppVersionLabel()}
         </ThemedText>
       </ScrollView>

@@ -68,13 +68,13 @@ function FriendCardInner({ friend, onPress, onDelete }: FriendCardProps) {
 
   const cardStyle = useMemo(
     () => ({
-      backgroundColor: isDark ? 'rgba(20, 35, 38, 0.95)' : '#ffffff',
+      backgroundColor: isDark ? '#0f172a' : '#ffffff',
       borderWidth: 0,
       shadowColor: isDark ? '#000000' : '#475569',
-      shadowOffset: { width: 0, height: 3 },
-      shadowOpacity: isDark ? 0.35 : 0.09,
-      shadowRadius: 10,
-      elevation: 3,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: isDark ? 0.4 : 0.09,
+      shadowRadius: 12,
+      elevation: 4,
     }),
     [isDark]
   );
@@ -111,9 +111,9 @@ function FriendCardInner({ friend, onPress, onDelete }: FriendCardProps) {
           <View
             style={[
               styles.avatar,
-              { backgroundColor: friendsTheme.avatarSurface },
+              { backgroundColor: isDark ? '#064e3b' : friendsTheme.avatarSurface },
             ]}>
-            <ThemedText style={[styles.avatarText, { color: avatarTextColor }]}>
+            <ThemedText style={[styles.avatarText, { color: isDark ? '#10b981' : avatarTextColor }]}>
               {displayName.charAt(0).toUpperCase()}
             </ThemedText>
           </View>
@@ -122,11 +122,11 @@ function FriendCardInner({ friend, onPress, onDelete }: FriendCardProps) {
             <View style={styles.mainInfo}>
               <ThemedText
                 type="defaultSemiBold"
-                style={[styles.name, { color: colors.text }]}>
+                style={[styles.name, { color: isDark ? '#f8fafc' : colors.text }]}>
                 {displayName}
               </ThemedText>
               {friend.email ? (
-                <ThemedText numberOfLines={1} style={[styles.email, { color: emailColor }]}>
+                <ThemedText numberOfLines={1} style={[styles.email, { color: isDark ? '#64748b' : emailColor }]}>
                   {friend.email}
                 </ThemedText>
               ) : null}
@@ -135,15 +135,15 @@ function FriendCardInner({ friend, onPress, onDelete }: FriendCardProps) {
             <View style={styles.balanceContainer}>
               {balance !== 0 ? (
                 <>
-                  <ThemedText type='title' style={[styles.balanceAmount, { color: balanceColor }]}>
+                  <ThemedText type='title' style={[styles.balanceAmount, { color: isDark ? (balance > 0 ? '#10b981' : '#ffb4ab') : balanceColor }]}>
                     ${Math.abs(balance).toFixed(2)}
                   </ThemedText>
-                  <ThemedText style={[styles.balanceLabel, { color: colors.textSecondary }]}>
+                  <ThemedText style={[styles.balanceLabel, { color: isDark ? '#64748b' : colors.textSecondary }]}>
                     {balance > 0 ? 'owes you' : 'you owe'}
                   </ThemedText>
                 </>
               ) : (
-                <ThemedText style={[styles.settledText, { color: colors.tint }]}>
+                <ThemedText style={[styles.settledText, { color: isDark ? '#10b981' : colors.tint }]}>
                   settled up ✓
                 </ThemedText>
               )}

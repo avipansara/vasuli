@@ -127,13 +127,13 @@ function GroupCardInner({ group, index, onRefresh }: GroupCardProps) {
           style={[
             styles.card,
             {
-              backgroundColor: isDark ? 'rgba(20, 35, 38, 0.95)' : '#ffffff',
+              backgroundColor: isDark ? '#0f172a' : '#ffffff',
               borderWidth: 0,
               shadowColor: isDark ? '#000000' : '#475569',
-              shadowOffset: { width: 0, height: 3 },
-              shadowOpacity: isDark ? 0.35 : 0.09,
-              shadowRadius: 10,
-              elevation: 3,
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: isDark ? 0.4 : 0.09,
+              shadowRadius: 12,
+              elevation: 4,
             },
           ]}>
           <TouchableOpacity
@@ -149,23 +149,23 @@ function GroupCardInner({ group, index, onRefresh }: GroupCardProps) {
                   styles.iconContainer,
                   {
                     backgroundColor: isDark
-                      ? 'rgba(45, 212, 191, 0.15)'
+                      ? '#064e3b'
                       : 'rgba(34, 197, 94, 0.1)',
                   },
                 ]}>
                 <IconSymbol
                   size={28}
                   name="person.3.fill"
-                  color={isDark ? '#2DD4BF' : colors.tint}
+                  color={isDark ? '#10b981' : colors.tint}
                 />
               </View>
               <View style={styles.info}>
-                <ThemedText style={[styles.name, !isDark && { color: colors.text }]} numberOfLines={1}>
+                <ThemedText style={[styles.name, { color: isDark ? '#f8fafc' : colors.text }]} numberOfLines={1}>
                   {group.name}
                 </ThemedText>
                 {group.description && (
                   <ThemedText
-                    style={[styles.description, { color: colors.textSecondary }]}
+                    style={[styles.description, { color: isDark ? '#9ba6b8' : colors.textSecondary }]}
                     numberOfLines={1}>
                     {group.description}
                   </ThemedText>
@@ -173,12 +173,12 @@ function GroupCardInner({ group, index, onRefresh }: GroupCardProps) {
               </View>
               <View style={styles.balanceContainer}>
                 {isSettled ? (
-                  <ThemedText style={[styles.settledText, { color: colors.textSecondary }]}>
+                  <ThemedText style={[styles.settledText, { color: isDark ? '#10b981' : colors.textSecondary }]}>
                     settled up
                   </ThemedText>
                 ) : (
                   <>
-                    <ThemedText style={[styles.balanceLabel, { color: colors.textSecondary }]}>
+                    <ThemedText style={[styles.balanceLabel, { color: isDark ? '#64748b' : colors.textSecondary }]}>
                       {isPositive ? "you're owed" : "you owe"}
                     </ThemedText>
                     <ThemedText
@@ -186,7 +186,7 @@ function GroupCardInner({ group, index, onRefresh }: GroupCardProps) {
                       style={[
                         styles.balanceAmount,
                         {
-                          color: isPositive ? colors.success : colors.error,
+                          color: isDark ? (isPositive ? '#10b981' : '#ffb4ab') : (isPositive ? colors.success : colors.error),
                         },
                       ]}>
                       ${Math.abs(balance).toFixed(2)}

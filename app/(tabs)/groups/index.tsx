@@ -134,28 +134,28 @@ export default function GroupsScreen() {
         : 'All settled up';
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <View style={[styles.container, { backgroundColor: isDark ? '#040914' : colors.background }]}>
       <View style={styles.header}>
         <View accessible accessibilityRole="summary" accessibilityLabel={`Group balances: ${summaryAccessibilityLabel}`}>
           {hasSeparateBalances ? (
             <View style={styles.balanceSummaryRow}>
               <View>
-                <ThemedText style={[styles.headerLabel, { color: colors.textSecondary }]}>You owe</ThemedText>
-                <ThemedText type="header" style={[styles.headerAmount, { color: colors.error }]}>${totalOwe.toFixed(2)}</ThemedText>
+                <ThemedText style={[styles.headerLabel, { color: isDark ? '#9ba6b8' : colors.textSecondary }]}>You owe</ThemedText>
+                <ThemedText type="header" style={[styles.headerAmount, { color: isDark ? '#ffb4ab' : colors.error }]}>${totalOwe.toFixed(2)}</ThemedText>
               </View>
               <View>
-                <ThemedText style={[styles.headerLabel, { color: colors.textSecondary }]}>You are owed</ThemedText>
-                <ThemedText type="header" style={[styles.headerAmount, { color: colors.success }]}>${totalOwed.toFixed(2)}</ThemedText>
+                <ThemedText style={[styles.headerLabel, { color: isDark ? '#9ba6b8' : colors.textSecondary }]}>You are owed</ThemedText>
+                <ThemedText type="header" style={[styles.headerAmount, { color: isDark ? '#10b981' : colors.success }]}>${totalOwed.toFixed(2)}</ThemedText>
               </View>
             </View>
           ) : (
             <>
-              <ThemedText style={[styles.headerLabel, { color: colors.textSecondary }]}>
+              <ThemedText style={[styles.headerLabel, { color: isDark ? '#9ba6b8' : colors.textSecondary }]}>
                 {totalBalance === 0 ? 'All settled up' : totalOwe > 0 ? 'You owe' : 'You are owed'}
               </ThemedText>
               <ThemedText
                 type="header"
-                style={[styles.headerAmount, { color: totalOwe > 0 ? colors.error : colors.success }]}
+                style={[styles.headerAmount, { color: isDark ? (totalOwe > 0 ? '#ffb4ab' : '#10b981') : (totalOwe > 0 ? colors.error : colors.success) }]}
               >
                 ${Math.abs(totalBalance).toFixed(2)}
               </ThemedText>
@@ -163,12 +163,12 @@ export default function GroupsScreen() {
           )}
         </View>
         <TouchableOpacity
-          style={[styles.addButtonRect, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)', borderColor: isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(34, 197, 94, 0.3)' }]}
+          style={[styles.addButtonRect, { backgroundColor: isDark ? '#0f172a' : 'rgba(34, 197, 94, 0.1)', borderColor: isDark ? '#2a3441' : 'rgba(34, 197, 94, 0.3)' }]}
           onPress={() => router.push('/create-group')}
           accessibilityRole="button"
           accessibilityLabel="Create group"
           accessibilityHint="Opens the form to create a new group">
-          <IconSymbol size={20} name="plus" color={isDark ? '#2DD4BF' : colors.tint} />
+          <IconSymbol size={20} name="plus" color={isDark ? '#10b981' : colors.tint} />
         </TouchableOpacity>
       </View>
 

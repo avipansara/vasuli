@@ -32,7 +32,7 @@ export function Skeleton({ width = '100%', height = 20, borderRadius = 4, style 
     return () => animation.stop();
   }, [pulseAnim]);
 
-  const skeletonBg = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)';
+  const skeletonBg = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.06)';
 
   return (
     <Animated.View
@@ -54,7 +54,7 @@ export function Skeleton({ width = '100%', height = 20, borderRadius = 4, style 
  * Skeleton Loader matching index.tsx / FriendCard layout
  */
 export function FriendsListSkeleton() {
-  const { friends: friendsTheme } = useThemeColors();
+  const { friends: friendsTheme, isDark } = useThemeColors();
 
   return (
     <View style={styles.container}>
@@ -64,7 +64,7 @@ export function FriendsListSkeleton() {
           key={itemIndex}
           style={[
             styles.card,
-            { backgroundColor: friendsTheme.cardSurface, borderColor: friendsTheme.cardBorder },
+            { backgroundColor: isDark ? '#0f172a' : friendsTheme.cardSurface, borderColor: isDark ? 'transparent' : friendsTheme.cardBorder, borderWidth: isDark ? 0 : 1 },
           ]}>
           <View style={styles.topSection}>
             <Skeleton width={44} height={44} borderRadius={14} style={{ marginRight: 12 }} />
@@ -90,7 +90,7 @@ export function FriendsListSkeleton() {
  */
 export function GroupsListSkeleton() {
   const { colors, isDark } = useThemeColors();
-  const cardBorderColor = isDark ? 'rgba(45, 212, 191, 0.14)' : colors.border;
+  const cardBorderColor = isDark ? 'transparent' : colors.border;
 
   return (
     <View style={styles.container}>
@@ -100,8 +100,9 @@ export function GroupsListSkeleton() {
           style={[
             styles.card,
             {
-              backgroundColor: isDark ? 'rgba(20, 35, 38, 0.6)' : colors.card,
+              backgroundColor: isDark ? '#0f172a' : colors.card,
               borderColor: cardBorderColor,
+              borderWidth: isDark ? 0 : 1,
               paddingVertical: 16,
             },
           ]}>
@@ -116,7 +117,7 @@ export function GroupsListSkeleton() {
           <View
             style={[
               styles.balanceSection,
-              { borderTopColor: isDark ? 'rgba(45, 212, 191, 0.2)' : colors.border },
+              { borderTopColor: isDark ? '#2a3441' : colors.border },
             ]}>
             <Skeleton width={90} height={14} />
             <Skeleton width={60} height={16} />
@@ -147,7 +148,7 @@ export function ActivityListSkeleton() {
               key={rowIndex}
               style={[
                 styles.activityRow,
-                { borderBottomColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)' },
+                { borderBottomColor: isDark ? '#2a3441' : 'rgba(0,0,0,0.05)' },
               ]}>
               {/* Activity icon circular placeholder */}
               <Skeleton width={38} height={38} borderRadius={19} style={{ marginRight: 12 }} />
@@ -175,7 +176,7 @@ export function ActivityListSkeleton() {
  */
 export function FriendDetailSkeleton() {
   const { isDark } = useThemeColors();
-  const cardBg = isDark ? 'rgba(20, 35, 38, 0.95)' : '#ffffff';
+  const cardBg = isDark ? '#0d1321' : '#ffffff';
 
   return (
     <View style={styles.container}>
@@ -242,7 +243,7 @@ export function FriendDetailSkeleton() {
  */
 export function GroupDetailSkeleton() {
   const { isDark } = useThemeColors();
-  const cardBg = isDark ? 'rgba(20, 35, 38, 0.95)' : '#ffffff';
+  const cardBg = isDark ? '#0d1321' : '#ffffff';
 
   return (
     <View style={styles.container}>
@@ -316,7 +317,7 @@ export function DetailSkeleton() {
  */
 export function ExpenseDetailSkeleton() {
   const { isDark } = useThemeColors();
-  const cardBg = isDark ? 'rgba(20, 35, 38, 0.95)' : '#ffffff';
+  const cardBg = isDark ? '#0b1120' : '#ffffff';
 
   const cardStyle = {
     backgroundColor: cardBg,

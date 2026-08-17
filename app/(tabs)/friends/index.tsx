@@ -145,24 +145,27 @@ export default function FriendsScreen() {
 
   // Accordion state for settled friends
   const [settledExpanded, setSettledExpanded] = useState(false);
-  const balanceColor = netBalance > 0 ? colors.success : netBalance < 0 ? colors.error : colors.tint;
+  const { isDark } = useThemeColors();
+  const balanceColor = isDark
+    ? (netBalance > 0 ? '#10b981' : netBalance < 0 ? '#ffb4ab' : '#10b981')
+    : (netBalance > 0 ? colors.success : netBalance < 0 ? colors.error : colors.tint);
   const actionButtonStyle = {
-    backgroundColor: friendsTheme.actionSurface,
-    borderColor: friendsTheme.actionBorder,
+    backgroundColor: isDark ? '#0f172a' : friendsTheme.actionSurface,
+    borderColor: isDark ? '#2a3441' : friendsTheme.actionBorder,
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <View style={[styles.container, { backgroundColor: isDark ? '#040914' : colors.background }]}>
       <View style={styles.header}>
         <View style={{ flexDirection: 'column', gap: 6 }}>
-          <ThemedText style={[styles.headerLabel, { color: colors.textSecondary }]}>{balanceLabel}</ThemedText>
+          <ThemedText style={[styles.headerLabel, { color: isDark ? '#9ba6b8' : colors.textSecondary }]}>{balanceLabel}</ThemedText>
           <ThemedText type="header" style={{ color: balanceColor }}>${Math.abs(netBalance).toFixed(2)}</ThemedText>
         </View>
         <View style={styles.headerButtons}>
           <TouchableOpacity
             style={[styles.addButtonRect, actionButtonStyle]}
             onPress={() => router.push('/add-friend')}>
-            <IconSymbol size={20} name="person.badge.plus" color={friendsTheme.actionIcon} />
+            <IconSymbol size={20} name="person.badge.plus" color={isDark ? '#10b981' : friendsTheme.actionIcon} />
           </TouchableOpacity>
         </View>
       </View>
