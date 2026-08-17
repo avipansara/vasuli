@@ -26,7 +26,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Animated, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
 import Reanimated, {
-  FadeInDown,
   Easing as ReanimatedEasing,
   useAnimatedStyle,
   useSharedValue,
@@ -112,8 +111,6 @@ export default function FriendDetailScreen() {
   const [slideAnim] = useState(() => new Animated.Value(30));
   const [scaleAnim] = useState(() => new Animated.Value(0.98));
   const tabIndicatorX = useSharedValue(0);
-  const feedOpacity = useSharedValue(1);
-  const feedTranslateY = useSharedValue(0);
   const segmentWidth = segmentedWidth > 0
     ? (segmentedWidth - (SEGMENTED_CONTROL_PADDING * 2) - (SEGMENTED_CONTROL_GAP * (ACTIVITY_FILTERS.length - 1))) / ACTIVITY_FILTERS.length
     : 0;
@@ -121,11 +118,6 @@ export default function FriendDetailScreen() {
   const tabIndicatorStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: tabIndicatorX.value }],
   }));
-  const feedTransitionStyle = useAnimatedStyle(() => ({
-    opacity: feedOpacity.value,
-    transform: [{ translateY: feedTranslateY.value }],
-  }));
-
   const filteredActivity = activityFilter === 'expenses'
     ? activity.filter(item => item.type === 'expense')
     : activityFilter === 'updates'
@@ -158,7 +150,6 @@ export default function FriendDetailScreen() {
 
     return groups.sort((a, b) => b.monthKey.localeCompare(a.monthKey));
   }, [filteredActivity]);
-
   const {
     data: friendDetail,
     error,
@@ -195,20 +186,8 @@ export default function FriendDetailScreen() {
   const handleActivityFilterChange = useCallback((nextFilter: ActivityFilter) => {
     if (nextFilter === activityFilter) return;
 
-    // eslint-disable-next-line react-hooks/immutability -- Reanimated shared values are mutable animation refs.
-    feedOpacity.value = 0.72;
-    // eslint-disable-next-line react-hooks/immutability -- Reanimated shared values are mutable animation refs.
-    feedTranslateY.value = 8;
     setActivityFilter(nextFilter);
-    feedOpacity.value = withTiming(1, {
-      duration: 170,
-      easing: ReanimatedEasing.out(ReanimatedEasing.cubic),
-    });
-    feedTranslateY.value = withTiming(0, {
-      duration: 170,
-      easing: ReanimatedEasing.out(ReanimatedEasing.cubic),
-    });
-  }, [activityFilter, feedOpacity, feedTranslateY]);
+  }, [activityFilter]);
 
   useEffect(() => {
     if (segmentWidth <= 0) return;
@@ -632,7 +611,7 @@ export default function FriendDetailScreen() {
   const balanceAccessibilityValue = `${balanceCopy}, $${Math.abs(balance).toFixed(2)}`;
 
 
-  const renderSettlementActivity = (item: Extract<FriendActivityItem, { type: 'settlement' }>, index: number) => {
+  const renderSettlementActivity = (item: Extract<FriendActivityItem, { type: 'settlement' }>) => {
     const youPaid = item.direction === 'you_paid_friend';
     const title = youPaid
       ? `You paid ${friend.name.split(' ')[0]}`
@@ -655,10 +634,6 @@ export default function FriendDetailScreen() {
             backgroundColor: friendDetailTheme.surface,
             borderColor: friendDetailTheme.surfaceBorder,
           },
-          {
-            opacity: fadeAnim,
-            transform: [{ translateY: Animated.multiply(slideAnim, new Animated.Value((index + 1) * 0.2)) }],
-          }
         ]}>
         <View style={[styles.updateMarker, { backgroundColor: amountColor }]} />
         <View style={styles.updateInfo}>
@@ -688,7 +663,7 @@ export default function FriendDetailScreen() {
     );
   };
 
-  const renderExpenseActivity = (item: Extract<FriendActivityItem, { type: 'expense' }>, index: number) => {
+  const renderExpenseActivity = (item: Extract<FriendActivityItem, { type: 'expense' }>) => {
     const expense = item.expense;
 
     return (
@@ -753,10 +728,6 @@ export default function FriendDetailScreen() {
                 backgroundColor: friendDetailTheme.surface,
                 borderColor: friendDetailTheme.surfaceBorder,
               },
-              {
-                opacity: fadeAnim,
-                transform: [{ translateY: Animated.multiply(slideAnim, new Animated.Value((index + 1) * 0.2)) }],
-              }
             ]}>
             <View style={[
               styles.expenseIcon,
@@ -809,7 +780,7 @@ export default function FriendDetailScreen() {
     );
   };
 
-  const renderExpenseActivityEvent = (item: Extract<FriendActivityItem, { type: 'expense_activity' }>, index: number) => {
+  const renderExpenseActivityEvent = (item: Extract<FriendActivityItem, { type: 'expense_activity' }>) => {
     const isDeleted = item.isDeleted;
     const statusLabel = isDeleted ? 'Deleted' : 'Updated';
     const title = item.description.replace(/^(Deleted|Updated):\s*/i, '');
@@ -827,10 +798,6 @@ export default function FriendDetailScreen() {
             backgroundColor: friendDetailTheme.surface,
             borderColor: friendDetailTheme.surfaceBorder,
           },
-          {
-            opacity: fadeAnim,
-            transform: [{ translateY: Animated.multiply(slideAnim, new Animated.Value((index + 1) * 0.2)) }],
-          }
         ]}>
         <View style={[styles.updateMarker, { backgroundColor: statusColor }]} />
         <View style={styles.updateInfo}>
@@ -1119,7 +1086,7 @@ export default function FriendDetailScreen() {
             </ThemedText>
           </View>
 
-          <Reanimated.View style={feedTransitionStyle}>
+          <View>
             {groupedActivity.length === 0 ? (
               <View style={styles.emptyHistory}>
                 <View style={[styles.emptyIconWrapper, { backgroundColor: friendDetailTheme.avatarSurface }]}>
@@ -1142,21 +1109,19 @@ export default function FriendDetailScreen() {
                       {group.monthYear}
                     </ThemedText>
                   </View>
-                  {group.items.map((item, index) => (
-                    <Reanimated.View
-                      key={`${activityFilter}:${item.id}`}
-                      entering={FadeInDown.duration(180).delay(Math.min(index, 6) * 24).easing(ReanimatedEasing.out(ReanimatedEasing.cubic))}>
+                  {group.items.map(item => (
+                    <View key={item.id}>
                       {item.type === 'expense'
-                        ? renderExpenseActivity(item, index)
+                        ? renderExpenseActivity(item)
                         : item.type === 'settlement'
-                          ? renderSettlementActivity(item, index)
-                          : renderExpenseActivityEvent(item, index)}
-                    </Reanimated.View>
+                          ? renderSettlementActivity(item)
+                          : renderExpenseActivityEvent(item)}
+                    </View>
                   ))}
                 </View>
               ))
             )}
-          </Reanimated.View>
+          </View>
         </View>
 
       </Animated.ScrollView>
