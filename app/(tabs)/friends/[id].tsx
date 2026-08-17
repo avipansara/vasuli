@@ -8,13 +8,10 @@ import { useDebouncedQueryInvalidation } from '@/hooks/use-debounced-query-inval
 import { useRealtime } from '@/hooks/use-realtime';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
-import { expenseService } from '@/services/expense-service';
 import type { FriendActivityItem, FriendDetailData } from '@/services/friend-detail-service';
 import { friendDetailModule } from '@/services/friend-detail-module';
-import { friendshipService } from '@/services/friendship-service';
 import type { GroupDetailReadModel } from '@/services/group-detail-read-model';
 import { applySettlementToGroupReadModel } from '@/services/group-detail-read-model';
-import { createExpenseDeletedNotification, notificationService } from '@/services/notification-service';
 import { queryKeys } from '@/services/query-keys';
 import type { Expense, User } from '@/types/database';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -36,12 +33,6 @@ interface UserWithBalance extends User {
   recentExpenses?: Expense[];
 }
 
-interface ExpenseWithSplit extends Expense {
-  yourShare: number;
-  friendShare: number;
-  paidByName: string;
-}
-
 const MIN_TOUCH_HIT_SLOP = { top: 8, right: 8, bottom: 8, left: 8 };
 const SEGMENTED_CONTROL_PADDING = 3;
 const SEGMENTED_CONTROL_GAP = 3;
@@ -56,9 +47,6 @@ const ACTIVITY_FILTERS: { id: ActivityFilter; label: string; icon: IconSymbolNam
 export default function FriendDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { gradients, colors, friendDetail: friendDetailTheme, isDark } = useThemeColors();
-  const [friend, setFriend] = useState<UserWithBalance | null>(null);
-  const [expenses, setExpenses] = useState<ExpenseWithSplit[]>([]);
-  const [activity, setActivity] = useState<FriendActivityItem[]>([]);
   const [activityFilter, setActivityFilter] = useState<ActivityFilter>('all');
   const [segmentedWidth, setSegmentedWidth] = useState(0);
   const [settleModalVisible, setSettleModalVisible] = useState(false);
@@ -116,6 +104,24 @@ export default function FriendDetailScreen() {
   const tabIndicatorStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: tabIndicatorX.value }],
   }));
+  const {
+    data: friendDetail,
+    error,
+    isLoading,
+    refetch,
+  } = useQuery({
+    queryKey: friendDetailQueryKey,
+    enabled: !!currentUserId && !!id,
+    queryFn: async () => {
+      return friendDetailModule.getDetail(currentUserId, id);
+    },
+  });
+  const friend = friendDetail?.friend ?? null;
+  const expenses = friendDetail?.expenses ?? [];
+  const activity = friendDetail?.activity ?? [];
+  const loading = isLoading && !friendDetail;
+  const loadError = error ? getFetchErrorMessage(error) : null;
+
   const filteredActivity = activityFilter === 'expenses'
     ? activity.filter(item => item.type === 'expense')
     : activityFilter === 'updates'
@@ -149,21 +155,6 @@ export default function FriendDetailScreen() {
     return groups.sort((a, b) => b.monthKey.localeCompare(a.monthKey));
   }, [filteredActivity]);
 
-  const {
-    data: friendDetail,
-    error,
-    isLoading,
-    refetch,
-  } = useQuery({
-    queryKey: friendDetailQueryKey,
-    enabled: !!currentUserId && !!id,
-    queryFn: async () => {
-      return friendDetailModule.getDetail(currentUserId, id);
-    },
-  });
-  const loading = isLoading && !friend;
-  const loadError = error ? getFetchErrorMessage(error) : null;
-
   useEffect(() => {
     if (friendDetail === undefined) return;
     if (!friendDetail) {
@@ -172,10 +163,6 @@ export default function FriendDetailScreen() {
       return;
     }
 
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- Query data is mirrored so optimistic local mutations can update immediately.
-    setFriend(friendDetail.friend);
-    setExpenses(friendDetail.expenses);
-    setActivity(friendDetail.activity);
   }, [friendDetail]);
 
   const loadFriendData = useCallback(async () => {
@@ -274,7 +261,7 @@ export default function FriendDetailScreen() {
   const handleSettleUp = async (friendId: string, amount: number) => {
     if (isSettlingUp) return;
 
-    const previousFriend = friend;
+    const previousDetail = friendDetail;
     let previousHomeFriends: UserWithBalance[] | undefined;
     try {
       if (!friend || !user) return;
@@ -302,10 +289,10 @@ export default function FriendDetailScreen() {
           : homeFriend
       )));
 
-      setFriend({
-        ...friend,
-        balance: normalizedOptimisticBalance,
-      });
+      queryClient.setQueryData<FriendDetailData | null>(friendDetailQueryKey, current => current ? {
+        ...current,
+        friend: { ...current.friend, balance: normalizedOptimisticBalance },
+      } : current);
       setSettleModalVisible(false);
 
       const settlements = await friendDetailModule.settleUp({
@@ -340,8 +327,8 @@ export default function FriendDetailScreen() {
       ]);
       await refetch();
     } catch (error) {
-      if (previousFriend) {
-        setFriend(previousFriend);
+      if (previousDetail) {
+        queryClient.setQueryData(friendDetailQueryKey, previousDetail);
       }
       if (previousHomeFriends) {
         queryClient.setQueryData(friendsHomeQueryKey, previousHomeFriends);
@@ -380,9 +367,7 @@ export default function FriendDetailScreen() {
           style: 'destructive',
           onPress: async () => {
             const expenseToDelete = expenses.find(expense => expense.id === expenseId);
-            const previousExpenses = expenses;
-            const previousActivity = activity;
-            const previousFriend = friend;
+            const previousDetail = friendDetail;
             let previousHomeFriends: UserWithBalance[] | undefined;
             try {
               setDeletingExpenseId(expenseId);
@@ -407,20 +392,6 @@ export default function FriendDetailScreen() {
                   };
                 }));
 
-                setExpenses(current => current.filter(expense => expense.id !== expenseId));
-                setActivity(current => current.filter(activityItem => (
-                  activityItem.type !== 'expense' || activityItem.expense.id !== expenseId
-                )));
-                setFriend(currentFriend => {
-                  if (!currentFriend) return currentFriend;
-
-                  const nextBalance = currentFriend.balance + balanceDelta;
-
-                  return {
-                    ...currentFriend,
-                    balance: Math.abs(nextBalance) < 0.01 ? 0 : nextBalance,
-                  };
-                });
                 queryClient.setQueryData<FriendDetailData | null>(friendDetailQueryKey, current => current ? {
                   ...current,
                   friend: {
@@ -434,23 +405,19 @@ export default function FriendDetailScreen() {
                 } : current);
               }
 
-              await expenseService.delete(expenseId, currentUserId, user?.name || 'Unknown');
-
-              if (expenseToDelete && friend?.pushToken) {
-                const notification = createExpenseDeletedNotification(
-                  expenseToDelete.description,
-                  expenseToDelete.amount,
-                  user?.name || 'Someone'
-                );
-                await notificationService.sendPushNotification(friend.pushToken, notification);
-              }
+              await friendDetailModule.deleteExpense({
+                expenseId,
+                currentUserId,
+                currentUserName: user?.name || 'Unknown',
+                description: expenseToDelete?.description,
+                amount: expenseToDelete?.amount,
+                friendPushToken: friend?.pushToken,
+              });
 
               queryClient.invalidateQueries({ queryKey: friendDetailQueryKey });
             } catch (error) {
-              setExpenses(previousExpenses);
-              setActivity(previousActivity);
-              if (previousFriend) {
-                setFriend(previousFriend);
+              if (previousDetail) {
+                queryClient.setQueryData(friendDetailQueryKey, previousDetail);
               }
               if (previousHomeFriends) {
                 queryClient.setQueryData(friendsHomeQueryKey, previousHomeFriends);
@@ -481,7 +448,7 @@ export default function FriendDetailScreen() {
           onPress: async () => {
             try {
               setIsRemovingFriend(true);
-              await friendshipService.remove(currentUserId, id);
+              await friendDetailModule.removeFriend(currentUserId, id);
               router.back();
               Alert.alert('Success', `${friend?.name} has been removed from your friends`);
             } catch (error) {
@@ -503,19 +470,17 @@ export default function FriendDetailScreen() {
         return;
       }
 
-      Alert.alert('Info', 'Reminder notifications will be sent when push token storage is implemented');
-
-      if (friend.pushToken) {
-        await notificationService.sendPushNotification(
-          friend.pushToken,
-          {
-            type: 'expense_reminder',
-            title: 'Payment Reminder',
-            body: `${user?.name || 'Someone'} is reminding you about the outstanding balance of $${Math.abs(balance).toFixed(2)}`,
-            data: { friendId: id }
-          }
-        );
+      const reminderSent = await friendDetailModule.remind({
+        friendId: id,
+        friendName: friend.name,
+        friendPushToken: friend.pushToken,
+        currentUserName: user?.name || 'Someone',
+        balance,
+      });
+      if (reminderSent) {
         Alert.alert('Success', 'Reminder sent!');
+      } else {
+        Alert.alert('Info', 'Reminder notifications will be sent when push token storage is implemented');
       }
     } catch (error) {
       console.error('Error sending reminder:', error);
