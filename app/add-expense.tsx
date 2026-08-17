@@ -299,10 +299,12 @@ export default function AddExpenseScreen() {
           if (pushTokens.length === 0) return;
 
           const notification = createExpenseNotification(
+            expense.id,
             expense.description,
             expense.amount,
             selectedPayerName,
-            groupName
+            groupName,
+            expense.groupId
           );
           await notificationService.sendNotificationToUsers(pushTokens, notification);
         },

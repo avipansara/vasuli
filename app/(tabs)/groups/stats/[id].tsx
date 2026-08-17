@@ -23,6 +23,19 @@ function formatCurrency(amount: number): string {
   return `$${amount.toFixed(2)}`;
 }
 
+function formatDateRange(expenses: { date: number }[]): string {
+  if (expenses.length === 0) return 'No expenses yet';
+
+  const dates = expenses.map(expense => expense.date).sort((a, b) => a - b);
+  const first = new Date(dates[0]);
+  const last = new Date(dates[dates.length - 1]);
+  const formatDate = (date: Date) => date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+  return first.toDateString() === last.toDateString()
+    ? formatDate(first)
+    : `${formatDate(first)} – ${formatDate(last)}`;
+}
+
 function Avatar({ name, uri, size = 34 }: { name: string; uri?: string; size?: number }) {
   const color = AVATAR_COLORS[name.charCodeAt(0) % AVATAR_COLORS.length];
 
@@ -122,6 +135,7 @@ export default function GroupStatsScreen() {
   const { user } = useAuth();
   const { colors, gradients, friendDetail: theme, isDark } = useThemeColors();
   const [isExporting, setIsExporting] = useState(false);
+  const [showAllContributors, setShowAllContributors] = useState(false);
   const currentUserId = user?.id || '';
   const queryKey = queryKeys.groups.detail(currentUserId, id);
   const { data, error, isLoading, refetch } = useQuery({
@@ -155,10 +169,13 @@ export default function GroupStatsScreen() {
   const stats = calculateGroupStats(data);
   const avatarById = new Map(data.members.map(member => [member.userId, member.user?.avatar]));
   const topContributors = stats.payerTotals.slice(0, 3);
+  const visibleContributors = showAllContributors ? stats.payerTotals : topContributors;
+  const hasMoreContributors = stats.payerTotals.length > topContributors.length;
   const getsBack = stats.memberBalances.filter(member => member.balance > 0);
   const owes = stats.memberBalances.filter(member => member.balance < 0);
   const stackedColors = ['#7C5CFC', '#22C55E', '#F59E0B', '#3B82F6', '#EC4899'];
   const hasExpenses = data.expenses.length > 0;
+  const averagePerPerson = data.members.length > 0 ? stats.totalSpent / data.members.length : 0;
 
   const handleExport = async () => {
     if (isExporting || !hasExpenses) return;
@@ -181,7 +198,33 @@ export default function GroupStatsScreen() {
     <View style={styles.container}>
       <Stack.Screen options={{ headerShown: false }} />
       <LinearGradient colors={gradients.screenBackground} style={StyleSheet.absoluteFill} />
-      <NavigationHeader title="Group stats" onBack={() => router.back()} />
+      <NavigationHeader
+        title="Group stats"
+        onBack={() => router.back()}
+        rightAction={(
+          <Pressable
+            testID="export-group-expenses"
+            accessibilityRole="button"
+            accessibilityLabel={hasExpenses ? 'Export group expenses as CSV' : 'Export group expenses as CSV. Add an expense first.'}
+            accessibilityState={{ disabled: !hasExpenses || isExporting, busy: isExporting }}
+            disabled={!hasExpenses || isExporting}
+            onPress={() => { void handleExport(); }}
+            style={({ pressed }) => [
+              styles.headerExportButton,
+              {
+                backgroundColor: hasExpenses ? theme.surface : theme.mutedSurface,
+                borderColor: theme.surfaceBorder,
+                opacity: pressed && hasExpenses && !isExporting ? 0.82 : hasExpenses ? 1 : 0.62,
+              },
+            ]}>
+            {isExporting ? (
+              <ActivityIndicator size="small" color={theme.actionIcon} />
+            ) : (
+              <IconSymbol name="doc.text.fill" size={18} color={hasExpenses ? theme.actionIcon : colors.textSecondary} />
+            )}
+          </Pressable>
+        )}
+      />
       <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer} showsVerticalScrollIndicator={false}>
         <View style={styles.groupIntro}>
           <GroupMark name={data.group.name} uri={data.group.imageUrl} />
@@ -191,56 +234,61 @@ export default function GroupStatsScreen() {
           </View>
         </View>
 
+        <View style={[styles.snapshot, { backgroundColor: theme.surface, borderColor: theme.surfaceBorder }]}>
+          <View style={styles.snapshotHeader}>
+            <ThemedText style={[styles.snapshotEyebrow, { color: theme.actionIcon }]}>Trip snapshot</ThemedText>
+            <ThemedText style={[styles.snapshotMeta, !isDark && { color: colors.textSecondary }]}>
+              {formatDateRange(data.expenses)} · {data.members.length} members
+            </ThemedText>
+          </View>
+          <View style={styles.snapshotHero}>
+            <ThemedText style={[styles.snapshotTotalLabel, !isDark && { color: colors.textSecondary }]}>Total spent</ThemedText>
+            <ThemedText style={[styles.snapshotTotalValue, { color: theme.actionIcon }]}>{formatCurrency(stats.totalSpent)}</ThemedText>
+          </View>
+          <View style={[styles.snapshotFooter, { borderTopColor: theme.surfaceBorder }]}>
+            <View style={styles.snapshotMetric}>
+              <ThemedText style={[styles.snapshotMetricValue, !isDark && { color: colors.text }]}>{formatCurrency(averagePerPerson)}</ThemedText>
+              <ThemedText style={[styles.snapshotMetricLabel, !isDark && { color: colors.textSecondary }]}>per person</ThemedText>
+            </View>
+            <View style={[styles.snapshotMetricDivider, { backgroundColor: theme.surfaceBorder }]} />
+            <View style={styles.snapshotMetric}>
+              <ThemedText style={[styles.snapshotMetricValue, !isDark && { color: colors.text }]}>{stats.expenseCount}</ThemedText>
+              <ThemedText style={[styles.snapshotMetricLabel, !isDark && { color: colors.textSecondary }]}>expenses</ThemedText>
+            </View>
+          </View>
+        </View>
+
         <View style={styles.statsGrid}>
-          <StatCard label="Total spent" value={formatCurrency(stats.totalSpent)} detail={`${stats.expenseCount} expenses`} icon="banknote.fill" color={theme.actionIcon} surface={theme.surface} />
-          <StatCard label="Expenses" value={String(stats.expenseCount)} detail="In total" icon="doc.text.fill" color={theme.actionIcon} surface={theme.surface} />
           <StatCard label="Unsettled members" value={String(stats.unsettledMemberCount)} detail={`${data.members.length ? Math.round((stats.unsettledMemberCount / data.members.length) * 100) : 0}% of group`} icon="person.2.fill" color={theme.warning} surface={theme.surface} />
           <StatCard label="Outstanding" value={formatCurrency(stats.totalOutstanding)} detail="Payable between members" icon="creditcard.fill" color={theme.negative} surface={theme.surface} />
         </View>
 
-        <Pressable
-          testID="export-group-expenses"
-          accessibilityRole="button"
-          accessibilityLabel={hasExpenses ? 'Export group expenses as CSV' : 'Export group expenses as CSV. Add an expense first.'}
-          accessibilityState={{ disabled: !hasExpenses || isExporting, busy: isExporting }}
-          disabled={!hasExpenses || isExporting}
-          onPress={() => { void handleExport(); }}
-          style={({ pressed }) => [
-            styles.exportButton,
-            {
-              backgroundColor: hasExpenses ? theme.surface : theme.mutedSurface,
-              borderColor: hasExpenses ? theme.surfaceBorder : theme.surfaceBorder,
-              opacity: pressed && hasExpenses && !isExporting ? 0.82 : hasExpenses ? 1 : 0.62,
-            },
-          ]}>
-          {isExporting ? (
-            <ActivityIndicator size="small" color={theme.actionIcon} />
-          ) : (
-            <IconSymbol name="doc.text.fill" size={18} color={hasExpenses ? theme.actionIcon : colors.textSecondary} />
-          )}
-          <View style={styles.exportCopy}>
-            <ThemedText style={[styles.exportTitle, !isDark && { color: colors.text }]}>Export CSV</ThemedText>
-            <ThemedText style={[styles.exportHint, !isDark && { color: colors.textSecondary }]}>
-              {isExporting ? 'Preparing your file…' : hasExpenses ? 'Download the group expense ledger' : 'Add an expense to enable export'}
-            </ThemedText>
-          </View>
-          {!isExporting && hasExpenses && <IconSymbol name="chevron.right" size={17} color={colors.textSecondary} />}
-        </Pressable>
-
         <View style={[styles.section, { backgroundColor: theme.surface, borderColor: theme.surfaceBorder }]}>
           <View style={styles.sectionHeader}>
             <ThemedText type="subtitle" style={[styles.sectionTitle, !isDark && { color: colors.text }]}>Top contributors</ThemedText>
-            <ThemedText style={[styles.sectionHint, !isDark && { color: colors.textSecondary }]}>Top 3</ThemedText>
+            {hasMoreContributors ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={showAllContributors ? 'Show fewer contributors' : `Show all ${stats.payerTotals.length} contributors`}
+                onPress={() => setShowAllContributors(current => !current)}
+                hitSlop={8}
+                style={styles.expandContributorsButton}>
+                <ThemedText style={[styles.sectionHint, { color: theme.actionIcon }]}>
+                  {showAllContributors ? 'Show less' : `Show all (${stats.payerTotals.length})`}
+                </ThemedText>
+              </Pressable>
+            ) : (
+              <ThemedText style={[styles.sectionHint, !isDark && { color: colors.textSecondary }]}>Top 3</ThemedText>
+            )}
           </View>
           <View accessible accessibilityLabel="Contribution distribution" style={styles.stackedBar}>
             {stats.payerTotals.map((payer, index) => (
               <View key={payer.userId} style={{ flex: stats.totalSpent > 0 ? payer.total / stats.totalSpent : 0, backgroundColor: stackedColors[index % stackedColors.length] }} />
             ))}
           </View>
-          {topContributors.map((payer, index) => (
+          {visibleContributors.map((payer, index) => (
             <ContributorRow key={payer.userId} payer={payer} totalSpent={stats.totalSpent} avatarUri={avatarById.get(payer.userId)} color={stackedColors[index % stackedColors.length]} />
           ))}
-          {stats.payerTotals.length > topContributors.length && <ThemedText style={styles.moreHint}>+{stats.payerTotals.length - topContributors.length} more contributors</ThemedText>}
           {topContributors.length === 0 && <ThemedText style={styles.emptyText}>No expenses recorded yet.</ThemedText>}
         </View>
 
@@ -269,10 +317,19 @@ const styles = StyleSheet.create({
   groupMarkFallback: { overflow: 'visible' },
   groupMarkText: { color: '#fff', fontSize: 24, fontWeight: '700', lineHeight: 30, textAlign: 'center', includeFontPadding: false },
   statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 10 },
-  exportButton: { flexDirection: 'row', alignItems: 'center', gap: 11, minHeight: 64, borderRadius: 14, borderWidth: 1, paddingHorizontal: 14, marginBottom: 12 },
-  exportCopy: { flex: 1, gap: 3 },
-  exportTitle: { fontSize: 15, fontWeight: '700' },
-  exportHint: { fontSize: 12, opacity: 0.68 },
+  snapshot: { borderRadius: 16, borderWidth: 1, padding: 12, marginBottom: 10 },
+  snapshotHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 9 },
+  snapshotEyebrow: { fontSize: 13, fontWeight: '700', letterSpacing: 0.2 },
+  snapshotMeta: { flexShrink: 1, fontSize: 12, opacity: 0.7, marginLeft: 8, textAlign: 'right' },
+  snapshotHero: { paddingBottom: 10 },
+  snapshotTotalLabel: { fontSize: 11, opacity: 0.72, marginBottom: 1 },
+  snapshotTotalValue: { fontSize: 28, fontWeight: '700', lineHeight: 34 },
+  snapshotFooter: { flexDirection: 'row', alignItems: 'center', borderTopWidth: 1, paddingTop: 9 },
+  snapshotMetric: { flex: 1, alignItems: 'center' },
+  snapshotMetricDivider: { width: 1, height: 28 },
+  snapshotMetricValue: { fontSize: 14, fontWeight: '700', marginBottom: 1 },
+  snapshotMetricLabel: { fontSize: 10, opacity: 0.7 },
+  headerExportButton: { width: 40, height: 40, borderRadius: 12, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   statCard: { width: '48.8%', borderRadius: 12, padding: 11, minHeight: 108 },
   statIcon: { width: 26, height: 26, borderRadius: 13, justifyContent: 'center', alignItems: 'center', marginBottom: 7 },
   statLabel: { fontSize: 11, opacity: 0.7, marginBottom: 4 },
@@ -281,6 +338,7 @@ const styles = StyleSheet.create({
   section: { borderRadius: 14, borderWidth: 1, padding: 14, marginBottom: 12 },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
   sectionTitle: { fontSize: 17, fontWeight: '600' },
+  expandContributorsButton: { minHeight: 28, justifyContent: 'center' },
   sectionHint: { fontSize: 12, opacity: 0.65 },
   stackedBar: { flexDirection: 'row', height: 8, borderRadius: 4, overflow: 'hidden', marginBottom: 15, backgroundColor: 'rgba(156, 163, 175, 0.18)' },
   contributorRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 13 },
@@ -295,7 +353,6 @@ const styles = StyleSheet.create({
   barTrack: { flex: 1, height: 7, borderRadius: 4, backgroundColor: 'rgba(156, 163, 175, 0.18)', overflow: 'hidden' },
   barFill: { height: '100%', borderRadius: 4 },
   percent: { width: 34, textAlign: 'right', fontSize: 12, fontWeight: '700' },
-  moreHint: { fontSize: 12, opacity: 0.65, marginTop: 1 },
   balanceSection: { flexDirection: 'row', borderRadius: 14, borderWidth: 1, padding: 14, marginBottom: 12 },
   balanceColumn: { flex: 1, minWidth: 0 },
   balanceColumnTitle: { fontSize: 16, fontWeight: '700', marginBottom: 12 },

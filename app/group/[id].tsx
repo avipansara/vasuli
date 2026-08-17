@@ -30,7 +30,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Animated, Platform, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, Animated, Platform, StyleSheet, TextInput, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
 
@@ -39,6 +39,8 @@ const EMPTY_EXPENSES: GroupExpenseView[] = [];
 
 export default function GroupDetailScreen() {
   const { gradients, colors, friendDetail: friendDetailTheme, isDark } = useThemeColors();
+  const { width } = useWindowDimensions();
+  const isCompactWidth = width < 360;
   const { id } = useLocalSearchParams<{ id: string }>();
   const [isAddingMember, setIsAddingMember] = useState(false);
   const [deletingExpenseId, setDeletingExpenseId] = useState<string | null>(null);
@@ -305,10 +307,12 @@ export default function GroupDetailScreen() {
                   .map((u) => u!.pushToken!);
                 if (pushTokens.length > 0) {
                   const notification = createExpenseDeletedNotification(
+                    expenseToDelete.id,
                     expenseToDelete.description,
                     expenseToDelete.amount,
                     user?.name || 'Someone',
-                    group?.name
+                    group?.name,
+                    id
                   );
                   await notificationService.sendNotificationToUsers(pushTokens, notification);
                 }
@@ -890,7 +894,11 @@ export default function GroupDetailScreen() {
             accessibilityHint="Opens the group settlement screen"
             onPress={handleSettleUp}>
             <IconSymbol size={18} name="checkmark.circle.fill" color={friendDetailTheme.positive} />
-            <ThemedText style={[styles.quickActionText, { color: friendDetailTheme.positive }]}>Settle Up</ThemedText>
+            <ThemedText
+              adjustsFontSizeToFit
+              minimumFontScale={0.8}
+              numberOfLines={1}
+              style={[styles.quickActionText, isCompactWidth && styles.quickActionTextCompact, { color: friendDetailTheme.positive }]}>Settle Up</ThemedText>
           </TouchableOpacity>
           <TouchableOpacity
             style={[
@@ -906,7 +914,11 @@ export default function GroupDetailScreen() {
             accessibilityHint="Opens spending and balance statistics for this group"
             onPress={() => router.push(`/group/stats/${id}`)}>
             <IconSymbol size={18} name="chart.bar.fill" color={friendDetailTheme.actionIcon} />
-            <ThemedText style={[styles.quickActionText, { color: friendDetailTheme.actionIcon }]}>Stats</ThemedText>
+            <ThemedText
+              adjustsFontSizeToFit
+              minimumFontScale={0.8}
+              numberOfLines={1}
+              style={[styles.quickActionText, isCompactWidth && styles.quickActionTextCompact, { color: friendDetailTheme.actionIcon }]}>Stats</ThemedText>
           </TouchableOpacity>
         </View>
 
@@ -1212,6 +1224,7 @@ const styles = StyleSheet.create({
   },
   quickActionButton: {
     flex: 1,
+    minWidth: 0,
     borderRadius: 10,
     overflow: 'hidden',
   },
@@ -1233,9 +1246,13 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   quickActionText: {
+    flexShrink: 1,
     color: '#fff',
     fontWeight: '600',
     fontSize: 14,
+  },
+  quickActionTextCompact: {
+    fontSize: 12,
   },
   section: {
     paddingHorizontal: 16,

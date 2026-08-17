@@ -123,6 +123,7 @@ export function SharedModal({
             </View>
           ) : (
             <ScrollView
+              style={styles.scrollView}
               showsVerticalScrollIndicator={false}
               contentContainerStyle={styles.scrollContent}
               keyboardShouldPersistTaps="handled">
@@ -234,6 +235,9 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 24,
     paddingBottom: 24,
+  },
+  scrollView: {
+    flex: 1,
   },
   headerContent: {
     alignItems: 'center',

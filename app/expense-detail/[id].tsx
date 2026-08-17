@@ -132,10 +132,12 @@ export default function ExpenseDetailScreen() {
                   .map(u => u.pushToken!);
                 if (pushTokens.length > 0) {
                   const notification = createExpenseDeletedNotification(
+                    id,
                     expense.description,
                     expense.amount,
                     user?.name || 'Someone',
-                    group?.name
+                    group?.name,
+                    group?.id
                   );
                   await notificationService.sendNotificationToUsers(pushTokens, notification);
                 }

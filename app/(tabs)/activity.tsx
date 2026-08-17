@@ -158,7 +158,6 @@ export default function ActivityScreen() {
       colors={gradients.screenBackground}
       style={styles.container}>
       <View style={styles.header}>
-        <ThemedText style={[styles.headerLabel, { color: colors.textSecondary }]}>Recent</ThemedText>
         <ThemedText type="header" style={[styles.headerTitle, { color: colors.text }]}>Activity</ThemedText>
         <View style={[styles.searchContainer, {
           backgroundColor: friendDetailTheme.surface,
@@ -263,10 +262,6 @@ const styles = StyleSheet.create({
     paddingTop: Platform.OS === 'ios' ? 60 : 54,
     paddingBottom: 6,
     gap: 4,
-  },
-  headerLabel: {
-    fontSize: 15,
-    fontWeight: '500',
   },
   headerTitle: {
     color: '#fff',

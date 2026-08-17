@@ -474,6 +474,7 @@ export default function FriendDetailScreen() {
 
               if (expenseToDelete && friend?.pushToken) {
                 const notification = createExpenseDeletedNotification(
+                  expenseId,
                   expenseToDelete.description,
                   expenseToDelete.amount,
                   user?.name || 'Someone'

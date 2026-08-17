@@ -86,3 +86,20 @@ describe('getAppVersionLabel', () => {
     expect(getAppVersionLabel()).toBe('Version 3.1.0');
   });
 });
+
+describe('getInstalledAppVersion', () => {
+  afterEach(() => {
+    vi.resetModules();
+    mockConstants.expoConfig = { version: '1.0.5' };
+    mockConstants.executionEnvironment = 'standalone';
+    mockApplication.nativeApplicationVersion = null;
+    mockApplication.nativeBuildVersion = null;
+    mockPlatformOS.value = 'ios';
+  });
+
+  it('returns the native marketing version for a standalone build', async () => {
+    mockApplication.nativeApplicationVersion = '1.0.17';
+    const { getInstalledAppVersion } = await import('./app-version');
+    expect(getInstalledAppVersion()).toBe('1.0.17');
+  });
+});

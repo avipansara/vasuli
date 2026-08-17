@@ -25,6 +25,7 @@ const MAPPING: IconMapping = {
   'xmark.circle.fill': 'cancel',
   'arrow.left': 'arrow-back',
   'arrow.right': 'arrow-forward',
+  'arrow.down.circle.fill': 'download',
   'magnifyingglass': 'search',
   
   // Actions
