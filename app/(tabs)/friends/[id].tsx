@@ -1,5 +1,6 @@
 import { SettleUpModal } from '@/components/friends/settle-up-modal';
 import { FriendExpenseActivity } from '@/components/friends/friend-expense-activity';
+import { FriendExpenseActivityEvent } from '@/components/friends/friend-expense-activity-event';
 import { FriendSettlementActivity } from '@/components/friends/friend-settlement-activity';
 import { ThemedText } from '@/components/themed-text';
 import { AsyncErrorState } from '@/components/ui/async-error-state';
@@ -9,7 +10,7 @@ import { useAuth } from '@/contexts/auth-context-otp';
 import { useFriendDetailController } from '@/hooks/use-friend-detail-controller';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
-import type { FriendActivityItem, FriendDetailData } from '@/services/friend-detail-service';
+import type { FriendDetailData } from '@/services/friend-detail-service';
 import {
   filterFriendActivity,
   friendDetailModule,
@@ -487,91 +488,6 @@ export default function FriendDetailScreen() {
   const balanceAccessibilityValue = `${balanceCopy}, $${Math.abs(balance).toFixed(2)}`;
 
 
-  const renderExpenseActivityEvent = (item: Extract<FriendActivityItem, { type: 'expense_activity' }>) => {
-    const isDeleted = item.isDeleted;
-    const statusLabel = isDeleted ? 'Deleted' : 'Updated';
-    const title = item.description.replace(/^(Deleted|Updated):\s*/i, '');
-    const actorName = item.userId === currentUserId ? 'You' : item.userName || friend.name.split(' ')[0];
-    const statusColor = isDeleted ? friendDetailTheme.danger : friendDetailTheme.warning;
-    const iconSurface = isDeleted ? friendDetailTheme.dangerSurface : friendDetailTheme.warningSurface;
-    const iconName = isDeleted ? 'trash.fill' : 'pencil';
-    const amountLabel = item.amount === undefined ? null : `$${item.amount.toFixed(2)}`;
-
-    const content = (
-      <Animated.View
-        style={[
-          styles.updateRow,
-          {
-            backgroundColor: isDark ? 'rgba(20, 35, 38, 0.95)' : '#ffffff',
-            borderWidth: 0,
-            shadowColor: isDark ? '#000000' : '#475569',
-            shadowOffset: { width: 0, height: 3 },
-            shadowOpacity: isDark ? 0.35 : 0.09,
-            shadowRadius: 10,
-            elevation: 3,
-          },
-            ]}>
-        <View style={[styles.updateMarker, { backgroundColor: statusColor }]} />
-        <View style={styles.updateInfo}>
-          <View style={styles.activityEventTitleRow}>
-            <ThemedText style={[styles.updateTitle, { color: colors.text }]} numberOfLines={1}>
-              {title}
-            </ThemedText>
-            <View style={[styles.activityEventBadge, { backgroundColor: iconSurface }]}>
-              <ThemedText style={[styles.activityEventBadgeText, { color: statusColor }]}>
-                {statusLabel}
-              </ThemedText>
-            </View>
-          </View>
-          <ThemedText style={[styles.updateMeta, { color: colors.textSecondary }]} numberOfLines={1}>
-            {formatDate(item.date)} • {actorName}
-          </ThemedText>
-        </View>
-        {amountLabel && (
-          <View style={styles.updateAmountBlock}>
-            <ThemedText style={[styles.updateStatus, { color: colors.textSecondary }]}>
-              total
-            </ThemedText>
-            <ThemedText style={[styles.updateAmount, { color: colors.textSecondary }]}>
-              {amountLabel}
-            </ThemedText>
-          </View>
-        )}
-        <View style={[styles.updateIcon, { backgroundColor: iconSurface }]}>
-          <IconSymbol
-            size={16}
-            name={iconName}
-            color={statusColor}
-          />
-        </View>
-      </Animated.View>
-    );
-
-    if (isDeleted) {
-      return (
-        <View
-          key={item.id}
-          accessible
-          accessibilityRole="text"
-          accessibilityLabel={`${statusLabel} ${title}, ${formatDate(item.date)}, by ${actorName}`}>
-          {content}
-        </View>
-      );
-    }
-
-    return (
-      <TouchableOpacity
-        key={item.id}
-        accessibilityRole="button"
-        accessibilityLabel={`${statusLabel} ${title}, ${formatDate(item.date)}, by ${actorName}`}
-        accessibilityHint="Opens expense details"
-        activeOpacity={0.7}
-        onPress={() => handleOpenExpense(item.targetId)}>
-        {content}
-      </TouchableOpacity>
-    );
-  };
-
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
@@ -843,7 +759,17 @@ export default function FriendDetailScreen() {
                             styles={styles}
                             formatDate={formatDate}
                           />
-                          : renderExpenseActivityEvent(item)}
+                          : <FriendExpenseActivityEvent
+                            item={item}
+                            currentUserId={currentUserId}
+                            friendName={friend.name}
+                            colors={colors as Record<string, string>}
+                            friendDetailTheme={friendDetailTheme as Record<string, string>}
+                            isDark={isDark}
+                            styles={styles}
+                            formatDate={formatDate}
+                            onOpenExpense={handleOpenExpense}
+                          />}
                     </View>
                   ))}
                 </View>
