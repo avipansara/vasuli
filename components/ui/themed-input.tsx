@@ -17,15 +17,21 @@ export const ThemedInput = forwardRef<TextInput, ThemedInputProps>(
         style={[
           styles.container,
           {
-            backgroundColor: isDark ? 'rgba(30, 41, 59, 0.6)' : 'rgba(241, 245, 249, 0.9)',
-            borderColor: isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(34, 197, 94, 0.2)',
+            backgroundColor: isDark ? 'rgba(20, 35, 38, 0.95)' : '#ffffff',
+            borderWidth: 1,
+            borderColor: isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(0, 0, 0, 0.08)',
+            shadowColor: isDark ? '#000000' : '#475569',
+            shadowOffset: { width: 0, height: 3 },
+            shadowOpacity: isDark ? 0.35 : 0.09,
+            shadowRadius: 10,
+            elevation: 3,
           },
         ]}>
         {icon && (
           <IconSymbol
             name={icon}
             size={iconSize}
-            color={isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'}
+            color={isDark ? '#2DD4BF' : '#0F4C3A'}
           />
         )}
         <TextInput
@@ -33,12 +39,12 @@ export const ThemedInput = forwardRef<TextInput, ThemedInputProps>(
           style={[
             styles.input,
             {
-              color: isDark ? '#fff' : colors.text,
-              height: Platform.OS === 'android' ? 48 : 44,
+              color: colors.text,
+              minHeight: Platform.OS === 'android' ? 48 : 44,
             },
             style,
           ]}
-          placeholderTextColor={isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'}
+          placeholderTextColor={colors.textSecondary}
           {...props}
         />
       </View>

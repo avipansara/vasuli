@@ -3,21 +3,20 @@ import { AsyncErrorState } from '@/components/ui/async-error-state';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useTheme } from '@/contexts/theme-context';
-import { useRefetchOnFocus } from '@/hooks/use-refetch-on-focus';
 import { useRealtime } from '@/hooks/use-realtime';
+import { useRefetchOnFocus } from '@/hooks/use-refetch-on-focus';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getAppVersionLabel } from '@/lib/app-version';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { calculateFriendSummaryTotals, friendSummaryService } from '@/services/friend-summary-service';
-import { userService } from '@/services/user-service';
 import { friendshipService } from '@/services/friendship-service';
 import { invitationService } from '@/services/invitation-service';
 import { notificationService } from '@/services/notification-service';
 import { queryKeys } from '@/services/query-keys';
+import { userService } from '@/services/user-service';
 import { getPendingInvitationCount } from '@/utils/invitation-count';
 import { normalizeEmail } from '@/utils/validation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
@@ -69,9 +68,9 @@ export default function ProfileScreen() {
         }),
         normalizedEmail
           ? queryClient.fetchQuery({
-              queryKey: queryKeys.invitations.received(currentUserId, normalizedEmail),
-              queryFn: () => invitationService.getReceivedInvitations(normalizedEmail),
-            })
+            queryKey: queryKeys.invitations.received(currentUserId, normalizedEmail),
+            queryFn: () => invitationService.getReceivedInvitations(normalizedEmail),
+          })
           : Promise.resolve([]),
       ]);
       return getPendingInvitationCount(friendRequests.length, emailInvitations.length);
@@ -345,14 +344,14 @@ export default function ProfileScreen() {
           ) : (
             <>
               <View style={styles.statItem}>
-                <ThemedText style={[styles.statValue, { color: isDark ? '#2DD4BF' : colors.tint }]}>
+                <ThemedText type='title' style={[styles.statValue, { color: isDark ? '#2DD4BF' : colors.tint }]}>
                   ${totalOwed.toFixed(2)}
                 </ThemedText>
                 <ThemedText style={[styles.statLabel, { color: colors.textSecondary }]}>You are owed</ThemedText>
               </View>
               <View style={[styles.statDivider, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)' }]} />
               <View style={styles.statItem}>
-                <ThemedText style={[styles.statValue, { color: isDark ? '#F87171' : '#DC2626' }]}>
+                <ThemedText type='title' style={[styles.statValue, { color: isDark ? '#F87171' : '#DC2626' }]}>
                   ${totalOwing.toFixed(2)}
                 </ThemedText>
                 <ThemedText style={[styles.statLabel, { color: colors.textSecondary }]}>You owe</ThemedText>
@@ -427,7 +426,7 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        <View style={styles.actionsSection}>
+        <View>
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Logout"

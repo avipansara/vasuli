@@ -651,9 +651,13 @@ export default function FriendDetailScreen() {
         style={[
           styles.updateRow,
           {
-            backgroundColor: friendDetailTheme.surface,
-            shadowColor: isDark ? '#000000' : '#64748B',
-            shadowOpacity: isDark ? 0.22 : 0.06,
+            backgroundColor: isDark ? 'rgba(20, 35, 38, 0.95)' : '#ffffff',
+            borderWidth: 0,
+            shadowColor: isDark ? '#000000' : '#475569',
+            shadowOffset: { width: 0, height: 3 },
+            shadowOpacity: isDark ? 0.35 : 0.09,
+            shadowRadius: 10,
+            elevation: 3,
           },
           {
             opacity: fadeAnim,
@@ -750,9 +754,13 @@ export default function FriendDetailScreen() {
             style={[
               styles.expenseCard,
               {
-                backgroundColor: friendDetailTheme.surface,
-                shadowColor: isDark ? '#000000' : '#64748B',
-                shadowOpacity: isDark ? 0.22 : 0.06,
+                backgroundColor: isDark ? 'rgba(20, 35, 38, 0.95)' : '#ffffff',
+                borderWidth: 0,
+                shadowColor: isDark ? '#000000' : '#475569',
+                shadowOffset: { width: 0, height: 3 },
+                shadowOpacity: isDark ? 0.35 : 0.09,
+                shadowRadius: 10,
+                elevation: 3,
               },
               {
                 opacity: fadeAnim,
@@ -763,41 +771,34 @@ export default function FriendDetailScreen() {
               styles.expenseIcon,
               {
                 backgroundColor: expense.paidBy === currentUserId
-                  ? friendDetailTheme.positiveSurface
-                  : friendDetailTheme.negativeSurface,
+                  ? (isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(15, 76, 58, 0.08)')
+                  : (isDark ? 'rgba(239, 68, 68, 0.14)' : 'rgba(239, 68, 68, 0.08)'),
               }
             ]}>
               <IconSymbol
-                size={16}
+                size={15}
                 name={expense.groupId ? 'person.2.fill' : 'arrow.up.right'}
-                color={expense.paidBy === currentUserId ? friendDetailTheme.positive : friendDetailTheme.negative}
+                color={expense.paidBy === currentUserId ? (isDark ? '#2DD4BF' : '#0F4C3A') : colors.error}
               />
             </View>
             <View style={styles.expenseInfo}>
-              <ThemedText style={[styles.expenseDescription, { color: colors.text }]} numberOfLines={1}>
+              <ThemedText type="subtitle" style={[styles.expenseDescription, { color: colors.text }]} numberOfLines={1}>
                 {expense.description}
               </ThemedText>
               <ThemedText style={[styles.expenseDate, { color: colors.textSecondary }]} numberOfLines={1}>
-                {formatDate(expense.date)} • {expense.paidByName} paid
+                {formatDate(expense.date)} • {expense.paidByName} paid ${expense.amount.toFixed(2)}
               </ThemedText>
             </View>
-            <View style={styles.expenseAmounts}>
-              <ThemedText style={[styles.expenseTotal, { color: colors.textSecondary }]}>
-                {expense.paidBy === currentUserId ? 'You paid' : `${friend.name.split(' ')[0]} paid`}
-              </ThemedText>
-              <ThemedText style={[styles.expenseAmountPrimary, { color: colors.text }]}>
-                ${expense.amount.toFixed(2)}
-              </ThemedText>
-              <ThemedText
-                style={[
-                  styles.expenseShare,
-                  { color: expense.paidBy === currentUserId ? friendDetailTheme.positive : friendDetailTheme.negative },
-                ]}>
-                {expense.paidBy === currentUserId
-                  ? `+$${expense.friendShare.toFixed(2)}`
-                  : `-$${expense.yourShare.toFixed(2)}`}
-              </ThemedText>
-            </View>
+            <ThemedText
+              type="subtitle"
+              style={[
+                styles.expenseShare,
+                { color: expense.paidBy === currentUserId ? (isDark ? '#2DD4BF' : '#0F4C3A') : colors.error },
+              ]}>
+              {expense.paidBy === currentUserId
+                ? `+$${expense.friendShare.toFixed(2)}`
+                : `-$${expense.yourShare.toFixed(2)}`}
+            </ThemedText>
             <IconSymbol
               size={17}
               name="chevron.right"
@@ -825,9 +826,13 @@ export default function FriendDetailScreen() {
         style={[
           styles.updateRow,
           {
-            backgroundColor: friendDetailTheme.surface,
-            shadowColor: isDark ? '#000000' : '#64748B',
-            shadowOpacity: isDark ? 0.22 : 0.06,
+            backgroundColor: isDark ? 'rgba(20, 35, 38, 0.95)' : '#ffffff',
+            borderWidth: 0,
+            shadowColor: isDark ? '#000000' : '#475569',
+            shadowOffset: { width: 0, height: 3 },
+            shadowOpacity: isDark ? 0.35 : 0.09,
+            shadowRadius: 10,
+            elevation: 3,
           },
           {
             opacity: fadeAnim,
@@ -896,8 +901,7 @@ export default function FriendDetailScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <LinearGradient colors={gradients.screenBackground} style={StyleSheet.absoluteFill} />
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity
@@ -991,18 +995,18 @@ export default function FriendDetailScreen() {
               style={[styles.summaryCard, {
                 backgroundColor: isDark ? 'rgba(20, 35, 38, 0.95)' : '#ffffff',
                 borderWidth: 0,
-                shadowColor: isDark ? '#000000' : '#64748B',
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: isDark ? 0.35 : 0.08,
-                shadowRadius: 12,
-                elevation: 4,
+                shadowColor: isDark ? '#000000' : '#475569',
+                shadowOffset: { width: 0, height: 3 },
+                shadowOpacity: isDark ? 0.35 : 0.09,
+                shadowRadius: 10,
+                elevation: 3,
               }]}>
               <View style={styles.summaryTopRow}>
                 <View style={[styles.summaryAvatar, {
-                  backgroundColor: friendDetailTheme.avatarSurface,
-                  borderColor: friendDetailTheme.avatarBorder,
+                  backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(15, 76, 58, 0.1)',
+                  borderColor: isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(15, 76, 58, 0.2)',
                 }]}>
-                  <ThemedText style={[styles.summaryAvatarText, { color: friendDetailTheme.actionIcon }]}>
+                  <ThemedText style={[styles.summaryAvatarText, { color: isDark ? '#2DD4BF' : '#0F4C3A' }]}>
                     {friend.name.charAt(0).toUpperCase()}
                   </ThemedText>
                 </View>

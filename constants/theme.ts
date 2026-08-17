@@ -28,7 +28,7 @@ export const BG_ICON_DARK = 'rgba(45, 212, 191, 0.15)';
 export const BG_ICON_SUCCESS_DARK = 'rgba(16, 185, 129, 0.15)';
 
 // Light mode backgrounds
-export const BG_LIGHT = '#F5F5F5';
+export const BG_LIGHT = '#F1F5F9';
 export const BG_CARD_LIGHT = '#FFFFFF';
 export const BG_ICON_LIGHT = 'rgba(34, 197, 94, 0.1)';
 

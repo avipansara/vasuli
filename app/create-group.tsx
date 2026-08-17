@@ -92,10 +92,21 @@ export default function CreateGroupScreen() {
     }
   }
 
-  return (
-    <View style={styles.container}>
-      <LinearGradient colors={gradients.screenBackground} style={StyleSheet.absoluteFill} />
+  const cardStyle = {
+    backgroundColor: isDark ? 'rgba(20, 35, 38, 0.95)' : '#ffffff',
+    borderWidth: 0,
+    shadowColor: isDark ? '#000000' : '#475569',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: isDark ? 0.35 : 0.09,
+    shadowRadius: 10,
+    elevation: 3,
+    borderRadius: 14,
+  };
 
+  const primaryBtnColor = isDark ? '#0D9488' : '#0F4C3A';
+
+  return (
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <NavigationHeader
         title="Create Group"
         onBack={() => router.back()}
@@ -106,13 +117,13 @@ export default function CreateGroupScreen() {
             style={[
               styles.headerButton,
               {
-                backgroundColor: isValid && !loading ? (isDark ? '#2DD4BF' : '#22C55E') : (isDark ? '#374151' : '#E5E7EB'),
+                backgroundColor: isValid && !loading ? primaryBtnColor : (isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'),
               },
             ]}>
             {loading ? (
-              <ThemedText style={[styles.headerButtonText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>...</ThemedText>
+              <ThemedText style={[styles.headerButtonText, { color: '#ffffff' }]}>...</ThemedText>
             ) : (
-              <ThemedText style={[styles.headerButtonText, { color: isValid ? '#0A0A0F' : (isDark ? '#9CA3AF' : '#6B7280') }]}>
+              <ThemedText style={[styles.headerButtonText, { color: isValid ? '#ffffff' : colors.textSecondary }]}>
                 Create
               </ThemedText>
             )}
@@ -122,18 +133,6 @@ export default function CreateGroupScreen() {
 
       <KeyboardAwareScroll contentContainerStyle={styles.scrollContent}>
         <Animated.View style={[styles.content, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-          {/* Icon Preview */}
-          {/* <View style={styles.iconPreviewSection}>
-              <View style={[styles.iconPreview, {
-                backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)',
-                borderColor: isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(34, 197, 94, 0.3)',
-              }]}>
-                <IconSymbol name={selectedIcon as any} size={48} color={isDark ? '#2DD4BF' : colors.tint} />
-              </View>
-              <ThemedText style={[styles.iconPreviewLabel, !isDark && { color: colors.textSecondary }]}>
-                {groupName || 'New Group'}
-              </ThemedText>
-            </View> */}
 
           {/* Group Name Input */}
           <View style={styles.inputSection}>
@@ -177,41 +176,43 @@ export default function CreateGroupScreen() {
               Choose an Icon
             </ThemedText>
             <View style={styles.iconGrid}>
-              {GROUP_ICONS.map((item) => (
-                <TouchableOpacity
-                  key={item.icon}
-                  style={[
-                    styles.iconOption,
-                    selectedIcon === item.icon && styles.iconOptionSelected,
-                    {
-                      backgroundColor: selectedIcon === item.icon
-                        ? (isDark ? '#2DD4BF' : colors.tint)
-                        : (isDark ? 'rgba(30, 41, 59, 0.6)' : 'rgba(241, 245, 249, 0.9)'),
-                      borderColor: selectedIcon === item.icon
-                        ? (isDark ? '#2DD4BF' : colors.tint)
-                        : (isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(34, 197, 94, 0.2)'),
-                    },
-                  ]}
-                  onPress={() => setSelectedIcon(item.icon)}>
-                  <IconSymbol
-                    name={item.icon as any}
-                    size={24}
-                    color={selectedIcon === item.icon ? '#0A0A0F' : (isDark ? '#2DD4BF' : colors.tint)}
-                  />
-                </TouchableOpacity>
-              ))}
+              {GROUP_ICONS.map((item) => {
+                const isSelected = selectedIcon === item.icon;
+                return (
+                  <TouchableOpacity
+                    key={item.icon}
+                    style={[
+                      styles.iconOption,
+                      cardStyle,
+                      {
+                        backgroundColor: isSelected
+                          ? (isDark ? 'rgba(13, 148, 136, 0.16)' : 'rgba(15, 76, 58, 0.08)')
+                          : (isDark ? 'rgba(20, 35, 38, 0.95)' : '#ffffff'),
+                        borderWidth: isSelected ? 1 : 0,
+                        borderColor: isSelected ? primaryBtnColor : 'transparent',
+                      },
+                    ]}
+                    onPress={() => setSelectedIcon(item.icon)}>
+                    <IconSymbol
+                      name={item.icon as any}
+                      size={24}
+                      color={isSelected ? primaryBtnColor : colors.textSecondary}
+                    />
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           </View>
 
           {/* Info Card */}
-          <BlurView intensity={isDark ? 20 : 40} tint={isDark ? 'dark' : 'light'} style={styles.infoCard}>
-            <View style={[styles.infoContent, !isDark && { backgroundColor: 'rgba(255,255,255,0.8)' }]}>
-              <IconSymbol name="info.circle" size={20} color={isDark ? '#2DD4BF' : colors.tint} />
+          <View style={[styles.infoCard, cardStyle]}>
+            <View style={styles.infoContent}>
+              <IconSymbol name="info.circle" size={20} color={primaryBtnColor} />
               <ThemedText style={[styles.infoText, { color: colors.textSecondary }]}>
                 You can add members to your group after creating it.
               </ThemedText>
             </View>
-          </BlurView>
+          </View>
         </Animated.View>
       </KeyboardAwareScroll>
     </View>

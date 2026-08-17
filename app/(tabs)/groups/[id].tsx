@@ -441,24 +441,24 @@ export default function GroupDetailScreen() {
           style={[styles.expenseCard, {
             backgroundColor: isDark ? 'rgba(20, 35, 38, 0.95)' : '#ffffff',
             borderWidth: 0,
-            shadowColor: isDark ? '#000000' : '#64748B',
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: isDark ? 0.22 : 0.06,
-            shadowRadius: 8,
-            elevation: 2,
+            shadowColor: isDark ? '#000000' : '#475569',
+            shadowOffset: { width: 0, height: 3 },
+            shadowOpacity: isDark ? 0.35 : 0.09,
+            shadowRadius: 10,
+            elevation: 3,
           }]}>
-          <View style={[styles.expenseIcon, { backgroundColor: item.paidBy === currentUserId ? friendDetailTheme.positiveSurface : friendDetailTheme.mutedSurface }]}>
+          <View style={[styles.expenseIcon, { backgroundColor: item.paidBy === currentUserId ? (isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(15, 76, 58, 0.08)') : (isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)') }]}>
             <IconSymbol
-              size={14}
+              size={15}
               name={item.paidBy === currentUserId ? 'arrow.up.right' : 'dollarsign.circle.fill'}
-              color={item.paidBy === currentUserId ? friendDetailTheme.positive : friendDetailTheme.actionIcon}
+              color={item.paidBy === currentUserId ? (isDark ? '#2DD4BF' : '#0F4C3A') : colors.textSecondary}
             />
           </View>
           <View style={styles.expenseInfo}>
             <ThemedText type="subtitle" style={{ color: colors.text }} numberOfLines={1}>
               {item.description}
             </ThemedText>
-            <ThemedText type='header' style={[styles.expenseDate, { color: colors.text }]} numberOfLines={1}>
+            <ThemedText style={[styles.expenseDate, { color: colors.textSecondary }]} numberOfLines={1}>
               {dateStr} • Paid by {item.paidByUser?.name || 'Unknown'}
             </ThemedText>
           </View>
@@ -593,14 +593,14 @@ export default function GroupDetailScreen() {
         <View style={[styles.memberCard, {
           backgroundColor: isDark ? 'rgba(20, 35, 38, 0.95)' : '#ffffff',
           borderWidth: 0,
-          shadowColor: isDark ? '#000000' : '#64748B',
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: isDark ? 0.22 : 0.06,
-          shadowRadius: 8,
-          elevation: 2,
+          shadowColor: isDark ? '#000000' : '#475569',
+          shadowOffset: { width: 0, height: 3 },
+          shadowOpacity: isDark ? 0.35 : 0.09,
+          shadowRadius: 10,
+          elevation: 3,
         }]}>
-          <View style={[styles.memberAvatar, { backgroundColor: friendDetailTheme.avatarSurface }]}>
-            <ThemedText type='title' style={[styles.avatarText, { color: friendDetailTheme.actionIcon }]}>
+          <View style={[styles.memberAvatar, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(15, 76, 58, 0.1)' }]}>
+            <ThemedText style={[styles.avatarText, { color: isDark ? '#2DD4BF' : '#0F4C3A' }]}>
               {item.user?.name.charAt(0).toUpperCase() || '?'}
             </ThemedText>
           </View>
@@ -1234,7 +1234,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     paddingHorizontal: 16,
     gap: 10,
-    marginBottom: 12,
+    marginVertical: 12,
   },
   quickActionButton: {
     flex: 1,
@@ -1310,7 +1310,7 @@ const styles = StyleSheet.create({
   },
   section: {
     paddingHorizontal: 16,
-    marginBottom: 18,
+    marginVertical: 18,
   },
   sectionHeader: {
     flexDirection: 'row',

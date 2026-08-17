@@ -67,16 +67,22 @@ export function AddMemberModal({
           styles.userRow,
           {
             backgroundColor: selected
-              ? isDark ? 'rgba(45, 212, 191, 0.10)' : 'rgba(34, 197, 94, 0.08)'
-              : colors.card,
+              ? (isDark ? 'rgba(13, 148, 136, 0.16)' : 'rgba(15, 76, 58, 0.08)')
+              : (isDark ? 'rgba(20, 35, 38, 0.95)' : '#ffffff'),
+            borderWidth: selected ? 1 : 0,
             borderColor: selected
-              ? isDark ? 'rgba(45, 212, 191, 0.42)' : 'rgba(34, 197, 94, 0.34)'
-              : colors.border,
+              ? (isDark ? '#0D9488' : '#0F4C3A')
+              : 'transparent',
+            shadowColor: isDark ? '#000000' : '#475569',
+            shadowOffset: { width: 0, height: 3 },
+            shadowOpacity: isDark ? 0.35 : 0.09,
+            shadowRadius: 10,
+            elevation: 3,
             opacity: pressed ? 0.72 : 1,
           },
         ]}>
-        <View style={[styles.avatar, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.18)' : 'rgba(34, 197, 94, 0.14)' }]}>
-          <ThemedText style={[styles.avatarText, { color: isDark ? '#2DD4BF' : colors.tint }]}>
+        <View style={[styles.avatar, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(15, 76, 58, 0.1)' }]}>
+          <ThemedText style={[styles.avatarText, { color: isDark ? '#2DD4BF' : '#0F4C3A' }]}>
             {initials || '?'}
           </ThemedText>
         </View>
@@ -90,8 +96,8 @@ export function AddMemberModal({
             </ThemedText>
           )}
         </View>
-        <View style={[styles.checkbox, selected && { backgroundColor: isDark ? '#2DD4BF' : colors.tint, borderColor: isDark ? '#2DD4BF' : colors.tint }]}>
-          {selected && <IconSymbol name="checkmark" size={14} color={isDark ? '#0A0A0F' : '#fff'} />}
+        <View style={[styles.checkbox, selected && { backgroundColor: isDark ? '#0D9488' : '#0F4C3A', borderColor: isDark ? '#0D9488' : '#0F4C3A' }]}>
+          {selected && <IconSymbol name="checkmark" size={14} color="#ffffff" />}
         </View>
       </Pressable>
     );

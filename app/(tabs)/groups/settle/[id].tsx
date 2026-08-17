@@ -1,20 +1,20 @@
 import { ThemedText } from '@/components/themed-text';
+import { AsyncErrorState } from '@/components/ui/async-error-state';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { KeyboardAwareScroll } from '@/components/ui/keyboard-aware-scroll';
-import { AsyncErrorState } from '@/components/ui/async-error-state';
-import { GenericSkeleton } from '@/components/ui/skeleton';
 import { NavigationHeader } from '@/components/ui/screen-header';
+import { GenericSkeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { activityService } from '@/services/activity-service';
 import { calculateBalances } from '@/services/balance-utils';
+import type { GroupDetailReadModel } from '@/services/group-detail-read-model';
+import { applySettlementToGroupReadModel } from '@/services/group-detail-read-model';
 import { groupService } from '@/services/group-service';
+import { queryKeys } from '@/services/query-keys';
 import { settlementService } from '@/services/settlement-service';
 import { userService } from '@/services/user-service';
-import { applySettlementToGroupReadModel } from '@/services/group-detail-read-model';
-import type { GroupDetailReadModel } from '@/services/group-detail-read-model';
-import { queryKeys } from '@/services/query-keys';
 import type { Group, GroupMember, User } from '@/types/database';
 import {
   canSubmitGroupSettlement,
@@ -23,11 +23,11 @@ import {
   isSettleableGroupBalance,
 } from '@/utils/group-settle-selection';
 import { normalizeCurrencyInput } from '@/utils/validation';
+import { useQueryClient } from '@tanstack/react-query';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { useQueryClient } from '@tanstack/react-query';
-import React, { memo, useCallback, useEffect, useState } from 'react';
+import { memo, useCallback, useEffect, useState } from 'react';
 import {
   Alert,
   FlatList,
