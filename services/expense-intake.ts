@@ -90,8 +90,9 @@ function updateGroupDetail(
   current: GroupDetailReadModel | null | undefined,
   expense: Expense,
   splits: ExpenseSplitInput[],
-): GroupDetailReadModel | null {
-  if (!current) return null;
+): GroupDetailReadModel | null | undefined {
+  if (current === undefined) return undefined;
+  if (current === null) return null;
 
   return addExpenseToGroupReadModel(current, expense, buildCachedSplits(expense.id, splits));
 }
@@ -101,8 +102,9 @@ function updateFriendDetail(
   expense: Expense,
   splits: ExpenseSplitInput[],
   currentUserId: string,
-): FriendDetailData | null {
-  if (!current) return null;
+): FriendDetailData | null | undefined {
+  if (current === undefined) return undefined;
+  if (current === null) return null;
 
   const currentUserSplit = splits.find(split => split.userId === currentUserId);
   const friendSplit = splits.find(split => split.userId === current.friend.id);
@@ -149,11 +151,11 @@ export async function submitExpense(input: SubmitExpenseInput): Promise<void> {
 
   input.cache.set<HomeFriend[]>(input.keys.home, current => updateHomeFriends(current, optimisticExpense, input.splits, input.currentUserId) ?? []);
   if (input.target.kind === 'group' && input.keys.groupDetail) {
-    input.cache.set<GroupDetailReadModel | null>(input.keys.groupDetail, current => updateGroupDetail(current, optimisticExpense, input.splits) ?? null);
+    input.cache.set<GroupDetailReadModel | null | undefined>(input.keys.groupDetail, current => updateGroupDetail(current, optimisticExpense, input.splits));
   }
   if (input.target.kind === 'friends') {
-    input.keys.friendDetails?.forEach((key, index) => {
-      input.cache.set<FriendDetailData | null>(key, current => updateFriendDetail(current, optimisticExpense, input.splits, input.currentUserId) ?? null);
+    input.keys.friendDetails?.forEach((key) => {
+      input.cache.set<FriendDetailData | null | undefined>(key, current => updateFriendDetail(current, optimisticExpense, input.splits, input.currentUserId));
     });
   }
   input.navigateBack();

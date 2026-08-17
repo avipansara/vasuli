@@ -21,6 +21,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   Animated,
   Keyboard,
@@ -454,9 +455,9 @@ export default function EditExpenseScreen() {
               },
             ]}>
             {loading ? (
-              <ThemedText style={[styles.headerButtonText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>...</ThemedText>
+              <ActivityIndicator size="small" color="#ffffff" />
             ) : (
-              <ThemedText style={[styles.headerButtonText, { color: isValid ? '#0A0A0F' : (isDark ? '#9CA3AF' : '#6B7280') }]}>
+              <ThemedText style={[styles.headerButtonText, { color: isValid ? '#ffffff' : (isDark ? '#9CA3AF' : '#6B7280') }]}>
                 Save
               </ThemedText>
             )}

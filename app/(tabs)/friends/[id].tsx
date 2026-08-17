@@ -108,14 +108,13 @@ export default function FriendDetailScreen() {
   const sharedExpensesCount = expenses.length;
 
   useEffect(() => {
-    if (friendDetail === undefined) return;
+    if (friendDetail === undefined || isLoading) return;
     if (!friendDetail) {
       Alert.alert('Error', 'Friend not found');
       router.back();
       return;
     }
-
-  }, [friendDetail]);
+  }, [friendDetail, isLoading]);
 
   const loadFriendData = useCallback(async () => {
     await refetch();

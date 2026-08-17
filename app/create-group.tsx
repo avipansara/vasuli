@@ -11,6 +11,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useEffect, useState, useRef } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   Animated,
   Keyboard,
@@ -121,7 +122,7 @@ export default function CreateGroupScreen() {
               },
             ]}>
             {loading ? (
-              <ThemedText style={[styles.headerButtonText, { color: '#ffffff' }]}>...</ThemedText>
+              <ActivityIndicator size="small" color="#ffffff" />
             ) : (
               <ThemedText style={[styles.headerButtonText, { color: isValid ? '#ffffff' : colors.textSecondary }]}>
                 Create

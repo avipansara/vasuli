@@ -27,6 +27,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { memo, useCallback, useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   FlatList,
   Keyboard,
@@ -418,15 +419,19 @@ export default function GroupSettleScreen() {
                   : (isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'),
               },
             ]}>
-            <Text
-              style={[
-                styles.settleButtonText,
-                {
-                  color: canSubmitSettlement ? '#ffffff' : colors.textSecondary,
-                },
-              ]}>
-              {settling ? 'Settling...' : 'Record Settlement'}
-            </Text>
+            {settling ? (
+              <ActivityIndicator size="small" color="#ffffff" />
+            ) : (
+              <Text
+                style={[
+                  styles.settleButtonText,
+                  {
+                    color: canSubmitSettlement ? '#ffffff' : colors.textSecondary,
+                  },
+                ]}>
+                Record Settlement
+              </Text>
+            )}
           </TouchableOpacity>
         </View>
       </View>

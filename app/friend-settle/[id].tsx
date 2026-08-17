@@ -17,6 +17,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   Keyboard,
   StyleSheet,
@@ -338,9 +339,11 @@ export default function FriendSettleScreen() {
               { backgroundColor: settle.buttonBackground },
               (!isValidAmount || settling) && styles.submitButtonDisabled
             ]}>
-            <Text style={styles.submitButtonText}>
-              {settling ? 'Recording...' : 'Record Payment'}
-            </Text>
+            {settling ? (
+              <ActivityIndicator size="small" color="#ffffff" />
+            ) : (
+              <Text style={styles.submitButtonText}>Record Payment</Text>
+            )}
           </TouchableOpacity>
         </View>
       </View>

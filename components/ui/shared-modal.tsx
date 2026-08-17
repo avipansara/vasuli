@@ -9,6 +9,7 @@ import { useThemeColors } from '@/hooks/use-theme-colors';
 import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
 import {
+  ActivityIndicator,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -34,6 +35,7 @@ interface SharedModalProps {
   submitLabel?: string;
   submitIcon?: IconSymbolName;
   submitDisabled?: boolean;
+  submitLoading?: boolean;
   onSubmit?: () => void;
   submitGradientColors?: readonly [string, string];
   submitTextColor?: string;
@@ -53,6 +55,7 @@ export function SharedModal({
   submitLabel,
   submitIcon = 'plus.circle.fill',
   submitDisabled = false,
+  submitLoading = false,
   onSubmit,
   submitGradientColors,
   submitTextColor = '#0A0A0F',
@@ -142,27 +145,33 @@ export function SharedModal({
                 <TouchableOpacity
                   activeOpacity={0.8}
                   onPress={onSubmit}
-                  disabled={submitDisabled}>
+                  disabled={submitDisabled || submitLoading}>
                   <LinearGradient
                     colors={buttonColors as [string, string]}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
                     style={[
                       styles.submitButton,
-                      submitDisabled && styles.disabledButton,
+                      (submitDisabled || submitLoading) && styles.disabledButton,
                     ]}>
-                    <IconSymbol
-                      size={20}
-                      name={submitIcon}
-                      color={submitDisabled ? '#6B7280' : submitTextColor}
-                    />
-                    <ThemedText
-                      style={[
-                        styles.submitButtonText,
-                        { color: submitDisabled ? '#6B7280' : submitTextColor },
-                      ]}>
-                      {submitLabel}
-                    </ThemedText>
+                    {submitLoading ? (
+                      <ActivityIndicator size="small" color={submitDisabled ? '#6B7280' : submitTextColor} />
+                    ) : (
+                      <>
+                        <IconSymbol
+                          size={20}
+                          name={submitIcon}
+                          color={submitDisabled ? '#6B7280' : submitTextColor}
+                        />
+                        <ThemedText
+                          style={[
+                            styles.submitButtonText,
+                            { color: submitDisabled ? '#6B7280' : submitTextColor },
+                          ]}>
+                          {submitLabel}
+                        </ThemedText>
+                      </>
+                    )}
                   </LinearGradient>
                 </TouchableOpacity>
               )}

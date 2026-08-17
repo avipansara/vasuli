@@ -23,6 +23,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   Animated,
   Keyboard,
@@ -366,7 +367,7 @@ export default function AddExpenseScreen() {
               },
             ]}>
             {loading ? (
-              <ThemedText style={[styles.headerButtonText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>...</ThemedText>
+              <ActivityIndicator size="small" color="#ffffff" />
             ) : (
               <ThemedText style={[styles.headerButtonText, { color: (expenseStep === 1 ? canContinue : canSubmit) ? '#ffffff' : (isDark ? '#9CA3AF' : '#6B7280') }]}>
                 {expenseStep === 1 ? 'Next' : 'Add'}
