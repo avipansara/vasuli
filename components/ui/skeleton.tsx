@@ -259,45 +259,99 @@ export function DetailSkeleton() {
  * Skeleton Loader matching expense-detail/[id].tsx
  */
 export function ExpenseDetailSkeleton() {
-  const { colors } = useThemeColors();
+  const { isDark } = useThemeColors();
+  const cardBg = isDark ? 'rgba(20, 35, 38, 0.95)' : '#ffffff';
+
+  const cardStyle = {
+    backgroundColor: cardBg,
+    borderRadius: 14,
+    shadowColor: isDark ? '#000000' : '#475569',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: isDark ? 0.35 : 0.09,
+    shadowRadius: 10,
+    elevation: 3,
+  };
 
   return (
     <View style={styles.container}>
-      {/* Category Icon and Overview */}
-      <View style={styles.detailHeader}>
-        <Skeleton width={64} height={64} borderRadius={32} style={{ marginBottom: 12 }} />
-        <Skeleton width={120} height={26} style={{ marginBottom: 8 }} />
-        <Skeleton width={180} height={16} style={{ marginBottom: 6 }} />
-        <Skeleton width={100} height={12} style={{ marginBottom: 20 }} />
-      </View>
+      {/* Top Amount Card Skeleton */}
+      <View style={[cardStyle, { padding: 14, marginBottom: 14 }]}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+          <View style={{ flex: 1, marginRight: 12 }}>
+            <Skeleton width="35%" height={11} style={{ marginBottom: 6 }} />
+            <Skeleton width="75%" height={22} />
+          </View>
+          <Skeleton width={85} height={26} borderRadius={6} />
+        </View>
 
-      {/* Main card skeleton */}
-      <View style={[styles.card, { borderColor: colors.border, padding: 16 }]}>
-        <Skeleton width={90} height={14} style={{ marginBottom: 12 }} />
-        <View style={styles.activityRow}>
-          <Skeleton width={32} height={32} borderRadius={16} style={{ marginRight: 12 }} />
-          <Skeleton width={140} height={14} />
+        <View style={{ flexDirection: 'row', gap: 8, marginBottom: 14 }}>
+          <Skeleton width={90} height={24} borderRadius={12} />
+          <Skeleton width={70} height={24} borderRadius={12} />
+        </View>
+
+        <View style={{ borderTopWidth: 1, borderTopColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.06)', paddingTop: 12, flexDirection: 'row', justifyContent: 'space-between' }}>
+          <View style={{ flex: 1 }}>
+            <Skeleton width="45%" height={11} style={{ marginBottom: 6 }} />
+            <Skeleton width="65%" height={15} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Skeleton width="45%" height={11} style={{ marginBottom: 6 }} />
+            <Skeleton width="70%" height={15} />
+          </View>
         </View>
       </View>
 
-      {/* Splits section skeleton */}
-      <Skeleton width={100} height={16} style={{ marginTop: 18, marginBottom: 12 }} />
-      <View style={[styles.card, { borderColor: colors.border, padding: 8 }]}>
+      {/* Split Section Header */}
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, paddingHorizontal: 4 }}>
+        <Skeleton width={50} height={18} />
+        <Skeleton width={60} height={14} />
+      </View>
+
+      {/* Split Card Skeleton */}
+      <View style={[cardStyle, { paddingVertical: 4, marginBottom: 16 }]}>
         {Array.from({ length: 3 }).map((_, index) => (
           <View
             key={index}
-            style={[
-              styles.activityRow,
-              {
-                borderBottomColor: colors.border,
-                borderBottomWidth: index === 2 ? 0 : 1,
-                paddingVertical: 10,
-                paddingHorizontal: 8,
-              },
-            ]}>
-            <Skeleton width={28} height={28} borderRadius={14} style={{ marginRight: 12 }} />
-            <Skeleton width={100} height={14} style={{ flex: 1 }} />
-            <Skeleton width={55} height={14} />
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              paddingHorizontal: 14,
+              paddingVertical: 12,
+              borderBottomWidth: index === 2 ? 0 : 1,
+              borderBottomColor: isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.05)',
+            }}>
+            <Skeleton width={34} height={34} borderRadius={10} style={{ marginRight: 12 }} />
+            <Skeleton width={110} height={15} style={{ flex: 1, marginRight: 12 }} />
+            <Skeleton width={45} height={13} style={{ marginRight: 12 }} />
+            <Skeleton width={60} height={16} />
+          </View>
+        ))}
+      </View>
+
+      {/* Activity Section Header */}
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, paddingHorizontal: 4 }}>
+        <Skeleton width={65} height={18} />
+        <Skeleton width={60} height={14} />
+      </View>
+
+      {/* Activity Card Skeleton */}
+      <View style={[cardStyle, { paddingVertical: 4 }]}>
+        {Array.from({ length: 2 }).map((_, index) => (
+          <View
+            key={index}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              paddingHorizontal: 14,
+              paddingVertical: 12,
+              borderBottomWidth: index === 1 ? 0 : 1,
+              borderBottomColor: isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.05)',
+            }}>
+            <Skeleton width={34} height={34} borderRadius={17} style={{ marginRight: 12 }} />
+            <View style={{ flex: 1 }}>
+              <Skeleton width="80%" height={14} style={{ marginBottom: 6 }} />
+              <Skeleton width="45%" height={11} />
+            </View>
           </View>
         ))}
       </View>

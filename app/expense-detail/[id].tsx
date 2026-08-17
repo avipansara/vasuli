@@ -178,6 +178,10 @@ export default function ExpenseDetailScreen() {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <Stack.Screen options={{ headerShown: false }} />
+        <NavigationHeader
+          title="Expense"
+          onBack={() => router.back()}
+        />
         <ExpenseDetailSkeleton />
       </View>
     );
@@ -270,7 +274,7 @@ export default function ExpenseDetailScreen() {
                     {expense.description}
                   </ThemedText>
                 </View>
-                <ThemedText type='title' style={[styles.amount, { color: isDark ? '#2DD4BF' : '#0F4C3A' }]}>
+                <ThemedText type='title' style={[styles.amount, { color: isDark ? '#2DD4BF' : colors.accent }]}>
                   ${expense.amount.toFixed(2)}
                 </ThemedText>
               </View>
@@ -278,8 +282,8 @@ export default function ExpenseDetailScreen() {
               <View style={styles.amountMeta}>
                 {group && (
                   <View style={[styles.metaPill, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(15, 76, 58, 0.08)' }]}>
-                    <IconSymbol name="person.3.fill" size={14} color={isDark ? '#2DD4BF' : '#0F4C3A'} />
-                    <ThemedText style={[styles.metaPillText, { color: isDark ? '#2DD4BF' : '#0F4C3A' }]}>{group.name}</ThemedText>
+                    <IconSymbol name="person.3.fill" size={14} color={isDark ? '#2DD4BF' : colors.accent} />
+                    <ThemedText style={[styles.metaPillText, { color: isDark ? '#2DD4BF' : colors.accent }]}>{group.name}</ThemedText>
                   </View>
                 )}
                 {expense.category && (
@@ -339,11 +343,11 @@ export default function ExpenseDetailScreen() {
                       }]}>
                       <View style={[styles.splitAvatar, {
                         backgroundColor: isCurrentUser
-                          ? (isDark ? '#0D9488' : '#0F4C3A')
+                          ? (isDark ? '#0D9488' : colors.accent)
                           : (isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(15, 76, 58, 0.1)'),
                       }]}>
                         <ThemedText style={[styles.splitAvatarText, {
-                          color: isCurrentUser ? '#ffffff' : (isDark ? '#2DD4BF' : '#0F4C3A'),
+                          color: isCurrentUser ? '#ffffff' : (isDark ? '#2DD4BF' : colors.accent),
                         }]}>
                           {isCurrentUser ? 'Y' : split.user?.name.charAt(0).toUpperCase() || '?'}
                         </ThemedText>
@@ -355,7 +359,7 @@ export default function ExpenseDetailScreen() {
                         {splitMeta}
                       </ThemedText>
                       <ThemedText type="defaultSemiBold" style={[styles.splitAmount, {
-                        color: isCurrentUser ? (isDark ? '#2DD4BF' : '#0F4C3A') : colors.text,
+                        color: isCurrentUser ? (isDark ? '#2DD4BF' : colors.accent) : colors.text,
                       }]}>
                         ${split.amount.toFixed(2)}
                       </ThemedText>
@@ -402,7 +406,7 @@ export default function ExpenseDetailScreen() {
                 const getActivityColor = () => {
                   switch (activity.type) {
                     case 'expense_created':
-                      return isDark ? '#2DD4BF' : '#0F4C3A';
+                      return isDark ? '#2DD4BF' : colors.accent;
                     case 'expense_updated':
                       return '#F59E0B';
                     case 'expense_deleted':

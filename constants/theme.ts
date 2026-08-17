@@ -11,14 +11,14 @@ import { Platform } from 'react-native';
 
 // Primary accents
 export const ACCENT_TEAL = '#2DD4BF';
-export const ACCENT_GREEN = '#0cca51ff';
+export const ACCENT_GREEN = '#005E44'; // #0CCCA51FF
 export const ACCENT_PURPLE = '#A78BFA';
 export const ACCENT_YELLOW = '#FACC15';
 
 // Status colors
 export const SUCCESS_DARK = '#10b981';
-export const SUCCESS_LIGHT = '#22C55E';
-export const ERROR_COLOR = '#EF4444';
+export const SUCCESS_LIGHT = '#005E44'; // #22C55E
+export const ERROR_COLOR = '#990000';
 
 // Dark mode backgrounds
 export const BG_DARK = '#0A0A0F';
@@ -65,8 +65,8 @@ export const Colors = {
     card: BG_CARD_LIGHT,
     cardGlass: '#FFFFFF',
     border: BORDER_LIGHT,
-    success: '#22C55E',
-    error: '#EF4444',
+    success: '#005E44',
+    error: '#990000',
     // Additional light mode colors
     inputBackground: '#FFFFFF',
     inputBorder: '#E5E5E5',

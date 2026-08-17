@@ -54,10 +54,10 @@ function FriendCardInner({ friend, onPress, onDelete }: FriendCardProps) {
   const balance = normalizeDisplayBalance(friend.balance);
   const displayName = getDisplayName(friend.name, friend.email);
 
-  const isLightMode = colors.tint === '#22C55E';
-  const avatarTextColor = isLightMode ? '#064E3B' : colors.tint;
-  const emailColor = isLightMode ? '#8E8E93' : colors.textSecondary;
-  const branchTextColor = isLightMode ? '#4B5563' : colors.textSecondary;
+  const isLightMode = !isDark;
+  const avatarTextColor = colors.tint;
+  const emailColor = colors.textSecondary;
+  const branchTextColor = colors.textSecondary;
 
   const balanceColor =
     balance > 0
