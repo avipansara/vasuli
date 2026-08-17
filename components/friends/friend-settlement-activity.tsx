@@ -1,7 +1,7 @@
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import type { FriendActivityItem } from '@/services/friend-detail-service';
-import { Animated, View } from 'react-native';
+import { Animated, StyleSheet, View } from 'react-native';
 
 type SettlementItem = Extract<FriendActivityItem, { type: 'settlement' }>;
 
@@ -11,7 +11,6 @@ type FriendSettlementActivityProps = {
   colors: Record<string, string>;
   friendDetailTheme: Record<string, string>;
   isDark: boolean;
-  styles: Record<string, any>;
   formatDate: (timestamp: number) => string;
 };
 
@@ -21,7 +20,6 @@ export function FriendSettlementActivity({
   colors,
   friendDetailTheme,
   isDark,
-  styles,
   formatDate,
 }: FriendSettlementActivityProps) {
   const youPaid = item.direction === 'you_paid_friend';
@@ -73,3 +71,56 @@ export function FriendSettlementActivity({
     </Animated.View>
   );
 }
+
+const styles = StyleSheet.create({
+  updateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    marginBottom: 7,
+    borderRadius: 10,
+    borderWidth: 0,
+    gap: 9,
+    shadowOffset: { width: 0, height: 1 },
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  updateMarker: {
+    width: 3,
+    height: 28,
+    borderRadius: 999,
+  },
+  updateInfo: {
+    flex: 1,
+    minWidth: 0,
+  },
+  updateTitle: {
+    flexShrink: 1,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  updateMeta: {
+    fontSize: 11,
+    marginTop: 2,
+  },
+  updateAmountBlock: {
+    alignItems: 'flex-end',
+    minWidth: 58,
+  },
+  updateStatus: {
+    fontSize: 10,
+    marginBottom: 1,
+  },
+  updateAmount: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  updateIcon: {
+    width: 26,
+    height: 26,
+    borderRadius: 7,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+});

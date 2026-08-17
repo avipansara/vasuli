@@ -741,7 +741,6 @@ export default function FriendDetailScreen() {
                           colors={colors as Record<string, string>}
                           friendDetailTheme={friendDetailTheme as Record<string, string>}
                           isDark={isDark}
-                          styles={styles}
                           swipeableRefs={swipeableRefs}
                           deletingExpenseId={deletingExpenseId}
                           onEditExpense={handleEditExpense}
@@ -756,7 +755,6 @@ export default function FriendDetailScreen() {
                             colors={colors as Record<string, string>}
                             friendDetailTheme={friendDetailTheme as Record<string, string>}
                             isDark={isDark}
-                            styles={styles}
                             formatDate={formatDate}
                           />
                           : <FriendExpenseActivityEvent
@@ -766,7 +764,6 @@ export default function FriendDetailScreen() {
                             colors={colors as Record<string, string>}
                             friendDetailTheme={friendDetailTheme as Record<string, string>}
                             isDark={isDark}
-                            styles={styles}
                             formatDate={formatDate}
                             onOpenExpense={handleOpenExpense}
                           />}
@@ -1115,104 +1112,6 @@ const styles = StyleSheet.create({
   expenseList: {
     paddingBottom: 100,
   },
-  expenseCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    marginBottom: 8,
-    borderRadius: 12,
-    borderWidth: 0,
-    shadowOffset: { width: 0, height: 1 },
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  updateRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    marginBottom: 7,
-    borderRadius: 10,
-    borderWidth: 0,
-    gap: 9,
-    shadowOffset: { width: 0, height: 1 },
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  updateMarker: {
-    width: 3,
-    height: 28,
-    borderRadius: 999,
-  },
-  expenseIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 10,
-  },
-  expenseInfo: {
-    flex: 1,
-    minWidth: 0,
-  },
-  updateInfo: {
-    flex: 1,
-    minWidth: 0,
-  },
-  updateTitle: {
-    flexShrink: 1,
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  updateMeta: {
-    fontSize: 11,
-    marginTop: 2,
-  },
-  updateAmountBlock: {
-    alignItems: 'flex-end',
-    minWidth: 58,
-  },
-  updateStatus: {
-    fontSize: 10,
-    marginBottom: 1,
-  },
-  updateAmount: {
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  updateIcon: {
-    width: 26,
-    height: 26,
-    borderRadius: 7,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  activityEventTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 3,
-  },
-  activityEventBadge: {
-    borderRadius: 999,
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-  },
-  activityEventBadgeText: {
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  expenseDescription: {
-    flexShrink: 1,
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 2,
-  },
-  expenseDate: {
-    fontSize: 11,
-  },
   expenseAmounts: {
     alignItems: 'flex-end',
     marginLeft: 8,
@@ -1230,37 +1129,5 @@ const styles = StyleSheet.create({
   settlementLabel: {
     fontSize: 12,
     marginBottom: 2,
-  },
-  expenseShare: {
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  expenseChevron: {
-    marginLeft: 8,
-  },
-  swipeActionLeft: {
-    justifyContent: 'center',
-    alignItems: 'flex-start',
-    width: 80,
-    borderRadius: 12,
-    marginBottom: 8,
-  },
-  swipeActionRight: {
-    justifyContent: 'center',
-    alignItems: 'flex-end',
-    width: 80,
-    borderRadius: 12,
-    marginBottom: 8,
-  },
-  swipeActionButton: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    width: 80,
-    height: '100%',
-    gap: 4,
-  },
-  swipeActionText: {
-    fontSize: 12,
-    fontWeight: '600',
   },
 }) as any;

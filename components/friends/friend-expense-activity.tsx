@@ -1,7 +1,7 @@
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import type { FriendActivityItem } from '@/services/friend-detail-service';
-import { Animated, TouchableOpacity, View } from 'react-native';
+import { Animated, StyleSheet, TouchableOpacity, View } from 'react-native';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
 import type { MutableRefObject } from 'react';
 
@@ -13,7 +13,6 @@ type FriendExpenseActivityProps = {
   colors: Record<string, string>;
   friendDetailTheme: Record<string, string>;
   isDark: boolean;
-  styles: Record<string, any>;
   swipeableRefs: MutableRefObject<Map<string, Swipeable>>;
   deletingExpenseId: string | null;
   onEditExpense: (expenseId: string) => void;
@@ -28,7 +27,6 @@ export function FriendExpenseActivity({
   colors,
   friendDetailTheme,
   isDark,
-  styles,
   swipeableRefs,
   deletingExpenseId,
   onEditExpense,
@@ -128,3 +126,71 @@ export function FriendExpenseActivity({
     </Swipeable>
   );
 }
+
+const styles = StyleSheet.create({
+  swipeActionLeft: {
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+    width: 80,
+    borderRadius: 12,
+    marginBottom: 8,
+  },
+  swipeActionRight: {
+    justifyContent: 'center',
+    alignItems: 'flex-end',
+    width: 80,
+    borderRadius: 12,
+    marginBottom: 8,
+  },
+  swipeActionButton: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 80,
+    height: '100%',
+    gap: 4,
+  },
+  swipeActionText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  expenseCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 8,
+    borderRadius: 12,
+    borderWidth: 0,
+    shadowOffset: { width: 0, height: 1 },
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  expenseIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+  },
+  expenseInfo: {
+    flex: 1,
+    minWidth: 0,
+  },
+  expenseDescription: {
+    flexShrink: 1,
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  expenseDate: {
+    fontSize: 11,
+  },
+  expenseShare: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  expenseChevron: {
+    marginLeft: 8,
+  },
+});
