@@ -425,14 +425,14 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        <View>
+        <View style={styles.accountActions}>
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Logout"
-            style={({ pressed }) => [styles.logoutButton, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.14)' : 'rgba(34, 197, 94, 0.1)', borderColor: isDark ? 'rgba(45, 212, 191, 0.26)' : 'rgba(34, 197, 94, 0.22)' }, pressed && styles.pressed]}
+            style={({ pressed }) => [styles.logoutButton, { backgroundColor: isDark ? 'rgba(239, 68, 68, 0.12)' : 'rgba(239, 68, 68, 0.08)', borderColor: isDark ? 'rgba(239, 68, 68, 0.26)' : 'rgba(239, 68, 68, 0.22)' }, pressed && styles.pressed]}
             onPress={handleLogout}>
-            <IconSymbol name="rectangle.portrait.and.arrow.right" size={18} color={isDark ? '#2DD4BF' : colors.tint} />
-            <ThemedText style={[styles.logoutText, { color: isDark ? '#2DD4BF' : colors.tint }]}>Logout</ThemedText>
+            <IconSymbol name="rectangle.portrait.and.arrow.right" size={18} color={isDark ? '#F87171' : '#DC2626'} />
+            <ThemedText style={[styles.logoutText, { color: isDark ? '#F87171' : '#DC2626' }]}>Logout</ThemedText>
           </Pressable>
 
           <Pressable
@@ -443,7 +443,7 @@ export default function ProfileScreen() {
           </Pressable>
         </View>
 
-        <ThemedText style={[styles.versionText, !isDark && { color: colors.textSecondary }]}>
+        <ThemedText style={[styles.versionText, { color: colors.textSecondary }]}>
           {getAppVersionLabel()}
         </ThemedText>
       </ScrollView>
@@ -469,10 +469,7 @@ const styles = StyleSheet.create({
   },
   profileCard: {
     alignItems: 'center',
-    backgroundColor: 'rgba(20, 35, 38, 0.6)',
-    borderColor: 'rgba(45, 212, 191, 0.12)',
     borderRadius: 16,
-    borderWidth: 1,
     flexDirection: 'row',
     marginHorizontal: 16,
     marginBottom: 14,
@@ -482,7 +479,6 @@ const styles = StyleSheet.create({
     width: 58,
     height: 58,
     borderRadius: 15,
-    backgroundColor: 'rgba(45, 212, 191, 0.15)',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 14,
@@ -490,7 +486,6 @@ const styles = StyleSheet.create({
   avatarLargeText: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#2DD4BF',
     lineHeight: 28,
   },
   profileInfo: {
@@ -499,7 +494,6 @@ const styles = StyleSheet.create({
   },
   userName: {
     fontSize: 17,
-    color: '#fff',
     marginBottom: 2,
   },
   userEmail: {
@@ -507,8 +501,6 @@ const styles = StyleSheet.create({
   },
   editButton: {
     alignItems: 'center',
-    backgroundColor: 'rgba(45, 212, 191, 0.15)',
-    borderColor: 'rgba(45, 212, 191, 0.3)',
     borderRadius: 12,
     borderWidth: 1,
     height: 42,
@@ -524,9 +516,6 @@ const styles = StyleSheet.create({
     paddingVertical: 18,
     paddingHorizontal: 12,
     borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(45, 212, 191, 0.12)',
-    backgroundColor: 'rgba(20, 35, 38, 0.6)',
     marginBottom: 22,
   },
   statsSectionStack: {
@@ -544,7 +533,6 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 19,
     fontWeight: 'bold',
-    color: '#2DD4BF',
     marginBottom: 4,
     fontVariant: ['tabular-nums'],
   },
@@ -554,7 +542,6 @@ const styles = StyleSheet.create({
   },
   statDivider: {
     width: 1,
-    backgroundColor: 'rgba(255,255,255,0.1)',
   },
   settingsSection: {
     marginHorizontal: 16,
@@ -578,10 +565,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   settingsList: {
-    backgroundColor: 'rgba(20, 35, 38, 0.6)',
-    borderColor: 'rgba(45, 212, 191, 0.12)',
     borderRadius: 16,
-    borderWidth: 1,
     overflow: 'hidden',
   },
   settingItem: {
@@ -608,7 +592,6 @@ const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 10,
-    backgroundColor: 'rgba(45, 212, 191, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -616,10 +599,8 @@ const styles = StyleSheet.create({
   settingTitle: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#fff',
   },
   accountActions: {
-    gap: 10,
     marginHorizontal: 16,
     marginBottom: 6,
   },
@@ -637,7 +618,6 @@ const styles = StyleSheet.create({
   logoutText: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#EF4444',
   },
   deleteButton: {
     alignItems: 'center',
@@ -655,8 +635,6 @@ const styles = StyleSheet.create({
   versionText: {
     textAlign: 'center',
     fontSize: 12,
-    color: '#fff',
-    opacity: 0.5,
     marginTop: 20,
   },
 });

@@ -209,11 +209,8 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   card: {
-    borderRadius: 12,
+    borderRadius: 14,
     overflow: 'hidden',
-  },
-  cardDark: {
-    backgroundColor: 'rgba(20, 35, 38, 0.6)',
   },
   content: {
     padding: 16,

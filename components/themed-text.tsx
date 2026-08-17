@@ -53,6 +53,7 @@ const styles = StyleSheet.create({
   header: {
     fontSize: 30,
     fontFamily: 'Nunito_700Bold',
+    lineHeight: 36,
     letterSpacing: -0.5,
   },
   title: {

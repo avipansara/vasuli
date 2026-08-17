@@ -135,8 +135,6 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   headerTitle: {
-    fontSize: 32,
-    fontWeight: '700',
   },
   headerButton: {
     width: 44,

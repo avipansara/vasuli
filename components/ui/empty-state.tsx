@@ -35,7 +35,7 @@ export function EmptyState({
       <ThemedText type="subtitle" style={[styles.title, !isDark && { color: colors.text }]}>
         {title}
       </ThemedText>
-      <ThemedText style={[styles.subtitle, !isDark && { color: colors.textSecondary }]}>
+      <ThemedText style={[styles.subtitle, { color: colors.textSecondary }]}>
         {subtitle}
       </ThemedText>
       {buttonLabel && onButtonPress && (
@@ -77,8 +77,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   subtitle: {
-    fontSize: 15,
-    opacity: 0.6,
     textAlign: 'center',
     lineHeight: 22,
     marginBottom: 24,

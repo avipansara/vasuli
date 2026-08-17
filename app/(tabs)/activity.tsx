@@ -264,7 +264,6 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   headerTitle: {
-    color: '#fff',
   },
   searchContainer: {
     flexDirection: 'row',
@@ -310,7 +309,6 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: 'rgba(45, 212, 191, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
@@ -323,9 +321,5 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 15,
     lineHeight: 22,
-  },
-  footerLoader: {
-    paddingVertical: 20,
-    alignItems: 'center',
   },
 });

@@ -262,14 +262,14 @@ export const Gradients = {
 export const Glows = {
   teal: {
     shadowColor: '#2DD4BF',
-    shadowOffset: { width: 0, height: 0 },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 12,
     elevation: 8,
   },
   purple: {
     shadowColor: '#8B5CF6',
-    shadowOffset: { width: 0, height: 0 },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 10,
     elevation: 6,

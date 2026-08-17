@@ -11,7 +11,6 @@ import { useEffect, useRef, useState } from 'react';
 import {
   Alert,
   Animated,
-  Dimensions,
   Keyboard,
   KeyboardAvoidingView,
   Platform,
@@ -23,7 +22,6 @@ import {
   View
 } from 'react-native';
 
-const { width, height } = Dimensions.get('window');
 
 type Step = 'contact' | 'otp';
 
@@ -42,8 +40,6 @@ export default function SignInOTPScreen() {
   // Animations
   const [fadeAnim] = useState(() => new Animated.Value(0));
   const [slideAnim] = useState(() => new Animated.Value(30));
-  const [floatAnim] = useState(() => new Animated.Value(0));
-  const [pulseAnim] = useState(() => new Animated.Value(1));
 
   useEffect(() => {
     Animated.parallel([
@@ -58,44 +54,8 @@ export default function SignInOTPScreen() {
         useNativeDriver: true,
       }),
     ]).start();
+  }, [fadeAnim, slideAnim]);
 
-    // Floating animation for orbs
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(floatAnim, {
-          toValue: 1,
-          duration: 4000,
-          useNativeDriver: true,
-        }),
-        Animated.timing(floatAnim, {
-          toValue: 0,
-          duration: 4000,
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
-
-    // Pulse animation for icon
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseAnim, {
-          toValue: 1.08,
-          duration: 2000,
-          useNativeDriver: true,
-        }),
-        Animated.timing(pulseAnim, {
-          toValue: 1,
-          duration: 2000,
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
-  }, [fadeAnim, slideAnim, floatAnim, pulseAnim]);
-
-  const floatTranslate = floatAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, -20],
-  });
 
   useEffect(() => {
     if (resendTimer > 0) {
@@ -515,28 +475,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     paddingHorizontal: 24,
-  },
-  orb: {
-    position: 'absolute',
-    borderRadius: 999,
-  },
-  orb1: {
-    width: width * 0.8,
-    height: width * 0.8,
-    top: -width * 0.3,
-    left: -width * 0.3,
-  },
-  orb2: {
-    width: width * 0.6,
-    height: width * 0.6,
-    bottom: height * 0.1,
-    right: -width * 0.25,
-  },
-  orb3: {
-    width: width * 0.5,
-    height: width * 0.5,
-    top: height * 0.4,
-    left: -width * 0.2,
   },
   card: {
     borderRadius: 24,
