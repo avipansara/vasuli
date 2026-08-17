@@ -342,7 +342,7 @@ export default function GroupSettleScreen() {
 
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-      <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={[styles.container, { backgroundColor: isDark ? '#0b1326' : colors.background }]}>
         <Stack.Screen options={{ headerShown: false }} />
         <NavigationHeader title="Settle Up" onBack={() => router.back()} />
 
@@ -351,10 +351,10 @@ export default function GroupSettleScreen() {
           <View style={styles.content}>
             {/* Group Info */}
             <View style={styles.groupInfo}>
-              <ThemedText style={[styles.groupLabel, { color: colors.textSecondary }]}>
+              <ThemedText style={[styles.groupLabel, { color: isDark ? '#bbcabf' : colors.textSecondary }]}>
                 SETTLING IN
               </ThemedText>
-              <ThemedText style={[styles.groupName, { color: colors.text }]}>
+              <ThemedText style={[styles.groupName, { color: isDark ? '#dae2fd' : colors.text }]}>
                 {group?.name}
               </ThemedText>
             </View>
@@ -368,7 +368,7 @@ export default function GroupSettleScreen() {
                   value={amount}
                   onChangeText={(text) => setAmount(normalizeCurrencyInput(text))}
                   placeholder="0.00"
-                  placeholderTextColor={isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(6, 78, 59, 0.3)'}
+                  placeholderTextColor={isDark ? 'rgba(16, 185, 129, 0.4)' : 'rgba(6, 78, 59, 0.3)'}
                   keyboardType="decimal-pad"
                   returnKeyType="done"
                   maxFontSizeMultiplier={1.4}
@@ -379,7 +379,7 @@ export default function GroupSettleScreen() {
 
             {/* Members List */}
             <View style={styles.membersSection}>
-              <ThemedText style={[styles.sectionLabel, { color: colors.textSecondary }]}>
+              <ThemedText style={[styles.sectionLabel, { color: isDark ? '#bbcabf' : colors.textSecondary }]}>
                 SELECT MEMBER TO SETTLE WITH
               </ThemedText>
               <FlatList
@@ -394,9 +394,9 @@ export default function GroupSettleScreen() {
                     <IconSymbol
                       size={48}
                       name="person.2.slash"
-                      color={colors.textSecondary}
+                      color={isDark ? '#bbcabf' : colors.textSecondary}
                     />
-                    <ThemedText style={[styles.emptyText, { color: colors.textSecondary }]}>
+                    <ThemedText style={[styles.emptyText, { color: isDark ? '#bbcabf' : colors.textSecondary }]}>
                       No other members in this group
                     </ThemedText>
                   </View>
@@ -420,13 +420,13 @@ export default function GroupSettleScreen() {
               },
             ]}>
             {settling ? (
-              <ActivityIndicator size="small" color="#ffffff" />
+              <ActivityIndicator size="small" color={isDark ? '#003824' : '#ffffff'} />
             ) : (
               <Text
                 style={[
                   styles.settleButtonText,
                   {
-                    color: canSubmitSettlement ? '#ffffff' : colors.textSecondary,
+                    color: canSubmitSettlement ? (isDark ? '#003824' : '#ffffff') : (isDark ? '#bbcabf' : colors.textSecondary),
                   },
                 ]}>
                 Record Settlement
@@ -471,12 +471,12 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     height: 110,
     paddingHorizontal: 24,
-    borderWidth: 1,
+    borderWidth: 0,
     shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.03,
-    shadowRadius: 6,
-    elevation: 1,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 5,
   },
   amountInputRow: {
     flexDirection: 'row',
@@ -515,10 +515,10 @@ const styles = StyleSheet.create({
   memberCard: {
     borderRadius: 12,
     shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 1,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 3,
   },
   memberCardDisabled: {
     opacity: 0.55,

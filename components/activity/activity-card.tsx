@@ -121,19 +121,19 @@ function ActivityCardInner({ activity, currentUserId, deletedExpenseTargetIds }:
     isDeleted
       ? colors.error
       : item.type === 'expense'
-        ? isDark ? '#2DD4BF' : colors.tint
+        ? isDark ? '#10b981' : colors.tint
         : item.type === 'settlement'
           ? isDark ? '#10b981' : colors.success
-          : isDark ? '#A78BFA' : '#8B5CF6';
+          : isDark ? '#4edea3' : '#8B5CF6';
 
   const iconBgColor =
     isDeleted
       ? 'rgba(239, 68, 68, 0.15)'
       : item.type === 'expense'
-        ? isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)'
+        ? isDark ? '#064e3b' : 'rgba(34, 197, 94, 0.1)'
         : item.type === 'settlement'
-          ? 'rgba(16, 185, 129, 0.15)'
-          : 'rgba(167, 139, 250, 0.15)';
+          ? isDark ? '#064e3b' : 'rgba(16, 185, 129, 0.15)'
+          : isDark ? 'rgba(0, 79, 52, 0.4)' : 'rgba(167, 139, 250, 0.15)';
 
   const content = (
     <>
@@ -145,7 +145,7 @@ function ActivityCardInner({ activity, currentUserId, deletedExpenseTargetIds }:
           <ThemedText
             type="defaultSemiBold"
             numberOfLines={2}
-            style={[styles.description, { color: colors.text }]}>
+            style={[styles.description, { color: isDark ? '#f8fafc' : colors.text }]}>
             {title}
           </ThemedText>
           {statusLabel && (
@@ -156,7 +156,7 @@ function ActivityCardInner({ activity, currentUserId, deletedExpenseTargetIds }:
             </View>
           )}
         </View>
-        <ThemedText style={[styles.actor, { color: colors.textSecondary }]} numberOfLines={1}>
+        <ThemedText style={[styles.actor, { color: isDark ? '#9ba6b8' : colors.textSecondary }]} numberOfLines={1}>
           {actorLabel}, {dateStr}
         </ThemedText>
         {item.groupName && (
@@ -165,13 +165,13 @@ function ActivityCardInner({ activity, currentUserId, deletedExpenseTargetIds }:
               style={[
                 styles.groupPill,
                 {
-                  backgroundColor: isDark ? 'rgba(45, 212, 191, 0.1)' : 'rgba(7, 202, 79, 0.08)',
+                  backgroundColor: isDark ? 'rgba(0, 79, 52, 0.4)' : 'rgba(7, 202, 79, 0.08)',
                 },
               ]}>
               <ThemedText
                 type="defaultSemiBold"
                 numberOfLines={1}
-                style={[styles.groupName, { color: isDark ? '#2DD4BF' : colors.tint }]}>
+                style={[styles.groupName, { color: isDark ? '#31c98f' : colors.tint }]}>
                 {item.groupName}
               </ThemedText>
             </View>
@@ -186,7 +186,7 @@ function ActivityCardInner({ activity, currentUserId, deletedExpenseTargetIds }:
               numberOfLines={1}
               adjustsFontSizeToFit
               minimumFontScale={0.82}
-              style={[styles.amount, { color: amountColor }]}>
+              style={[styles.amount, { color: isDark && !isDeleted && item.type !== 'settlement' ? '#f8fafc' : amountColor }]}>
               {amountLabel}
             </ThemedText>
           )}
@@ -194,7 +194,7 @@ function ActivityCardInner({ activity, currentUserId, deletedExpenseTargetIds }:
             <IconSymbol
               size={14}
               name="chevron.right"
-              color={isDark ? 'rgba(225, 245, 239, 0.36)' : colors.textSecondary}
+              color={isDark ? '#64748b' : colors.textSecondary}
             />
           )}
         </View>
@@ -205,13 +205,13 @@ function ActivityCardInner({ activity, currentUserId, deletedExpenseTargetIds }:
   const cardStyle = [
     styles.card,
     {
-      backgroundColor: isDark ? 'rgba(20, 35, 38, 0.95)' : '#ffffff',
+      backgroundColor: isDark ? '#0f172a' : '#ffffff',
       borderWidth: 0,
       shadowColor: isDark ? '#000000' : '#64748B',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: isDark ? 0.22 : 0.06,
-      shadowRadius: 8,
-      elevation: 2,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: isDark ? 0.4 : 0.08,
+      shadowRadius: 12,
+      elevation: 4,
     },
   ];
 

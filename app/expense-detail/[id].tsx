@@ -204,7 +204,7 @@ export default function ExpenseDetailScreen() {
   const payerName = isPayer ? 'You' : payer?.name || 'Unknown';
 
   const cardStyle = {
-    backgroundColor: isDark ? 'rgba(20, 35, 38, 0.95)' : '#ffffff',
+    backgroundColor: isDark ? '#0b1120' : '#ffffff',
     borderWidth: 0,
     shadowColor: isDark ? '#000000' : '#475569',
     shadowOffset: { width: 0, height: 3 },
@@ -214,7 +214,7 @@ export default function ExpenseDetailScreen() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <View style={[styles.container, { backgroundColor: isDark ? '#060b18' : colors.background }]}>
       <Stack.Screen options={{ headerShown: false }} />
 
       <NavigationHeader
@@ -266,49 +266,49 @@ export default function ExpenseDetailScreen() {
             <View style={styles.amountContent}>
               <View style={styles.amountHeader}>
                 <View style={styles.expenseTitleBlock}>
-                  <ThemedText style={[styles.amountLabel, { color: colors.textSecondary }]}>
+                  <ThemedText style={[styles.amountLabel, { color: isDark ? '#9ba6b8' : colors.textSecondary }]}>
                     Total
                   </ThemedText>
                   <ThemedText
                     type="subtitle"
                     numberOfLines={2}
-                    style={[styles.description, { color: colors.text }]}>
+                    style={[styles.description, { color: isDark ? '#f8fafc' : colors.text }]}>
                     {expense.description}
                   </ThemedText>
                 </View>
-                <ThemedText type='title' style={[styles.amount, { color: isDark ? '#2DD4BF' : colors.accent }]}>
+                <ThemedText type='title' style={[styles.amount, { color: isDark ? '#10b981' : colors.accent }]}>
                   ${expense.amount.toFixed(2)}
                 </ThemedText>
               </View>
 
               <View style={styles.amountMeta}>
                 {group && (
-                  <View style={[styles.metaPill, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(15, 76, 58, 0.08)' }]}>
-                    <IconSymbol name="person.3.fill" size={14} color={isDark ? '#2DD4BF' : colors.accent} />
-                    <ThemedText style={[styles.metaPillText, { color: isDark ? '#2DD4BF' : colors.accent }]}>{group.name}</ThemedText>
+                  <View style={[styles.metaPill, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.15)' : 'rgba(15, 76, 58, 0.08)' }]}>
+                    <IconSymbol name="person.3.fill" size={14} color={isDark ? '#10b981' : colors.accent} />
+                    <ThemedText style={[styles.metaPillText, { color: isDark ? '#10b981' : colors.accent }]}>{group.name}</ThemedText>
                   </View>
                 )}
                 {expense.category && (
                   <View style={[styles.metaPill, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)' }]}>
-                    <ThemedText style={[styles.metaPillText, { color: colors.textSecondary }]}>{expense.category}</ThemedText>
+                    <ThemedText style={[styles.metaPillText, { color: isDark ? '#9ba6b8' : colors.textSecondary }]}>{expense.category}</ThemedText>
                   </View>
                 )}
               </View>
 
-              <View style={[styles.detailGrid, { borderTopColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.06)' }]}>
+              <View style={[styles.detailGrid, { borderTopColor: isDark ? '#2a3441' : 'rgba(0, 0, 0, 0.06)' }]}>
                 <View style={styles.detailItem}>
-                  <ThemedText style={[styles.detailLabel, { color: colors.textSecondary }]}>
+                  <ThemedText style={[styles.detailLabel, { color: isDark ? '#9ba6b8' : colors.textSecondary }]}>
                     Paid by
                   </ThemedText>
-                  <ThemedText numberOfLines={1} type="defaultSemiBold" style={[styles.detailValue, { color: colors.text }]}>
+                  <ThemedText numberOfLines={1} type="defaultSemiBold" style={[styles.detailValue, { color: isDark ? '#f8fafc' : colors.text }]}>
                     {payerName}
                   </ThemedText>
                 </View>
                 <View style={styles.detailItem}>
-                  <ThemedText style={[styles.detailLabel, { color: colors.textSecondary }]}>
+                  <ThemedText style={[styles.detailLabel, { color: isDark ? '#9ba6b8' : colors.textSecondary }]}>
                     Date
                   </ThemedText>
-                  <ThemedText numberOfLines={1} type="defaultSemiBold" style={[styles.detailValue, { color: colors.text }]}>
+                  <ThemedText numberOfLines={1} type="defaultSemiBold" style={[styles.detailValue, { color: isDark ? '#f8fafc' : colors.text }]}>
                     {dateStr}
                   </ThemedText>
                 </View>
@@ -318,10 +318,10 @@ export default function ExpenseDetailScreen() {
 
           <View style={styles.splitSection}>
             <View style={styles.sectionHeader}>
-              <ThemedText type="subtitle" style={[styles.sectionTitle, { color: colors.text }]}>
+              <ThemedText type="subtitle" style={[styles.sectionTitle, { color: isDark ? '#f8fafc' : colors.text }]}>
                 Split
               </ThemedText>
-              <ThemedText style={[styles.sectionMeta, { color: colors.textSecondary }]}>
+              <ThemedText style={[styles.sectionMeta, { color: isDark ? '#9ba6b8' : colors.textSecondary }]}>
                 {splits.length} {splits.length === 1 ? 'person' : 'people'}
               </ThemedText>
             </View>
@@ -338,30 +338,30 @@ export default function ExpenseDetailScreen() {
                       key={split.userId}
                       style={[styles.splitRow, {
                         backgroundColor: isCurrentUser
-                          ? (isDark ? 'rgba(13, 148, 136, 0.12)' : 'rgba(15, 76, 58, 0.05)')
+                          ? (isDark ? '#0f172a' : 'rgba(15, 76, 58, 0.05)')
                           : undefined,
-                        borderBottomColor: isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.05)',
+                        borderBottomColor: isDark ? '#2a3441' : 'rgba(0, 0, 0, 0.05)',
                         borderBottomWidth: index === splits.length - 1 ? 0 : StyleSheet.hairlineWidth,
                       }]}>
                       <View style={[styles.splitAvatar, {
                         backgroundColor: isCurrentUser
-                          ? (isDark ? '#0D9488' : colors.accent)
-                          : (isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(15, 76, 58, 0.1)'),
+                          ? '#10b981'
+                          : (isDark ? '#162032' : 'rgba(15, 76, 58, 0.1)'),
                       }]}>
                         <ThemedText style={[styles.splitAvatarText, {
-                          color: isCurrentUser ? '#ffffff' : (isDark ? '#2DD4BF' : colors.accent),
+                          color: isCurrentUser ? '#003827' : (isDark ? '#10b981' : colors.accent),
                         }]}>
                           {isCurrentUser ? 'Y' : split.user?.name.charAt(0).toUpperCase() || '?'}
                         </ThemedText>
                       </View>
-                      <ThemedText numberOfLines={1} type="defaultSemiBold" style={[styles.splitName, { color: colors.text }]}>
+                      <ThemedText numberOfLines={1} type="defaultSemiBold" style={[styles.splitName, { color: isDark ? '#f8fafc' : colors.text }]}>
                         {isCurrentUser ? 'You' : split.user?.name || 'Unknown'}
                       </ThemedText>
-                      <ThemedText style={[styles.splitType, { color: colors.textSecondary }]}>
+                      <ThemedText style={[styles.splitType, { color: isDark ? '#9ba6b8' : colors.textSecondary }]}>
                         {splitMeta}
                       </ThemedText>
                       <ThemedText type="defaultSemiBold" style={[styles.splitAmount, {
-                        color: isCurrentUser ? (isDark ? '#2DD4BF' : colors.accent) : colors.text,
+                        color: isCurrentUser ? (isDark ? '#10b981' : colors.accent) : (isDark ? '#f8fafc' : colors.text),
                       }]}>
                         ${split.amount.toFixed(2)}
                       </ThemedText>
@@ -375,10 +375,10 @@ export default function ExpenseDetailScreen() {
           {activities.length > 0 && (
             <View style={styles.activitySection}>
               <View style={styles.sectionHeader}>
-                <ThemedText type="subtitle" style={[styles.sectionTitle, { color: colors.text }]}>
+                <ThemedText type="subtitle" style={[styles.sectionTitle, { color: isDark ? '#f8fafc' : colors.text }]}>
                   Activity
                 </ThemedText>
-                <ThemedText style={[styles.sectionMeta, { color: colors.textSecondary }]}>
+                <ThemedText style={[styles.sectionMeta, { color: isDark ? '#9ba6b8' : colors.textSecondary }]}>
                   {activities.length} {activities.length === 1 ? 'update' : 'updates'}
                 </ThemedText>
               </View>
@@ -408,20 +408,20 @@ export default function ExpenseDetailScreen() {
                 const getActivityColor = () => {
                   switch (activity.type) {
                     case 'expense_created':
-                      return isDark ? '#2DD4BF' : colors.accent;
+                      return isDark ? '#10b981' : colors.accent;
                     case 'expense_updated':
                       return '#F59E0B';
                     case 'expense_deleted':
                       return '#EF4444';
                     default:
-                      return colors.textSecondary;
+                      return isDark ? '#9ba6b8' : colors.textSecondary;
                   }
                 };
 
                 return (
                   <View style={[styles.activityCard, cardStyle]} key={activity.id}>
                     <View style={[styles.activityIcon, {
-                      backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(15, 76, 58, 0.1)',
+                      backgroundColor: isDark ? '#162032' : 'rgba(15, 76, 58, 0.1)',
                     }]}>
                       <IconSymbol
                         name={getActivityIcon()}
@@ -430,23 +430,23 @@ export default function ExpenseDetailScreen() {
                       />
                     </View>
                     <View style={styles.activityContent}>
-                      <ThemedText type="defaultSemiBold" style={[styles.activityDescription, { color: colors.text }]}>
+                      <ThemedText type="defaultSemiBold" style={[styles.activityDescription, { color: isDark ? '#f8fafc' : colors.text }]}>
                         {activity.description}
                       </ThemedText>
                       <View style={styles.activityMeta}>
-                        <ThemedText style={[styles.activityUser, { color: colors.textSecondary }]}>
+                        <ThemedText style={[styles.activityUser, { color: isDark ? '#9ba6b8' : colors.textSecondary }]}>
                           {activity.userName || 'Unknown'}
                         </ThemedText>
-                        <ThemedText style={[styles.activityDot, { color: colors.textSecondary }]}>
+                        <ThemedText style={[styles.activityDot, { color: isDark ? '#9ba6b8' : colors.textSecondary }]}>
                           •
                         </ThemedText>
-                        <ThemedText style={[styles.activityTime, { color: colors.textSecondary }]}>
+                        <ThemedText style={[styles.activityTime, { color: isDark ? '#9ba6b8' : colors.textSecondary }]}>
                           {timeStr}
                         </ThemedText>
                       </View>
                     </View>
                     {activity.amount && (
-                      <ThemedText type="defaultSemiBold" style={[styles.activityAmount, { color: colors.text }]}>
+                      <ThemedText type="defaultSemiBold" style={[styles.activityAmount, { color: isDark ? '#f8fafc' : colors.text }]}>
                         ${activity.amount.toFixed(2)}
                       </ThemedText>
                     )}

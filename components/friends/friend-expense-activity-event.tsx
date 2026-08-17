@@ -37,18 +37,18 @@ export function FriendExpenseActivityEvent({
 
   const content = (
     <Animated.View style={[styles.updateRow, {
-      backgroundColor: isDark ? 'rgba(20, 35, 38, 0.95)' : '#ffffff',
+      backgroundColor: isDark ? '#0d1321' : '#ffffff',
       borderWidth: 0,
       shadowColor: isDark ? '#000000' : '#475569',
-      shadowOffset: { width: 0, height: 3 },
-      shadowOpacity: isDark ? 0.35 : 0.09,
-      shadowRadius: 10,
-      elevation: 3,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: isDark ? 0.4 : 0.09,
+      shadowRadius: 12,
+      elevation: 4,
     }]}> 
       <View style={[styles.updateMarker, { backgroundColor: statusColor }]} />
       <View style={styles.updateInfo}>
         <View style={styles.activityEventTitleRow}>
-          <ThemedText style={[styles.updateTitle, { color: colors.text }]} numberOfLines={1}>
+          <ThemedText style={[styles.updateTitle, { color: isDark ? '#F8FAFC' : colors.text }]} numberOfLines={1}>
             {title}
           </ThemedText>
           <View style={[styles.activityEventBadge, { backgroundColor: iconSurface }]}> 
@@ -57,14 +57,14 @@ export function FriendExpenseActivityEvent({
             </ThemedText>
           </View>
         </View>
-        <ThemedText style={[styles.updateMeta, { color: colors.textSecondary }]} numberOfLines={1}>
+        <ThemedText style={[styles.updateMeta, { color: isDark ? '#94A3B8' : colors.textSecondary }]} numberOfLines={1}>
           {formatDate(item.date)} • {actorName}
         </ThemedText>
       </View>
       {amountLabel && (
         <View style={styles.updateAmountBlock}>
-          <ThemedText style={[styles.updateStatus, { color: colors.textSecondary }]}>total</ThemedText>
-          <ThemedText style={[styles.updateAmount, { color: colors.textSecondary }]}>{amountLabel}</ThemedText>
+          <ThemedText style={[styles.updateStatus, { color: isDark ? '#94A3B8' : colors.textSecondary }]}>total</ThemedText>
+          <ThemedText style={[styles.updateAmount, { color: isDark ? '#94A3B8' : colors.textSecondary }]}>{amountLabel}</ThemedText>
         </View>
       )}
       <View style={[styles.updateIcon, { backgroundColor: iconSurface }]}> 

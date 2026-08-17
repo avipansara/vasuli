@@ -454,13 +454,13 @@ export default function GroupDetailScreen() {
           accessibilityHint="Opens the expense details"
           onPress={() => router.push(`/expense-detail/${item.id}` as any)}
           style={[styles.expenseCard, {
-            backgroundColor: isDark ? 'rgba(20, 35, 38, 0.95)' : '#ffffff',
+            backgroundColor: isDark ? '#0d1321' : '#ffffff',
             borderWidth: 0,
-            shadowColor: '#000000',
+            shadowColor: isDark ? '#000000' : '#475569',
             shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.06,
-            shadowRadius: 10,
-            elevation: 3,
+            shadowOpacity: isDark ? 0.4 : 0.06,
+            shadowRadius: 12,
+            elevation: 4,
           }]}>
           <View style={[styles.expenseIcon, {
             backgroundColor: isDark ? categoryStyle.darkBg : categoryStyle.lightBg,
@@ -475,19 +475,19 @@ export default function GroupDetailScreen() {
             />
           </View>
           <View style={styles.expenseInfo}>
-            <ThemedText type="subtitle" style={[styles.expenseDescription, { color: colors.text }]} numberOfLines={1}>
+            <ThemedText type="subtitle" style={[styles.expenseDescription, { color: isDark ? '#F8FAFC' : colors.text }]} numberOfLines={1}>
               {item.description}
             </ThemedText>
-            <ThemedText style={[styles.expenseDate, { color: colors.textSecondary }]} numberOfLines={2}>
+            <ThemedText style={[styles.expenseDate, { color: isDark ? '#94A3B8' : colors.textSecondary }]} numberOfLines={2}>
               {paidByYou ? 'Paid by you' : `Paid by ${item.paidByUser?.name.split(' ')[0] || 'Someone'}`}{'\n'}{dateStr}
             </ThemedText>
           </View>
           <View style={styles.amountBlock}>
-            <ThemedText type="title" style={[styles.expenseAmount, { color: colors.text }]}>
+            <ThemedText type="title" style={[styles.expenseAmount, { color: isDark ? '#F8FAFC' : colors.text }]}>
               ${item.amount.toFixed(2)}
             </ThemedText>
             <View style={[styles.badge, { backgroundColor: paidByYou ? friendDetailTheme.positiveSurface : friendDetailTheme.settledSurface }]}>
-              <ThemedText style={[styles.badgeText, { color: paidByYou ? friendDetailTheme.positive : colors.textSecondary }]}>
+              <ThemedText style={[styles.badgeText, { color: paidByYou ? friendDetailTheme.positive : (isDark ? '#94A3B8' : colors.textSecondary) }]}>
                 {paidByYou ? 'You paid' : 'Split'}
               </ThemedText>
             </View>
@@ -617,27 +617,27 @@ export default function GroupDetailScreen() {
           activeOpacity={0.72}
           onPress={() => item.userId !== currentUserId && router.push(`/friends/${item.userId}` as any)}
           style={[styles.memberCard, {
-            backgroundColor: isDark ? 'rgba(20, 35, 38, 0.95)' : '#ffffff',
+            backgroundColor: isDark ? '#0d1321' : '#ffffff',
             borderWidth: 0,
-            shadowColor: '#000000',
+            shadowColor: isDark ? '#000000' : '#475569',
             shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.06,
-            shadowRadius: 10,
-            elevation: 3,
+            shadowOpacity: isDark ? 0.4 : 0.06,
+            shadowRadius: 12,
+            elevation: 4,
           }]}>
           <View style={[styles.memberAvatar, {
-            backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(15, 76, 58, 0.1)',
+            backgroundColor: isDark ? '#1e293b' : 'rgba(15, 76, 58, 0.1)',
             borderRadius: 24,
             width: 48,
             height: 48,
           }]}>
-            <ThemedText style={[styles.avatarText, { color: isDark ? '#2DD4BF' : '#0F4C3A' }]}>
+            <ThemedText style={[styles.avatarText, { color: isDark ? '#10b981' : '#0F4C3A' }]}>
               {item.user?.name.charAt(0).toUpperCase() || '?'}
             </ThemedText>
           </View>
           <View style={styles.memberInfo}>
             <View style={styles.memberNameRow}>
-              <ThemedText type="subtitle" style={!isDark ? { color: colors.text } : undefined} numberOfLines={1}>
+              <ThemedText type="subtitle" style={{ color: isDark ? '#F8FAFC' : colors.text }} numberOfLines={1}>
                 {item.user?.name || 'Unknown'}
               </ThemedText>
               {item.userId !== currentUserId && (
@@ -673,7 +673,7 @@ export default function GroupDetailScreen() {
               )}
             </View>
             {item.role === 'admin' && (
-              <ThemedText type='defaultSemiBold' style={[styles.roleLabel, { color: colors.text }]}>Admin</ThemedText>
+              <ThemedText type='defaultSemiBold' style={[styles.roleLabel, { color: isDark ? '#94A3B8' : colors.text }]}>Admin</ThemedText>
             )}
           </View>
           <View style={styles.balanceInfo}>
@@ -682,13 +682,13 @@ export default function GroupDetailScreen() {
                 <ThemedText type='subtitle' style={[styles.memberBalanceAmount, { color: balanceColor }]}>
                   ${Math.abs(balance).toFixed(2)}
                 </ThemedText>
-                <ThemedText style={[styles.balanceLabel, !isDark && { color: colors.textSecondary }]}>
+                <ThemedText style={[styles.balanceLabel, { color: isDark ? '#94A3B8' : colors.textSecondary }]}>
                   {balance > 0 ? 'gets back' : 'owes'}
                 </ThemedText>
               </>
             )}
             {balance === 0 && (
-              <ThemedText style={[styles.settledLabel, { color: colors.textSecondary }]}>settled</ThemedText>
+              <ThemedText style={[styles.settledLabel, { color: isDark ? '#94A3B8' : colors.textSecondary }]}>settled</ThemedText>
             )}
           </View>
         </TouchableOpacity>
@@ -801,7 +801,7 @@ export default function GroupDetailScreen() {
   const balanceAccessibilityValue = `${balanceCopy}, $${Math.abs(currentUserBalance).toFixed(2)}`;
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <View style={[styles.container, { backgroundColor: isDark ? '#050914' : colors.background }]}>
 
       {/* Header */}
       <View style={styles.header}>
@@ -824,7 +824,7 @@ export default function GroupDetailScreen() {
             opacity: headerTitleOpacity,
             transform: [{ translateY: headerTitleTranslateY }],
           }}>
-            <ThemedText style={[styles.headerTitle, { color: colors.text }]} numberOfLines={1}>
+            <ThemedText style={[styles.headerTitle, { color: isDark ? '#F8FAFC' : colors.text }]} numberOfLines={1}>
               {group.name}
             </ThemedText>
           </Animated.View>
@@ -877,11 +877,13 @@ export default function GroupDetailScreen() {
           }}>
             <LinearGradient
               colors={
-                currentUserBalance < 0
-                  ? (isDark ? ['rgba(254, 226, 226, 0.08)', 'rgba(20, 20, 25, 0.95)'] : ['#FFF2F4', '#FFFFFF'])
-                  : currentUserBalance > 0
-                    ? (isDark ? ['rgba(209, 250, 229, 0.08)', 'rgba(20, 20, 25, 0.95)'] : ['#F0FDF4', '#FFFFFF'])
-                    : (isDark ? ['rgba(243, 244, 246, 0.05)', 'rgba(20, 20, 25, 0.95)'] : ['#F9FAFB', '#FFFFFF'])
+                isDark
+                  ? ['rgba(13, 19, 33, 0.8)', 'rgba(13, 19, 33, 0.6)']
+                  : currentUserBalance < 0
+                    ? ['#FFF2F4', '#FFFFFF']
+                    : currentUserBalance > 0
+                      ? ['#F0FDF4', '#FFFFFF']
+                      : ['#F9FAFB', '#FFFFFF']
               }
               start={{ x: 1, y: 0 }}
               end={{ x: 0, y: 1 }}
@@ -891,21 +893,22 @@ export default function GroupDetailScreen() {
               accessibilityLiveRegion="polite"
               style={[styles.summaryCard, {
                 borderWidth: 0,
-                shadowColor: '#000000',
-                shadowOffset: { width: 0, height: 10 },
+                shadowColor: isDark ? '#000000' : '#475569',
+                shadowOffset: { width: 0, height: 8 },
                 shadowOpacity: isDark ? 0.45 : 0.12,
-                shadowRadius: 20,
+                shadowRadius: 18,
                 elevation: 8,
                 alignItems: 'center',
                 paddingVertical: 24,
                 paddingHorizontal: 16,
+                borderRadius: 24,
               }]}>
               
-              <ThemedText type='title' style={[styles.summaryCardGroupName, { color: colors.text }]}>
+              <ThemedText type='title' style={[styles.summaryCardGroupName, { color: isDark ? '#F8FAFC' : colors.text }]}>
                 {group.name}
               </ThemedText>
 
-              <ThemedText type='defaultSemiBold' style={[styles.summaryCardTitle, { color: balanceColor }]}>
+              <ThemedText type='defaultSemiBold' style={[styles.summaryCardTitle, { color: isDark ? (currentUserBalance < 0 ? '#ffb3b0' : currentUserBalance > 0 ? '#45dfa4' : '#94A3B8') : balanceColor }]}>
                 {currentUserBalance > 0 
                   ? 'YOU ARE OWED' 
                   : currentUserBalance < 0 
@@ -913,11 +916,11 @@ export default function GroupDetailScreen() {
                     : 'ALL SETTLED UP'}
               </ThemedText>
               
-              <ThemedText type='subtitle' style={[styles.summaryCardAmount, { color: balanceColor }]}>
+              <ThemedText type='subtitle' style={[styles.summaryCardAmount, { color: isDark ? (currentUserBalance < 0 ? '#ffb3b0' : currentUserBalance > 0 ? '#4edea3' : '#94A3B8') : balanceColor }]}>
                 {currentUserBalance < 0 ? '-' : currentUserBalance > 0 ? '+' : ''}${Math.abs(currentUserBalance).toFixed(2)}
               </ThemedText>
 
-              <ThemedText style={[styles.summaryCardSubtitle, { color: colors.textSecondary }]}>
+              <ThemedText style={[styles.summaryCardSubtitle, { color: isDark ? '#94A3B8' : colors.textSecondary }]}>
                 Across {members.length} members
               </ThemedText>
 
@@ -925,14 +928,14 @@ export default function GroupDetailScreen() {
                 <View style={styles.cardQuickActions}>
                   <TouchableOpacity
                     style={[styles.cardQuickActionButton, {
-                      backgroundColor: isDark ? '#0F3E3A' : '#043424', // Dark green match
+                      backgroundColor: isDark ? '#10b981' : '#043424',
                     }]}
                     accessibilityRole="button"
                     accessibilityLabel={`Settle up in ${group.name}`}
                     accessibilityHint="Opens the settlement form"
                     onPress={handleSettleUp}>
                     <IconSymbol size={18} name="banknote" color="#ffffff" />
-                    <ThemedText style={styles.cardQuickActionText}>Settle Up</ThemedText>
+                    <ThemedText style={[styles.cardQuickActionText, { color: '#ffffff' }]}>Settle Up</ThemedText>
                   </TouchableOpacity>
                 </View>
               )}
@@ -945,12 +948,12 @@ export default function GroupDetailScreen() {
           <TouchableOpacity 
             style={[
               styles.tabTile, 
-              sectionTab === 'all' && [styles.tabTileActive, { borderColor: isDark ? '#2DD4BF' : '#0F4C3A', borderWidth: 1 }], 
-              { backgroundColor: isDark ? 'rgba(20, 35, 38, 0.95)' : '#ffffff' }
+              sectionTab === 'all' && [styles.tabTileActive, { borderColor: isDark ? '#10b981' : '#0F4C3A', borderWidth: 1 }], 
+              { backgroundColor: isDark ? '#0d1321' : '#ffffff' }
             ]}
             onPress={() => setSectionTab('all')}>
-            <IconSymbol size={20} name="person.3.fill" color={sectionTab === 'all' ? (isDark ? '#2DD4BF' : '#0F4C3A') : colors.textSecondary} />
-            <ThemedText style={[styles.tabTileLabel, { color: sectionTab === 'all' ? (isDark ? '#2DD4BF' : '#0F4C3A') : colors.textSecondary, fontWeight: sectionTab === 'all' ? '700' : '500' }]}>
+            <IconSymbol size={20} name="person.3.fill" color={sectionTab === 'all' ? (isDark ? '#10b981' : '#0F4C3A') : (isDark ? '#94A3B8' : colors.textSecondary)} />
+            <ThemedText style={[styles.tabTileLabel, { color: sectionTab === 'all' ? (isDark ? '#10b981' : '#0F4C3A') : (isDark ? '#94A3B8' : colors.textSecondary), fontWeight: sectionTab === 'all' ? '700' : '500' }]}>
               All
             </ThemedText>
           </TouchableOpacity>
@@ -958,12 +961,12 @@ export default function GroupDetailScreen() {
           <TouchableOpacity 
             style={[
               styles.tabTile, 
-              sectionTab === 'expenses' && [styles.tabTileActive, { borderColor: isDark ? '#2DD4BF' : '#0F4C3A', borderWidth: 1 }], 
-              { backgroundColor: isDark ? 'rgba(20, 35, 38, 0.95)' : '#ffffff' }
+              sectionTab === 'expenses' && [styles.tabTileActive, { borderColor: isDark ? '#10b981' : '#0F4C3A', borderWidth: 1 }], 
+              { backgroundColor: isDark ? '#0d1321' : '#ffffff' }
             ]}
             onPress={() => setSectionTab('expenses')}>
-            <IconSymbol size={20} name="dollarsign.circle.fill" color={sectionTab === 'expenses' ? (isDark ? '#2DD4BF' : '#0F4C3A') : colors.textSecondary} />
-            <ThemedText style={[styles.tabTileLabel, { color: sectionTab === 'expenses' ? (isDark ? '#2DD4BF' : '#0F4C3A') : colors.textSecondary, fontWeight: sectionTab === 'expenses' ? '700' : '500' }]}>
+            <IconSymbol size={20} name="dollarsign.circle.fill" color={sectionTab === 'expenses' ? (isDark ? '#10b981' : '#0F4C3A') : (isDark ? '#94A3B8' : colors.textSecondary)} />
+            <ThemedText style={[styles.tabTileLabel, { color: sectionTab === 'expenses' ? (isDark ? '#10b981' : '#0F4C3A') : (isDark ? '#94A3B8' : colors.textSecondary), fontWeight: sectionTab === 'expenses' ? '700' : '500' }]}>
               Expenses
             </ThemedText>
           </TouchableOpacity>
@@ -971,11 +974,11 @@ export default function GroupDetailScreen() {
           <TouchableOpacity 
             style={[
               styles.tabTile, 
-              { backgroundColor: isDark ? 'rgba(20, 35, 38, 0.95)' : '#ffffff' }
+              { backgroundColor: isDark ? '#0d1321' : '#ffffff' }
             ]}
             onPress={() => router.push(`/groups/stats/${id}`)}>
-            <IconSymbol size={20} name="chart.bar.fill" color={colors.textSecondary} />
-            <ThemedText style={[styles.tabTileLabel, { color: colors.textSecondary }]}>
+            <IconSymbol size={20} name="chart.bar.fill" color={isDark ? '#94A3B8' : colors.textSecondary} />
+            <ThemedText style={[styles.tabTileLabel, { color: isDark ? '#94A3B8' : colors.textSecondary }]}>
               Stats
             </ThemedText>
           </TouchableOpacity>
@@ -985,7 +988,7 @@ export default function GroupDetailScreen() {
         {(sectionTab === 'all') && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <ThemedText type="subtitle" style={[styles.sectionTitle, !isDark && { color: colors.text }]}>
+              <ThemedText type="subtitle" style={[styles.sectionTitle, { color: isDark ? '#F8FAFC' : colors.text }]}>
                 Members
               </ThemedText>
               <TouchableOpacity
@@ -1017,16 +1020,16 @@ export default function GroupDetailScreen() {
         {/* Expenses Section */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <ThemedText type="subtitle" style={[styles.sectionTitle, !isDark && { color: colors.text }]}>
+            <ThemedText type="subtitle" style={[styles.sectionTitle, { color: isDark ? '#F8FAFC' : colors.text }]}>
               Expenses
             </ThemedText>
-            <ThemedText style={[styles.expenseCount, !isDark && { color: colors.textSecondary }]}>
+            <ThemedText style={[styles.expenseCount, { color: isDark ? '#94A3B8' : colors.textSecondary }]}>
               {expenseSearch.trim() ? `${filteredExpenses.length} of ${expenses.length}` : `${expenses.length} ${expenses.length === 1 ? 'expense' : 'expenses'}`}
             </ThemedText>
           </View>
           <View style={[styles.searchContainer, {
-            backgroundColor: friendDetailTheme.surface,
-            borderColor: friendDetailTheme.surfaceBorder,
+            backgroundColor: isDark ? '#0d1321' : friendDetailTheme.surface,
+            borderColor: isDark ? 'rgba(255, 255, 255, 0.05)' : friendDetailTheme.surfaceBorder,
           }]}>
             <IconSymbol
               name="magnifyingglass"
@@ -1039,8 +1042,8 @@ export default function GroupDetailScreen() {
               autoCorrect={false}
               onChangeText={setExpenseSearch}
               placeholder="Search expenses or people"
-              placeholderTextColor={colors.textSecondary}
-              style={[styles.searchInput, { color: colors.text }]}
+              placeholderTextColor={isDark ? '#94A3B8' : colors.textSecondary}
+              style={[styles.searchInput, { color: isDark ? '#F8FAFC' : colors.text }]}
               value={expenseSearch}
             />
             {expenseSearch.length > 0 && (
@@ -1049,7 +1052,7 @@ export default function GroupDetailScreen() {
                 hitSlop={8}
                 onPress={() => setExpenseSearch('')}
                 style={styles.clearSearchButton}>
-                <IconSymbol name="xmark.circle.fill" size={18} color={colors.textSecondary} />
+                <IconSymbol name="xmark.circle.fill" size={18} color={isDark ? '#94A3B8' : colors.textSecondary} />
               </TouchableOpacity>
             )}
           </View>
@@ -1058,8 +1061,8 @@ export default function GroupDetailScreen() {
               <View style={[styles.emptyIconWrapper, { backgroundColor: friendDetailTheme.avatarSurface }]}>
                 <IconSymbol size={28} name="dollarsign.circle" color={friendDetailTheme.actionIcon} />
               </View>
-              <ThemedText style={[styles.emptyTitle, { color: colors.text }]}>No expenses yet</ThemedText>
-              <ThemedText style={[styles.emptyText, { color: colors.textSecondary }]}>
+              <ThemedText style={[styles.emptyTitle, { color: isDark ? '#F8FAFC' : colors.text }]}>No expenses yet</ThemedText>
+              <ThemedText style={[styles.emptyText, { color: isDark ? '#94A3B8' : colors.textSecondary }]}>
                 Add an expense to start splitting costs
               </ThemedText>
             </View>
@@ -1068,8 +1071,8 @@ export default function GroupDetailScreen() {
               <View style={[styles.emptyIconWrapper, { backgroundColor: friendDetailTheme.avatarSurface }]}>
                 <IconSymbol size={28} name="magnifyingglass" color={friendDetailTheme.actionIcon} />
               </View>
-              <ThemedText style={[styles.emptyTitle, { color: colors.text }]}>No matching expenses</ThemedText>
-              <ThemedText style={[styles.emptyText, { color: colors.textSecondary }]}>
+              <ThemedText style={[styles.emptyTitle, { color: isDark ? '#F8FAFC' : colors.text }]}>No matching expenses</ThemedText>
+              <ThemedText style={[styles.emptyText, { color: isDark ? '#94A3B8' : colors.textSecondary }]}>
                 Try a different description or person
               </ThemedText>
             </View>

@@ -154,19 +154,23 @@ export default function ActivityScreen() {
   );
 
   return (
-    <LinearGradient
-      colors={gradients.screenBackground}
-      style={styles.container}>
+    <View
+      style={[styles.container, { backgroundColor: isDark ? '#040914' : colors.background }]}>
       <View style={styles.header}>
-        <ThemedText type="header" style={[styles.headerTitle, { color: colors.text }]}>Activity</ThemedText>
+        <ThemedText type="header" style={[styles.headerTitle, { color: isDark ? '#f8fafc' : colors.text }]}>Activity</ThemedText>
         <View style={[styles.searchContainer, {
-          backgroundColor: friendDetailTheme.surface,
-          borderColor: friendDetailTheme.surfaceBorder,
+          backgroundColor: isDark ? '#0b1120' : friendDetailTheme.surface,
+          borderWidth: 0,
+          shadowColor: isDark ? '#000000' : '#64748B',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: isDark ? 0.25 : 0.04,
+          shadowRadius: 6,
+          elevation: 2,
         }]}>
           <IconSymbol
             name="magnifyingglass"
             size={17}
-            color={friendDetailTheme.actionIcon}
+            color={isDark ? '#10b981' : friendDetailTheme.actionIcon}
           />
           <TextInput
             accessibilityLabel="Search activities"
@@ -174,9 +178,9 @@ export default function ActivityScreen() {
             autoCorrect={false}
             onChangeText={setSearchQuery}
             placeholder="Search activities, groups, or people"
-            placeholderTextColor={colors.textSecondary}
+            placeholderTextColor={isDark ? '#9ba6b8' : colors.textSecondary}
             returnKeyType="search"
-            style={[styles.searchInput, { color: colors.text }]}
+            style={[styles.searchInput, { color: isDark ? '#f8fafc' : colors.text }]}
             value={searchQuery}
           />
           {searchQuery.length > 0 && (
@@ -188,7 +192,7 @@ export default function ActivityScreen() {
               <IconSymbol
                 name="xmark.circle.fill"
                 size={18}
-                color={colors.textSecondary}
+                color={isDark ? '#9ba6b8' : colors.textSecondary}
               />
             </TouchableOpacity>
           )}
@@ -208,13 +212,13 @@ export default function ActivityScreen() {
           styles.emptyContainer,
           { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }
         ]}>
-          <View style={[styles.emptyIconContainer, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.1)' : 'rgba(34, 197, 94, 0.1)' }]}>
-            <IconSymbol size={48} name={hasSearch ? 'magnifyingglass' : 'clock'} color={isDark ? '#2DD4BF' : colors.tint} />
+          <View style={[styles.emptyIconContainer, { backgroundColor: isDark ? '#064e3b' : 'rgba(34, 197, 94, 0.1)' }]}>
+            <IconSymbol size={48} name={hasSearch ? 'magnifyingglass' : 'clock'} color={isDark ? '#10b981' : colors.tint} />
           </View>
-          <ThemedText type="subtitle" style={[styles.emptyTitle, { color: colors.text }]}>
+          <ThemedText type="subtitle" style={[styles.emptyTitle, { color: isDark ? '#f8fafc' : colors.text }]}>
             {hasSearch ? 'No matching activity' : 'No activity yet'}
           </ThemedText>
-          <ThemedText style={[styles.emptyText, { color: colors.textSecondary }]}>
+          <ThemedText style={[styles.emptyText, { color: isDark ? '#9ba6b8' : colors.textSecondary }]}>
             {hasSearch ? `No activities match “${activitySearch}”.` : 'Your expense and payment history will appear here'}
           </ThemedText>
         </Animated.View>
@@ -224,7 +228,7 @@ export default function ActivityScreen() {
           renderItem={renderActivityItem}
           renderSectionHeader={({ section: { title } }) => (
             <View style={styles.sectionHeader}>
-              <ThemedText style={[styles.sectionTitle, { color: colors.textSecondary }]}>
+              <ThemedText style={[styles.sectionTitle, { color: isDark ? '#64748b' : colors.textSecondary }]}>
                 {title}
               </ThemedText>
             </View>
@@ -240,15 +244,15 @@ export default function ActivityScreen() {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={handleRefresh}
-              tintColor={colors.tint}
-              titleColor={colors.textSecondary}
-              colors={[colors.tint]}
-              progressBackgroundColor={colors.background}
+              tintColor={isDark ? '#10b981' : colors.tint}
+              titleColor={isDark ? '#9ba6b8' : colors.textSecondary}
+              colors={[isDark ? '#10b981' : colors.tint]}
+              progressBackgroundColor={isDark ? '#040914' : colors.background}
             />
           }
         />
       )}
-    </LinearGradient>
+    </View>
   );
 }
 

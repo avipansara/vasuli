@@ -38,37 +38,37 @@ export function FriendSettlementActivity({
       style={[
         styles.expenseCard,
         {
-          backgroundColor: isDark ? 'rgba(20, 35, 38, 0.95)' : '#ffffff',
+          backgroundColor: isDark ? '#0d1321' : '#ffffff',
           borderWidth: 0,
           shadowColor: isDark ? '#000000' : '#475569',
-          shadowOffset: { width: 0, height: 3 },
-          shadowOpacity: isDark ? 0.35 : 0.09,
-          shadowRadius: 10,
-          elevation: 3,
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: isDark ? 0.4 : 0.09,
+          shadowRadius: 12,
+          elevation: 4,
         },
       ]}>
       <View style={[styles.expenseIcon, {
-        backgroundColor: isDark ? 'rgba(156, 163, 175, 0.15)' : '#F3F4F6',
+        backgroundColor: isDark ? '#1e293b' : '#F3F4F6',
         borderRadius: 24,
         width: 48,
         height: 48,
       }]}>
-        <IconSymbol size={20} name="checkmark" color={isDark ? '#9CA3AF' : '#4B5563'} />
+        <IconSymbol size={20} name="checkmark" color={isDark ? '#94A3B8' : '#4B5563'} />
       </View>
       <View style={styles.expenseInfo}>
-        <ThemedText type='subtitle' style={[styles.expenseDescription, { color: colors.text }]} numberOfLines={1}>
+        <ThemedText type='subtitle' style={[styles.expenseDescription, { color: isDark ? '#F8FAFC' : colors.text }]} numberOfLines={1}>
           Settlement
         </ThemedText>
-        <ThemedText style={[styles.expenseDate, { color: colors.textSecondary }]} numberOfLines={2}>
+        <ThemedText style={[styles.expenseDate, { color: isDark ? '#94A3B8' : colors.textSecondary }]} numberOfLines={2}>
           {youPaid ? `You paid ${firstName}` : `${firstName} paid you`}{'\n'}{formatDate(item.date)}
         </ThemedText>
       </View>
       <View style={styles.amountBlock}>
-        <ThemedText type='subtitle' style={[styles.expenseAmount, { color: amountColor }]}>
+        <ThemedText type='subtitle' style={[styles.expenseAmount, { color: isDark ? '#94A3B8' : amountColor }]}>
           ${item.amount.toFixed(2)}
         </ThemedText>
-        <View style={[styles.badge, { backgroundColor: isDark ? 'rgba(156, 163, 175, 0.15)' : '#E5E7EB' }]}>
-          <ThemedText style={[styles.badgeText, { color: isDark ? '#D1D5DB' : '#6B7280' }]}>
+        <View style={[styles.badge, { backgroundColor: isDark ? 'rgba(30, 41, 59, 0.6)' : '#E5E7EB' }]}>
+          <ThemedText style={[styles.badgeText, { color: isDark ? '#94A3B8' : colors.textSecondary }]}>
             Settled
           </ThemedText>
         </View>

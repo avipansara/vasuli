@@ -104,13 +104,13 @@ export function FriendExpenseActivity({
         activeOpacity={0.7}
         onPress={() => onOpenExpense(expense.id)}>
         <Animated.View style={[styles.expenseCard, {
-          backgroundColor: isDark ? 'rgba(20, 35, 38, 0.95)' : '#ffffff',
+          backgroundColor: isDark ? '#0d1321' : '#ffffff',
           borderWidth: 0,
           shadowColor: isDark ? '#000000' : '#475569',
-          shadowOffset: { width: 0, height: 3 },
-          shadowOpacity: isDark ? 0.35 : 0.09,
-          shadowRadius: 10,
-          elevation: 3,
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: isDark ? 0.4 : 0.09,
+          shadowRadius: 12,
+          elevation: 4,
         }]}>
           <View style={[styles.expenseIcon, {
             backgroundColor: isDark ? categoryStyle.darkBg : categoryStyle.lightBg,
@@ -125,10 +125,10 @@ export function FriendExpenseActivity({
             />
           </View>
           <View style={styles.expenseInfo}>
-            <ThemedText type="subtitle" style={[styles.expenseDescription, { color: colors.text }]} numberOfLines={1}>
+            <ThemedText type="subtitle" style={[styles.expenseDescription, { color: isDark ? '#F8FAFC' : colors.text }]} numberOfLines={1}>
               {expense.description}
             </ThemedText>
-            <ThemedText style={[styles.expenseDate, { color: colors.textSecondary }]} numberOfLines={2}>
+            <ThemedText style={[styles.expenseDate, { color: isDark ? '#94A3B8' : colors.textSecondary }]} numberOfLines={2}>
               {expense.paidBy === currentUserId ? 'Paid by you' : `Paid by ${expense.paidByName}`}{'\n'}{formatDate(expense.date)}
             </ThemedText>
           </View>

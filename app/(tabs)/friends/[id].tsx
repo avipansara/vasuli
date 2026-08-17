@@ -371,7 +371,7 @@ export default function FriendDetailScreen() {
 
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <View style={[styles.container, { backgroundColor: isDark ? '#050914' : colors.background }]}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity
@@ -393,7 +393,7 @@ export default function FriendDetailScreen() {
             opacity: headerTitleOpacity,
             transform: [{ translateY: headerTitleTranslateY }],
           }}>
-            <ThemedText style={[styles.headerTitle, { color: colors.text }]} numberOfLines={1}>
+            <ThemedText style={[styles.headerTitle, { color: isDark ? '#F8FAFC' : colors.text }]} numberOfLines={1}>
               {friend?.name}
             </ThemedText>
           </Animated.View>
@@ -459,11 +459,13 @@ export default function FriendDetailScreen() {
           }}>
             <LinearGradient
               colors={
-                isOwing
-                  ? (isDark ? ['rgba(254, 226, 226, 0.08)', 'rgba(20, 20, 25, 0.95)'] : ['#FFF2F4', '#FFFFFF'])
-                  : isOwed
-                    ? (isDark ? ['rgba(209, 250, 229, 0.08)', 'rgba(20, 20, 25, 0.95)'] : ['#F0FDF4', '#FFFFFF'])
-                    : (isDark ? ['rgba(243, 244, 246, 0.05)', 'rgba(20, 20, 25, 0.95)'] : ['#F9FAFB', '#FFFFFF'])
+                isDark
+                  ? ['rgba(13, 19, 33, 0.8)', 'rgba(13, 19, 33, 0.6)']
+                  : isOwing
+                    ? ['#FFF2F4', '#FFFFFF']
+                    : isOwed
+                      ? ['#F0FDF4', '#FFFFFF']
+                      : ['#F9FAFB', '#FFFFFF']
               }
               start={{ x: 1, y: 0 }}
               end={{ x: 0, y: 1 }}
@@ -473,25 +475,26 @@ export default function FriendDetailScreen() {
               accessibilityLiveRegion="polite"
               style={[styles.summaryCard, {
                 borderWidth: 0,
-                shadowColor: '#000000',
-                shadowOffset: { width: 0, height: 10 },
+                shadowColor: isDark ? '#000000' : '#475569',
+                shadowOffset: { width: 0, height: 8 },
                 shadowOpacity: isDark ? 0.45 : 0.12,
-                shadowRadius: 20,
+                shadowRadius: 18,
                 elevation: 8,
                 alignItems: 'center',
                 paddingVertical: 24,
                 paddingHorizontal: 16,
+                borderRadius: 24,
               }]}>
 
-              <ThemedText type='defaultSemiBold' style={[styles.summaryCardTitle, { color: balanceColor }]}>
+              <ThemedText type='defaultSemiBold' style={[styles.summaryCardTitle, { color: isDark ? (isOwing ? '#ffb3b0' : isOwed ? '#45dfa4' : '#94A3B8') : balanceColor }]}>
                 {balanceCardTitle}
               </ThemedText>
 
-              <ThemedText type='subtitle' style={[styles.summaryCardAmount, { color: balanceColor }]}>
+              <ThemedText type='subtitle' style={[styles.summaryCardAmount, { color: isDark ? (isOwing ? '#ffb3b0' : isOwed ? '#4edea3' : '#94A3B8') : balanceColor }]}>
                 {isOwing ? '-' : isOwed ? '+' : ''}${Math.abs(balance).toFixed(2)}
               </ThemedText>
 
-              <ThemedText style={[styles.summaryCardSubtitle, { color: colors.textSecondary }]}>
+              <ThemedText style={[styles.summaryCardSubtitle, { color: isDark ? '#94A3B8' : colors.textSecondary }]}>
                 Across {sharedExpensesCount} shared expenses
               </ThemedText>
 
@@ -499,7 +502,7 @@ export default function FriendDetailScreen() {
                 <View style={styles.cardQuickActions}>
                   <TouchableOpacity
                     style={[styles.cardQuickActionButton, {
-                      backgroundColor: isDark ? '#0F3E3A' : '#043424', // Dark green match
+                      backgroundColor: isDark ? '#10b981' : '#043424',
                       opacity: isSettlingUp ? 0.7 : 1,
                     }]}
                     accessibilityRole="button"
@@ -508,7 +511,7 @@ export default function FriendDetailScreen() {
                     accessibilityState={{ disabled: isSettlingUp, busy: isSettlingUp }}
                     onPress={() => router.push(`/friend-settle/${id}`)}>
                     <IconSymbol size={18} name="banknote" color="#ffffff" />
-                    <ThemedText style={styles.cardQuickActionText}>Settle Up</ThemedText>
+                    <ThemedText style={[styles.cardQuickActionText, { color: '#ffffff' }]}>Settle Up</ThemedText>
                   </TouchableOpacity>
                 </View>
               )}
@@ -516,16 +519,14 @@ export default function FriendDetailScreen() {
           </Animated.View>
         </Animated.View>
 
-
-
         {/* Expense History */}
         <View style={styles.historySection}>
           <View style={styles.sectionHeader}>
-            <ThemedText type="subtitle" style={[styles.sectionTitle, { color: colors.text }]}>
+            <ThemedText type="subtitle" style={[styles.sectionTitle, { color: isDark ? '#F8FAFC' : colors.text }]}>
               Activity with {friend.name.split(' ')[0]}
             </ThemedText>
             <TouchableOpacity onPress={() => Alert.alert('Not Implemented', 'View All activity screen is coming soon!')}>
-              <ThemedText style={[styles.viewAllText, { color: isDark ? '#2DD4BF' : '#0F4C3A' }]}>
+              <ThemedText style={[styles.viewAllText, { color: isDark ? '#10b981' : '#0F4C3A' }]}>
                 View All
               </ThemedText>
             </TouchableOpacity>
@@ -548,7 +549,7 @@ export default function FriendDetailScreen() {
               groupedActivity.map((group) => (
                 <View key={group.monthKey} style={styles.monthSection}>
                   <View style={styles.monthHeaderContainer}>
-                    <ThemedText style={[styles.monthHeaderText, { color: colors.textSecondary }]}>
+                    <ThemedText style={[styles.monthHeaderText, { color: isDark ? '#94A3B8' : colors.textSecondary }]}>
                       {group.monthYear}
                     </ThemedText>
                   </View>
