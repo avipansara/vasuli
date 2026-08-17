@@ -6,8 +6,8 @@ import { ActivityListSkeleton, Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useRefetchOnFocus } from '@/hooks/use-refetch-on-focus';
 import { useThemeColors } from '@/hooks/use-theme-colors';
-import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { getDeletedExpenseTargetIds } from '@/lib/activity-link';
+import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { activityService } from '@/services/activity-service';
 import { queryKeys } from '@/services/query-keys';
 import type { Activity } from '@/types/database';
@@ -29,7 +29,7 @@ function getTimePeriod(timestamp: number): string {
 }
 
 export default function ActivityScreen() {
-  const { gradients, colors, isDark } = useThemeColors();
+  const { gradients, colors, friendDetail: friendDetailTheme, isDark } = useThemeColors();
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [activitySearch, setActivitySearch] = useState('');
@@ -161,13 +161,13 @@ export default function ActivityScreen() {
         <ThemedText style={[styles.headerLabel, { color: colors.textSecondary }]}>Recent</ThemedText>
         <ThemedText type="header" style={[styles.headerTitle, { color: colors.text }]}>Activity</ThemedText>
         <View style={[styles.searchContainer, {
-          backgroundColor: isDark ? 'rgba(30, 41, 59, 0.6)' : 'rgba(241, 245, 249, 0.9)',
-          borderColor: isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(34, 197, 94, 0.2)',
+          backgroundColor: friendDetailTheme.surface,
+          borderColor: friendDetailTheme.surfaceBorder,
         }]}>
           <IconSymbol
             name="magnifyingglass"
-            size={18}
-            color={isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'}
+            size={17}
+            color={friendDetailTheme.actionIcon}
           />
           <TextInput
             accessibilityLabel="Search activities"
@@ -175,9 +175,9 @@ export default function ActivityScreen() {
             autoCorrect={false}
             onChangeText={setSearchQuery}
             placeholder="Search activities, groups, or people"
-            placeholderTextColor={isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'}
+            placeholderTextColor={colors.textSecondary}
             returnKeyType="search"
-            style={[styles.searchInput, { color: isDark ? '#fff' : colors.text }]}
+            style={[styles.searchInput, { color: colors.text }]}
             value={searchQuery}
           />
           {searchQuery.length > 0 && (
@@ -189,7 +189,7 @@ export default function ActivityScreen() {
               <IconSymbol
                 name="xmark.circle.fill"
                 size={18}
-                color={isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.35)'}
+                color={colors.textSecondary}
               />
             </TouchableOpacity>
           )}
@@ -259,8 +259,9 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'column',
-    padding: 20,
+    paddingHorizontal: 20,
     paddingTop: Platform.OS === 'ios' ? 60 : 54,
+    paddingBottom: 6,
     gap: 4,
   },
   headerLabel: {
@@ -273,8 +274,9 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    minHeight: 46,
-    paddingHorizontal: 14,
+    minHeight: 44,
+    paddingHorizontal: 12,
+    marginTop: 6,
     borderRadius: 12,
     borderWidth: 1,
     gap: 10,
@@ -288,13 +290,14 @@ const styles = StyleSheet.create({
     padding: 2,
   },
   listContent: {
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingTop: 4,
     paddingBottom: 120,
   },
   sectionHeader: {
-    paddingVertical: 8,
+    paddingTop: 4,
+    paddingBottom: 6,
     paddingHorizontal: 4,
-    marginTop: 8,
   },
   sectionTitle: {
     fontSize: 13,

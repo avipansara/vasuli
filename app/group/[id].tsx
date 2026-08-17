@@ -27,20 +27,15 @@ import { queryKeys } from '@/services/query-keys';
 import { userService } from '@/services/user-service';
 import type { Expense, GroupMember, User } from '@/types/database';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Animated, Platform, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { ScrollView } from 'react-native-gesture-handler';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
 
 const MIN_TOUCH_HIT_SLOP = { top: 8, right: 8, bottom: 8, left: 8 };
 const EMPTY_EXPENSES: GroupExpenseView[] = [];
-
-type SectionTab = 'all' | 'expenses';
-
-const SECTION_TABS: { id: SectionTab; label: string }[] = [
-  { id: 'all', label: 'All' },
-  { id: 'expenses', label: 'Expenses' },
-];
 
 export default function GroupDetailScreen() {
   const { gradients, colors, friendDetail: friendDetailTheme, isDark } = useThemeColors();
@@ -49,38 +44,8 @@ export default function GroupDetailScreen() {
   const [deletingExpenseId, setDeletingExpenseId] = useState<string | null>(null);
   const [isDeletingGroup, setIsDeletingGroup] = useState(false);
   const [removingMemberId, setRemovingMemberId] = useState<string | null>(null);
-  const [sectionTab, setSectionTab] = useState<SectionTab>('all');
-
   const expenseSwipeableRefs = useRef<Map<string, Swipeable>>(new Map());
   const memberSwipeableRefs = useRef<Map<string, Swipeable>>(new Map());
-
-  // Scroll-driven collapsing header
-  const scrollY = useRef(new Animated.Value(0)).current;
-  const headerTitleOpacity = scrollY.interpolate({
-    inputRange: [40, 80],
-    outputRange: [0, 1],
-    extrapolate: 'clamp',
-  });
-  const headerTitleTranslateY = scrollY.interpolate({
-    inputRange: [40, 80],
-    outputRange: [10, 0],
-    extrapolate: 'clamp',
-  });
-  const summaryOpacity = scrollY.interpolate({
-    inputRange: [0, 80],
-    outputRange: [1, 0],
-    extrapolate: 'clamp',
-  });
-  const summaryScale = scrollY.interpolate({
-    inputRange: [0, 80],
-    outputRange: [1, 0.95],
-    extrapolate: 'clamp',
-  });
-  const summaryTranslateY = scrollY.interpolate({
-    inputRange: [0, 80],
-    outputRange: [0, -10],
-    extrapolate: 'clamp',
-  });
 
   // Animations
   const [fadeAnim] = useState(() => new Animated.Value(0));
@@ -240,7 +205,7 @@ export default function GroupDetailScreen() {
   }
 
   function handleSettleUp() {
-    router.push(`/groups/settle/${id}`);
+    router.push(`/group/settle/${id}`);
   }
 
   function handleDeleteGroup() {
@@ -439,30 +404,25 @@ export default function GroupDetailScreen() {
           accessibilityHint="Opens the expense details"
           onPress={() => router.push(`/expense-detail/${item.id}` as any)}
           style={[styles.expenseCard, {
-            backgroundColor: isDark ? 'rgba(20, 35, 38, 0.95)' : '#ffffff',
-            borderWidth: 0,
-            shadowColor: isDark ? '#000000' : '#64748B',
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: isDark ? 0.22 : 0.06,
-            shadowRadius: 8,
-            elevation: 2,
+            backgroundColor: friendDetailTheme.surface,
+            borderColor: friendDetailTheme.surfaceBorder,
           }]}>
           <View style={[styles.expenseIcon, { backgroundColor: item.paidBy === currentUserId ? friendDetailTheme.positiveSurface : friendDetailTheme.mutedSurface }]}>
             <IconSymbol
-              size={14}
+              size={18}
               name={item.paidBy === currentUserId ? 'arrow.up.right' : 'dollarsign.circle.fill'}
               color={item.paidBy === currentUserId ? friendDetailTheme.positive : friendDetailTheme.actionIcon}
             />
           </View>
           <View style={styles.expenseInfo}>
-            <ThemedText type="subtitle" style={{ color: colors.text }} numberOfLines={1}>
+            <ThemedText type="defaultSemiBold" style={{ color: colors.text }} numberOfLines={1}>
               {item.description}
             </ThemedText>
-            <ThemedText type='header' style={[styles.expenseDate, { color: colors.text }]} numberOfLines={1}>
+            <ThemedText style={[styles.expenseDate, { color: colors.textSecondary }]} numberOfLines={1}>
               {dateStr} • Paid by {item.paidByUser?.name || 'Unknown'}
             </ThemedText>
           </View>
-          <ThemedText type="subtitle" style={[styles.expenseAmount, { color: colors.text }]}>${item.amount.toFixed(2)}</ThemedText>
+          <ThemedText style={[styles.expenseAmount, { color: colors.text }]}>${item.amount.toFixed(2)}</ThemedText>
           <IconSymbol
             size={17}
             name="chevron.right"
@@ -591,22 +551,17 @@ export default function GroupDetailScreen() {
         enableTrackpadTwoFingerGesture
         containerStyle={{ overflow: 'visible' }}>
         <View style={[styles.memberCard, {
-          backgroundColor: isDark ? 'rgba(20, 35, 38, 0.95)' : '#ffffff',
-          borderWidth: 0,
-          shadowColor: isDark ? '#000000' : '#64748B',
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: isDark ? 0.22 : 0.06,
-          shadowRadius: 8,
-          elevation: 2,
+          backgroundColor: friendDetailTheme.surface,
+          borderColor: friendDetailTheme.surfaceBorder,
         }]}>
           <View style={[styles.memberAvatar, { backgroundColor: friendDetailTheme.avatarSurface }]}>
-            <ThemedText type='title' style={[styles.avatarText, { color: friendDetailTheme.actionIcon }]}>
+            <ThemedText style={[styles.avatarText, { color: friendDetailTheme.actionIcon }]}>
               {item.user?.name.charAt(0).toUpperCase() || '?'}
             </ThemedText>
           </View>
           <View style={styles.memberInfo}>
             <View style={styles.memberNameRow}>
-              <ThemedText type="subtitle" style={!isDark ? { color: colors.text } : undefined} numberOfLines={1}>
+              <ThemedText type="defaultSemiBold" style={!isDark ? { color: colors.text } : undefined} numberOfLines={1}>
                 {item.user?.name || 'Unknown'}
               </ThemedText>
               {item.userId !== currentUserId && (
@@ -642,13 +597,13 @@ export default function GroupDetailScreen() {
               )}
             </View>
             {item.role === 'admin' && (
-              <ThemedText type='defaultSemiBold' style={[styles.roleLabel, { color: colors.text }]}>Admin</ThemedText>
+              <ThemedText style={[styles.roleLabel, { color: friendDetailTheme.actionIcon }]}>Admin</ThemedText>
             )}
           </View>
           <View style={styles.balanceInfo}>
             {balance !== 0 && (
               <>
-                <ThemedText type='subtitle' style={[styles.memberBalanceAmount, { color: balanceColor }]}>
+                <ThemedText style={[styles.memberBalanceAmount, { color: balanceColor }]}>
                   ${Math.abs(balance).toFixed(2)}
                 </ThemedText>
                 <ThemedText style={[styles.balanceLabel, !isDark && { color: colors.textSecondary }]}>
@@ -691,7 +646,8 @@ export default function GroupDetailScreen() {
 
   if (loading) {
     return (
-      <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={styles.container}>
+        <LinearGradient colors={gradients.screenBackground} style={StyleSheet.absoluteFill} />
         <View style={styles.header}>
           <TouchableOpacity
             onPress={() => router.back()}
@@ -713,7 +669,8 @@ export default function GroupDetailScreen() {
 
   if (loadError) {
     return (
-      <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={styles.container}>
+        <LinearGradient colors={gradients.screenBackground} style={StyleSheet.absoluteFill} />
         <View style={styles.header}>
           <TouchableOpacity
             onPress={() => router.back()}
@@ -770,7 +727,19 @@ export default function GroupDetailScreen() {
   const balanceAccessibilityValue = `${balanceCopy}, $${Math.abs(currentUserBalance).toFixed(2)}`;
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <View style={styles.container}>
+      <LinearGradient colors={gradients.screenBackground} style={StyleSheet.absoluteFill} />
+
+      <View
+        pointerEvents="none"
+        accessible={false}
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+        style={styles.ambientLayer}>
+        <View style={[styles.ambientShape, styles.ambientTop, { backgroundColor: friendDetailTheme.backgroundAccentTop }]} />
+        <View style={[styles.ambientShape, styles.ambientMiddle, { backgroundColor: friendDetailTheme.backgroundAccentMiddle }]} />
+        <View style={[styles.ambientShape, styles.ambientBottom, { backgroundColor: friendDetailTheme.backgroundAccentBottom }]} />
+      </View>
 
       {/* Header */}
       <View style={styles.header}>
@@ -786,19 +755,6 @@ export default function GroupDetailScreen() {
           }]}>
           <IconSymbol size={20} name="chevron.left" color={friendDetailTheme.actionIcon} />
         </TouchableOpacity>
-
-        {/* Floating Header Title (Group Name) */}
-        <View style={styles.headerTitleContainer} pointerEvents="none">
-          <Animated.View style={{
-            opacity: headerTitleOpacity,
-            transform: [{ translateY: headerTitleTranslateY }],
-          }}>
-            <ThemedText style={[styles.headerTitle, { color: colors.text }]} numberOfLines={1}>
-              {group.name}
-            </ThemedText>
-          </Animated.View>
-        </View>
-
         <View style={styles.headerActions}>
           <TouchableOpacity
             onPress={handleDeleteGroup}
@@ -819,178 +775,171 @@ export default function GroupDetailScreen() {
         </View>
       </View>
 
-      <Animated.ScrollView
+      <ScrollView
         style={styles.content}
         contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        scrollEventThrottle={16}
-        onScroll={Animated.event(
-          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-          { useNativeDriver: true }
-        )}>
+        showsVerticalScrollIndicator={false}>
 
-        {/* Summary Card */}
+        {/* Group Hero */}
         <Animated.View style={[
-          styles.summarySection,
+          styles.heroSection,
           {
             opacity: fadeAnim,
             transform: [{ translateY: slideAnim }, { scale: scaleAnim }],
           }
         ]}>
-          <Animated.View style={{
-            opacity: summaryOpacity,
-            transform: [
-              { translateY: summaryTranslateY },
-              { scale: summaryScale }
-            ]
-          }}>
-            <View
-              accessible
-              accessibilityRole="summary"
-              accessibilityLabel={`${group.name}, ${members.length} members, ${balanceAccessibilityValue}`}
-              accessibilityLiveRegion="polite"
-              style={[styles.summaryCard, {
-                backgroundColor: isDark ? 'rgba(20, 35, 38, 0.95)' : '#ffffff',
-                borderWidth: 0,
-                shadowColor: isDark ? '#000000' : '#64748B',
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: isDark ? 0.35 : 0.08,
-                shadowRadius: 12,
-                elevation: 4,
-              }]}>
-              <View style={styles.summaryTopRow}>
-                <View style={[styles.summaryAvatar, {
-                  backgroundColor: friendDetailTheme.avatarSurface,
-                  borderColor: friendDetailTheme.avatarBorder,
-                }]}>
-                  <IconSymbol size={22} name="person.3.fill" color={friendDetailTheme.actionIcon} />
-                </View>
-                <View style={styles.summaryIdentity}>
-                  <ThemedText type="title" numberOfLines={1} style={[styles.summaryName, { color: colors.text }]}>
-                    {group.name}
-                  </ThemedText>
-                  <ThemedText numberOfLines={1} style={[styles.summaryEmail, { color: colors.textSecondary }]}>
-                    {members.length} {members.length === 1 ? 'member' : 'members'}
-                  </ThemedText>
-                </View>
+          <View
+            accessible
+            accessibilityRole="summary"
+            accessibilityLabel={`${group.name}, ${members.length} ${members.length === 1 ? 'member' : 'members'}`}
+            style={styles.groupIconWrapper}>
+            <LinearGradient
+              colors={gradients.buttonPrimary}
+              style={styles.groupIconGlow}
+            />
+            <View style={[styles.groupIcon, { backgroundColor: isDark ? '#0A0A0F' : '#fff' }]}>
+              <View style={[styles.groupIconInner, { backgroundColor: friendDetailTheme.actionSurface }]}>
+                <IconSymbol size={26} name="person.3.fill" color={friendDetailTheme.actionIcon} />
               </View>
-              <View style={styles.summaryBalanceRow}>
-                <View style={[styles.balanceIndicator, { backgroundColor: balanceColor }]} />
-                <ThemedText style={[styles.balanceLabel, { color: colors.textSecondary }]}>
-                  {balanceCopy}
-                </ThemedText>
-              </View>
-              <ThemedText style={[styles.balanceAmount, { color: balanceColor }]}>
-                ${Math.abs(currentUserBalance).toFixed(2)}
-              </ThemedText>
             </View>
-          </Animated.View>
+          </View>
+          <View style={styles.groupTitleBlock}>
+            <ThemedText type="title" style={[styles.groupName, !isDark && { color: colors.text }]} numberOfLines={2}>
+              {group.name}
+            </ThemedText>
+            <ThemedText style={[styles.memberCount, !isDark && { color: colors.textSecondary }]}>
+              {members.length} {members.length === 1 ? 'member' : 'members'}
+            </ThemedText>
+          </View>
+        </Animated.View>
+
+        {/* Balance Card with glassmorphism */}
+        <Animated.View style={[
+          styles.balanceCardWrapper,
+          {
+            opacity: fadeAnim,
+            transform: [{ translateY: slideAnim }],
+          }
+        ]}>
+          <View
+            accessible
+            accessibilityRole="summary"
+            accessibilityLabel={balanceAccessibilityValue}
+            accessibilityLiveRegion="polite"
+            style={[styles.balanceCard, {
+              backgroundColor: balanceSurface,
+              borderColor: friendDetailTheme.surfaceBorder,
+            }]}>
+            <View style={styles.balanceContent}>
+              {currentUserBalance !== 0 ? (
+                <>
+                  <View style={styles.balanceHeader}>
+                    <View style={[styles.balanceIndicator, { backgroundColor: balanceColor }]} />
+                    <ThemedText style={[styles.balanceLabel, { color: colors.textSecondary }]}>
+                      {balanceCopy}
+                    </ThemedText>
+                  </View>
+                  <ThemedText style={[styles.balanceAmount, { color: balanceColor }]}>
+                    ${Math.abs(currentUserBalance).toFixed(2)}
+                  </ThemedText>
+                </>
+              ) : (
+                <View style={styles.settledContainer}>
+                  <View style={styles.settledIconWrapper}>
+                    <View style={[styles.settledIcon, { backgroundColor: friendDetailTheme.actionSurface, borderColor: friendDetailTheme.actionBorder }]}>
+                      <IconSymbol size={22} name="checkmark" color={friendDetailTheme.actionIcon} />
+                    </View>
+                  </View>
+                  <ThemedText style={[styles.settledText, { color: colors.text }]}>
+                    {balanceCopy}
+                  </ThemedText>
+                </View>
+              )}
+            </View>
+          </View>
         </Animated.View>
 
         {/* Quick Actions */}
         <View style={styles.quickActions}>
           <TouchableOpacity
-            style={[styles.quickActionButton, { opacity: groupIsSettled ? 0.5 : 1 }]}
+            style={styles.quickActionButton}
             accessibilityRole="button"
-            accessibilityLabel={`Settle up in ${group.name}`}
-            accessibilityHint="Opens the group settlement screen"
-            disabled={groupIsSettled}
-            onPress={handleSettleUp}>
-            <View style={[styles.quickActionSolidButton, {
-              backgroundColor: isDark ? '#0D9488' : '#0F4C3A',
-            }]}>
-              <IconSymbol size={18} name="checkmark" color="#ffffff" />
-              <ThemedText style={styles.quickActionTextSolid}>Settle Up</ThemedText>
-            </View>
+            accessibilityLabel={`Add expense to ${group.name}`}
+            accessibilityHint="Opens the add expense screen for this group"
+            onPress={() => router.push(`/add-expense?groupId=${id}`)}>
+            <LinearGradient
+              colors={gradients.buttonPrimary}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.quickActionGradient}>
+              <IconSymbol size={18} name="doc.text.fill" color={friendDetailTheme.onPrimary} />
+              <ThemedText style={[styles.quickActionText, { color: friendDetailTheme.onPrimary }]}>Add Expense</ThemedText>
+            </LinearGradient>
           </TouchableOpacity>
           <TouchableOpacity
             style={[
               styles.quickActionButton,
               styles.secondaryQuickActionButton,
               {
-                backgroundColor: isDark ? 'rgba(20, 35, 38, 0.95)' : '#ffffff',
-                borderColor: isDark ? '#0D9488' : '#0F4C3A',
-                borderWidth: 1,
+                backgroundColor: friendDetailTheme.positiveSurface,
+                borderColor: friendDetailTheme.positiveBorder,
+              },
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel={`Settle up in ${group.name}`}
+            accessibilityHint="Opens the group settlement screen"
+            onPress={handleSettleUp}>
+            <IconSymbol size={18} name="checkmark.circle.fill" color={friendDetailTheme.positive} />
+            <ThemedText style={[styles.quickActionText, { color: friendDetailTheme.positive }]}>Settle Up</ThemedText>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.quickActionButton,
+              styles.secondaryQuickActionButton,
+              {
+                backgroundColor: friendDetailTheme.actionSurface,
+                borderColor: friendDetailTheme.actionBorder,
               },
             ]}
             accessibilityRole="button"
             accessibilityLabel={`View stats for ${group.name}`}
             accessibilityHint="Opens spending and balance statistics for this group"
-            onPress={() => router.push(`/groups/stats/${id}`)}>
-            <IconSymbol size={18} name="chart.bar.fill" color={isDark ? '#0D9488' : '#0F4C3A'} />
-            <ThemedText style={[styles.quickActionText, { color: isDark ? '#0D9488' : '#0F4C3A' }]}>Stats</ThemedText>
+            onPress={() => router.push(`/group/stats/${id}`)}>
+            <IconSymbol size={18} name="chart.bar.fill" color={friendDetailTheme.actionIcon} />
+            <ThemedText style={[styles.quickActionText, { color: friendDetailTheme.actionIcon }]}>Stats</ThemedText>
           </TouchableOpacity>
         </View>
 
-        {/* Segmented Tab Control */}
-        <View
-          accessibilityRole="toolbar"
-          accessibilityLabel="Section filter"
-          style={[styles.segmentedControl, {
-            backgroundColor: friendDetailTheme.surface,
-            marginHorizontal: 16,
-            marginBottom: 4,
-          }]}>
-          {SECTION_TABS.map(tab => {
-            const isSelected = sectionTab === tab.id;
-            const activeColor = isDark ? '#0D9488' : '#0F4C3A';
-            return (
-              <TouchableOpacity
-                key={tab.id}
-                accessibilityRole="button"
-                accessibilityLabel={tab.label}
-                accessibilityState={{ selected: isSelected }}
-                activeOpacity={0.78}
-                onPress={() => setSectionTab(tab.id)}
-                style={[
-                  styles.segmentedOption,
-                  isSelected && {
-                    backgroundColor: isDark ? 'rgba(13, 148, 136, 0.10)' : '#ffffff',
-                    borderRadius: 8,
-                    borderWidth: 1,
-                    borderColor: isDark ? '#0D9488' : '#0F4C3A',
-                  }
-                ]}>
-                <ThemedText style={[styles.segmentedLabel, { color: isSelected ? activeColor : colors.textSecondary }]}>
-                  {tab.label}
-                </ThemedText>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-
         {/* Members Section */}
-        {(sectionTab === 'all') && (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <ThemedText type="subtitle" style={[styles.sectionTitle, !isDark && { color: colors.text }]}>
-                Members
-              </ThemedText>
-              <TouchableOpacity
-                style={[styles.addButton, {
-                  backgroundColor: friendDetailTheme.actionSurface,
-                  borderColor: friendDetailTheme.actionBorder,
-                }]}
-                accessibilityRole="button"
-                accessibilityLabel={`Add member to ${group.name}`}
-                accessibilityHint="Opens the add member sheet"
-                hitSlop={MIN_TOUCH_HIT_SLOP}
-                onPress={() => setMemberModalVisible(true)}>
-                <IconSymbol size={16} name="plus" color={friendDetailTheme.actionIcon} />
-              </TouchableOpacity>
-            </View>
-            {members.map((member, index) => (
-              <Animated.View
-                key={member.id}
-                style={{
-                  opacity: fadeAnim,
-                  transform: [{ translateY: Animated.multiply(slideAnim, new Animated.Value((index + 1) * 0.15)) }],
-                }}>
-                {renderMember({ item: member })}
-              </Animated.View>
-            ))}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <ThemedText type="subtitle" style={[styles.sectionTitle, !isDark && { color: colors.text }]}>
+              Members
+            </ThemedText>
+            <TouchableOpacity
+              style={[styles.addButton, {
+                backgroundColor: friendDetailTheme.actionSurface,
+                borderColor: friendDetailTheme.actionBorder,
+              }]}
+              accessibilityRole="button"
+              accessibilityLabel={`Add member to ${group.name}`}
+              accessibilityHint="Opens the add member sheet"
+              hitSlop={MIN_TOUCH_HIT_SLOP}
+              onPress={() => setMemberModalVisible(true)}>
+              <IconSymbol size={16} name="plus" color={friendDetailTheme.actionIcon} />
+            </TouchableOpacity>
           </View>
-        )}
+          {members.map((member, index) => (
+            <Animated.View
+              key={member.id}
+              style={{
+                opacity: fadeAnim,
+                transform: [{ translateY: Animated.multiply(slideAnim, new Animated.Value((index + 1) * 0.15)) }],
+              }}>
+              {renderMember({ item: member })}
+            </Animated.View>
+          ))}
+        </View>
 
         {/* Expenses Section */}
         <View style={styles.section}>
@@ -1064,7 +1013,7 @@ export default function GroupDetailScreen() {
             ))
           )}
         </View>
-      </Animated.ScrollView>
+      </ScrollView>
 
       <AddMemberModal
         visible={memberModalVisible}
@@ -1149,63 +1098,88 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: 84,
   },
-  summarySection: {
-    paddingHorizontal: 16,
-    paddingTop: 4,
-    paddingBottom: 8,
-  },
-  summaryCard: {
-    borderRadius: 12,
-    borderWidth: 0,
-    padding: 12,
-  },
-  summaryTopRow: {
-    flexDirection: 'row',
+  heroSection: {
     alignItems: 'center',
-    marginBottom: 8,
+    flexDirection: 'row',
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingTop: 2,
+    paddingBottom: 12,
   },
-  summaryAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 11,
-    borderWidth: 1,
+  groupIconWrapper: {
+    position: 'relative',
+  },
+  groupIconGlow: {
+    position: 'absolute',
+    width: 58,
+    height: 58,
+    borderRadius: 16,
+    opacity: 0.25,
+    top: -3,
+    left: -3,
+  },
+  groupIcon: {
+    width: 52,
+    height: 52,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 10,
+    overflow: 'hidden',
   },
-  summaryIdentity: {
+  groupIconInner: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  groupTitleBlock: {
     flex: 1,
-    minWidth: 0,
+    gap: 2,
   },
-  summaryName: {
-    fontSize: 16,
-    fontWeight: '700',
-    lineHeight: 20,
+  groupName: {
+    fontSize: 22,
+    color: '#fff',
+    lineHeight: 26,
   },
-  summaryEmail: {
-    fontSize: 12,
-    lineHeight: 16,
-    marginTop: 1,
+  memberCount: {
+    fontSize: 14,
+    opacity: 0.6,
   },
-  summaryBalanceRow: {
+  balanceCardWrapper: {
+    marginHorizontal: 16,
+    marginBottom: 12,
+  },
+  balanceCard: {
+    borderRadius: 14,
+    overflow: 'hidden',
+    borderWidth: 1,
+  },
+  balanceContent: {
+    minHeight: 96,
+    paddingHorizontal: 18,
+    paddingVertical: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  balanceHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 2,
+    marginBottom: 4,
   },
   balanceIndicator: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    marginRight: 6,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 8,
   },
   balanceLabel: {
-    fontSize: 13,
-    fontWeight: '500',
+    fontSize: 14,
+    opacity: 0.8,
   },
   balanceAmount: {
-    fontSize: 22,
+    fontSize: 34,
     fontWeight: '700',
-    lineHeight: 28,
+    lineHeight: 40,
   },
   memberBalanceAmount: {
     fontSize: 18,
@@ -1262,51 +1236,6 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '600',
     fontSize: 14,
-  },
-  quickActionSolidButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 44,
-    paddingVertical: 10,
-    gap: 6,
-    borderRadius: 10,
-    flex: 1,
-    paddingHorizontal: 8,
-  },
-  quickActionTextSolid: {
-    color: '#ffffff',
-    fontWeight: '600',
-    fontSize: 14,
-  },
-  segmentedControl: {
-    flexDirection: 'row',
-    borderRadius: 10,
-    padding: 3,
-    marginBottom: 12,
-    gap: 3,
-  },
-  segmentedOption: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 4,
-    gap: 5,
-    minHeight: 36,
-  },
-  segmentedLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  headerTitleContainer: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  headerTitle: {
-    fontSize: 17,
-    fontWeight: '600',
   },
   section: {
     paddingHorizontal: 16,

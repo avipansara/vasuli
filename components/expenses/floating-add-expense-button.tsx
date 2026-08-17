@@ -20,7 +20,7 @@ export function FloatingAddExpenseButton({
   const bottom = Math.max(insets.bottom, 12) + bottomOffset;
   const right = Math.max(insets.right, 0) + rightOffset;
 
-  if (pathname === '/profile' || pathname.startsWith('/friends/') || pathname.startsWith('/groups/')) {
+  if (pathname === '/profile' || pathname.startsWith('/friends/')) {
     return null;
   }
 

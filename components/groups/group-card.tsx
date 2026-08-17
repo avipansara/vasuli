@@ -126,7 +126,15 @@ function GroupCardInner({ group, index, onRefresh }: GroupCardProps) {
         <View
           style={[
             styles.card,
-            isDark ? styles.cardDark : { backgroundColor: colors.card, borderColor: colors.border },
+            {
+              backgroundColor: isDark ? 'rgba(20, 35, 38, 0.95)' : '#ffffff',
+              borderWidth: 0,
+              shadowColor: isDark ? '#000000' : '#475569',
+              shadowOffset: { width: 0, height: 3 },
+              shadowOpacity: isDark ? 0.35 : 0.09,
+              shadowRadius: 10,
+              elevation: 3,
+            },
           ]}>
           <TouchableOpacity
             activeOpacity={0.7}

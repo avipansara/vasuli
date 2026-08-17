@@ -4,7 +4,7 @@ import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getActivityHref } from '@/lib/activity-link';
 import type { Activity as DbActivity } from '@/types/database';
 import { router } from 'expo-router';
-import React, { memo } from 'react';
+import { memo } from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 
 interface ActivityItem {
@@ -165,10 +165,11 @@ function ActivityCardInner({ activity, currentUserId, deletedExpenseTargetIds }:
               style={[
                 styles.groupPill,
                 {
-                  backgroundColor: isDark ? 'rgba(45, 212, 191, 0.1)' : 'rgba(34, 197, 94, 0.08)',
+                  backgroundColor: isDark ? 'rgba(45, 212, 191, 0.1)' : 'rgba(7, 202, 79, 0.08)',
                 },
               ]}>
               <ThemedText
+                type="defaultSemiBold"
                 numberOfLines={1}
                 style={[styles.groupName, { color: isDark ? '#2DD4BF' : colors.tint }]}>
                 {item.groupName}
@@ -181,6 +182,7 @@ function ActivityCardInner({ activity, currentUserId, deletedExpenseTargetIds }:
         <View style={styles.trailing}>
           {item.amount !== undefined && (
             <ThemedText
+              type="subtitle"
               numberOfLines={1}
               adjustsFontSizeToFit
               minimumFontScale={0.82}
@@ -190,7 +192,7 @@ function ActivityCardInner({ activity, currentUserId, deletedExpenseTargetIds }:
           )}
           {href && (
             <IconSymbol
-              size={17}
+              size={14}
               name="chevron.right"
               color={isDark ? 'rgba(225, 245, 239, 0.36)' : colors.textSecondary}
             />
@@ -202,7 +204,15 @@ function ActivityCardInner({ activity, currentUserId, deletedExpenseTargetIds }:
 
   const cardStyle = [
     styles.card,
-    !isDark && { backgroundColor: colors.card, borderColor: colors.border },
+    {
+      backgroundColor: isDark ? 'rgba(20, 35, 38, 0.95)' : '#ffffff',
+      borderWidth: 0,
+      shadowColor: isDark ? '#000000' : '#64748B',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: isDark ? 0.22 : 0.06,
+      shadowRadius: 8,
+      elevation: 2,
+    },
   ];
 
   if (href) {
@@ -220,11 +230,7 @@ function ActivityCardInner({ activity, currentUserId, deletedExpenseTargetIds }:
   }
 
   return (
-    <View
-      style={[
-        styles.card,
-        !isDark && { backgroundColor: colors.card, borderColor: colors.border },
-      ]}>
+    <View style={cardStyle}>
       {content}
     </View>
   );
@@ -239,9 +245,6 @@ const styles = StyleSheet.create({
     padding: 14,
     marginBottom: 10,
     borderRadius: 14,
-    backgroundColor: 'rgba(20, 35, 38, 0.6)',
-    borderWidth: 1,
-    borderColor: 'rgba(225, 245, 239, 0.08)',
   },
   icon: {
     width: 42,

@@ -11,7 +11,7 @@ import { Platform } from 'react-native';
 
 // Primary accents
 export const ACCENT_TEAL = '#2DD4BF';
-export const ACCENT_GREEN = '#22C55E';
+export const ACCENT_GREEN = '#0cca51ff';
 export const ACCENT_PURPLE = '#A78BFA';
 export const ACCENT_YELLOW = '#FACC15';
 
@@ -53,7 +53,7 @@ export const BTN_DISABLED_LIGHT = ['#E5E5E5', '#D4D4D4'] as const;
 export const Colors = {
   light: {
     text: '#1A1A1A',
-    textSecondary: '#6B7280',
+    textSecondary: '#374151',
     background: BG_LIGHT,
     tint: ACCENT_GREEN,
     icon: '#6B7280',

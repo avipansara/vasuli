@@ -274,8 +274,18 @@ export default function ProfileScreen() {
     { icon: 'questionmark.circle.fill', title: 'Help & Support', onPress: () => router.push('/help-support') },
   ];
 
+  const cardStyle = {
+    backgroundColor: isDark ? 'rgba(20, 35, 38, 0.95)' : '#ffffff',
+    borderWidth: 0,
+    shadowColor: isDark ? '#000000' : '#475569',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: isDark ? 0.35 : 0.09,
+    shadowRadius: 10,
+    elevation: 3,
+  };
+
   return (
-    <LinearGradient colors={gradients.screenBackground} style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         contentInsetAdjustmentBehavior="automatic"
@@ -284,11 +294,7 @@ export default function ProfileScreen() {
           <ThemedText style={[styles.headerLabel, { color: colors.textSecondary }]}>Account</ThemedText>
         </View>
 
-        <View
-          style={[
-            styles.profileCard,
-            !isDark && { backgroundColor: colors.card, borderColor: colors.border },
-          ]}>
+        <View style={[styles.profileCard, cardStyle]}>
           <View style={[styles.avatarLarge, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)' }]}>
             <ThemedText style={[styles.avatarLargeText, { color: isDark ? '#2DD4BF' : colors.tint }]}>
               {currentUser?.name?.charAt(0).toUpperCase() || 'U'}
@@ -323,7 +329,7 @@ export default function ProfileScreen() {
           style={[
             styles.statsSection,
             (statsLoading || statsError) && styles.statsSectionStack,
-            !isDark && { backgroundColor: colors.card, borderColor: colors.border },
+            cardStyle,
           ]}>
           {statsLoading ? (
             <View style={styles.statsLoading}>
@@ -344,7 +350,7 @@ export default function ProfileScreen() {
                 </ThemedText>
                 <ThemedText style={[styles.statLabel, { color: colors.textSecondary }]}>You are owed</ThemedText>
               </View>
-              <View style={[styles.statDivider, !isDark && { backgroundColor: colors.border }]} />
+              <View style={[styles.statDivider, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)' }]} />
               <View style={styles.statItem}>
                 <ThemedText style={[styles.statValue, { color: isDark ? '#F87171' : '#DC2626' }]}>
                   ${totalOwing.toFixed(2)}
@@ -379,7 +385,7 @@ export default function ProfileScreen() {
               <IconSymbol name="chevron.right" size={16} color={isDark ? '#2DD4BF' : colors.tint} />
             </Pressable>
           )}
-          <View style={[styles.settingsList, !isDark && { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={[styles.settingsList, cardStyle]}>
             {settingsItems.map((item, index) => (
               <Pressable
                 key={item.title}
@@ -421,10 +427,14 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        <View style={styles.accountActions}>
-          <Pressable style={({ pressed }) => [styles.logoutButton, pressed && styles.pressed]} onPress={handleLogout}>
-            <IconSymbol name="rectangle.portrait.and.arrow.right" size={19} color="#EF4444" />
-            <ThemedText style={styles.logoutText}>Log out</ThemedText>
+        <View style={styles.actionsSection}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Logout"
+            style={({ pressed }) => [styles.logoutButton, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.14)' : 'rgba(34, 197, 94, 0.1)', borderColor: isDark ? 'rgba(45, 212, 191, 0.26)' : 'rgba(34, 197, 94, 0.22)' }, pressed && styles.pressed]}
+            onPress={handleLogout}>
+            <IconSymbol name="rectangle.portrait.and.arrow.right" size={18} color={isDark ? '#2DD4BF' : colors.tint} />
+            <ThemedText style={[styles.logoutText, { color: isDark ? '#2DD4BF' : colors.tint }]}>Logout</ThemedText>
           </Pressable>
 
           <Pressable
@@ -439,7 +449,7 @@ export default function ProfileScreen() {
           {getAppVersionLabel()}
         </ThemedText>
       </ScrollView>
-    </LinearGradient>
+    </View>
   );
 }
 

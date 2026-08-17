@@ -134,9 +134,7 @@ export default function GroupsScreen() {
         : 'All settled up';
 
   return (
-    <LinearGradient
-      colors={gradients.screenBackground}
-      style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.header}>
         <View accessible accessibilityRole="summary" accessibilityLabel={`Group balances: ${summaryAccessibilityLabel}`}>
           {hasSeparateBalances ? (
@@ -230,7 +228,7 @@ export default function GroupsScreen() {
         setGroupDescription={setNewGroupDescription}
         onSubmit={createGroup}
       />
-    </LinearGradient>
+    </View>
   );
 }
 

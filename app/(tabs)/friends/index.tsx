@@ -152,9 +152,7 @@ export default function FriendsScreen() {
   };
 
   return (
-    <LinearGradient
-      colors={gradients.screenBackground}
-      style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.header}>
         <View style={{ flexDirection: 'column', gap: 6 }}>
           <ThemedText style={[styles.headerLabel, { color: colors.textSecondary }]}>{balanceLabel}</ThemedText>
@@ -274,7 +272,7 @@ export default function FriendsScreen() {
         />
       )}
 
-    </LinearGradient>
+    </View>
   );
 }
 

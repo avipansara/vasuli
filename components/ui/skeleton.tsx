@@ -174,39 +174,81 @@ export function ActivityListSkeleton() {
  * Skeleton Loader matching Friend and Group detail pages
  */
 export function DetailSkeleton() {
-  const { colors } = useThemeColors();
+  const { isDark } = useThemeColors();
+  const cardBg = isDark ? 'rgba(20, 35, 38, 0.95)' : '#ffffff';
 
   return (
     <View style={styles.container}>
-      {/* Header section with big circular avatar */}
-      <View style={styles.detailHeader}>
-        <Skeleton width={72} height={72} borderRadius={36} style={{ marginBottom: 12 }} />
-        <Skeleton width={180} height={22} style={{ marginBottom: 6 }} />
-        <Skeleton width={120} height={14} style={{ marginBottom: 16 }} />
-        {/* Actions row */}
-        <View style={styles.detailActions}>
-          <Skeleton width={100} height={36} borderRadius={18} style={{ marginRight: 10 }} />
-          <Skeleton width={100} height={36} borderRadius={18} />
+      {/* Top Summary Card Skeleton */}
+      <View
+        style={[
+          styles.summaryCardSkeleton,
+          {
+            backgroundColor: cardBg,
+            shadowColor: isDark ? '#000000' : '#64748B',
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: isDark ? 0.35 : 0.08,
+            shadowRadius: 12,
+            elevation: 4,
+          },
+        ]}>
+        <View style={styles.summaryTopRow}>
+          <Skeleton width={40} height={40} borderRadius={11} style={{ marginRight: 10 }} />
+          <View style={{ flex: 1 }}>
+            <Skeleton width="55%" height={16} style={{ marginBottom: 6 }} />
+            <Skeleton width="40%" height={12} />
+          </View>
         </View>
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
+          <Skeleton width={6} height={6} borderRadius={3} style={{ marginRight: 6 }} />
+          <Skeleton width={90} height={13} />
+        </View>
+        <Skeleton width={110} height={24} />
       </View>
 
-      {/* Transactions list title */}
-      <Skeleton width={110} height={18} style={{ marginTop: 24, marginBottom: 12 }} />
+      {/* Quick Action Button Skeleton */}
+      <View style={{ flexDirection: 'row', gap: 10, marginBottom: 12 }}>
+        <Skeleton height={44} borderRadius={10} style={{ flex: 1 }} />
+      </View>
 
-      {/* Transaction row items */}
+      {/* Segmented Filter Bar Skeleton */}
+      <View
+        style={[
+          styles.segmentedSkeleton,
+          { backgroundColor: isDark ? 'rgba(20, 35, 38, 0.6)' : 'rgba(0, 0, 0, 0.04)' },
+        ]}>
+        <Skeleton height={32} borderRadius={8} style={{ flex: 1 }} />
+        <Skeleton height={32} borderRadius={8} style={{ flex: 1 }} />
+        <Skeleton height={32} borderRadius={8} style={{ flex: 1 }} />
+      </View>
+
+      {/* Section Title Skeleton */}
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 12, marginBottom: 10 }}>
+        <Skeleton width={80} height={16} />
+        <Skeleton width={50} height={12} />
+      </View>
+
+      {/* Activity / Member Card Rows Skeleton */}
       {Array.from({ length: 4 }).map((_, index) => (
         <View
           key={index}
           style={[
-            styles.activityRow,
-            { borderBottomColor: colors.border },
+            styles.detailCardRowSkeleton,
+            {
+              backgroundColor: cardBg,
+              shadowColor: isDark ? '#000000' : '#64748B',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: isDark ? 0.22 : 0.06,
+              shadowRadius: 8,
+              elevation: 2,
+            },
           ]}>
-          <Skeleton width={36} height={36} borderRadius={18} style={{ marginRight: 12 }} />
-          <View style={{ flex: 1, marginRight: 12 }}>
-            <Skeleton width="80%" height={14} style={{ marginBottom: 6 }} />
-            <Skeleton width={100} height={11} />
+          <Skeleton width={34} height={34} borderRadius={10} style={{ marginRight: 10 }} />
+          <View style={{ flex: 1, marginRight: 10 }}>
+            <Skeleton width="65%" height={14} style={{ marginBottom: 6 }} />
+            <Skeleton width="45%" height={11} />
           </View>
-          <Skeleton width={60} height={16} />
+          <Skeleton width={55} height={15} />
         </View>
       ))}
     </View>
@@ -376,5 +418,30 @@ const styles = StyleSheet.create({
   detailActions: {
     flexDirection: 'row',
     justifyContent: 'center',
+  },
+  summaryCardSkeleton: {
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 12,
+  },
+  summaryTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  segmentedSkeleton: {
+    flexDirection: 'row',
+    padding: 3,
+    borderRadius: 10,
+    gap: 3,
+    marginBottom: 12,
+  },
+  detailCardRowSkeleton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    marginBottom: 6,
   },
 });

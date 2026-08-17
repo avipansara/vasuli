@@ -50,7 +50,7 @@ function areFriendCardPropsEqual(prev: FriendCardProps, next: FriendCardProps): 
 }
 
 function FriendCardInner({ friend, onPress, onDelete }: FriendCardProps) {
-  const { colors, friends: friendsTheme } = useThemeColors();
+  const { colors, friends: friendsTheme, isDark } = useThemeColors();
   const balance = normalizeDisplayBalance(friend.balance);
   const displayName = getDisplayName(friend.name, friend.email);
 
@@ -68,14 +68,15 @@ function FriendCardInner({ friend, onPress, onDelete }: FriendCardProps) {
 
   const cardStyle = useMemo(
     () => ({
-      backgroundColor: friendsTheme.cardSurface,
-      borderColor: friendsTheme.cardBorder,
-      shadowColor: friendsTheme.cardShadow,
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: friendsTheme.cardShadowOpacity,
-      elevation: friendsTheme.cardShadowOpacity > 0 ? 2 : 0,
+      backgroundColor: isDark ? 'rgba(20, 35, 38, 0.95)' : '#ffffff',
+      borderWidth: 0,
+      shadowColor: isDark ? '#000000' : '#475569',
+      shadowOffset: { width: 0, height: 3 },
+      shadowOpacity: isDark ? 0.35 : 0.09,
+      shadowRadius: 10,
+      elevation: 3,
     }),
-    [friendsTheme]
+    [isDark]
   );
 
   const renderRightActions = (progress: Animated.AnimatedInterpolation<number>, dragX: Animated.AnimatedInterpolation<number>) => {
