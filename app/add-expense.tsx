@@ -335,8 +335,7 @@ export default function AddExpenseScreen() {
 
   if (dataLoadError && !dataLoading) {
     return (
-      <View style={styles.container}>
-        <LinearGradient colors={gradients.screenBackground} style={StyleSheet.absoluteFill} />
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
         <NavigationHeader
           title="Add Expense"
           onBack={() => router.back()}
@@ -351,9 +350,7 @@ export default function AddExpenseScreen() {
   }
 
   return (
-    <View style={styles.container}>
-      <LinearGradient colors={gradients.screenBackground} style={StyleSheet.absoluteFill} />
-
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <NavigationHeader
         title={expenseStep === 1 ? 'Choose people' : 'Add Expense'}
         onBack={handleHeaderBack}
@@ -551,7 +548,7 @@ export default function AddExpenseScreen() {
                 style={[
                   styles.toggleContainer,
                   {
-                    backgroundColor: isDark ? 'rgba(20, 35, 38, 0.45)' : 'rgba(241, 245, 249, 0.9)',
+                    backgroundColor: isDark ? 'rgba(20, 35, 38, 0.45)' : colors.card,
                     borderColor: colors.border,
                   },
                 ]}>
@@ -560,13 +557,9 @@ export default function AddExpenseScreen() {
                   accessibilityState={{ selected: splitType === SplitType.GROUP }}
                   style={[
                     styles.toggleButton,
-                    splitType === SplitType.GROUP && styles.toggleButtonActive,
                     {
                       backgroundColor: splitType === SplitType.GROUP
-                        ? (isDark ? 'rgba(45, 212, 191, 0.14)' : 'rgba(34, 197, 94, 0.08)')
-                        : 'transparent',
-                      borderColor: splitType === SplitType.GROUP
-                        ? (isDark ? '#2DD4BF' : colors.tint)
+                        ? (isDark ? 'rgba(45, 212, 191, 0.14)' : 'rgba(16, 185, 129, 0.15)')
                         : 'transparent',
                     },
                   ]}
@@ -577,12 +570,11 @@ export default function AddExpenseScreen() {
                   <IconSymbol
                     name="person.3.fill"
                     size={17}
-                    color={splitType === SplitType.GROUP ? (isDark ? '#2DD4BF' : colors.tint) : colors.textSecondary}
+                    color={splitType === SplitType.GROUP ? (isDark ? '#2DD4BF' : colors.text) : colors.textSecondary}
                   />
                   <ThemedText style={[
                     styles.toggleText,
-                    splitType === SplitType.GROUP && styles.toggleTextActive,
-                    { color: splitType === SplitType.GROUP ? (isDark ? '#2DD4BF' : colors.tint) : colors.textSecondary },
+                    { color: splitType === SplitType.GROUP ? (isDark ? '#2DD4BF' : colors.text) : colors.textSecondary },
                   ]}>
                     Group
                   </ThemedText>
@@ -592,13 +584,9 @@ export default function AddExpenseScreen() {
                   accessibilityState={{ selected: splitType === SplitType.FRIENDS }}
                   style={[
                     styles.toggleButton,
-                    splitType === SplitType.FRIENDS && styles.toggleButtonActive,
                     {
                       backgroundColor: splitType === SplitType.FRIENDS
-                        ? (isDark ? 'rgba(45, 212, 191, 0.14)' : 'rgba(34, 197, 94, 0.08)')
-                        : 'transparent',
-                      borderColor: splitType === SplitType.FRIENDS
-                        ? (isDark ? '#2DD4BF' : colors.tint)
+                        ? (isDark ? 'rgba(45, 212, 191, 0.14)' : 'rgba(16, 185, 129, 0.15)')
                         : 'transparent',
                     },
                   ]}
@@ -606,12 +594,11 @@ export default function AddExpenseScreen() {
                   <IconSymbol
                     name="person.2.fill"
                     size={17}
-                    color={splitType === SplitType.FRIENDS ? (isDark ? '#2DD4BF' : colors.tint) : colors.textSecondary}
+                    color={splitType === SplitType.FRIENDS ? (isDark ? '#2DD4BF' : colors.text) : colors.textSecondary}
                   />
                   <ThemedText style={[
                     styles.toggleText,
-                    splitType === SplitType.FRIENDS && styles.toggleTextActive,
-                    { color: splitType === SplitType.FRIENDS ? (isDark ? '#2DD4BF' : colors.tint) : colors.textSecondary },
+                    { color: splitType === SplitType.FRIENDS ? (isDark ? '#2DD4BF' : colors.text) : colors.textSecondary },
                   ]}>
                     Friends
                   </ThemedText>
@@ -724,13 +711,11 @@ export default function AddExpenseScreen() {
                       <TouchableOpacity
                         key={group.id}
                         style={[
-                          styles.optionCard,
-                          selectedGroupId === group.id && styles.optionCardSelected,
+                          styles.optionRow,
                           {
-                            backgroundColor: isDark ? 'rgba(30, 41, 59, 0.6)' : 'rgba(241, 245, 249, 0.9)',
-                            borderColor: selectedGroupId === group.id
-                              ? (isDark ? '#2DD4BF' : colors.tint)
-                              : (isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(34, 197, 94, 0.2)'),
+                            backgroundColor: selectedGroupId === group.id 
+                              ? (isDark ? 'rgba(45, 212, 191, 0.14)' : 'rgba(16, 185, 129, 0.15)')
+                              : 'transparent',
                           },
                         ]}
                         onPress={() => !preselectedGroupId && setSelectedGroupId(group.id)}
@@ -738,17 +723,19 @@ export default function AddExpenseScreen() {
                         <View style={[styles.optionIcon, {
                           backgroundColor: selectedGroupId === group.id
                             ? (isDark ? '#2DD4BF' : colors.tint)
-                            : (isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)'),
+                            : (isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)'),
                         }]}>
                           <IconSymbol
                             name="person.3.fill"
                             size={16}
-                            color={selectedGroupId === group.id ? '#0A0A0F' : (isDark ? '#2DD4BF' : colors.tint)}
+                            color={selectedGroupId === group.id ? '#0A0A0F' : (isDark ? '#fff' : colors.text)}
                           />
                         </View>
-                        <ThemedText style={[styles.optionText, !isDark && { color: colors.text }]}>
-                          {group.name}
-                        </ThemedText>
+                        <View style={styles.optionTextContainer}>
+                          <ThemedText style={[styles.optionText, { color: colors.text }]}>
+                            {group.name}
+                          </ThemedText>
+                        </View>
                         {selectedGroupId === group.id && (
                           <IconSymbol name="checkmark.circle.fill" size={22} color={isDark ? '#2DD4BF' : colors.tint} />
                         )}
@@ -770,8 +757,8 @@ export default function AddExpenseScreen() {
                   <>
                     {!preselectedFriendId && (
                       <View style={[styles.searchContainer, {
-                        backgroundColor: isDark ? 'rgba(30, 41, 59, 0.6)' : 'rgba(241, 245, 249, 0.9)',
-                        borderColor: isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(34, 197, 94, 0.2)',
+                        backgroundColor: isDark ? 'rgba(20, 35, 38, 0.66)' : colors.card,
+                        borderColor: colors.border,
                       }]}>
                         <IconSymbol name="magnifyingglass" size={18} color={isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'} />
                         <TextInput
@@ -814,13 +801,11 @@ export default function AddExpenseScreen() {
                               <TouchableOpacity
                                 key={friend.id}
                                 style={[
-                                  styles.optionCard,
-                                  isSelected && styles.optionCardSelected,
+                                  styles.optionRow,
                                   {
-                                    backgroundColor: isDark ? 'rgba(30, 41, 59, 0.6)' : 'rgba(241, 245, 249, 0.9)',
-                                    borderColor: isSelected
-                                      ? (isDark ? '#2DD4BF' : colors.tint)
-                                      : (isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(34, 197, 94, 0.2)'),
+                                    backgroundColor: isSelected 
+                                      ? (isDark ? 'rgba(45, 212, 191, 0.14)' : 'rgba(16, 185, 129, 0.15)')
+                                      : 'transparent',
                                   },
                                 ]}
                                 onPress={() => !preselectedFriendId && toggleFriend(friend.id)}
@@ -828,17 +813,24 @@ export default function AddExpenseScreen() {
                                 <View style={[styles.optionAvatar, {
                                   backgroundColor: isSelected
                                     ? (isDark ? '#2DD4BF' : colors.tint)
-                                    : (isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)'),
+                                    : (isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)'),
                                 }]}>
                                   <ThemedText style={[styles.avatarText, {
-                                    color: isSelected ? '#0A0A0F' : (isDark ? '#2DD4BF' : colors.tint),
+                                    color: isSelected ? '#0A0A0F' : (isDark ? '#fff' : colors.text),
                                   }]}>
                                     {friend.name.charAt(0).toUpperCase()}
                                   </ThemedText>
                                 </View>
-                                <ThemedText style={[styles.optionText, !isDark && { color: colors.text }]}>
-                                  {friend.name}
-                                </ThemedText>
+                                <View style={styles.optionTextContainer}>
+                                  <ThemedText style={[styles.optionText, { color: colors.text }]}>
+                                    {friend.name}
+                                  </ThemedText>
+                                  {friend.email && (
+                                    <ThemedText style={[styles.optionSubtext, { color: colors.textSecondary }]}>
+                                      @{friend.email.split('@')[0]}
+                                    </ThemedText>
+                                  )}
+                                </View>
                                 {isSelected && (
                                   <IconSymbol name="checkmark.circle.fill" size={22} color={isDark ? '#2DD4BF' : colors.tint} />
                                 )}
@@ -1313,10 +1305,6 @@ const styles = StyleSheet.create({
     gap: 6,
     minHeight: 44,
     borderRadius: 10,
-    borderWidth: 1,
-  },
-  toggleButtonActive: {
-    borderWidth: 1,
   },
   toggleText: {
     fontSize: 14,
@@ -1521,39 +1509,45 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  optionCard: {
+  optionRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 14,
-    borderRadius: 14,
-    borderWidth: 1.5,
+    paddingVertical: 14,
+    paddingHorizontal: 18,
+    marginHorizontal: -18,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(150, 150, 150, 0.2)',
     gap: 14,
   },
-  optionCardSelected: {
-    borderWidth: 2,
-  },
   optionIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
+    width: 44,
+    height: 44,
+    borderRadius: 999,
     justifyContent: 'center',
     alignItems: 'center',
   },
   optionAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
+    width: 44,
+    height: 44,
+    borderRadius: 999,
     justifyContent: 'center',
     alignItems: 'center',
   },
   avatarText: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '600',
   },
-  optionText: {
+  optionTextContainer: {
     flex: 1,
+    justifyContent: 'center',
+  },
+  optionText: {
     fontSize: 16,
     fontWeight: '500',
+  },
+  optionSubtext: {
+    fontSize: 13,
+    marginTop: 2,
   },
   emptyState: {
     alignItems: 'center',

@@ -210,7 +210,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
     marginBottom: 12,
-    borderRadius: 14,
+    borderRadius: 16,
+    // borderWidth: 1,
   },
   topSection: {
     flexDirection: 'row',
@@ -250,7 +251,7 @@ const styles = StyleSheet.create({
   },
   bottomSection: {
     flexDirection: 'row',
-    marginTop: 6,
+    marginTop: 0,
   },
   branchSpacer: {
     width: 56, // avatar width (44) + avatar marginRight (12)
