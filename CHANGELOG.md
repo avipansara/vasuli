@@ -1,5 +1,16 @@
+## 2026-08-17
+
+- Added a pair-scoped Friend detail read model backed by a session-derived
+  Supabase RPC, reducing broad client-side history assembly and exposing
+  development-only load timing metrics.
+- Simplified Friend detail tab switching by removing stacked feed and row
+  animations that caused visible choppiness while filtering activity rows.
+
 ## 2026-08-16
 
+- Smoothed Friends detail activity filters by keeping activity rows stable
+  between tabs and using one lightweight feed transition instead of replaying
+  staggered row animations on every switch.
 - Fixed push notification taps so they navigate to the related expense, group,
   friend, or invitations screen, including when the app was closed. Notification
   payloads now include the destination IDs needed for navigation.

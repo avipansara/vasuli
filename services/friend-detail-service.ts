@@ -1,8 +1,5 @@
 import { ActivityType, type Activity, type Expense, type ExpenseSplit, type Settlement, type User } from '@/types/database';
-import { activityService } from './activity-service';
-import { expenseService } from './expense-service';
-import { settlementService } from './settlement-service';
-import { userService } from './user-service';
+import { friendDetailReadModel } from './friend-detail-read-model';
 
 export interface FriendWithBalance extends User {
   balance: number;
@@ -201,28 +198,17 @@ export function buildFriendDetailData(
   };
 }
 
-export const friendDetailService = {
-  async getDetail(currentUserId: string, friendId: string): Promise<FriendDetailData | null> {
-    const [friend, expenses, settlements] = await Promise.all([
-      userService.getById(friendId),
-      expenseService.getUserExpenses(currentUserId),
-      settlementService.getUserSettlements(currentUserId),
-    ]);
-    if (!friend) return null;
-
-    const expenseIds = expenses.map(expense => expense.id);
-    const [splits, expenseActivities, recentActivities] = await Promise.all([
-      expenseService.getSplitsForExpenses(expenseIds),
-      activityService.getByTargets(expenseIds),
-      activityService.getUserActivities(currentUserId, 200),
-    ]);
-    const activities = Array.from(
-      new Map([...expenseActivities, ...recentActivities].map(activity => [activity.id, activity])).values()
-    );
-
-    return buildFriendDetailData(currentUserId, friend, expenses, splits, settlements, activities);
-  },
+export type FriendDetailDataSource = {
+  getDetail(currentUserId: string, friendId: string): Promise<FriendDetailData | null>;
 };
+
+export function createFriendDetailService(dataSource: FriendDetailDataSource = friendDetailReadModel) {
+  return {
+    getDetail: (currentUserId: string, friendId: string) => dataSource.getDetail(currentUserId, friendId),
+  };
+}
+
+export const friendDetailService = createFriendDetailService();
 
 function parseActivityMetadata(metadata?: string): { participantIds: string[] } {
   if (!metadata) return { participantIds: [] };
