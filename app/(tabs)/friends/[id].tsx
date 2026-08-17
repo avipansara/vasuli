@@ -1,4 +1,5 @@
 import { SettleUpModal } from '@/components/friends/settle-up-modal';
+import { FriendSettlementActivity } from '@/components/friends/friend-settlement-activity';
 import { ThemedText } from '@/components/themed-text';
 import { AsyncErrorState } from '@/components/ui/async-error-state';
 import { IconSymbol, type IconSymbolName } from '@/components/ui/icon-symbol';
@@ -485,63 +486,6 @@ export default function FriendDetailScreen() {
   const balanceAccessibilityValue = `${balanceCopy}, $${Math.abs(balance).toFixed(2)}`;
 
 
-  const renderSettlementActivity = (item: Extract<FriendActivityItem, { type: 'settlement' }>) => {
-    const youPaid = item.direction === 'you_paid_friend';
-    const title = youPaid
-      ? `You paid ${friend.name.split(' ')[0]}`
-      : `${friend.name.split(' ')[0]} paid you`;
-    const subtitle = item.groupId
-      ? `${formatDate(item.date)} • Group settlement`
-      : `${formatDate(item.date)} • Settlement`;
-    const amountPrefix = youPaid ? '-' : '+';
-    const amountColor = youPaid ? friendDetailTheme.negative : friendDetailTheme.positive;
-
-    return (
-      <Animated.View
-        key={item.id}
-        accessible
-        accessibilityRole="text"
-        accessibilityLabel={`${title}, ${formatDate(item.date)}, ${youPaid ? 'you paid' : 'you received'} $${item.amount.toFixed(2)}`}
-        style={[
-          styles.updateRow,
-          {
-            backgroundColor: isDark ? 'rgba(20, 35, 38, 0.95)' : '#ffffff',
-            borderWidth: 0,
-            shadowColor: isDark ? '#000000' : '#475569',
-            shadowOffset: { width: 0, height: 3 },
-            shadowOpacity: isDark ? 0.35 : 0.09,
-            shadowRadius: 10,
-            elevation: 3,
-          },
-        ]}>
-        <View style={[styles.updateMarker, { backgroundColor: amountColor }]} />
-        <View style={styles.updateInfo}>
-          <ThemedText style={[styles.updateTitle, { color: colors.text }]} numberOfLines={1}>
-            {title}
-          </ThemedText>
-          <ThemedText style={[styles.updateMeta, { color: colors.textSecondary }]} numberOfLines={1}>
-            {subtitle}
-          </ThemedText>
-        </View>
-        <View style={styles.updateAmountBlock}>
-          <ThemedText style={[styles.updateStatus, { color: colors.textSecondary }]}>
-            Settled
-          </ThemedText>
-          <ThemedText style={[styles.updateAmount, { color: amountColor }]}>
-            {amountPrefix}${item.amount.toFixed(2)}
-          </ThemedText>
-        </View>
-        <View style={[styles.updateIcon, { backgroundColor: youPaid ? friendDetailTheme.negativeSurface : friendDetailTheme.positiveSurface }]}>
-          <IconSymbol
-            size={16}
-            name="checkmark.circle.fill"
-            color={amountColor}
-          />
-        </View>
-      </Animated.View>
-    );
-  };
-
   const renderExpenseActivity = (item: Extract<FriendActivityItem, { type: 'expense' }>) => {
     const expense = item.expense;
 
@@ -989,9 +933,17 @@ export default function FriendDetailScreen() {
                   {group.items.map(item => (
                     <View key={item.id}>
                       {item.type === 'expense'
-                        ? renderExpenseActivity(item)
-                        : item.type === 'settlement'
-                          ? renderSettlementActivity(item)
+                          ? renderExpenseActivity(item)
+                          : item.type === 'settlement'
+                          ? <FriendSettlementActivity
+                            item={item}
+                            friendName={friend.name}
+                            colors={colors as Record<string, string>}
+                            friendDetailTheme={friendDetailTheme as Record<string, string>}
+                            isDark={isDark}
+                            styles={styles}
+                            formatDate={formatDate}
+                          />
                           : renderExpenseActivityEvent(item)}
                     </View>
                   ))}
