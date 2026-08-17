@@ -474,6 +474,7 @@ export default function AddExpenseScreen() {
                       placeholderTextColor={isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(6, 78, 59, 0.3)'}
                       keyboardType="decimal-pad"
                       returnKeyType="next"
+                      maxFontSizeMultiplier={1.4}
                       onSubmitEditing={() => descriptionInputRef.current?.focus()}
                       blurOnSubmit={false}
                       autoFocus={expenseStep === 2}
@@ -1225,6 +1226,9 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+    maxWidth: 600,
+    width: '100%',
+    alignSelf: 'center',
   },
   amountSection: {
     marginBottom: 22,

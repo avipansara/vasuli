@@ -78,6 +78,10 @@ const SettleMemberRow = memo(function SettleMemberRow({ item, isSelected, onSele
 
   return (
     <TouchableOpacity
+      accessible={true}
+      accessibilityRole="button"
+      accessibilityLabel={`Select ${item.user?.name || 'member'} to settle $${Math.abs(item.balance).toFixed(2)}`}
+      accessibilityState={{ selected: isSelected }}
       onPress={() => onSelect(item)}
       disabled={!isSettleable}
       style={[
@@ -366,6 +370,7 @@ export default function GroupSettleScreen() {
                   placeholderTextColor={isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(6, 78, 59, 0.3)'}
                   keyboardType="decimal-pad"
                   returnKeyType="done"
+                  maxFontSizeMultiplier={1.4}
                   onSubmitEditing={() => Keyboard.dismiss()}
                 />
               </View>

@@ -290,6 +290,7 @@ export default function FriendSettleScreen() {
                   placeholder="0.00"
                   placeholderTextColor={isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(6, 78, 59, 0.3)'}
                   selectTextOnFocus
+                  maxFontSizeMultiplier={1.4}
                 />
               </View>
             </View>
@@ -358,6 +359,9 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: 20,
     gap: 28,
+    maxWidth: 600,
+    width: '100%',
+    alignSelf: 'center',
   },
   profileCard: {
     padding: 20,
