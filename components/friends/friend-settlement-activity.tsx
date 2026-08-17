@@ -28,8 +28,7 @@ export function FriendSettlementActivity({
   const subtitle = item.groupId
     ? `${formatDate(item.date)} • Group settlement`
     : `${formatDate(item.date)} • Settlement`;
-  const amountPrefix = youPaid ? '-' : '+';
-  const amountColor = youPaid ? friendDetailTheme.negative : friendDetailTheme.positive;
+  const amountColor = colors.textSecondary; // Gray color for settled amounts based on mockup
 
   return (
     <Animated.View
@@ -37,7 +36,7 @@ export function FriendSettlementActivity({
       accessibilityRole="text"
       accessibilityLabel={`${title}, ${formatDate(item.date)}, ${youPaid ? 'you paid' : 'you received'} $${item.amount.toFixed(2)}`}
       style={[
-        styles.updateRow,
+        styles.expenseCard,
         {
           backgroundColor: isDark ? 'rgba(20, 35, 38, 0.95)' : '#ffffff',
           borderWidth: 0,
@@ -48,79 +47,88 @@ export function FriendSettlementActivity({
           elevation: 3,
         },
       ]}>
-      <View style={[styles.updateMarker, { backgroundColor: amountColor }]} />
-      <View style={styles.updateInfo}>
-        <ThemedText style={[styles.updateTitle, { color: colors.text }]} numberOfLines={1}>
-          {title}
+      <View style={[styles.expenseIcon, {
+        backgroundColor: isDark ? 'rgba(156, 163, 175, 0.15)' : '#F3F4F6',
+        borderRadius: 24,
+        width: 48,
+        height: 48,
+      }]}>
+        <IconSymbol size={20} name="checkmark" color={isDark ? '#9CA3AF' : '#4B5563'} />
+      </View>
+      <View style={styles.expenseInfo}>
+        <ThemedText type='subtitle' style={[styles.expenseDescription, { color: colors.text }]} numberOfLines={1}>
+          Settlement
         </ThemedText>
-        <ThemedText style={[styles.updateMeta, { color: colors.textSecondary }]} numberOfLines={1}>
-          {subtitle}
+        <ThemedText style={[styles.expenseDate, { color: colors.textSecondary }]} numberOfLines={2}>
+          {youPaid ? `You paid ${firstName}` : `${firstName} paid you`}{'\n'}{formatDate(item.date)}
         </ThemedText>
       </View>
-      <View style={styles.updateAmountBlock}>
-        <ThemedText style={[styles.updateStatus, { color: colors.textSecondary }]}>
-          Settled
+      <View style={styles.amountBlock}>
+        <ThemedText type='subtitle' style={[styles.expenseAmount, { color: amountColor }]}>
+          ${item.amount.toFixed(2)}
         </ThemedText>
-        <ThemedText style={[styles.updateAmount, { color: amountColor }]}>
-          {amountPrefix}${item.amount.toFixed(2)}
-        </ThemedText>
-      </View>
-      <View style={[styles.updateIcon, { backgroundColor: youPaid ? friendDetailTheme.negativeSurface : friendDetailTheme.positiveSurface }]}> 
-        <IconSymbol size={16} name="checkmark.circle.fill" color={amountColor} />
+        <View style={[styles.badge, { backgroundColor: isDark ? 'rgba(156, 163, 175, 0.15)' : '#E5E7EB' }]}>
+          <ThemedText style={[styles.badgeText, { color: isDark ? '#D1D5DB' : '#6B7280' }]}>
+            Settled
+          </ThemedText>
+        </View>
       </View>
     </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
-  updateRow: {
+  expenseCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    marginBottom: 7,
-    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 8,
+    borderRadius: 12,
     borderWidth: 0,
-    gap: 9,
-    shadowOffset: { width: 0, height: 1 },
-    shadowRadius: 2,
-    elevation: 1,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    elevation: 3,
   },
-  updateMarker: {
-    width: 3,
-    height: 28,
-    borderRadius: 999,
+  expenseIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
   },
-  updateInfo: {
+  expenseInfo: {
     flex: 1,
     minWidth: 0,
   },
-  updateTitle: {
+  expenseDescription: {
     flexShrink: 1,
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: 16,
   },
-  updateMeta: {
-    fontSize: 11,
+  expenseDate: {
+    fontSize: 12,
+    lineHeight: 16,
     marginTop: 2,
   },
-  updateAmountBlock: {
+  amountBlock: {
     alignItems: 'flex-end',
-    minWidth: 58,
-  },
-  updateStatus: {
-    fontSize: 10,
-    marginBottom: 1,
-  },
-  updateAmount: {
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  updateIcon: {
-    width: 26,
-    height: 26,
-    borderRadius: 7,
-    alignItems: 'center',
     justifyContent: 'center',
+    paddingLeft: 8,
+  },
+  expenseAmount: {
+    fontSize: 16,
+    marginBottom: 4,
+  },
+  badge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+  },
+  badgeText: {
+    fontSize: 10,
+    fontWeight: '700',
   },
 });

@@ -30,7 +30,16 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Animated, Platform, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
+
+const CATEGORY_MAP: Record<string, { icon: any, lightBg: string, darkBg: string, lightColor: string, darkColor: string }> = {
+  'Food': { icon: 'fork.knife', lightBg: '#FCE7F3', darkBg: 'rgba(236, 72, 153, 0.15)', lightColor: '#BE185D', darkColor: '#F472B6' },
+  'Transport': { icon: 'car.fill', lightBg: '#DCFCE7', darkBg: 'rgba(34, 197, 94, 0.15)', lightColor: '#15803D', darkColor: '#4ADE80' },
+  'Travel': { icon: 'airplane', lightBg: '#E0E7FF', darkBg: 'rgba(99, 102, 241, 0.15)', lightColor: '#4338CA', darkColor: '#818CF8' },
+  'Groceries': { icon: 'cart.fill', lightBg: '#FEF3C7', darkBg: 'rgba(245, 158, 11, 0.15)', lightColor: '#B45309', darkColor: '#FCD34D' },
+  'Utilities': { icon: 'bolt.fill', lightBg: '#DBEAFE', darkBg: 'rgba(59, 130, 246, 0.15)', lightColor: '#1D4ED8', darkColor: '#60A5FA' },
+};
 
 const MIN_TOUCH_HIT_SLOP = { top: 8, right: 8, bottom: 8, left: 8 };
 const EMPTY_EXPENSES: GroupExpenseView[] = [];
@@ -340,10 +349,12 @@ export default function GroupDetailScreen() {
                   .map((u) => u!.pushToken!);
                 if (pushTokens.length > 0) {
                   const notification = createExpenseDeletedNotification(
+                    expenseToDelete.id,
                     expenseToDelete.description,
                     expenseToDelete.amount,
                     user?.name || 'Someone',
-                    group?.name
+                    group?.name,
+                    id
                   );
                   await notificationService.sendNotificationToUsers(pushTokens, notification);
                 }
@@ -411,7 +422,11 @@ export default function GroupDetailScreen() {
 
   function renderExpense({ item }: { item: Expense & { paidByUser?: User } }) {
     const date = new Date(item.date);
-    const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    const categoryStyle = (item.category && CATEGORY_MAP[item.category])
+      ? CATEGORY_MAP[item.category]
+      : { icon: 'arrow.up.right', lightBg: '#F3F4F6', darkBg: 'rgba(156, 163, 175, 0.15)', lightColor: '#4B5563', darkColor: '#9CA3AF' };
+    const paidByYou = item.paidBy === currentUserId;
 
     return (
       <Swipeable
@@ -441,34 +456,42 @@ export default function GroupDetailScreen() {
           style={[styles.expenseCard, {
             backgroundColor: isDark ? 'rgba(20, 35, 38, 0.95)' : '#ffffff',
             borderWidth: 0,
-            shadowColor: isDark ? '#000000' : '#475569',
-            shadowOffset: { width: 0, height: 3 },
-            shadowOpacity: isDark ? 0.35 : 0.09,
+            shadowColor: '#000000',
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.06,
             shadowRadius: 10,
             elevation: 3,
           }]}>
-          <View style={[styles.expenseIcon, { backgroundColor: item.paidBy === currentUserId ? (isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(15, 76, 58, 0.08)') : (isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)') }]}>
+          <View style={[styles.expenseIcon, {
+            backgroundColor: isDark ? categoryStyle.darkBg : categoryStyle.lightBg,
+            borderRadius: 24,
+            width: 48,
+            height: 48,
+          }]}>
             <IconSymbol
-              size={15}
-              name={item.paidBy === currentUserId ? 'arrow.up.right' : 'dollarsign.circle.fill'}
-              color={item.paidBy === currentUserId ? (isDark ? '#2DD4BF' : '#0F4C3A') : colors.textSecondary}
+              size={20}
+              name={categoryStyle.icon}
+              color={isDark ? categoryStyle.darkColor : categoryStyle.lightColor}
             />
           </View>
           <View style={styles.expenseInfo}>
-            <ThemedText type="subtitle" style={{ color: colors.text }} numberOfLines={1}>
+            <ThemedText type="subtitle" style={[styles.expenseDescription, { color: colors.text }]} numberOfLines={1}>
               {item.description}
             </ThemedText>
-            <ThemedText style={[styles.expenseDate, { color: colors.textSecondary }]} numberOfLines={1}>
-              {dateStr} • Paid by {item.paidByUser?.name || 'Unknown'}
+            <ThemedText style={[styles.expenseDate, { color: colors.textSecondary }]} numberOfLines={2}>
+              {paidByYou ? 'Paid by you' : `Paid by ${item.paidByUser?.name.split(' ')[0] || 'Someone'}`}{'\n'}{dateStr}
             </ThemedText>
           </View>
-          <ThemedText type="subtitle" style={[styles.expenseAmount, { color: colors.text }]}>${item.amount.toFixed(2)}</ThemedText>
-          <IconSymbol
-            size={17}
-            name="chevron.right"
-            color={colors.textSecondary}
-            style={styles.expenseChevron}
-          />
+          <View style={styles.amountBlock}>
+            <ThemedText type="title" style={[styles.expenseAmount, { color: colors.text }]}>
+              ${item.amount.toFixed(2)}
+            </ThemedText>
+            <View style={[styles.badge, { backgroundColor: paidByYou ? friendDetailTheme.positiveSurface : friendDetailTheme.settledSurface }]}>
+              <ThemedText style={[styles.badgeText, { color: paidByYou ? friendDetailTheme.positive : colors.textSecondary }]}>
+                {paidByYou ? 'You paid' : 'Split'}
+              </ThemedText>
+            </View>
+          </View>
         </TouchableOpacity>
       </Swipeable>
     );
@@ -590,16 +613,24 @@ export default function GroupDetailScreen() {
         overshootFriction={8}
         enableTrackpadTwoFingerGesture
         containerStyle={{ overflow: 'visible' }}>
-        <View style={[styles.memberCard, {
-          backgroundColor: isDark ? 'rgba(20, 35, 38, 0.95)' : '#ffffff',
-          borderWidth: 0,
-          shadowColor: isDark ? '#000000' : '#475569',
-          shadowOffset: { width: 0, height: 3 },
-          shadowOpacity: isDark ? 0.35 : 0.09,
-          shadowRadius: 10,
-          elevation: 3,
-        }]}>
-          <View style={[styles.memberAvatar, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(15, 76, 58, 0.1)' }]}>
+        <TouchableOpacity
+          activeOpacity={0.72}
+          onPress={() => item.userId !== currentUserId && router.push(`/friends/${item.userId}` as any)}
+          style={[styles.memberCard, {
+            backgroundColor: isDark ? 'rgba(20, 35, 38, 0.95)' : '#ffffff',
+            borderWidth: 0,
+            shadowColor: '#000000',
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.06,
+            shadowRadius: 10,
+            elevation: 3,
+          }]}>
+          <View style={[styles.memberAvatar, {
+            backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(15, 76, 58, 0.1)',
+            borderRadius: 24,
+            width: 48,
+            height: 48,
+          }]}>
             <ThemedText style={[styles.avatarText, { color: isDark ? '#2DD4BF' : '#0F4C3A' }]}>
               {item.user?.name.charAt(0).toUpperCase() || '?'}
             </ThemedText>
@@ -660,7 +691,7 @@ export default function GroupDetailScreen() {
               <ThemedText style={[styles.settledLabel, { color: colors.textSecondary }]}>settled</ThemedText>
             )}
           </View>
-        </View>
+        </TouchableOpacity>
       </Swipeable>
     );
   }
@@ -844,119 +875,110 @@ export default function GroupDetailScreen() {
               { scale: summaryScale }
             ]
           }}>
-            <View
+            <LinearGradient
+              colors={
+                currentUserBalance < 0
+                  ? (isDark ? ['rgba(254, 226, 226, 0.08)', 'rgba(20, 20, 25, 0.95)'] : ['#FFF2F4', '#FFFFFF'])
+                  : currentUserBalance > 0
+                    ? (isDark ? ['rgba(209, 250, 229, 0.08)', 'rgba(20, 20, 25, 0.95)'] : ['#F0FDF4', '#FFFFFF'])
+                    : (isDark ? ['rgba(243, 244, 246, 0.05)', 'rgba(20, 20, 25, 0.95)'] : ['#F9FAFB', '#FFFFFF'])
+              }
+              start={{ x: 1, y: 0 }}
+              end={{ x: 0, y: 1 }}
               accessible
               accessibilityRole="summary"
               accessibilityLabel={`${group.name}, ${members.length} members, ${balanceAccessibilityValue}`}
               accessibilityLiveRegion="polite"
               style={[styles.summaryCard, {
-                backgroundColor: isDark ? 'rgba(20, 35, 38, 0.95)' : '#ffffff',
                 borderWidth: 0,
-                shadowColor: isDark ? '#000000' : '#64748B',
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: isDark ? 0.35 : 0.08,
-                shadowRadius: 12,
-                elevation: 4,
+                shadowColor: '#000000',
+                shadowOffset: { width: 0, height: 10 },
+                shadowOpacity: isDark ? 0.45 : 0.12,
+                shadowRadius: 20,
+                elevation: 8,
+                alignItems: 'center',
+                paddingVertical: 24,
+                paddingHorizontal: 16,
               }]}>
-              <View style={styles.summaryTopRow}>
-                <View style={[styles.summaryAvatar, {
-                  backgroundColor: friendDetailTheme.avatarSurface,
-                  borderColor: friendDetailTheme.avatarBorder,
-                }]}>
-                  <IconSymbol size={22} name="person.3.fill" color={friendDetailTheme.actionIcon} />
-                </View>
-                <View style={styles.summaryIdentity}>
-                  <ThemedText type="title" numberOfLines={1} style={[styles.summaryName, { color: colors.text }]}>
-                    {group.name}
-                  </ThemedText>
-                  <ThemedText numberOfLines={1} style={[styles.summaryEmail, { color: colors.textSecondary }]}>
-                    {members.length} {members.length === 1 ? 'member' : 'members'}
-                  </ThemedText>
-                </View>
-              </View>
-              <View style={styles.summaryBalanceRow}>
-                <View style={[styles.balanceIndicator, { backgroundColor: balanceColor }]} />
-                <ThemedText style={[styles.balanceLabel, { color: colors.textSecondary }]}>
-                  {balanceCopy}
-                </ThemedText>
-              </View>
-              <ThemedText style={[styles.balanceAmount, { color: balanceColor }]}>
-                ${Math.abs(currentUserBalance).toFixed(2)}
+              
+              <ThemedText type='title' style={[styles.summaryCardGroupName, { color: colors.text }]}>
+                {group.name}
               </ThemedText>
-            </View>
+
+              <ThemedText type='defaultSemiBold' style={[styles.summaryCardTitle, { color: balanceColor }]}>
+                {currentUserBalance > 0 
+                  ? 'YOU ARE OWED' 
+                  : currentUserBalance < 0 
+                    ? 'YOU OWE' 
+                    : 'ALL SETTLED UP'}
+              </ThemedText>
+              
+              <ThemedText type='subtitle' style={[styles.summaryCardAmount, { color: balanceColor }]}>
+                {currentUserBalance < 0 ? '-' : currentUserBalance > 0 ? '+' : ''}${Math.abs(currentUserBalance).toFixed(2)}
+              </ThemedText>
+
+              <ThemedText style={[styles.summaryCardSubtitle, { color: colors.textSecondary }]}>
+                Across {members.length} members
+              </ThemedText>
+
+              {!groupIsSettled && currentUserBalance !== 0 && (
+                <View style={styles.cardQuickActions}>
+                  <TouchableOpacity
+                    style={[styles.cardQuickActionButton, {
+                      backgroundColor: isDark ? '#0F3E3A' : '#043424', // Dark green match
+                    }]}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Settle up in ${group.name}`}
+                    accessibilityHint="Opens the settlement form"
+                    onPress={handleSettleUp}>
+                    <IconSymbol size={18} name="banknote" color="#ffffff" />
+                    <ThemedText style={styles.cardQuickActionText}>Settle Up</ThemedText>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </LinearGradient>
           </Animated.View>
         </Animated.View>
 
-        {/* Quick Actions */}
-        <View style={styles.quickActions}>
-          <TouchableOpacity
-            style={[styles.quickActionButton, { opacity: groupIsSettled ? 0.5 : 1 }]}
-            accessibilityRole="button"
-            accessibilityLabel={`Settle up in ${group.name}`}
-            accessibilityHint="Opens the group settlement screen"
-            disabled={groupIsSettled}
-            onPress={handleSettleUp}>
-            <View style={[styles.quickActionSolidButton, {
-              backgroundColor: isDark ? '#0D9488' : '#0F4C3A',
-            }]}>
-              <IconSymbol size={18} name="checkmark" color="#ffffff" />
-              <ThemedText style={styles.quickActionTextSolid}>Settle Up</ThemedText>
-            </View>
-          </TouchableOpacity>
-          <TouchableOpacity
+        {/* Tab / Action Tiles */}
+        <View style={styles.tabTilesRow}>
+          <TouchableOpacity 
             style={[
-              styles.quickActionButton,
-              styles.secondaryQuickActionButton,
-              {
-                backgroundColor: isDark ? 'rgba(20, 35, 38, 0.95)' : '#ffffff',
-                borderColor: isDark ? '#0D9488' : '#0F4C3A',
-                borderWidth: 1,
-              },
+              styles.tabTile, 
+              sectionTab === 'all' && [styles.tabTileActive, { borderColor: isDark ? '#2DD4BF' : '#0F4C3A', borderWidth: 1 }], 
+              { backgroundColor: isDark ? 'rgba(20, 35, 38, 0.95)' : '#ffffff' }
             ]}
-            accessibilityRole="button"
-            accessibilityLabel={`View stats for ${group.name}`}
-            accessibilityHint="Opens spending and balance statistics for this group"
-            onPress={() => router.push(`/groups/stats/${id}`)}>
-            <IconSymbol size={18} name="chart.bar.fill" color={isDark ? '#0D9488' : '#0F4C3A'} />
-            <ThemedText style={[styles.quickActionText, { color: isDark ? '#0D9488' : '#0F4C3A' }]}>Stats</ThemedText>
+            onPress={() => setSectionTab('all')}>
+            <IconSymbol size={20} name="person.3.fill" color={sectionTab === 'all' ? (isDark ? '#2DD4BF' : '#0F4C3A') : colors.textSecondary} />
+            <ThemedText style={[styles.tabTileLabel, { color: sectionTab === 'all' ? (isDark ? '#2DD4BF' : '#0F4C3A') : colors.textSecondary, fontWeight: sectionTab === 'all' ? '700' : '500' }]}>
+              All
+            </ThemedText>
           </TouchableOpacity>
-        </View>
+          
+          <TouchableOpacity 
+            style={[
+              styles.tabTile, 
+              sectionTab === 'expenses' && [styles.tabTileActive, { borderColor: isDark ? '#2DD4BF' : '#0F4C3A', borderWidth: 1 }], 
+              { backgroundColor: isDark ? 'rgba(20, 35, 38, 0.95)' : '#ffffff' }
+            ]}
+            onPress={() => setSectionTab('expenses')}>
+            <IconSymbol size={20} name="dollarsign.circle.fill" color={sectionTab === 'expenses' ? (isDark ? '#2DD4BF' : '#0F4C3A') : colors.textSecondary} />
+            <ThemedText style={[styles.tabTileLabel, { color: sectionTab === 'expenses' ? (isDark ? '#2DD4BF' : '#0F4C3A') : colors.textSecondary, fontWeight: sectionTab === 'expenses' ? '700' : '500' }]}>
+              Expenses
+            </ThemedText>
+          </TouchableOpacity>
 
-        {/* Segmented Tab Control */}
-        <View
-          accessibilityRole="toolbar"
-          accessibilityLabel="Section filter"
-          style={[styles.segmentedControl, {
-            backgroundColor: friendDetailTheme.surface,
-            marginHorizontal: 16,
-            marginBottom: 4,
-          }]}>
-          {SECTION_TABS.map(tab => {
-            const isSelected = sectionTab === tab.id;
-            const activeColor = isDark ? '#0D9488' : '#0F4C3A';
-            return (
-              <TouchableOpacity
-                key={tab.id}
-                accessibilityRole="button"
-                accessibilityLabel={tab.label}
-                accessibilityState={{ selected: isSelected }}
-                activeOpacity={0.78}
-                onPress={() => setSectionTab(tab.id)}
-                style={[
-                  styles.segmentedOption,
-                  isSelected && {
-                    backgroundColor: isDark ? 'rgba(13, 148, 136, 0.10)' : '#ffffff',
-                    borderRadius: 8,
-                    borderWidth: 1,
-                    borderColor: isDark ? '#0D9488' : '#0F4C3A',
-                  }
-                ]}>
-                <ThemedText style={[styles.segmentedLabel, { color: isSelected ? activeColor : colors.textSecondary }]}>
-                  {tab.label}
-                </ThemedText>
-              </TouchableOpacity>
-            );
-          })}
+          <TouchableOpacity 
+            style={[
+              styles.tabTile, 
+              { backgroundColor: isDark ? 'rgba(20, 35, 38, 0.95)' : '#ffffff' }
+            ]}
+            onPress={() => router.push(`/groups/stats/${id}`)}>
+            <IconSymbol size={20} name="chart.bar.fill" color={colors.textSecondary} />
+            <ThemedText style={[styles.tabTileLabel, { color: colors.textSecondary }]}>
+              Stats
+            </ThemedText>
+          </TouchableOpacity>
         </View>
 
         {/* Members Section */}
@@ -1230,75 +1252,91 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
-  quickActions: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-    gap: 10,
-    marginVertical: 12,
+  summaryCardGroupName: {
+    fontSize: 22,
+    fontWeight: '700',
+    marginBottom: 6,
+    textAlign: 'center',
   },
-  quickActionButton: {
-    flex: 1,
-    borderRadius: 10,
-    overflow: 'hidden',
+  summaryCardTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    marginBottom: 8,
   },
-  secondaryQuickActionButton: {
-    minHeight: 44,
-    borderWidth: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 10,
-    gap: 6,
+  summaryCardAmount: {
+    fontSize: 40,
+    lineHeight: 50,
+    marginBottom: 4,
   },
-  quickActionGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 44,
-    paddingVertical: 10,
-    gap: 6,
-  },
-  quickActionText: {
-    color: '#fff',
-    fontWeight: '600',
+  summaryCardSubtitle: {
     fontSize: 14,
+    marginBottom: 20,
   },
-  quickActionSolidButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 44,
-    paddingVertical: 10,
-    gap: 6,
-    borderRadius: 10,
-    flex: 1,
+  cardQuickActions: {
+    width: '100%',
     paddingHorizontal: 8,
   },
-  quickActionTextSolid: {
-    color: '#ffffff',
-    fontWeight: '600',
-    fontSize: 14,
-  },
-  segmentedControl: {
-    flexDirection: 'row',
-    borderRadius: 10,
-    padding: 3,
-    marginBottom: 12,
-    gap: 3,
-  },
-  segmentedOption: {
-    flex: 1,
+  cardQuickActionButton: {
+    width: '100%',
+    height: 48,
+    borderRadius: 12,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 4,
-    gap: 5,
-    minHeight: 36,
+    gap: 8,
   },
-  segmentedLabel: {
-    fontSize: 13,
+  cardQuickActionText: {
+    color: '#ffffff',
+    fontSize: 15,
     fontWeight: '600',
+  },
+  tabTilesRow: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    gap: 12,
+    marginVertical: 18,
+  },
+  tabTile: {
+    flex: 1,
+    height: 72,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 6,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  tabTileActive: {
+    elevation: 3,
+    shadowOpacity: 0.08,
+  },
+  tabTileLabel: {
+    fontSize: 12,
+  },
+  amountBlock: {
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+    paddingLeft: 8,
+  },
+  expenseAmount: {
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  badge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+  },
+  badgeText: {
+    fontSize: 10,
+    fontWeight: '700',
   },
   headerTitleContainer: {
     flex: 1,
@@ -1397,16 +1435,20 @@ const styles = StyleSheet.create({
   expenseCard: {
     flexDirection: 'row',
     alignItems: 'center',
+    paddingHorizontal: 12,
     paddingVertical: 10,
-    paddingHorizontal: 10,
+    marginBottom: 8,
     borderRadius: 12,
-    borderWidth: 1,
-    marginBottom: 6,
-    backgroundColor: 'rgba(20, 35, 38, 0.6)',
+    borderWidth: 0,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    elevation: 3,
   },
   expenseIcon: {
-    width: 34,
-    height: 34,
+    width: 38,
+    height: 38,
     borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
@@ -1414,15 +1456,16 @@ const styles = StyleSheet.create({
   },
   expenseInfo: {
     flex: 1,
+    minWidth: 0,
   },
   expenseDate: {
     fontSize: 12,
-    opacity: 0.5,
+    lineHeight: 16,
     marginTop: 2,
   },
-  expenseAmount: {
-    fontSize: 15,
-    fontWeight: '600',
+  expenseDescription: {
+    flexShrink: 1,
+    fontSize: 16,
   },
   searchContainer: {
     flexDirection: 'row',

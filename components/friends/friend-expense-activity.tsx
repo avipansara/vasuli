@@ -1,9 +1,9 @@
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import type { FriendActivityItem } from '@/services/friend-detail-service';
+import type { MutableRefObject } from 'react';
 import { Animated, StyleSheet, TouchableOpacity, View } from 'react-native';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
-import type { MutableRefObject } from 'react';
 
 type ExpenseItem = Extract<FriendActivityItem, { type: 'expense' }>;
 
@@ -19,6 +19,15 @@ type FriendExpenseActivityProps = {
   onDeleteExpense: (expenseId: string) => void;
   onOpenExpense: (expenseId: string) => void;
   formatDate: (timestamp: number) => string;
+  friendName: string;
+};
+
+const CATEGORY_MAP: Record<string, { icon: any, lightBg: string, darkBg: string, lightColor: string, darkColor: string }> = {
+  'Food': { icon: 'fork.knife', lightBg: '#FCE7F3', darkBg: 'rgba(236, 72, 153, 0.15)', lightColor: '#BE185D', darkColor: '#F472B6' },
+  'Transport': { icon: 'car.fill', lightBg: '#DCFCE7', darkBg: 'rgba(34, 197, 94, 0.15)', lightColor: '#15803D', darkColor: '#4ADE80' },
+  'Travel': { icon: 'airplane', lightBg: '#E0E7FF', darkBg: 'rgba(99, 102, 241, 0.15)', lightColor: '#4338CA', darkColor: '#818CF8' },
+  'Groceries': { icon: 'cart.fill', lightBg: '#FEF3C7', darkBg: 'rgba(245, 158, 11, 0.15)', lightColor: '#B45309', darkColor: '#FCD34D' },
+  'Utilities': { icon: 'bolt.fill', lightBg: '#DBEAFE', darkBg: 'rgba(59, 130, 246, 0.15)', lightColor: '#1D4ED8', darkColor: '#60A5FA' },
 };
 
 export function FriendExpenseActivity({
@@ -33,9 +42,14 @@ export function FriendExpenseActivity({
   onDeleteExpense,
   onOpenExpense,
   formatDate,
+  friendName,
 }: FriendExpenseActivityProps) {
   const expense = item.expense;
   const canEdit = expense.createdBy === currentUserId || expense.paidBy === currentUserId;
+  const categoryStyle = (expense.category && CATEGORY_MAP[expense.category])
+    ? CATEGORY_MAP[expense.category]
+    : { icon: 'arrow.up.right', lightBg: '#F3F4F6', darkBg: 'rgba(156, 163, 175, 0.15)', lightColor: '#4B5563', darkColor: '#9CA3AF' };
+
 
   return (
     <Swipeable
@@ -48,7 +62,7 @@ export function FriendExpenseActivity({
         <Animated.View style={[styles.swipeActionLeft, {
           backgroundColor: friendDetailTheme.actionSurface,
           opacity: dragX.interpolate({ inputRange: [0, 80], outputRange: [0, 1], extrapolate: 'clamp' }),
-        }]}> 
+        }]}>
           <TouchableOpacity
             onPress={() => onEditExpense(expense.id)}
             accessibilityRole="button"
@@ -64,7 +78,7 @@ export function FriendExpenseActivity({
         <Animated.View style={[styles.swipeActionRight, {
           backgroundColor: friendDetailTheme.dangerSurface,
           opacity: dragX.interpolate({ inputRange: [-80, 0], outputRange: [1, 0], extrapolate: 'clamp' }),
-        }]}> 
+        }]}>
           <TouchableOpacity
             onPress={() => onDeleteExpense(expense.id)}
             accessibilityRole="button"
@@ -97,30 +111,37 @@ export function FriendExpenseActivity({
           shadowOpacity: isDark ? 0.35 : 0.09,
           shadowRadius: 10,
           elevation: 3,
-        }]}> 
+        }]}>
           <View style={[styles.expenseIcon, {
-            backgroundColor: expense.paidBy === currentUserId
-              ? (isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(15, 76, 58, 0.08)')
-              : (isDark ? 'rgba(239, 68, 68, 0.14)' : 'rgba(239, 68, 68, 0.08)'),
-          }]}> 
+            backgroundColor: isDark ? categoryStyle.darkBg : categoryStyle.lightBg,
+            borderRadius: 24,
+            width: 48,
+            height: 48,
+          }]}>
             <IconSymbol
-              size={15}
-              name={expense.groupId ? 'person.2.fill' : 'arrow.up.right'}
-              color={expense.paidBy === currentUserId ? (isDark ? '#2DD4BF' : '#0F4C3A') : colors.error}
+              size={20}
+              name={categoryStyle.icon}
+              color={isDark ? categoryStyle.darkColor : categoryStyle.lightColor}
             />
           </View>
           <View style={styles.expenseInfo}>
             <ThemedText type="subtitle" style={[styles.expenseDescription, { color: colors.text }]} numberOfLines={1}>
               {expense.description}
             </ThemedText>
-            <ThemedText style={[styles.expenseDate, { color: colors.textSecondary }]} numberOfLines={1}>
-              {formatDate(expense.date)} • {expense.paidByName} paid ${expense.amount.toFixed(2)}
+            <ThemedText style={[styles.expenseDate, { color: colors.textSecondary }]} numberOfLines={2}>
+              {expense.paidBy === currentUserId ? 'Paid by you' : `Paid by ${expense.paidByName}`}{'\n'}{formatDate(expense.date)}
             </ThemedText>
           </View>
-          <ThemedText type="subtitle" style={[styles.expenseShare, { color: expense.paidBy === currentUserId ? (isDark ? '#2DD4BF' : '#0F4C3A') : colors.error }]}>
-            {expense.paidBy === currentUserId ? `+$${expense.friendShare.toFixed(2)}` : `-$${expense.yourShare.toFixed(2)}`}
-          </ThemedText>
-          <IconSymbol size={17} name="chevron.right" color={colors.textSecondary} style={styles.expenseChevron} />
+          <View style={styles.amountBlock}>
+            <ThemedText type="title" style={[styles.expenseAmount, { color: expense.paidBy === currentUserId ? friendDetailTheme.positive : friendDetailTheme.danger }]}>
+              {expense.paidBy === currentUserId ? `+$${expense.friendShare.toFixed(2)}` : `-$${expense.yourShare.toFixed(2)}`}
+            </ThemedText>
+            <View style={[styles.badge, { backgroundColor: expense.paidBy === currentUserId ? friendDetailTheme.positiveSurface : friendDetailTheme.dangerSurface }]}>
+              <ThemedText style={[styles.badgeText, { color: expense.paidBy === currentUserId ? friendDetailTheme.positive : friendDetailTheme.danger }]}>
+                {expense.paidBy === currentUserId ? `${friendName.split(' ')[0]} owes` : 'You owe'}
+              </ThemedText>
+            </View>
+          </View>
         </Animated.View>
       </TouchableOpacity>
     </Swipeable>
@@ -161,9 +182,11 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     borderRadius: 12,
     borderWidth: 0,
-    shadowOffset: { width: 0, height: 1 },
-    shadowRadius: 3,
-    elevation: 2,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    elevation: 3,
   },
   expenseIcon: {
     width: 38,
@@ -179,18 +202,30 @@ const styles = StyleSheet.create({
   },
   expenseDescription: {
     flexShrink: 1,
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 2,
+    fontSize: 16,
   },
   expenseDate: {
-    fontSize: 11,
+    fontSize: 12,
+    lineHeight: 16,
+    marginTop: 2,
   },
-  expenseShare: {
-    fontSize: 13,
+  amountBlock: {
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+    paddingLeft: 8,
+  },
+  expenseAmount: {
+    fontSize: 16,
     fontWeight: '700',
+    marginBottom: 4,
   },
-  expenseChevron: {
-    marginLeft: 8,
+  badge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+  },
+  badgeText: {
+    fontSize: 10,
+    fontWeight: '700',
   },
 });

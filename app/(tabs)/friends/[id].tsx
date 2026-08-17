@@ -1,7 +1,7 @@
-import { SettleUpModal } from '@/components/friends/settle-up-modal';
 import { FriendExpenseActivity } from '@/components/friends/friend-expense-activity';
 import { FriendExpenseActivityEvent } from '@/components/friends/friend-expense-activity-event';
 import { FriendSettlementActivity } from '@/components/friends/friend-settlement-activity';
+import { SettleUpModal } from '@/components/friends/settle-up-modal';
 import { ThemedText } from '@/components/themed-text';
 import { AsyncErrorState } from '@/components/ui/async-error-state';
 import { IconSymbol, type IconSymbolName } from '@/components/ui/icon-symbol';
@@ -10,13 +10,13 @@ import { useAuth } from '@/contexts/auth-context-otp';
 import { useFriendDetailController } from '@/hooks/use-friend-detail-controller';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
-import type { FriendDetailData } from '@/services/friend-detail-service';
 import {
   filterFriendActivity,
   friendDetailModule,
   groupFriendActivityByMonth,
   type FriendActivityFilter,
 } from '@/services/friend-detail-module';
+import type { FriendDetailData } from '@/services/friend-detail-service';
 import type { GroupDetailReadModel } from '@/services/group-detail-read-model';
 import { applySettlementToGroupReadModel } from '@/services/group-detail-read-model';
 import { queryKeys } from '@/services/query-keys';
@@ -26,12 +26,6 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Animated, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
-import Reanimated, {
-  Easing as ReanimatedEasing,
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming,
-} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface UserWithBalance extends User {
@@ -53,8 +47,6 @@ const ACTIVITY_FILTERS: { id: ActivityFilter; label: string; icon: IconSymbolNam
 export default function FriendDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { gradients, colors, friendDetail: friendDetailTheme, isDark } = useThemeColors();
-  const [activityFilter, setActivityFilter] = useState<ActivityFilter>('all');
-  const [segmentedWidth, setSegmentedWidth] = useState(0);
   const [settleModalVisible, setSettleModalVisible] = useState(false);
   const [isRemovingFriend, setIsRemovingFriend] = useState(false);
   const [isSettlingUp, setIsSettlingUp] = useState(false);
@@ -98,14 +90,6 @@ export default function FriendDetailScreen() {
   const [fadeAnim] = useState(() => new Animated.Value(0));
   const [slideAnim] = useState(() => new Animated.Value(30));
   const [scaleAnim] = useState(() => new Animated.Value(0.98));
-  const tabIndicatorX = useSharedValue(0);
-  const segmentWidth = segmentedWidth > 0
-    ? (segmentedWidth - (SEGMENTED_CONTROL_PADDING * 2) - (SEGMENTED_CONTROL_GAP * (ACTIVITY_FILTERS.length - 1))) / ACTIVITY_FILTERS.length
-    : 0;
-
-  const tabIndicatorStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: tabIndicatorX.value }],
-  }));
   const {
     data: friendDetail,
     error,
@@ -121,16 +105,9 @@ export default function FriendDetailScreen() {
   const loading = isLoading && !friendDetail;
   const loadError = error ? getFetchErrorMessage(error) : null;
 
-  const filteredActivity = filterFriendActivity(activity, activityFilter);
-  const expenseActivityCount = filteredActivity.filter(item => item.type === 'expense').length;
-  const updateActivityCount = filteredActivity.length - expenseActivityCount;
-  const activityCountLabel = activityFilter === 'expenses'
-    ? `${expenseActivityCount} ${expenseActivityCount === 1 ? 'expense' : 'expenses'}`
-    : activityFilter === 'updates'
-      ? `${updateActivityCount} ${updateActivityCount === 1 ? 'update' : 'updates'}`
-      : `${filteredActivity.length} items`;
-
+  const filteredActivity = filterFriendActivity(activity, 'all');
   const groupedActivity = groupFriendActivityByMonth(filteredActivity);
+  const sharedExpensesCount = expenses.length;
 
   useEffect(() => {
     if (friendDetail === undefined) return;
@@ -145,22 +122,6 @@ export default function FriendDetailScreen() {
   const loadFriendData = useCallback(async () => {
     await refetch();
   }, [refetch]);
-
-  const handleActivityFilterChange = useCallback((nextFilter: ActivityFilter) => {
-    if (nextFilter === activityFilter) return;
-    setActivityFilter(nextFilter);
-  }, [activityFilter]);
-
-  useEffect(() => {
-    if (segmentWidth <= 0) return;
-
-    const selectedIndex = ACTIVITY_FILTERS.findIndex(filter => filter.id === activityFilter);
-    // eslint-disable-next-line react-hooks/immutability -- Reanimated shared values are mutable animation refs.
-    tabIndicatorX.value = withTiming(selectedIndex * (segmentWidth + SEGMENTED_CONTROL_GAP), {
-      duration: 210,
-      easing: ReanimatedEasing.out(ReanimatedEasing.cubic),
-    });
-  }, [activityFilter, segmentWidth, tabIndicatorX]);
 
   useEffect(() => {
     if (!loading && friend) {
@@ -485,6 +446,11 @@ export default function FriendDetailScreen() {
     : isOwing
       ? `You owe ${friend.name.split(' ')[0]}`
       : 'All settled up';
+  const balanceCardTitle = isOwed
+    ? `${friend.name.split(' ')[0].toUpperCase()} OWES YOU`
+    : isOwing
+      ? `YOU OWE ${friend.name.split(' ')[0].toUpperCase()}`
+      : 'ALL SETTLED UP';
   const balanceAccessibilityValue = `${balanceCopy}, $${Math.abs(balance).toFixed(2)}`;
 
 
@@ -575,138 +541,79 @@ export default function FriendDetailScreen() {
               { scale: summaryScale }
             ]
           }}>
-            <View
+            <LinearGradient
+              colors={
+                isOwing
+                  ? (isDark ? ['rgba(254, 226, 226, 0.08)', 'rgba(20, 20, 25, 0.95)'] : ['#FFF2F4', '#FFFFFF'])
+                  : isOwed
+                    ? (isDark ? ['rgba(209, 250, 229, 0.08)', 'rgba(20, 20, 25, 0.95)'] : ['#F0FDF4', '#FFFFFF'])
+                    : (isDark ? ['rgba(243, 244, 246, 0.05)', 'rgba(20, 20, 25, 0.95)'] : ['#F9FAFB', '#FFFFFF'])
+              }
+              start={{ x: 1, y: 0 }}
+              end={{ x: 0, y: 1 }}
               accessible
               accessibilityRole="summary"
               accessibilityLabel={`${friend.name}${friend.email ? `, ${friend.email}` : ''}, ${balanceAccessibilityValue}`}
               accessibilityLiveRegion="polite"
               style={[styles.summaryCard, {
-                backgroundColor: isDark ? 'rgba(20, 35, 38, 0.95)' : '#ffffff',
                 borderWidth: 0,
-                shadowColor: isDark ? '#000000' : '#475569',
-                shadowOffset: { width: 0, height: 3 },
-                shadowOpacity: isDark ? 0.35 : 0.09,
-                shadowRadius: 10,
-                elevation: 3,
+                shadowColor: '#000000',
+                shadowOffset: { width: 0, height: 10 },
+                shadowOpacity: isDark ? 0.45 : 0.12,
+                shadowRadius: 20,
+                elevation: 8,
+                alignItems: 'center',
+                paddingVertical: 24,
+                paddingHorizontal: 16,
               }]}>
-              <View style={styles.summaryTopRow}>
-                <View style={[styles.summaryAvatar, {
-                  backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(15, 76, 58, 0.1)',
-                  borderColor: isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(15, 76, 58, 0.2)',
-                }]}>
-                  <ThemedText style={[styles.summaryAvatarText, { color: isDark ? '#2DD4BF' : '#0F4C3A' }]}>
-                    {friend.name.charAt(0).toUpperCase()}
-                  </ThemedText>
-                </View>
-                <View style={styles.summaryIdentity}>
-                  <ThemedText type="title" numberOfLines={1} style={[styles.summaryName, { color: colors.text }]}>
-                    {friend.name}
-                  </ThemedText>
-                  {friend.email && (
-                    <ThemedText numberOfLines={1} style={[styles.summaryEmail, { color: colors.textSecondary }]}>
-                      {friend.email}
-                    </ThemedText>
-                  )}
-                </View>
-              </View>
-              <View style={styles.summaryBalanceRow}>
-                <View style={[styles.balanceIndicator, { backgroundColor: balanceColor }]} />
-                <ThemedText style={[styles.balanceLabel, { color: colors.textSecondary }]}>
-                  {balanceCopy}
-                </ThemedText>
-              </View>
-              <ThemedText style={[styles.balanceAmount, { color: balanceColor }]}>
-                ${Math.abs(balance).toFixed(2)}
+
+              <ThemedText type='defaultSemiBold' style={[styles.summaryCardTitle, { color: balanceColor }]}>
+                {balanceCardTitle}
               </ThemedText>
-            </View>
+
+              <ThemedText type='subtitle' style={[styles.summaryCardAmount, { color: balanceColor }]}>
+                {isOwing ? '-' : isOwed ? '+' : ''}${Math.abs(balance).toFixed(2)}
+              </ThemedText>
+
+              <ThemedText style={[styles.summaryCardSubtitle, { color: colors.textSecondary }]}>
+                Across {sharedExpensesCount} shared expenses
+              </ThemedText>
+
+              {balance !== 0 && (
+                <View style={styles.cardQuickActions}>
+                  <TouchableOpacity
+                    style={[styles.cardQuickActionButton, {
+                      backgroundColor: isDark ? '#0F3E3A' : '#043424', // Dark green match
+                      opacity: isSettlingUp ? 0.7 : 1,
+                    }]}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Settle up with ${friend.name}`}
+                    accessibilityHint="Opens the settlement form for this balance"
+                    accessibilityState={{ disabled: isSettlingUp, busy: isSettlingUp }}
+                    disabled={isSettlingUp}
+                    onPress={() => setSettleModalVisible(true)}>
+                    <IconSymbol size={18} name="banknote" color="#ffffff" />
+                    <ThemedText style={styles.cardQuickActionText}>Settle Up</ThemedText>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </LinearGradient>
           </Animated.View>
         </Animated.View>
 
-        {/* Quick Actions */}
-        <View style={styles.quickActions}>
-          <TouchableOpacity
-            style={[styles.quickActionButton, {
-              opacity: balance === 0 ? 0.5 : 1,
-            }]}
-            accessibilityRole="button"
-            accessibilityLabel={`Settle up with ${friend.name}`}
-            accessibilityHint="Opens the settlement form for this balance"
-            accessibilityState={{ disabled: isSettlingUp || balance === 0, busy: isSettlingUp }}
-            disabled={isSettlingUp || balance === 0}
-            onPress={() => setSettleModalVisible(true)}>
-            <View style={[styles.quickActionSolidButton, {
-              backgroundColor: isDark ? '#0D9488' : '#0F4C3A',
-            }]}>
-              <IconSymbol size={18} name="checkmark" color="ffffff" />
-              <ThemedText style={[styles.quickActionTextSolid]}>Settle Up</ThemedText>
-            </View>
-          </TouchableOpacity>
-        </View>
 
-        <View
-          accessibilityRole="toolbar"
-          accessibilityLabel="Activity filter"
-          onLayout={({ nativeEvent }) => setSegmentedWidth(nativeEvent.layout.width)}
-          style={[styles.segmentedControl, {
-            backgroundColor: friendDetailTheme.surface,
-            borderColor: friendDetailTheme.surfaceBorder,
-          }]}>
-          {segmentWidth > 0 && (
-            <Reanimated.View
-              pointerEvents="none"
-              style={[
-                styles.segmentedIndicator,
-                {
-                  width: segmentWidth,
-                  backgroundColor: isDark ? 'rgba(13, 148, 136, 0.08)' : '#ffffff',
-                  borderColor: isDark ? '#0D9488' : '#0F4C3A',
-                  borderWidth: 1,
-                },
-                tabIndicatorStyle,
-              ]}
-            />
-          )}
-          {ACTIVITY_FILTERS.map(filter => {
-            const isSelected = activityFilter === filter.id;
-            const activeColor = isDark ? '#0D9488' : '#0F4C3A';
-
-            return (
-              <TouchableOpacity
-                key={filter.id}
-                accessibilityRole="button"
-                accessibilityLabel={filter.label}
-                accessibilityState={{ selected: isSelected }}
-                activeOpacity={0.78}
-                onPress={() => handleActivityFilterChange(filter.id)}
-                style={[
-                  styles.segmentedOption,
-                ]}>
-                <IconSymbol
-                  size={14}
-                  name={filter.icon}
-                  color={isSelected ? activeColor : colors.textSecondary}
-                />
-                <ThemedText
-                  style={[
-                    styles.segmentedLabel,
-                    { color: isSelected ? activeColor : colors.textSecondary },
-                  ]}>
-                  {filter.label}
-                </ThemedText>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
 
         {/* Expense History */}
         <View style={styles.historySection}>
           <View style={styles.sectionHeader}>
             <ThemedText type="subtitle" style={[styles.sectionTitle, { color: colors.text }]}>
-              Activity
+              Activity with {friend.name.split(' ')[0]}
             </ThemedText>
-            <ThemedText style={[styles.expenseCount, { color: colors.textSecondary }]}>
-              {activityCountLabel}
-            </ThemedText>
+            <TouchableOpacity onPress={() => Alert.alert('Not Implemented', 'View All activity screen is coming soon!')}>
+              <ThemedText style={[styles.viewAllText, { color: isDark ? '#2DD4BF' : '#0F4C3A' }]}>
+                View All
+              </ThemedText>
+            </TouchableOpacity>
           </View>
 
           <View>
@@ -716,12 +623,10 @@ export default function FriendDetailScreen() {
                   <IconSymbol size={32} name="doc.text" color={friendDetailTheme.actionIcon} />
                 </View>
                 <ThemedText style={[styles.emptyTitle, { color: colors.text }]}>
-                  {activityFilter === 'updates' ? 'No updates yet' : 'No expenses yet'}
+                  No expenses yet
                 </ThemedText>
                 <ThemedText style={[styles.emptyText, { color: colors.textSecondary }]}>
-                  {activityFilter === 'updates'
-                    ? `Changes and settlements with ${friend.name.split(' ')[0]} will show here`
-                    : `Add an expense to start tracking with ${friend.name.split(' ')[0]}`}
+                  Add an expense to start tracking with {friend.name.split(' ')[0]}
                 </ThemedText>
               </View>
             ) : (
@@ -747,8 +652,9 @@ export default function FriendDetailScreen() {
                           onDeleteExpense={handleDeleteExpense}
                           onOpenExpense={handleOpenExpense}
                           formatDate={formatDate}
+                          friendName={friend.name}
                         />
-                          : item.type === 'settlement'
+                        : item.type === 'settlement'
                           ? <FriendSettlementActivity
                             item={item}
                             friendName={friend.name}
@@ -880,58 +786,38 @@ const styles = StyleSheet.create({
     borderWidth: 0,
     padding: 12,
   },
-  summaryTopRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  summaryCardTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.5,
     marginBottom: 8,
   },
-  summaryAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 11,
-    borderWidth: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 10,
+  summaryCardAmount: {
+    fontSize: 40,
+    lineHeight: 50,
+    marginBottom: 4,
   },
-  summaryIdentity: {
-    flex: 1,
-    minWidth: 0,
+  summaryCardSubtitle: {
+    fontSize: 14,
+    marginBottom: 20,
   },
-  summaryAvatarText: {
-    fontSize: 18,
-    fontWeight: '700',
-    lineHeight: 22,
+  cardQuickActions: {
+    width: '100%',
+    paddingHorizontal: 8,
   },
-  summaryName: {
-    fontSize: 16,
-    fontWeight: '700',
-    lineHeight: 20,
-  },
-  summaryEmail: {
-    fontSize: 12,
-    lineHeight: 16,
-    marginTop: 1,
-  },
-  summaryBalanceRow: {
+  cardQuickActionButton: {
+    width: '100%',
+    height: 48,
+    borderRadius: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 2,
+    justifyContent: 'center',
+    gap: 8,
   },
-  balanceIndicator: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    marginRight: 6,
-  },
-  balanceLabel: {
-    fontSize: 12,
+  cardQuickActionText: {
+    color: '#ffffff',
+    fontSize: 15,
     fontWeight: '600',
-  },
-  balanceAmount: {
-    fontSize: 26,
-    fontWeight: '700',
-    lineHeight: 32,
   },
   headerTitleContainer: {
     position: 'absolute',
@@ -989,78 +875,8 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.16,
     shadowRadius: 14,
   },
-  quickActions: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-    gap: 12,
-    marginBottom: 16,
-  },
-  quickActionButton: {
-    flex: 1,
-  },
-  quickActionSolidButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 12,
-    height: 48,
-    gap: 8,
-  },
-  quickActionOutlineButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 12,
-    borderWidth: 1.5,
-    height: 48,
-    gap: 8,
-  },
-  quickActionTextSolid: {
-    color: '#ffffff',
+  viewAllText: {
     fontSize: 14,
-    fontWeight: '700',
-  },
-  quickActionTextOutline: {
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  segmentedControl: {
-    flexDirection: 'row',
-    marginHorizontal: 16,
-    marginBottom: 14,
-    borderRadius: 12,
-    borderWidth: 1,
-    padding: 3,
-    gap: 3,
-    overflow: 'hidden',
-    position: 'relative',
-  },
-  segmentedIndicator: {
-    position: 'absolute',
-    top: SEGMENTED_CONTROL_PADDING,
-    bottom: SEGMENTED_CONTROL_PADDING,
-    left: SEGMENTED_CONTROL_PADDING,
-    borderRadius: 9,
-    borderWidth: 0,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.15,
-    shadowRadius: 3,
-  },
-  segmentedOption: {
-    flex: 1,
-    minHeight: 36,
-    borderRadius: 9,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 5,
-    paddingHorizontal: 6,
-    zIndex: 1,
-  },
-  segmentedLabel: {
-    fontSize: 12,
     fontWeight: '600',
   },
   content: {
