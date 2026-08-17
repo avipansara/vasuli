@@ -1,14 +1,13 @@
 /* eslint-disable react-hooks/refs -- OTP focus is advanced from native input events, not during render. */
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useAuth } from '@/contexts/auth-context-otp';
-import { PENDING_INVITE_PATH_KEY } from '@/lib/invite-deeplink';
 import { useThemeColors } from '@/hooks/use-theme-colors';
+import { PENDING_INVITE_PATH_KEY } from '@/lib/invite-deeplink';
 import { otpService } from '@/services/otp-service';
 import { isEmailValid, normalizeEmail } from '@/utils/validation';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Link, router, type Href } from 'expo-router';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Alert,
   Animated,
@@ -32,11 +31,11 @@ export default function SignInOTPScreen() {
   const { colors, isDark } = useThemeColors();
   const { refreshUser } = useAuth();
   const [step, setStep] = useState<Step>('contact');
-  
+
   const [email, setEmail] = useState('');
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const otpInputs = useRef<(TextInput | null)[]>([]);
-  
+
   const [loading, setLoading] = useState(false);
   const [resendTimer, setResendTimer] = useState(0);
 
@@ -254,7 +253,7 @@ export default function SignInOTPScreen() {
 
   async function handleResendCode() {
     if (resendTimer > 0) return;
-    
+
     setLoading(true);
     try {
       const result = await otpService.sendSignInCode({
@@ -276,45 +275,44 @@ export default function SignInOTPScreen() {
   }
 
   const renderContactStep = () => (
-    <View style={styles.stepContainer}>
+    <View>
       {/* Header */}
       <View style={styles.header}>
-        <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-          <LinearGradient
-            colors={isDark ? ['#2DD4BF', '#14B8A6'] : ['#22C55E', '#10B981']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.iconGradient}>
-            <IconSymbol name="person.fill" size={32} color="#fff" />
-          </LinearGradient>
-        </Animated.View>
-        <Text style={[styles.title, { color: isDark ? '#fff' : colors.text }]}>
+        <View style={[
+          styles.iconBox,
+          { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : '#0F4C3A' }
+        ]}>
+          <IconSymbol name="person" size={30} color={isDark ? '#2DD4BF' : '#ffffff'} />
+        </View>
+        <Text style={[styles.title, { color: isDark ? '#ffffff' : '#0F172A' }]}>
           Welcome back
         </Text>
-        <Text style={[styles.subtitle, { color: isDark ? 'rgba(255,255,255,0.6)' : colors.textSecondary }]}>
+        <Text style={[styles.subtitle, { color: isDark ? 'rgba(255,255,255,0.65)' : '#475569' }]}>
           Sign in to continue to Vasuli
         </Text>
       </View>
 
       {/* Input */}
       <View style={styles.inputSection}>
-        <Text style={[styles.inputLabel, { color: isDark ? 'rgba(255,255,255,0.7)' : colors.textSecondary }]}>
-          Email address
+        <Text style={[styles.inputLabel, { color: isDark ? 'rgba(255,255,255,0.85)' : '#334155' }]}>
+          Email
         </Text>
-        <View
-          style={[styles.inputContainer, { 
-            backgroundColor: isDark ? 'rgba(45, 212, 191, 0.1)' : 'rgba(34, 197, 94, 0.08)',
-            borderColor: isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(34, 197, 94, 0.3)',
-            paddingVertical: Platform.OS === 'android' ? 12 : 16,
-          }]}><IconSymbol
-            name="envelope.fill"
-            size={20}
-            color={isDark ? '#2DD4BF' : '#22C55E'}
+        <View style={[
+          styles.inputContainer,
+          {
+            backgroundColor: isDark ? 'rgba(15, 31, 34, 0.6)' : '#ffffff',
+            borderColor: isDark ? 'rgba(45, 212, 191, 0.25)' : '#E2E8F0',
+          }
+        ]}>
+          <IconSymbol
+            name="envelope"
+            size={18}
+            color={isDark ? '#2DD4BF' : '#0F4C3A'}
           />
           <TextInput
-            style={[styles.input, { color: isDark ? '#fff' : colors.text }]}
+            style={[styles.input, { color: isDark ? '#ffffff' : '#0F172A' }]}
             placeholder="you@example.com"
-            placeholderTextColor={isDark ? '#6B7280' : '#9CA3AF'}
+            placeholderTextColor={isDark ? '#64748B' : '#94A3B8'}
             value={email}
             onChangeText={setEmail}
             keyboardType="email-address"
@@ -330,29 +328,24 @@ export default function SignInOTPScreen() {
         disabled={loading || !isContactValid()}
         style={({ pressed }) => [
           styles.primaryButton,
+          { backgroundColor: isDark ? '#0D9488' : '#0F4C3A' },
           pressed && styles.buttonPressed,
           (loading || !isContactValid()) && styles.buttonDisabled,
         ]}>
-        <LinearGradient
-          colors={isDark ? ['#2DD4BF', '#14B8A6'] : ['#22C55E', '#10B981']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={styles.buttonGradient}>
-          {loading ? (
-            <Text style={styles.buttonText}>Sending code...</Text>
-          ) : (
-            <>
-              <Text style={styles.buttonText}>Continue</Text>
-              <IconSymbol name="arrow.right" size={18} color="#fff" />
-            </>
-          )}
-        </LinearGradient>
+        {loading ? (
+          <Text style={styles.buttonText}>Sending code...</Text>
+        ) : (
+          <View style={styles.buttonContentRow}>
+            <Text style={styles.buttonText}>Continue</Text>
+            <IconSymbol name="arrow.right" size={18} color="#ffffff" />
+          </View>
+        )}
       </Pressable>
 
       <View style={styles.oauthDivider}>
-        <View style={[styles.oauthDividerLine, { backgroundColor: isDark ? 'rgba(255,255,255,0.15)' : '#E5E7EB' }]} />
-        <Text style={[styles.oauthDividerText, { color: isDark ? 'rgba(255,255,255,0.5)' : colors.textSecondary }]}>or</Text>
-        <View style={[styles.oauthDividerLine, { backgroundColor: isDark ? 'rgba(255,255,255,0.15)' : '#E5E7EB' }]} />
+        <View style={[styles.oauthDividerLine, { backgroundColor: isDark ? 'rgba(255,255,255,0.15)' : '#E2E8F0' }]} />
+        <Text style={[styles.oauthDividerText, { color: isDark ? 'rgba(255,255,255,0.5)' : '#64748B' }]}>or</Text>
+        <View style={[styles.oauthDividerLine, { backgroundColor: isDark ? 'rgba(255,255,255,0.15)' : '#E2E8F0' }]} />
       </View>
 
       <Pressable
@@ -361,24 +354,27 @@ export default function SignInOTPScreen() {
         disabled={loading}
         style={({ pressed }) => [
           styles.googleButton,
-          { borderColor: isDark ? 'rgba(255,255,255,0.2)' : '#D1D5DB', backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#fff' },
+          {
+            borderColor: isDark ? 'rgba(255,255,255,0.2)' : '#E2E8F0',
+            backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#ffffff',
+          },
           pressed && styles.buttonPressed,
           loading && styles.buttonDisabled,
         ]}>
         <View style={styles.googleMark}>
           <Text style={styles.googleMarkText}>G</Text>
         </View>
-        <Text style={[styles.googleButtonText, { color: isDark ? '#fff' : colors.text }]}>Continue with Google</Text>
+        <Text style={[styles.googleButtonText, { color: isDark ? '#ffffff' : '#1E293B' }]}>Continue with Google</Text>
       </Pressable>
 
       {/* Footer */}
       <View style={styles.footer}>
-        <Text style={[styles.footerText, { color: isDark ? 'rgba(255,255,255,0.5)' : colors.textSecondary }]}>
-          {"Don't have an account? "}
+        <Text style={[styles.footerText, { color: isDark ? 'rgba(255,255,255,0.6)' : '#475569' }]}>
+          {"Don’t have an account? "}
         </Text>
         <Link href="/sign-up-otp" asChild>
           <Pressable>
-            <Text style={[styles.footerLink, { color: isDark ? '#2DD4BF' : '#22C55E' }]}>
+            <Text style={[styles.footerLink, { color: isDark ? '#2DD4BF' : '#0F4C3A' }]}>
               Sign up
             </Text>
           </Pressable>
@@ -389,155 +385,107 @@ export default function SignInOTPScreen() {
 
   const renderOTPStep = () => (
     <View style={styles.otpContainer}>
-      {/* Fixed Back Button */}
-      <Pressable 
-        onPress={() => setStep('contact')} 
-        style={[styles.backButton, { 
-          backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)',
-          borderColor: isDark ? 'rgba(45, 212, 191, 0.4)' : 'rgba(34, 197, 94, 0.3)',
+      <Pressable
+        onPress={() => setStep('contact')}
+        style={[styles.backButton, {
+          backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(15, 76, 58, 0.08)',
+          borderColor: isDark ? 'rgba(45, 212, 191, 0.4)' : 'rgba(15, 76, 58, 0.2)',
         }]}>
-        <IconSymbol name="chevron.left" size={20} color={isDark ? '#2DD4BF' : '#22C55E'} />
+        <IconSymbol name="chevron.left" size={20} color={isDark ? '#2DD4BF' : '#0F4C3A'} />
       </Pressable>
 
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <View style={styles.stepContainer}>
-
-        {/* Header */}
-        <View style={styles.otpHeader}>
-          <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-            <LinearGradient
-              colors={isDark ? ['#2DD4BF', '#14B8A6'] : ['#22C55E', '#10B981']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.iconGradient}>
-              <IconSymbol name="lock.fill" size={32} color="#fff" />
-            </LinearGradient>
-          </Animated.View>
-          <Text style={[styles.title, { color: isDark ? '#fff' : colors.text }]}>
-            Enter verification code
-          </Text>
-          <Text style={[styles.subtitle, { color: isDark ? 'rgba(255,255,255,0.6)' : colors.textSecondary }]}>
-            {"We've sent a 6-digit code to"}
-          </Text>
-          <Text style={[styles.contactHighlight, { color: isDark ? '#fff' : colors.text }]}>
-            {email}
-          </Text>
-        </View>
-
-        {/* OTP Input */}
-        <View style={styles.otpSection}>
-          <View style={styles.otpRow}>
-            {otp.map((digit, index) => (
-              <TextInput
-                key={index}
-                ref={ref => { otpInputs.current[index] = ref; }}
-                style={[
-                  styles.otpInput,
-                  {
-                    backgroundColor: isDark ? '#1E293B' : '#F8FAFC',
-                    borderColor: digit
-                      ? (isDark ? '#2DD4BF' : '#22C55E')
-                      : (isDark ? '#374151' : '#E2E8F0'),
-                    color: isDark ? '#fff' : colors.text,
-                  },
-                ]}
-                value={digit}
-                onChangeText={(value) => handleOtpChange(index, value)}
-                onKeyPress={({ nativeEvent }) => handleOtpKeyPress(index, nativeEvent.key)}
-                keyboardType="number-pad"
-                maxLength={index === 0 ? 6 : 1}
-                selectTextOnFocus
-                textContentType="oneTimeCode"
-                autoComplete="sms-otp"
-              />
-            ))}
+        <View>
+          {/* Header */}
+          <View style={styles.otpHeader}>
+            <View style={[
+              styles.iconBox,
+              { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : '#0F4C3A' }
+            ]}>
+              <IconSymbol name="lock.fill" size={30} color={isDark ? '#2DD4BF' : '#ffffff'} />
+            </View>
+            <Text style={[styles.title, { color: isDark ? '#ffffff' : '#0F172A' }]}>
+              Enter verification code
+            </Text>
+            <Text style={[styles.subtitle, { color: isDark ? 'rgba(255,255,255,0.65)' : '#475569' }]}>
+              {"We’ve sent a 6-digit code to"}
+            </Text>
+            <Text style={[styles.contactHighlight, { color: isDark ? '#2DD4BF' : '#0F4C3A' }]}>
+              {email}
+            </Text>
           </View>
 
-          {/* Resend */}
-          <View style={styles.resendRow}>
-            {resendTimer > 0 ? (
-              <Text style={[styles.resendTimer, { color: isDark ? 'rgba(255,255,255,0.5)' : colors.textSecondary }]}>
-                Resend code in {resendTimer}s
-              </Text>
-            ) : (
-              <Pressable onPress={handleResendCode} disabled={loading}>
-                <Text style={[styles.resendLink, { color: isDark ? '#2DD4BF' : '#22C55E' }]}>
-                  Resend code
+          {/* OTP Input */}
+          <View style={styles.otpSection}>
+            <View style={styles.otpRow}>
+              {otp.map((digit, index) => (
+                <TextInput
+                  key={index}
+                  ref={ref => { otpInputs.current[index] = ref; }}
+                  style={[
+                    styles.otpInput,
+                    {
+                      backgroundColor: isDark ? 'rgba(15, 31, 34, 0.6)' : '#ffffff',
+                      borderColor: digit
+                        ? (isDark ? '#2DD4BF' : '#0F4C3A')
+                        : (isDark ? 'rgba(45, 212, 191, 0.2)' : '#E2E8F0'),
+                      color: isDark ? '#ffffff' : '#0F172A',
+                    },
+                  ]}
+                  value={digit}
+                  onChangeText={(value) => handleOtpChange(index, value)}
+                  onKeyPress={({ nativeEvent }) => handleOtpKeyPress(index, nativeEvent.key)}
+                  keyboardType="number-pad"
+                  maxLength={index === 0 ? 6 : 1}
+                  selectTextOnFocus
+                  textContentType="oneTimeCode"
+                  autoComplete="sms-otp"
+                />
+              ))}
+            </View>
+
+            {/* Resend */}
+            <View style={styles.resendRow}>
+              {resendTimer > 0 ? (
+                <Text style={[styles.resendTimer, { color: isDark ? 'rgba(255,255,255,0.5)' : '#64748B' }]}>
+                  Resend code in {resendTimer}s
                 </Text>
-              </Pressable>
-            )}
+              ) : (
+                <Pressable onPress={handleResendCode} disabled={loading}>
+                  <Text style={[styles.resendLink, { color: isDark ? '#2DD4BF' : '#0F4C3A' }]}>
+                    Resend code
+                  </Text>
+                </Pressable>
+              )}
+            </View>
           </View>
-        </View>
 
-        {/* Verify Button */}
-        <Pressable
-          onPress={handleVerifyCode}
-          disabled={loading || otp.join('').length !== 6}
-          style={({ pressed }) => [
-            styles.primaryButton,
-            pressed && styles.buttonPressed,
-            (loading || otp.join('').length !== 6) && styles.buttonDisabled,
-          ]}>
-          <LinearGradient
-            colors={isDark ? ['#2DD4BF', '#14B8A6'] : ['#22C55E', '#10B981']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.buttonGradient}>
+          {/* Verify Button */}
+          <Pressable
+            onPress={handleVerifyCode}
+            disabled={loading || otp.join('').length !== 6}
+            style={({ pressed }) => [
+              styles.primaryButton,
+              { backgroundColor: isDark ? '#0D9488' : '#0F4C3A' },
+              pressed && styles.buttonPressed,
+              (loading || otp.join('').length !== 6) && styles.buttonDisabled,
+            ]}>
             {loading ? (
               <Text style={styles.buttonText}>Verifying...</Text>
             ) : (
-              <>
+              <View style={styles.buttonContentRow}>
                 <Text style={styles.buttonText}>Verify & Sign In</Text>
-                <IconSymbol name="checkmark" size={18} color="#fff" />
-              </>
+                <IconSymbol name="checkmark" size={18} color="#ffffff" />
+              </View>
             )}
-          </LinearGradient>
-        </Pressable>
+          </Pressable>
         </View>
       </TouchableWithoutFeedback>
     </View>
   );
 
   return (
-    <View style={styles.container}>
-      {/* Gradient Background */}
-      <LinearGradient
-        colors={isDark ? ['#0F172A', '#1E1B4B', '#0F172A'] : ['#F8FAFC', '#EEF2FF', '#F8FAFC']}
-        style={StyleSheet.absoluteFill}
-      />
-
-      {/* Floating Orbs */}
-      <Animated.View
-        style={[
-          styles.orb,
-          styles.orb1,
-          {
-            backgroundColor: isDark ? 'rgba(139, 92, 246, 0.15)' : 'rgba(99, 102, 241, 0.1)',
-            transform: [{ translateY: floatTranslate }],
-          },
-        ]}
-      />
-      <Animated.View
-        style={[
-          styles.orb,
-          styles.orb2,
-          {
-            backgroundColor: isDark ? 'rgba(236, 72, 153, 0.1)' : 'rgba(244, 114, 182, 0.08)',
-            transform: [{ translateY: Animated.multiply(floatTranslate, -1) }],
-          },
-        ]}
-      />
-      <Animated.View
-        style={[
-          styles.orb,
-          styles.orb3,
-          {
-            backgroundColor: isDark ? 'rgba(45, 212, 191, 0.08)' : 'rgba(34, 197, 94, 0.06)',
-            transform: [{ translateY: floatTranslate }],
-          },
-        ]}
-      />
-
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}>
@@ -590,88 +538,58 @@ const styles = StyleSheet.create({
     top: height * 0.4,
     left: -width * 0.2,
   },
-  stepContainer: {
+  card: {
+    borderRadius: 24,
+    borderWidth: 1,
+    padding: 24,
     width: '100%',
-    paddingTop: 80,
+    shadowColor: '#475569',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    elevation: 4,
   },
   header: {
     alignItems: 'center',
-    marginBottom: 40,
+    marginBottom: 28,
   },
-  iconGradient: {
-    width: 72,
-    height: 72,
-    borderRadius: 22,
+  iconBox: {
+    width: 68,
+    height: 68,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 20,
-    shadowColor: '#8B5CF6',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.4,
-    shadowRadius: 16,
-    elevation: 10,
   },
   title: {
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: '700',
     letterSpacing: -0.5,
-    marginBottom: 8,
+    marginBottom: 6,
     textAlign: 'center',
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '400',
     textAlign: 'center',
     lineHeight: 22,
   },
-  toggleContainer: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 24,
-  },
-  toggleButton: {
-    flex: 1,
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
-  toggleButtonGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-  },
-  toggleButtonInactive: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-  },
-  toggleText: {
-    fontSize: 15,
-    fontWeight: '600',
-  },
   inputSection: {
-    marginBottom: 24,
+    marginBottom: 20,
   },
   inputLabel: {
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: '600',
     marginBottom: 8,
-    marginLeft: 4,
   },
   inputContainer: {
+    minHeight: 50,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: Platform.OS === 'ios' ? 16 : 12,
-    borderRadius: 14,
-    borderWidth: 1.5,
-    gap: 12,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 10,
   },
   input: {
     flex: 1,
@@ -680,15 +598,28 @@ const styles = StyleSheet.create({
     paddingVertical: 0,
   },
   primaryButton: {
-    borderRadius: 14,
-    overflow: 'hidden',
-    marginBottom: 24,
+    height: 50,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  buttonContentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  buttonText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '700',
   },
   oauthDivider: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    marginBottom: 16,
+    marginBottom: 20,
   },
   oauthDividerLine: {
     flex: 1,
@@ -699,9 +630,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   googleButton: {
-    minHeight: 54,
-    borderRadius: 14,
-    borderWidth: 1.5,
+    height: 50,
+    borderRadius: 12,
+    borderWidth: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -723,7 +654,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   googleButtonText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
   },
   buttonPressed: {
@@ -732,19 +663,6 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: {
     opacity: 0.5,
-  },
-  buttonGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
   },
   footer: {
     flexDirection: 'row',
@@ -761,17 +679,18 @@ const styles = StyleSheet.create({
   },
   otpContainer: {
     flex: 1,
+    justifyContent: 'center',
+    width: '100%',
   },
   backButton: {
-    flexDirection: 'row',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 1.5,
     position: 'absolute',
-    top: Platform.OS === 'ios' ? 60 : 54,
+    top: Platform.OS === 'ios' ? 54 : 36,
     left: 0,
     zIndex: 10,
   },
