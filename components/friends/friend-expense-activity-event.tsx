@@ -42,9 +42,9 @@ export function FriendExpenseActivityEvent({
       backgroundColor: isDark ? '#0f172a' : '#ffffff',
       borderWidth: 0,
       shadowColor: isDark ? '#000000' : '#475569',
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: isDark ? 0.4 : 0.09,
-      shadowRadius: 12,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.09,
+      shadowRadius: 0,
       elevation: 4,
     }]}>
       <View style={[styles.updateIcon, { backgroundColor: iconSurface }]}>

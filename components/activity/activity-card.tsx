@@ -208,9 +208,9 @@ function ActivityCardInner({ activity, currentUserId, deletedExpenseTargetIds }:
       backgroundColor: isDark ? '#0f172a' : '#ffffff',
       borderWidth: 0,
       shadowColor: isDark ? '#000000' : '#64748B',
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: isDark ? 0.4 : 0.08,
-      shadowRadius: 12,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.09,
+      shadowRadius: 0,
       elevation: 4,
     },
   ];

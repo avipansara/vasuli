@@ -121,9 +121,9 @@ export function FriendExpenseActivity({
           backgroundColor: isDark ? '#0d1321' : '#ffffff',
           borderWidth: 0,
           shadowColor: isDark ? '#000000' : '#475569',
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: isDark ? 0.4 : 0.09,
-          shadowRadius: 12,
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.09,
+          shadowRadius: 0,
           elevation: 4,
         }]}>
           <View style={[styles.expenseIcon, {
@@ -211,10 +211,10 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 0,
     shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.06,
-    shadowRadius: 10,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.09,
+    shadowRadius: 0,
+    elevation: 4,
   },
   expenseIcon: {
     width: 38,
@@ -233,7 +233,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   expenseDate: {
-    fontSize: 12,
+    fontSize: 11,
     lineHeight: 16,
     marginTop: 2,
   },

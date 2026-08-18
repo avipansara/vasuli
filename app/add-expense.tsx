@@ -350,7 +350,7 @@ export default function AddExpenseScreen() {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <View style={[styles.container, { backgroundColor: isDark ? '#0b1326' : colors.background }]}>
       <NavigationHeader
         title={expenseStep === 1 ? 'Choose people' : 'Add Expense'}
         onBack={handleHeaderBack}
@@ -712,12 +712,7 @@ export default function AddExpenseScreen() {
                         <TouchableOpacity
                           key={group.id}
                           style={[
-                            styles.optionRow,
-                            {
-                              backgroundColor: selectedGroupId === group.id
-                                ? (isDark ? '#222a3d' : settle.selectedCardBackground)
-                                : 'transparent',
-                            },
+                            styles.optionRow
                           ]}
                           onPress={() => !preselectedGroupId && setSelectedGroupId(group.id)}
                           disabled={!!preselectedGroupId}>
@@ -728,7 +723,7 @@ export default function AddExpenseScreen() {
                           }]}>
                             <IconSymbol
                               name="person.3.fill"
-                              size={16}
+                              size={20}
                               color={selectedGroupId === group.id ? (isDark ? '#003824' : '#ffffff') : (isDark ? '#dae2fd' : colors.text)}
                             />
                           </View>
@@ -803,11 +798,6 @@ export default function AddExpenseScreen() {
                                 key={friend.id}
                                 style={[
                                   styles.optionRow,
-                                  {
-                                    backgroundColor: isSelected
-                                      ? (isDark ? '#222a3d' : settle.selectedCardBackground)
-                                      : 'transparent',
-                                  },
                                 ]}
                                 onPress={() => !preselectedFriendId && toggleFriend(friend.id)}
                                 disabled={!!preselectedFriendId}>
@@ -827,14 +817,16 @@ export default function AddExpenseScreen() {
                                     {friend.name}
                                   </Text>
                                   {friend.email && (
-                                    <Text style={[styles.optionSubtext, { color: isSelected ? (isDark ? '#4edea3' : '#0B513D') : (isDark ? '#bbcabf' : colors.textSecondary) }]}>
-                                      @{friend.email.split('@')[0]}
+                                    <Text style={[styles.optionSubtext, { color: isDark ? '#6B7280' : colors.textSecondary }]}>
+                                      {friend.email}
                                     </Text>
                                   )}
                                 </View>
-                                {isSelected && (
-                                  <IconSymbol name="checkmark.circle.fill" size={22} color={isDark ? '#4edea3' : '#003527'} />
-                                )}
+                                {
+                                  isSelected && (
+                                    <IconSymbol name="checkmark.circle.fill" size={22} color={isDark ? '#4edea3' : '#003527'} />
+                                  )
+                                }
                               </TouchableOpacity>
                             );
                           })}
@@ -1106,7 +1098,7 @@ export default function AddExpenseScreen() {
 
         </Animated.View>
       </KeyboardAwareScroll>
-    </View>
+    </View >
   );
 }
 
@@ -1516,11 +1508,9 @@ const styles = StyleSheet.create({
   optionRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 14,
+    paddingVertical: 12,
     paddingHorizontal: 18,
     marginHorizontal: -18,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(150, 150, 150, 0.2)',
     gap: 14,
   },
   optionIcon: {
