@@ -273,17 +273,18 @@ export default function ProfileScreen() {
   ];
 
   const cardStyle = {
-    backgroundColor: isDark ? '#0f172a' : '#ffffff',
-    borderWidth: 0,
-    shadowColor: isDark ? '#000000' : '#475569',
+    backgroundColor: colors.card,
+    borderWidth: isDark ? 1 : 0,
+    borderColor: colors.border,
+    shadowColor: isDark ? 'transparent' : '#475569',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: isDark ? 0.4 : 0.09,
+    shadowOpacity: isDark ? 0 : 0.09,
     shadowRadius: 12,
-    elevation: 4,
+    elevation: isDark ? 0 : 4,
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: isDark ? '#040914' : colors.background }]}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         contentInsetAdjustmentBehavior="automatic"

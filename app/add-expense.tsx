@@ -407,8 +407,8 @@ export default function AddExpenseScreen() {
           {expenseStep === 2 && (
             <>
               <View style={[styles.participantSummary, {
-                backgroundColor: isDark ? '#131b2e' : colors.card,
-                borderColor: isDark ? 'rgba(60, 74, 66, 0.3)' : colors.border,
+                backgroundColor: colors.card,
+                borderColor: colors.border,
               }]}>
                 <View style={[styles.participantSummaryIcon, { backgroundColor: isDark ? '#222a3d' : 'rgba(34, 197, 94, 0.1)' }]}>
                   <IconSymbol
@@ -492,8 +492,8 @@ export default function AddExpenseScreen() {
                   Description
                 </ThemedText>
                 <View style={[styles.inputContainer, {
-                  backgroundColor: isDark ? '#131b2e' : colors.card,
-                  borderColor: isDark ? 'rgba(60, 74, 66, 0.4)' : colors.border,
+                  backgroundColor: colors.card,
+                  borderColor: colors.border,
                 }]}>
                   <IconSymbol name="doc.text" size={20} color={isDark ? '#bbcabf' : 'rgba(0,0,0,0.4)'} />
                   <TextInput
@@ -517,8 +517,8 @@ export default function AddExpenseScreen() {
                   accessibilityLabel={`Expense date, ${formattedExpenseDate}`}
                   onPress={() => setShowDatePicker(current => !current)}
                   style={[styles.inputContainer, {
-                    backgroundColor: isDark ? '#131b2e' : colors.card,
-                    borderColor: isDark ? 'rgba(60, 74, 66, 0.4)' : colors.border,
+                    backgroundColor: colors.card,
+                    borderColor: colors.border,
                   }]}>
                   <IconSymbol name="calendar" size={20} color={isDark ? '#bbcabf' : 'rgba(0,0,0,0.4)'} />
                   <ThemedText style={[styles.textInput, { color: isDark ? '#dae2fd' : colors.text }]}>{formattedExpenseDate}</ThemedText>
@@ -550,8 +550,8 @@ export default function AddExpenseScreen() {
                 style={[
                   styles.toggleContainer,
                   {
-                    backgroundColor: isDark ? '#131b2e' : colors.card,
-                    borderColor: isDark ? 'rgba(60, 74, 66, 0.4)' : colors.border,
+                    backgroundColor: colors.card,
+                    borderColor: colors.border,
                   },
                 ]}>
                 <TouchableOpacity
@@ -725,7 +725,7 @@ export default function AddExpenseScreen() {
                           <View style={[styles.optionIcon, {
                             backgroundColor: selectedGroupId === group.id
                               ? (isDark ? '#4edea3' : '#003527')
-                              : (isDark ? '#131b2e' : 'rgba(0, 0, 0, 0.05)'),
+                              : (isDark ? '#05080e' : 'rgba(0, 0, 0, 0.05)'),
                           }]}>
                             <IconSymbol
                               name="person.3.fill"
@@ -759,8 +759,8 @@ export default function AddExpenseScreen() {
                     <>
                       {!preselectedFriendId && (
                         <View style={[styles.searchContainer, {
-                          backgroundColor: isDark ? '#131b2e' : colors.card,
-                          borderColor: isDark ? 'rgba(60, 74, 66, 0.4)' : colors.border,
+                          backgroundColor: colors.card,
+                          borderColor: colors.border,
                         }]}>
                           <IconSymbol name="magnifyingglass" size={18} color={isDark ? '#bbcabf' : 'rgba(0,0,0,0.4)'} />
                           <TextInput
@@ -810,7 +810,7 @@ export default function AddExpenseScreen() {
                                 <View style={[styles.optionAvatar, {
                                   backgroundColor: isSelected
                                     ? (isDark ? '#4edea3' : '#003527')
-                                    : (isDark ? '#131b2e' : 'rgba(0, 0, 0, 0.05)'),
+                                    : (isDark ? '#05080e' : 'rgba(0, 0, 0, 0.05)'),
                                 }]}>
                                   <Text style={[styles.avatarText, {
                                     color: isSelected ? (isDark ? '#003824' : '#ffffff') : (isDark ? '#dae2fd' : colors.text),
@@ -885,7 +885,7 @@ export default function AddExpenseScreen() {
                 </View>
 
                 <View style={[styles.splitSummary, {
-                  backgroundColor: isDark ? 'rgba(20, 35, 38, 0.72)' : colors.card,
+                  backgroundColor: colors.card,
                   borderColor: splitProgress.isBalanced
                     ? (isDark ? 'rgba(45, 212, 191, 0.32)' : 'rgba(34, 197, 94, 0.28)')
                     : (isDark ? 'rgba(251, 191, 36, 0.32)' : 'rgba(245, 158, 11, 0.28)'),
@@ -930,8 +930,8 @@ export default function AddExpenseScreen() {
 
                 {/* Current User */}
                 <View style={[styles.customSplitCard, {
-                  backgroundColor: isDark ? 'rgba(30, 41, 59, 0.6)' : 'rgba(241, 245, 249, 0.9)',
-                  borderColor: isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(34, 197, 94, 0.2)',
+                  backgroundColor: colors.card,
+                  borderColor: colors.border,
                 }]}>
                   <View style={[styles.customSplitAvatar, {
                     backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)',
@@ -945,10 +945,10 @@ export default function AddExpenseScreen() {
                   </ThemedText>
                   <TextInput
                     style={[styles.customSplitInput, {
-                      backgroundColor: isDark ? 'rgba(20, 35, 38, 0.8)' : 'rgba(255,255,255,0.9)',
+                      backgroundColor: isDark ? '#05080e' : 'rgba(255,255,255,0.9)',
                       color: isDark ? '#fff' : colors.text,
                       borderWidth: 1,
-                      borderColor: isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(34, 197, 94, 0.3)',
+                      borderColor: colors.border,
                     }]}
                     value={splitMethod === SplitMethod.UNEQUAL ? customAmounts[currentUserId] : splitMethod === SplitMethod.PERCENTAGE ? customPercentages[currentUserId] : customShares[currentUserId]}
                     onChangeText={(text) => {
@@ -987,8 +987,8 @@ export default function AddExpenseScreen() {
                   if (!friend) return null;
                   return (
                     <View key={friendId} style={[styles.customSplitCard, {
-                      backgroundColor: isDark ? 'rgba(30, 41, 59, 0.6)' : 'rgba(241, 245, 249, 0.9)',
-                      borderColor: isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(34, 197, 94, 0.2)',
+                      backgroundColor: colors.card,
+                      borderColor: colors.border,
                     }]}>
                       <View style={[styles.customSplitAvatar, {
                         backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)',
@@ -1002,10 +1002,10 @@ export default function AddExpenseScreen() {
                       </ThemedText>
                       <TextInput
                         style={[styles.customSplitInput, {
-                          backgroundColor: isDark ? 'rgba(20, 35, 38, 0.8)' : 'rgba(255,255,255,0.9)',
+                          backgroundColor: isDark ? '#05080e' : 'rgba(255,255,255,0.9)',
                           color: isDark ? '#fff' : colors.text,
                           borderWidth: 1,
-                          borderColor: isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(34, 197, 94, 0.3)',
+                          borderColor: colors.border,
                         }]}
                         value={splitMethod === SplitMethod.UNEQUAL ? customAmounts[friendId] : splitMethod === SplitMethod.PERCENTAGE ? customPercentages[friendId] : customShares[friendId]}
                         onChangeText={(text) => {
@@ -1046,8 +1046,8 @@ export default function AddExpenseScreen() {
                   if (!member) return null;
                   return (
                     <View key={memberId} style={[styles.customSplitCard, {
-                      backgroundColor: isDark ? 'rgba(30, 41, 59, 0.6)' : 'rgba(241, 245, 249, 0.9)',
-                      borderColor: isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(34, 197, 94, 0.2)',
+                      backgroundColor: colors.card,
+                      borderColor: colors.border,
                     }]}>
                       <View style={[styles.customSplitAvatar, {
                         backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)',
@@ -1061,10 +1061,10 @@ export default function AddExpenseScreen() {
                       </ThemedText>
                       <TextInput
                         style={[styles.customSplitInput, {
-                          backgroundColor: isDark ? 'rgba(20, 35, 38, 0.8)' : 'rgba(255,255,255,0.9)',
+                          backgroundColor: isDark ? '#05080e' : 'rgba(255,255,255,0.9)',
                           color: isDark ? '#fff' : colors.text,
                           borderWidth: 1,
-                          borderColor: isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(34, 197, 94, 0.3)',
+                          borderColor: colors.border,
                         }]}
                         value={splitMethod === SplitMethod.UNEQUAL ? customAmounts[memberId] : splitMethod === SplitMethod.PERCENTAGE ? customPercentages[memberId] : customShares[memberId]}
                         onChangeText={(text) => {

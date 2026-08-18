@@ -135,7 +135,7 @@ export default function GroupsScreen() {
         : 'All settled up';
 
   return (
-    <View style={[styles.container, { backgroundColor: isDark ? '#040914' : colors.background }]}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.header}>
         <View accessible accessibilityRole="summary" accessibilityLabel={`Group balances: ${summaryAccessibilityLabel}`}>
           {hasSeparateBalances ? (
@@ -164,7 +164,7 @@ export default function GroupsScreen() {
           )}
         </View>
         <TouchableOpacity
-          style={[styles.addButtonRect, { backgroundColor: isDark ? '#0f172a' : 'rgba(34, 197, 94, 0.1)', borderColor: isDark ? '#2a3441' : 'rgba(34, 197, 94, 0.3)' }]}
+          style={[styles.addButtonRect, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: isDark ? 1 : 0 }]}
           onPress={() => router.push('/create-group')}
           accessibilityRole="button"
           accessibilityLabel="Create group"

@@ -38,13 +38,14 @@ export function FriendSettlementActivity({
       style={[
         styles.expenseCard,
         {
-          backgroundColor: isDark ? '#0d1321' : '#ffffff',
-          borderWidth: 0,
-          shadowColor: isDark ? '#000000' : '#475569',
+          backgroundColor: colors.card,
+          borderWidth: isDark ? 1 : 0,
+          borderColor: colors.border,
+          shadowColor: isDark ? 'transparent' : '#475569',
           shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.09,
+          shadowOpacity: isDark ? 0 : 0.09,
           shadowRadius: 0,
-          elevation: 4,
+          elevation: isDark ? 0 : 4,
         },
       ]}>
       <View style={[styles.expenseIcon, {

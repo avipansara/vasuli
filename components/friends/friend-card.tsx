@@ -67,10 +67,19 @@ function FriendCardInner({ friend, onPress, onDelete }: FriendCardProps) {
         : colors.tint;
 
   const cardStyle = useMemo(
-    () => ({
-      backgroundColor: isDark ? '#0f172a' : '#ffffff',
+    () => (isDark ? {
+      backgroundColor: '#000000',
+      borderWidth: 1,
+      borderColor: 'rgba(255, 255, 255, 0.08)',
+      shadowColor: 'transparent',
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: 0,
+      shadowRadius: 0,
+      elevation: 0,
+    } : {
+      backgroundColor: '#ffffff',
       borderWidth: 0,
-      shadowColor: isDark ? '#000000' : '#475569',
+      shadowColor: '#475569',
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.09,
       shadowRadius: 0,

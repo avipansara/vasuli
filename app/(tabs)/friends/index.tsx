@@ -14,7 +14,6 @@ import { friendshipService } from '@/services/friendship-service';
 import { queryKeys } from '@/services/query-keys';
 import type { Expense, User } from '@/types/database';
 import { useQuery } from '@tanstack/react-query';
-import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import { Alert, FlatList, Platform, RefreshControl, StyleSheet, TouchableOpacity, View } from 'react-native';
@@ -151,12 +150,12 @@ export default function FriendsScreen() {
     ? (netBalance > 0 ? '#10b981' : netBalance < 0 ? '#ffb4ab' : '#10b981')
     : (netBalance > 0 ? colors.success : netBalance < 0 ? colors.error : colors.tint);
   const actionButtonStyle = {
-    backgroundColor: isDark ? '#0f172a' : friendsTheme.actionSurface,
-    borderColor: isDark ? '#2a3441' : friendsTheme.actionBorder,
+    backgroundColor: isDark ? '#000000' : friendsTheme.actionSurface,
+    borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : friendsTheme.actionBorder,
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: isDark ? '#040914' : colors.background }]}>
+    <View style={[styles.container, { backgroundColor: isDark ? '#05080e' : colors.background }]}>
       <View style={styles.header}>
         <View style={{ flexDirection: 'column', gap: 6 }}>
           <ThemedText style={[styles.headerLabel, { color: isDark ? '#9ba6b8' : colors.textSecondary }]}>{balanceLabel}</ThemedText>

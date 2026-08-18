@@ -156,17 +156,18 @@ export default function ActivityScreen() {
 
   return (
     <View
-      style={[styles.container, { backgroundColor: isDark ? '#040914' : colors.background }]}>
+      style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.header}>
         <ThemedText type="header" style={[styles.headerTitle, { color: isDark ? '#f8fafc' : colors.text }]}>Activity</ThemedText>
         <View style={[styles.searchContainer, {
-          backgroundColor: isDark ? '#0b1120' : friendDetailTheme.surface,
-          borderWidth: 0,
-          shadowColor: isDark ? '#000000' : '#64748B',
+          backgroundColor: colors.card,
+          borderWidth: isDark ? 1 : 0,
+          borderColor: colors.border,
+          shadowColor: isDark ? 'transparent' : '#64748B',
           shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: isDark ? 0.25 : 0.04,
+          shadowOpacity: isDark ? 0 : 0.04,
           shadowRadius: 6,
-          elevation: 2,
+          elevation: isDark ? 0 : 2,
         }]}>
           <IconSymbol
             name="magnifyingglass"
@@ -243,7 +244,7 @@ export default function ActivityScreen() {
               tintColor={isDark ? '#10b981' : colors.tint}
               titleColor={isDark ? '#9ba6b8' : colors.textSecondary}
               colors={[isDark ? '#10b981' : colors.tint]}
-              progressBackgroundColor={isDark ? '#040914' : colors.background}
+              progressBackgroundColor={colors.background}
             />
           }
         />

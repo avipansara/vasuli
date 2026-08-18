@@ -460,13 +460,14 @@ export default function GroupDetailScreen() {
           accessibilityHint="Opens the expense details"
           onPress={() => router.push(`/expense-detail/${item.id}` as any)}
           style={[styles.expenseCard, {
-            backgroundColor: isDark ? '#0d1321' : '#ffffff',
-            borderWidth: 0,
-            shadowColor: isDark ? '#000000' : '#475569',
+            backgroundColor: colors.card,
+            borderWidth: isDark ? 1 : 0,
+            borderColor: colors.border,
+            shadowColor: isDark ? 'transparent' : '#475569',
             shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.09,
+            shadowOpacity: isDark ? 0 : 0.09,
             shadowRadius: 0,
-            elevation: 4,
+            elevation: isDark ? 0 : 4,
           }]}>
           <View style={[styles.expenseIcon, {
             backgroundColor: isDark ? categoryStyle.darkBg : categoryStyle.lightBg,
@@ -623,13 +624,14 @@ export default function GroupDetailScreen() {
           activeOpacity={0.72}
           onPress={() => item.userId !== currentUserId && router.push(`/friends/${item.userId}` as any)}
           style={[styles.memberCard, {
-            backgroundColor: isDark ? '#0d1321' : '#ffffff',
-            borderWidth: 0,
-            shadowColor: isDark ? '#000000' : '#475569',
+            backgroundColor: colors.card,
+            borderWidth: isDark ? 1 : 0,
+            borderColor: colors.border,
+            shadowColor: isDark ? 'transparent' : '#475569',
             shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.09,
+            shadowOpacity: isDark ? 0 : 0.09,
             shadowRadius: 0,
-            elevation: 4,
+            elevation: isDark ? 0 : 4,
           }]}>
           <View style={[styles.memberAvatar, {
             backgroundColor: isDark ? '#1e293b' : 'rgba(15, 76, 58, 0.1)',
@@ -1021,8 +1023,8 @@ export default function GroupDetailScreen() {
             </ThemedText>
           </View>
           <View style={[styles.searchContainer, {
-            backgroundColor: isDark ? '#0d1321' : friendDetailTheme.surface,
-            borderColor: isDark ? 'rgba(255, 255, 255, 0.05)' : friendDetailTheme.surfaceBorder,
+            backgroundColor: colors.card,
+            borderColor: colors.border,
           }]}>
             <IconSymbol
               name="magnifyingglass"

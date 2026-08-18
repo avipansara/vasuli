@@ -349,7 +349,14 @@ export default function GroupSettleScreen() {
               {group?.name}
             </ThemedText>
           </View>
-          <View style={[styles.amountSection, { backgroundColor: settle.heroBackground, borderColor: settle.heroBorder }]}>
+          <View style={[styles.amountSection, {
+            backgroundColor: settle.heroBackground,
+            borderColor: settle.heroBorder,
+            borderWidth: isDark ? 1 : 0,
+            shadowColor: isDark ? 'transparent' : '#000000',
+            shadowOpacity: isDark ? 0 : 0.12,
+            elevation: isDark ? 0 : 5,
+          }]}>
             <View style={styles.amountInputRow}>
               <Text style={[styles.currencySymbol, { color: settle.accentText }]}>$</Text>
               <TextInput

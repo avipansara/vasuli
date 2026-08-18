@@ -262,7 +262,7 @@ export default function FriendSettleScreen() {
 
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-      <View style={[styles.container, { backgroundColor: isDark ? '#0b1326' : colors.background }]}>
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
         <Stack.Screen options={{ headerShown: false }} />
         <NavigationHeader title="SETTLE UP" onBack={() => router.back()} />
 
@@ -270,7 +270,14 @@ export default function FriendSettleScreen() {
           contentContainerStyle={styles.scrollContent}>
 
           {/* User Identity Card */}
-          <View style={[styles.profileCard, { backgroundColor: settle.cardBackground, borderColor: settle.cardBorder }]}>
+          <View style={[styles.profileCard, {
+            backgroundColor: settle.cardBackground,
+            borderColor: settle.cardBorder,
+            borderWidth: isDark ? 1 : 0,
+            shadowColor: isDark ? 'transparent' : '#000000',
+            shadowOpacity: isDark ? 0 : 0.12,
+            elevation: isDark ? 0 : 5,
+          }]}>
             <View style={styles.profileRow}>
               <View style={[styles.avatar, { backgroundColor: settle.avatarSelectedBackground }]}>
                 <Text style={[styles.avatarText, { color: settle.avatarText }]}>
