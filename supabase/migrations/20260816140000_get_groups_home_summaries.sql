@@ -44,6 +44,7 @@ BEGIN
     SELECT e.id, e.group_id, e.amount, e.paid_by
     FROM public.expenses e
     JOIN user_groups group_row ON group_row.id = e.group_id
+    WHERE e.deleted_at IS NULL
   ),
   expense_impacts AS (
     SELECT

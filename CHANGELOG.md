@@ -1,5 +1,44 @@
 ## 2026-08-17
 
+- Switched expense deletion to soft deletion, preserving split history and
+  permanent deletion activity while excluding deleted expenses from active
+  lists, balances, summaries, and edit/delete flows.
+- Corrected friend balances for expenses paid by a friend whose own split is zero, while still excluding zero-share nonparticipants.
+- Included payer-led expenses when the payer has no split row, as can happen with share-based group expenses.
+- Prevented unrelated zero-share group expenses from appearing in friend activity.
+- Added a defensive friend-detail filter so only pair-relevant group expenses
+  can appear even when an older or cached read-model response includes them.
+- Added a specification for separating direct Friend balances from
+  Group-scoped balances and settlement flows.
+- Separated direct Friend balances from Group balances, showing shared Group
+  summaries without mixing Group expenses into direct Friend activity or
+  settlement calculations.
+- Aligned shared Group summaries with the Group settle-up calculation so they
+  show the selected Friend's actual Group settlement balance.
+- Documented combined Friend settlement allocation across direct and shared
+  Group scopes.
+- Added combined Friend settlement allocation with direct-first ordering,
+  Group-scoped settlement records, and currency safeguards.
+- Added read-only shared Group expenses to Friend activity with group, payer,
+  and share context while keeping them out of direct balances and expenses.
+- Clarified shared Group activity cards with a neutral “No balance impact”
+  label instead of displaying a misleading individual share amount.
+- Showed Group-scoped “owes” context when either Friend paid for the other,
+  while retaining “No balance impact” for third-party-paid expenses.
+- Updated home Friend-card totals to include each Friend's net balances across
+  shared Groups in addition to the direct Friend ledger.
+- Changed the home Friend-card empty activity label to “Group activity” when
+  the balance has no direct pending expense to display.
+- Included pair-relevant Group expenses in the home Friend-card activity list,
+  without adding them to Friend balance calculations.
+- Fixed home Friend totals by excluding Group settlements from the direct
+  ledger and requiring both Friends to belong to a shared Group.
+- Fixed expense deletion activity metadata by preserving its jsonb type.
+- Made deleted expense activity cards open the retained read-only expense
+  history.
+- Added direct-versus-group source indicators to expenses and update events in friend detail.
+- Restored All, Expenses, and Updates tabs on individual friend detail screens,
+  including filtered activity counts and empty states.
 - Matched settlement member selection to the add-expense row pattern by removing floating card treatment from unselected rows and using a full-row selected state.
 - Matched settlement avatars to add-expense selection behavior, using an accent avatar only for the selected member and a neutral avatar otherwise.
 - Kept the settlement group and amount context visible while allowing long member lists to scroll independently.

@@ -55,7 +55,8 @@ BEGIN
   current_user_expenses AS (
     SELECT e.*
     FROM public.expenses e
-    WHERE EXISTS (
+    WHERE e.deleted_at IS NULL
+      AND EXISTS (
       SELECT 1
       FROM public.expense_splits current_split
       WHERE current_split.expense_id = e.id

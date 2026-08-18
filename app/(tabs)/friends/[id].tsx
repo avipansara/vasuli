@@ -25,6 +25,12 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Animated, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
+import Reanimated, {
+  Easing as ReanimatedEasing,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface UserWithBalance extends User {
@@ -46,6 +52,8 @@ const ACTIVITY_FILTERS: { id: ActivityFilter; label: string; icon: IconSymbolNam
 export default function FriendDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { gradients, colors, friendDetail: friendDetailTheme, isDark } = useThemeColors();
+  const [activityFilter, setActivityFilter] = useState<ActivityFilter>('all');
+  const [segmentedWidth, setSegmentedWidth] = useState(0);
   const [isRemovingFriend, setIsRemovingFriend] = useState(false);
   const [isSettlingUp, setIsSettlingUp] = useState(false);
   const [deletingExpenseId, setDeletingExpenseId] = useState<string | null>(null);
@@ -88,6 +96,13 @@ export default function FriendDetailScreen() {
   const [fadeAnim] = useState(() => new Animated.Value(0));
   const [slideAnim] = useState(() => new Animated.Value(30));
   const [scaleAnim] = useState(() => new Animated.Value(0.98));
+  const tabIndicatorX = useSharedValue(0);
+  const segmentWidth = segmentedWidth > 0
+    ? (segmentedWidth - (SEGMENTED_CONTROL_PADDING * 2) - (SEGMENTED_CONTROL_GAP * (ACTIVITY_FILTERS.length - 1))) / ACTIVITY_FILTERS.length
+    : 0;
+  const tabIndicatorStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: tabIndicatorX.value }],
+  }));
   const {
     data: friendDetail,
     error,
@@ -96,6 +111,7 @@ export default function FriendDetailScreen() {
     friend,
     expenses,
     activity,
+    groupBalances,
     friendDetailQueryKey,
     friendsHomeQueryKey,
     queryClient,
@@ -103,9 +119,17 @@ export default function FriendDetailScreen() {
   const loading = isLoading && !friendDetail;
   const loadError = error ? getFetchErrorMessage(error) : null;
 
-  const filteredActivity = filterFriendActivity(activity, 'all');
+  const filteredActivity = filterFriendActivity(activity, activityFilter);
+  const expenseActivityCount = filteredActivity.filter(item => item.type === 'expense' || item.type === 'group_expense').length;
+  const updateActivityCount = filteredActivity.length - expenseActivityCount;
+  const activityCountLabel = activityFilter === 'expenses'
+    ? `${expenseActivityCount} ${expenseActivityCount === 1 ? 'expense' : 'expenses'}`
+    : activityFilter === 'updates'
+      ? `${updateActivityCount} ${updateActivityCount === 1 ? 'update' : 'updates'}`
+      : `${filteredActivity.length} items`;
   const groupedActivity = groupFriendActivityByMonth(filteredActivity);
   const sharedExpensesCount = expenses.length;
+  const outstandingGroupBalances = groupBalances.filter(summary => summary.direction !== 'settled');
 
   useEffect(() => {
     if (friendDetail === undefined || isLoading) return;
@@ -119,6 +143,22 @@ export default function FriendDetailScreen() {
   const loadFriendData = useCallback(async () => {
     await refetch();
   }, [refetch]);
+
+  const handleActivityFilterChange = useCallback((nextFilter: ActivityFilter) => {
+    if (nextFilter === activityFilter) return;
+    setActivityFilter(nextFilter);
+  }, [activityFilter]);
+
+  useEffect(() => {
+    if (segmentWidth <= 0) return;
+
+    const selectedIndex = ACTIVITY_FILTERS.findIndex(filter => filter.id === activityFilter);
+    // eslint-disable-next-line react-hooks/immutability -- Reanimated shared values are mutable animation refs.
+    tabIndicatorX.value = withTiming(selectedIndex * (segmentWidth + SEGMENTED_CONTROL_GAP), {
+      duration: 210,
+      easing: ReanimatedEasing.out(ReanimatedEasing.cubic),
+    });
+  }, [activityFilter, segmentWidth, tabIndicatorX]);
 
   useEffect(() => {
     if (!loading && friend) {
@@ -344,7 +384,10 @@ export default function FriendDetailScreen() {
     return null;
   }
 
-  const balance = friend.balance;
+  const directBalance = friend.balance;
+  const combinedBalance = directBalance + groupBalances.reduce((total, summary) => total + summary.amount, 0);
+  const balance = combinedBalance;
+  const groupBalanceCount = groupBalances.filter(summary => summary.direction !== 'settled').length;
   const isOwed = balance > 0;
   const isOwing = balance < 0;
   const balanceColor = isOwed
@@ -495,7 +538,9 @@ export default function FriendDetailScreen() {
               </ThemedText>
 
               <ThemedText style={[styles.summaryCardSubtitle, { color: isDark ? '#94A3B8' : colors.textSecondary }]}>
-                Across {sharedExpensesCount} shared expenses
+                {groupBalanceCount > 0
+                  ? `${sharedExpensesCount} direct expenses + ${groupBalanceCount} group ${groupBalanceCount === 1 ? 'balance' : 'balances'}`
+                  : `Across ${sharedExpensesCount} direct expenses`}
               </ThemedText>
 
               {balance !== 0 && (
@@ -519,17 +564,117 @@ export default function FriendDetailScreen() {
           </Animated.View>
         </Animated.View>
 
+        {outstandingGroupBalances.length > 0 && (
+          <View style={styles.groupBalancesSection}>
+            <View style={styles.sectionHeader}>
+              <ThemedText type="subtitle" style={[styles.sectionTitle, { color: isDark ? '#F8FAFC' : colors.text }]}>
+                Shared groups
+              </ThemedText>
+              <ThemedText style={[styles.expenseCount, { color: isDark ? '#94A3B8' : colors.textSecondary }]}>
+                {outstandingGroupBalances.length} {outstandingGroupBalances.length === 1 ? 'group' : 'groups'}
+              </ThemedText>
+            </View>
+            <ThemedText style={[styles.groupBalancesHint, { color: isDark ? '#94A3B8' : colors.textSecondary }]}>
+              Group balances are settled from the group, not directly with {friend.name.split(' ')[0]}.
+            </ThemedText>
+            {outstandingGroupBalances.map(summary => {
+              const isOwedInGroup = summary.direction === 'you_are_owed';
+              return (
+                <TouchableOpacity
+                  key={`${summary.groupId}:${summary.currency}`}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Open ${summary.groupName} group balance`}
+                  onPress={() => router.push(`/groups/${summary.groupId}` as any)}
+                  style={[styles.groupBalanceRow, {
+                    backgroundColor: friendDetailTheme.surface,
+                    borderColor: friendDetailTheme.surfaceBorder,
+                  }]}
+                >
+                  <View style={[styles.groupBalanceIcon, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.12)' : '#E7F3EF' }]}>
+                    <IconSymbol name="person.3.fill" size={17} color={isDark ? '#5EEAD4' : '#0F766E'} />
+                  </View>
+                  <View style={styles.groupBalanceCopy}>
+                    <ThemedText type="defaultSemiBold" numberOfLines={1} style={{ color: colors.text }}>
+                      {summary.groupName}
+                    </ThemedText>
+                    <ThemedText style={{ color: isDark ? '#94A3B8' : colors.textSecondary }}>
+                      {isOwedInGroup
+                        ? `${friend.name.split(' ')[0]} owes you in this group`
+                        : `You owe ${friend.name.split(' ')[0]} in this group`}
+                    </ThemedText>
+                  </View>
+                  <View style={styles.groupBalanceAmount}>
+                    <ThemedText type="defaultSemiBold" style={{ color: isOwedInGroup ? friendDetailTheme.positive : friendDetailTheme.negative }}>
+                      {isOwedInGroup ? '+' : '-'}{summary.currency} {Math.abs(summary.amount).toFixed(2)}
+                    </ThemedText>
+                    <IconSymbol name="chevron.right" size={16} color={colors.textSecondary} />
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        )}
+
+        <View
+          accessibilityRole="toolbar"
+          accessibilityLabel="Activity filter"
+          onLayout={({ nativeEvent }) => setSegmentedWidth(nativeEvent.layout.width)}
+          style={[styles.segmentedControl, {
+            backgroundColor: friendDetailTheme.surface,
+            borderColor: friendDetailTheme.surfaceBorder,
+          }]}
+        >
+          {segmentWidth > 0 && (
+            <Reanimated.View
+              pointerEvents="none"
+              style={[
+                styles.segmentedIndicator,
+                {
+                  width: segmentWidth,
+                  backgroundColor: isDark ? 'rgba(13, 148, 136, 0.08)' : '#ffffff',
+                  borderColor: isDark ? '#0D9488' : '#0F4C3A',
+                  borderWidth: 1,
+                },
+                tabIndicatorStyle,
+              ]}
+            />
+          )}
+          {ACTIVITY_FILTERS.map(filter => {
+            const isSelected = activityFilter === filter.id;
+            const activeColor = isDark ? '#0D9488' : '#0F4C3A';
+
+            return (
+              <TouchableOpacity
+                key={filter.id}
+                accessibilityRole="button"
+                accessibilityLabel={filter.label}
+                accessibilityState={{ selected: isSelected }}
+                activeOpacity={0.78}
+                onPress={() => handleActivityFilterChange(filter.id)}
+                style={styles.segmentedOption}>
+                <IconSymbol
+                  size={14}
+                  name={filter.icon}
+                  color={isSelected ? activeColor : colors.textSecondary}
+                />
+                <ThemedText
+                  style={[styles.segmentedLabel, { color: isSelected ? activeColor : colors.textSecondary }]}>
+                  {filter.label}
+                </ThemedText>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
         {/* Expense History */}
         <View style={styles.historySection}>
           <View style={styles.sectionHeader}>
             <ThemedText type="subtitle" style={[styles.sectionTitle, { color: isDark ? '#F8FAFC' : colors.text }]}>
               Activity with {friend.name.split(' ')[0]}
             </ThemedText>
-            <TouchableOpacity onPress={() => Alert.alert('Not Implemented', 'View All activity screen is coming soon!')}>
-              <ThemedText style={[styles.viewAllText, { color: isDark ? '#10b981' : '#0F4C3A' }]}>
-                View All
-              </ThemedText>
-            </TouchableOpacity>
+            <ThemedText style={[styles.expenseCount, { color: isDark ? '#94A3B8' : colors.textSecondary }]}>
+              {activityCountLabel}
+            </ThemedText>
           </View>
 
           <View>
@@ -539,10 +684,12 @@ export default function FriendDetailScreen() {
                   <IconSymbol size={32} name="doc.text" color={friendDetailTheme.actionIcon} />
                 </View>
                 <ThemedText style={[styles.emptyTitle, { color: colors.text }]}>
-                  No expenses yet
+                  {activityFilter === 'updates' ? 'No updates yet' : 'No expenses yet'}
                 </ThemedText>
                 <ThemedText style={[styles.emptyText, { color: colors.textSecondary }]}>
-                  Add an expense to start tracking with {friend.name.split(' ')[0]}
+                  {activityFilter === 'updates'
+                    ? `Changes and settlements with ${friend.name.split(' ')[0]} will show here`
+                    : `Add an expense to start tracking with ${friend.name.split(' ')[0]}`}
                 </ThemedText>
               </View>
             ) : (
@@ -555,7 +702,7 @@ export default function FriendDetailScreen() {
                   </View>
                   {group.items.map(item => (
                     <View key={item.id}>
-                      {item.type === 'expense'
+                      {item.type === 'expense' || item.type === 'group_expense'
                         ? <FriendExpenseActivity
                           item={item}
                           currentUserId={currentUserId}
@@ -569,6 +716,7 @@ export default function FriendDetailScreen() {
                           onOpenExpense={handleOpenExpense}
                           formatDate={formatDate}
                           friendName={friend.name}
+                          readOnly={item.type === 'group_expense'}
                         />
                         : item.type === 'settlement'
                           ? <FriendSettlementActivity
@@ -697,6 +845,44 @@ const styles = StyleSheet.create({
     borderWidth: 0,
     padding: 12,
   },
+  segmentedControl: {
+    flexDirection: 'row',
+    marginHorizontal: 16,
+    marginBottom: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: SEGMENTED_CONTROL_PADDING,
+    gap: SEGMENTED_CONTROL_GAP,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  segmentedIndicator: {
+    position: 'absolute',
+    top: SEGMENTED_CONTROL_PADDING,
+    bottom: SEGMENTED_CONTROL_PADDING,
+    left: SEGMENTED_CONTROL_PADDING,
+    borderRadius: 9,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
+  },
+  segmentedOption: {
+    flex: 1,
+    minHeight: 44,
+    borderRadius: 9,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+    paddingHorizontal: 6,
+    zIndex: 1,
+  },
+  segmentedLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
   summaryCardTitle: {
     fontSize: 12,
     fontWeight: '700',
@@ -799,6 +985,43 @@ const styles = StyleSheet.create({
   historySection: {
     paddingHorizontal: 16,
     marginBottom: 20,
+  },
+  groupBalancesSection: {
+    paddingHorizontal: 16,
+    marginBottom: 18,
+  },
+  groupBalancesHint: {
+    fontSize: 13,
+    lineHeight: 18,
+    marginTop: -4,
+    marginBottom: 10,
+  },
+  groupBalanceRow: {
+    minHeight: 68,
+    borderRadius: 16,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginBottom: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  groupBalanceIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 11,
+  },
+  groupBalanceCopy: {
+    flex: 1,
+    gap: 2,
+  },
+  groupBalanceAmount: {
+    alignItems: 'flex-end',
+    gap: 3,
+    marginLeft: 8,
   },
   sectionHeader: {
     flexDirection: 'row',

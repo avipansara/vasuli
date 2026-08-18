@@ -1,9 +1,6 @@
--- Pair-scoped Friend detail read model.
---
--- The RPC derives the current app user from the Supabase Auth session and
--- returns only the projection required by Friend detail. It intentionally
--- avoids exposing a general-purpose expense, split, settlement, or activity
--- read API.
+-- Resolve the actual payer for group expenses in the friend detail projection.
+-- A payer can be a third group member, so the friend profile is not a safe
+-- fallback for paidByName.
 
 CREATE OR REPLACE FUNCTION public.get_friend_detail_read_model(p_friend_id uuid)
 RETURNS jsonb
@@ -46,21 +43,15 @@ BEGIN
     shared_expenses AS (
       SELECT
         e.*,
-        COALESCE(current_split.amount, 0) AS your_share,
-        COALESCE(friend_split.amount, 0) AS friend_share
+        current_split.amount AS your_share,
+        friend_split.amount AS friend_share
       FROM public.expenses e
-      LEFT JOIN public.expense_splits current_split
+      JOIN public.expense_splits current_split
         ON current_split.expense_id = e.id
        AND current_split.user_id = app_user_id
-       AND (current_split.amount > 0 OR e.paid_by = app_user_id)
-      LEFT JOIN public.expense_splits friend_split
-       ON friend_split.expense_id = e.id
+      JOIN public.expense_splits friend_split
+        ON friend_split.expense_id = e.id
        AND friend_split.user_id = p_friend_id
-       AND (friend_split.amount > 0 OR e.paid_by = p_friend_id)
-      WHERE e.deleted_at IS NULL
-        AND e.group_id IS NULL
-        AND (COALESCE(current_split.amount, 0) > 0 OR e.paid_by = app_user_id)
-        AND (COALESCE(friend_split.amount, 0) > 0 OR e.paid_by = p_friend_id)
     ),
     pair_settlements AS (
       SELECT s.*,
@@ -69,11 +60,8 @@ BEGIN
           ELSE 'friend_paid_you'
         END AS direction
       FROM public.settlements s
-      WHERE s.group_id IS NULL
-        AND (
-          (s.from_user_id = app_user_id AND s.to_user_id = p_friend_id)
-          OR (s.from_user_id = p_friend_id AND s.to_user_id = app_user_id)
-        )
+      WHERE (s.from_user_id = app_user_id AND s.to_user_id = p_friend_id)
+         OR (s.from_user_id = p_friend_id AND s.to_user_id = app_user_id)
     ),
     balance AS (
       SELECT COALESCE((
@@ -160,8 +148,7 @@ BEGIN
         ORDER BY a.created_at DESC, a.id DESC
       ), '[]'::jsonb) AS value
       FROM public.activities a
-      WHERE a.group_id IS NULL
-        AND a.type IN ('expense_updated', 'expense_deleted')
+      WHERE a.type IN ('expense_updated', 'expense_deleted')
         AND (
           a.target_id IN (SELECT e.id FROM shared_expenses e)
           OR (
@@ -198,12 +185,3 @@ $$;
 
 REVOKE ALL ON FUNCTION public.get_friend_detail_read_model(uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.get_friend_detail_read_model(uuid) TO authenticated;
-
-CREATE INDEX IF NOT EXISTS idx_expense_splits_user_expense_id
-  ON public.expense_splits(user_id, expense_id);
-
-CREATE INDEX IF NOT EXISTS idx_expense_splits_expense_user_id
-  ON public.expense_splits(expense_id, user_id);
-
-CREATE INDEX IF NOT EXISTS idx_activities_target_id_created_at
-  ON public.activities(target_id, created_at DESC);
