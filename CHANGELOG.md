@@ -1,5 +1,6 @@
 ## 2026-08-17
 
+- Matched settlement member selection to the add-expense row pattern by removing floating card treatment from unselected rows and using a full-row selected state.
 - Refined the group settlement screen with a calmer member-card hierarchy,
   clearer selection treatment, shared theme tokens, and friendlier guidance copy.
 - Documented the current product and visual system in `PRODUCT.md`,
