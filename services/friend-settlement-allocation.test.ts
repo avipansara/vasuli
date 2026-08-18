@@ -2,6 +2,46 @@ import { describe, expect, it } from 'vitest';
 import { buildCombinedSettlementAllocations } from '@/services/friend-settlement-allocation';
 
 describe('buildCombinedSettlementAllocations', () => {
+  it('supports a direct-only payment', () => {
+    expect(buildCombinedSettlementAllocations({
+      currentUserId: 'current-user',
+      friendId: 'avee',
+      currency: 'USD',
+      amount: 12.34,
+      directBalance: -12.34,
+      groupBalances: [],
+    })).toEqual([{
+      groupId: undefined,
+      fromUserId: 'current-user',
+      toUserId: 'avee',
+      amount: 12.34,
+      currency: 'USD',
+    }]);
+  });
+
+  it('supports a Group-only payment', () => {
+    expect(buildCombinedSettlementAllocations({
+      currentUserId: 'current-user',
+      friendId: 'avee',
+      currency: 'USD',
+      amount: 25,
+      directBalance: 0,
+      groupBalances: [{
+        groupId: 'group-1',
+        groupName: 'Trip',
+        currency: 'USD',
+        amount: 25,
+        direction: 'you_are_owed',
+      }],
+    })).toEqual([{
+      groupId: 'group-1',
+      fromUserId: 'avee',
+      toUserId: 'current-user',
+      amount: 25,
+      currency: 'USD',
+    }]);
+  });
+
   it('allocates a payment to the direct balance before shared groups', () => {
     expect(buildCombinedSettlementAllocations({
       currentUserId: 'current-user',

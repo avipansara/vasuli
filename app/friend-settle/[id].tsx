@@ -5,13 +5,11 @@ import { NavigationHeader } from '@/components/ui/screen-header';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
-import { activityService } from '@/services/activity-service';
-import { combinedSettlementService, createPaymentIntentId, shouldLogSettlementActivity } from '@/services/combined-settlement-service';
+import { combinedSettlementService, createPaymentIntentId } from '@/services/combined-settlement-service';
 import { CombinedSettlementError } from '@/services/combined-settlement-errors';
+import { applyCombinedSettlementReceiptEffects } from '@/services/combined-settlement-receipt-effects';
 import { friendDetailModule } from '@/services/friend-detail-module';
 import type { FriendGroupBalanceSummary } from '@/services/friend-detail-service';
-import type { GroupDetailReadModel } from '@/services/group-detail-read-model';
-import { applySettlementToGroupReadModel } from '@/services/group-detail-read-model';
 import { queryKeys } from '@/services/query-keys';
 import type { User } from '@/types/database';
 import { normalizeCurrencyInput } from '@/utils/validation';
@@ -102,7 +100,6 @@ export default function FriendSettleScreen() {
     }
 
     const friendsHomeQueryKey = queryKeys.friends.home(currentUserId);
-    const friendDetailQueryKey = queryKeys.friends.detail(currentUserId, id);
     const paymentIntentId = paymentIntentIdRef.current ?? createPaymentIntentId();
     paymentIntentIdRef.current = paymentIntentId;
 
@@ -127,46 +124,13 @@ export default function FriendSettleScreen() {
         return;
       }
 
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: friendDetailQueryKey }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.groups.list(currentUserId) }),
-      ]);
-
-      try {
-        if (shouldLogSettlementActivity(receipt)) {
-          for (const settlement of settlements) {
-            const currentUserPaid = settlement.fromUserId === currentUserId;
-            await activityService.logSettlementCreated({
-              settlementId: settlement.id,
-              fromUserId: settlement.fromUserId,
-              fromUserName: currentUserPaid ? user!.name : friend.name,
-              toUserName: currentUserPaid ? friend.name : user!.name,
-              amount: settlement.amount,
-              groupId: settlement.groupId,
-            });
-          }
-        }
-      } catch {
-        // Activity logging should not block a completed settlement.
-      }
-
-      const settledGroupIds = [...new Set(settlements.flatMap(settlement => settlement.groupId ? [settlement.groupId] : []))];
-      for (const groupId of settledGroupIds) {
-        const groupSettlements = settlements.filter(settlement => settlement.groupId === groupId);
-        queryClient.setQueryData<GroupDetailReadModel | null>(
-          queryKeys.groups.detail(currentUserId, groupId),
-          current => groupSettlements.reduce(
-            (model, settlement) => model ? applySettlementToGroupReadModel(model, settlement) : model,
-            current,
-          )
-        );
-      }
-
-      await Promise.all(settledGroupIds.map(groupId => queryClient.invalidateQueries({
-        queryKey: queryKeys.groups.detail(currentUserId, groupId),
-      })));
-
-      await queryClient.invalidateQueries({ queryKey: queryKeys.activity.list(currentUserId) });
+      await applyCombinedSettlementReceiptEffects({
+        receipt,
+        currentUserId,
+        currentUser: user!,
+        friend,
+        queryClient,
+      });
 
       Alert.alert('Success', `Recorded settlement of ${receipt.currency} ${receipt.totalAmount.toFixed(2)} with ${friend.name}`);
       paymentIntentIdRef.current = null;

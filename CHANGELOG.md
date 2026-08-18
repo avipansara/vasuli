@@ -1,5 +1,8 @@
 ## 2026-08-17
 
+- Finalized the combined settlement receipt flow with centralized cache updates,
+  activity deduplication, and regression coverage for direct, Group, and
+  combined payments.
 - Added stale-balance detection, server-derived settlement authorization,
   exact-cent validation, and recoverable Friend settle-up errors.
 - Routed combined Friend settlement through a dedicated commit service and
