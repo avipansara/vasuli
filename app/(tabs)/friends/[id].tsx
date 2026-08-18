@@ -1,6 +1,7 @@
 import { FriendExpenseActivity } from '@/components/friends/friend-expense-activity';
 import { FriendExpenseActivityEvent } from '@/components/friends/friend-expense-activity-event';
 import { FriendSettlementActivity } from '@/components/friends/friend-settlement-activity';
+import { FriendScopeTransferActivity } from '@/components/friends/friend-scope-transfer-activity';
 import { ThemedText } from '@/components/themed-text';
 import { AsyncErrorState } from '@/components/ui/async-error-state';
 import { IconSymbol, type IconSymbolName } from '@/components/ui/icon-symbol';
@@ -407,6 +408,7 @@ export default function FriendDetailScreen() {
     )
   );
   const balance = combinedBalance;
+  const canClearZeroNet = Boolean(relationship.zeroNetCurrency);
   const groupBalanceCount = groupBalances.filter(summary => summary.direction !== 'settled').length;
   const isOwed = balance > 0;
   const isOwing = balance < 0;
@@ -575,7 +577,7 @@ export default function FriendDetailScreen() {
                 Direct ledger: {relationship.directCurrency ?? 'multiple currencies'} {relationship.directBalance >= 0 ? '+' : '-'}{Math.abs(relationship.directBalance).toFixed(2)}
               </ThemedText>
 
-              {balance !== 0 && !hasCurrencyAmbiguity && (
+              {((balance !== 0 && !hasCurrencyAmbiguity) || canClearZeroNet) && (
                 <View style={styles.cardQuickActions}>
                   <TouchableOpacity
                     style={[styles.cardQuickActionButton, {
@@ -588,7 +590,7 @@ export default function FriendDetailScreen() {
                     accessibilityState={{ disabled: isSettlingUp, busy: isSettlingUp }}
                     onPress={() => router.push(`/friend-settle/${id}`)}>
                     <IconSymbol size={18} name="banknote" color="#ffffff" />
-                    <ThemedText style={[styles.cardQuickActionText, { color: '#ffffff' }]}>Settle Up</ThemedText>
+                    <ThemedText style={[styles.cardQuickActionText, { color: '#ffffff' }]}>{canClearZeroNet && balance === 0 ? 'Clear Balances' : 'Settle Up'}</ThemedText>
                   </TouchableOpacity>
                 </View>
               )}
@@ -759,7 +761,15 @@ export default function FriendDetailScreen() {
                             isDark={isDark}
                             formatDate={formatDate}
                           />
-                          : <FriendExpenseActivityEvent
+                          : item.type === 'scope_transfer'
+                            ? <FriendScopeTransferActivity
+                              item={item}
+                              friendName={friend.name}
+                              colors={colors as Record<string, string>}
+                              isDark={isDark}
+                              formatDate={formatDate}
+                            />
+                            : <FriendExpenseActivityEvent
                             item={item}
                             currentUserId={currentUserId}
                             friendName={friend.name}

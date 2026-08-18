@@ -10,6 +10,20 @@ export type CombinedSettlementAllocation = {
   currency: string;
 };
 
+export type CombinedSettlementScopeTransfer = {
+  groupId: string;
+  fromUserId: string;
+  toUserId: string;
+  amount: number;
+  currency: string;
+  signedGroupBalanceDelta: number;
+};
+
+export type CombinedSettlementPlan = {
+  allocations: CombinedSettlementAllocation[];
+  transfers: CombinedSettlementScopeTransfer[];
+};
+
 type CombinedSettlementParams = {
   currentUserId: string;
   friendId: string;
@@ -70,6 +84,101 @@ export function buildCombinedSettlementAllocations({
     if (allocationCents === 0) return [];
     return [{ groupId: scope.groupId, fromUserId, toUserId, amount: allocationCents / 100, currency }];
   });
+}
+
+export function buildCombinedSettlementPlan({
+  currentUserId,
+  friendId,
+  currency,
+  amount,
+  directBalance,
+  groupBalances,
+}: CombinedSettlementParams): CombinedSettlementPlan {
+  if (!Number.isFinite(amount) || amount < 0 || !isWholeCent(amount)) {
+    throw new Error('Settlement amount must be zero or greater and use at most two decimal places.');
+  }
+  if (!Number.isFinite(directBalance) || groupBalances.some(group => !Number.isFinite(group.amount))) {
+    throw new Error('Settlement balance is invalid.');
+  }
+  if (!SUPPORTED_SETTLEMENT_CURRENCIES.includes(currency as typeof SUPPORTED_SETTLEMENT_CURRENCIES[number])) {
+    throw new Error('Settlement currency is not supported.');
+  }
+  if (groupBalances.some(group => group.currency !== currency && group.direction !== 'settled')) {
+    throw new Error('Settlement currencies must be handled separately.');
+  }
+
+  const groups = groupBalances
+    .filter(group => group.currency === currency && group.direction !== 'settled')
+    .map(group => ({
+      groupId: group.groupId,
+      amount: normalizeAmount(group.amount),
+      lastActivityAt: group.lastActivityAt ?? 0,
+    }))
+    .filter(scope => scope.amount !== 0);
+  const totalBalanceCents = toCents(directBalance) + groups.reduce(
+    (total, scope) => total + toCents(scope.amount),
+    0,
+  );
+  const totalBalance = totalBalanceCents / 100;
+
+  if (totalBalance === 0 && amount !== 0) {
+    throw new Error('Settlement amount cannot exceed the combined outstanding balance.');
+  }
+  if (totalBalance !== 0 && toCents(amount) > Math.abs(totalBalanceCents)) {
+    throw new Error('Settlement amount cannot exceed the combined outstanding balance.');
+  }
+
+  const directSign = Math.sign(directBalance);
+  const transferAllGroups = directBalance === 0 || totalBalance === 0;
+  const transferGroups = groups.filter(scope => (
+    transferAllGroups || Math.sign(scope.amount) !== directSign
+  ));
+  const transferredGroupIds = new Set(transferGroups.map(scope => scope.groupId));
+  const transfers = transferGroups.map(scope => ({
+    groupId: scope.groupId,
+    fromUserId: friendId,
+    toUserId: currentUserId,
+    amount: Math.abs(scope.amount),
+    currency,
+    signedGroupBalanceDelta: -scope.amount,
+  }));
+
+  const adjustedDirectBalance = normalizeAmount(
+    directBalance - transfers.reduce((total, transfer) => total + transfer.signedGroupBalanceDelta, 0),
+  );
+  const paymentScopes = [
+    { groupId: undefined, amount: adjustedDirectBalance, lastActivityAt: Number.MIN_SAFE_INTEGER },
+    ...groups.filter(scope => !transferredGroupIds.has(scope.groupId)),
+  ].filter(scope => scope.amount !== 0);
+  const paymentDirection = Math.sign(totalBalance);
+  if (paymentScopes.some(scope => Math.sign(scope.amount) !== paymentDirection)) {
+    throw new Error('Settlement transfer plan did not normalize the payment direction.');
+  }
+
+  let remainingCents = toCents(amount);
+  const fromUserId = paymentDirection < 0 ? currentUserId : friendId;
+  const toUserId = paymentDirection < 0 ? friendId : currentUserId;
+  const allocations = [...paymentScopes]
+    .sort((a, b) => a.groupId ? a.lastActivityAt - b.lastActivityAt : -Infinity)
+    .flatMap(scope => {
+      if (remainingCents <= 0) return [];
+      const allocationCents = Math.min(toCents(Math.abs(scope.amount)), remainingCents);
+      remainingCents -= allocationCents;
+      if (allocationCents === 0) return [];
+      return [{
+        groupId: scope.groupId,
+        fromUserId,
+        toUserId,
+        amount: allocationCents / 100,
+        currency,
+      }];
+    });
+
+  if (remainingCents !== 0) {
+    throw new Error('Settlement transfer plan could not allocate the requested amount.');
+  }
+
+  return { allocations, transfers };
 }
 
 function normalizeAmount(amount: number): number {

@@ -130,4 +130,53 @@ describe('combined settlement service', () => {
 
     expect(commit).not.toHaveBeenCalled();
   });
+
+  it('uses scope transfers when direct and group balances point in opposite directions', async () => {
+    const commit = vi.fn(async request => ({
+      paymentIntentId: request.paymentIntentId,
+      reused: false,
+      committedAt: 1,
+      totalAmount: request.amount,
+      currency: request.currency,
+      direction: 'friend_paid_you' as const,
+      settlements: [],
+    }));
+    const service = createCombinedSettlementService({ commit });
+
+    await service.commit({
+      currentUserId: 'current-user',
+      friendId: 'friend-a',
+      paymentIntentId: 'intent-opposite',
+      amount: 2,
+      currency: 'USD',
+      date: 100,
+      expectedBalance: 2,
+      directBalance: 10,
+      groupBalances: [{
+        groupId: 'group-1',
+        groupName: 'Trip',
+        currency: 'USD',
+        amount: -8,
+        direction: 'you_owe',
+      }],
+    });
+
+    expect(commit).toHaveBeenCalledWith(expect.objectContaining({
+      allocations: [{
+        groupId: undefined,
+        fromUserId: 'friend-a',
+        toUserId: 'current-user',
+        amount: 2,
+        currency: 'USD',
+      }],
+      transfers: [{
+        groupId: 'group-1',
+        fromUserId: 'friend-a',
+        toUserId: 'current-user',
+        amount: 8,
+        currency: 'USD',
+        signedGroupBalanceDelta: 8,
+      }],
+    }));
+  });
 });

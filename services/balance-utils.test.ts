@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   getByGroupsSettlements: vi.fn(),
   getUserSettlements: vi.fn(),
   getUserGroups: vi.fn(),
+  getByGroupScopeTransfers: vi.fn(),
 }));
 
 vi.mock('@/services/expense-service', () => ({
@@ -36,6 +37,12 @@ vi.mock('@/services/group-service', () => ({
   },
 }));
 
+vi.mock('@/services/scope-transfer-service', () => ({
+  scopeTransferService: {
+    getByGroup: mocks.getByGroupScopeTransfers,
+  },
+}));
+
 import { calculateBalances, calculateFriendBalance, calculateGroupBalances, getFriendRecentExpenses } from './balance-utils';
 
 describe('balance query batching', () => {
@@ -46,6 +53,7 @@ describe('balance query batching', () => {
     mocks.getByGroupSettlements.mockResolvedValue([]);
     mocks.getUserSettlements.mockResolvedValue([]);
     mocks.getSplitsForExpenses.mockResolvedValue([]);
+    mocks.getByGroupScopeTransfers.mockResolvedValue([]);
   });
 
   it('loads all group splits in one batch query', async () => {
@@ -68,6 +76,35 @@ describe('balance query batching', () => {
     expect(mocks.getByGroups).toHaveBeenCalledWith(['group-1']);
     expect(balances.get('user-1')).toBe(5);
     expect(balances.get('user-2')).toBe(-5);
+  });
+
+  it('includes scope transfers in group balances', async () => {
+    mocks.getByGroups.mockResolvedValue([
+      { id: 'expense-1', groupId: 'group-1', paidBy: 'user-1', amount: 30 },
+    ]);
+    mocks.getByGroupsSettlements.mockResolvedValue([]);
+    mocks.getSplitsForExpenses.mockResolvedValue([
+      { id: 'split-1', expenseId: 'expense-1', userId: 'user-1', amount: 15 },
+      { id: 'split-2', expenseId: 'expense-1', userId: 'user-2', amount: 15 },
+    ]);
+    mocks.getByGroupScopeTransfers.mockResolvedValue([
+      {
+        id: 'transfer-1',
+        groupId: 'group-1',
+        fromUserId: 'user-2',
+        toUserId: 'user-1',
+        currency: 'USD',
+        signedGroupBalanceDelta: 5,
+        operationId: 'op-1',
+        createdAt: 1,
+      },
+    ]);
+
+    const balances = await calculateBalances('group-1');
+
+    expect(mocks.getByGroupScopeTransfers).toHaveBeenCalledWith('group-1');
+    expect(balances.get('user-1')).toBe(20);
+    expect(balances.get('user-2')).toBe(-20);
   });
 
   it('loads multiple group balances through one shared batch', async () => {

@@ -11,6 +11,12 @@
   stale-load protection, and sign-out cache isolation.
 - Routed Home Friend summaries through the currency-aware relationship projection,
   preserving direct-versus-Group scope and avoiding incompatible-currency totals.
+- Added Dev-backed settlement operations and scope-transfer records, including
+  idempotent all-balance/group RPCs, zero-net clearing, transfer-aware Friend and
+  Group refreshes, and reversible group deletion metadata.
+- Fixed group balance calculation in `balance-utils` to include scope transfers,
+  so the Group settle-up screen shows the same reduced balance as the Group
+  detail page after partial or cross-scope settlements.
 
 ## 2026-08-17
 

@@ -88,6 +88,11 @@ export default function FriendsScreen() {
     enabled: !!currentUserId,
   });
   useRealtime({
+    table: 'settlement_scope_transfers',
+    onChange: invalidateFriends,
+    enabled: !!currentUserId,
+  });
+  useRealtime({
     table: 'settlements',
     filter: currentUserId ? `to_user_id=eq.${currentUserId}` : undefined,
     onChange: invalidateFriends,

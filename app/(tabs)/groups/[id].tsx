@@ -120,6 +120,7 @@ export default function GroupDetailScreen() {
   const expenses = groupDetail?.expenses ?? EMPTY_EXPENSES;
   const members = groupDetail?.members ?? [];
   const balances = groupDetail?.balances ?? new Map<string, number>();
+  const scopeTransfers = groupDetail?.scopeTransfers ?? [];
   const expenseSplits = useMemo(() => expenses.flatMap(expense => expense.splits), [expenses]);
   const availableUsers = groupDetail?.availableUsers ?? [];
   const friendshipStatus = groupDetail?.friendshipStatus ?? new Map();
@@ -166,6 +167,12 @@ export default function GroupDetailScreen() {
   });
   useRealtime({
     table: 'settlements',
+    filter: id ? `group_id=eq.${id}` : undefined,
+    onChange: invalidateGroupDetail,
+    enabled: !!id,
+  });
+  useRealtime({
+    table: 'settlement_scope_transfers',
     filter: id ? `group_id=eq.${id}` : undefined,
     onChange: invalidateGroupDetail,
     enabled: !!id,
@@ -277,7 +284,7 @@ export default function GroupDetailScreen() {
           onPress: async () => {
             try {
               setIsDeletingGroup(true);
-              await groupService.delete(id);
+              await groupService.delete(id, currentUserId);
               await queryClient.invalidateQueries({
                 queryKey: queryKeys.groups.list(currentUserId),
                 refetchType: 'all',
@@ -1022,6 +1029,28 @@ export default function GroupDetailScreen() {
         )}
 
         {/* Expenses Section */}
+        {scopeTransfers.length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <ThemedText type="subtitle" style={[styles.sectionTitle, { color: isDark ? '#F8FAFC' : colors.text }]}>Balance changes</ThemedText>
+              <ThemedText style={[styles.expenseCount, { color: isDark ? '#94A3B8' : colors.textSecondary }]}>{scopeTransfers.length}</ThemedText>
+            </View>
+            {scopeTransfers.map(transfer => {
+              const movedToFriendship = transfer.fromUserId === currentUserId;
+              return (
+                <View key={transfer.id} style={[styles.transferRow, { backgroundColor: friendDetailTheme.surface, borderColor: friendDetailTheme.surfaceBorder }]}>
+                  <IconSymbol name="arrow.left.arrow.right" size={17} color={friendDetailTheme.actionIcon} />
+                  <View style={styles.transferCopy}>
+                    <ThemedText type="defaultSemiBold" style={{ color: colors.text }}>{movedToFriendship ? 'Moved to friendship balance' : 'Moved from friendship balance'}</ThemedText>
+                    <ThemedText style={{ color: colors.textSecondary }}>{transfer.currency} {Math.abs(transfer.signedGroupBalanceDelta).toFixed(2)}</ThemedText>
+                  </View>
+                </View>
+              );
+            })}
+          </View>
+        )}
+
+        {/* Expenses Section */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <ThemedText type="subtitle" style={[styles.sectionTitle, { color: isDark ? '#F8FAFC' : colors.text }]}>
@@ -1452,6 +1481,20 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.06,
     shadowRadius: 10,
     elevation: 3,
+  },
+  transferRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    marginBottom: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  transferCopy: {
+    flex: 1,
+    gap: 2,
   },
   expenseIcon: {
     width: 38,

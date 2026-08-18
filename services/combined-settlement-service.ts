@@ -1,6 +1,7 @@
 import type { Settlement } from '@/types/database';
 import {
-  buildCombinedSettlementAllocations,
+  buildCombinedSettlementPlan,
+  type CombinedSettlementScopeTransfer,
   type CombinedSettlementAllocation,
 } from './friend-settlement-allocation';
 import { settlementService } from './settlement-service';
@@ -16,6 +17,22 @@ export type CombinedSettlementReceipt = {
   currency: string;
   direction: CombinedSettlementDirection;
   settlements: Settlement[];
+  operationId?: string;
+  mode?: 'all_balances' | 'group';
+  affectedGroupIds?: string[];
+  transfers?: SettlementScopeTransfer[];
+};
+
+export type SettlementScopeTransfer = {
+  id: string;
+  operationId: string;
+  groupId: string;
+  fromUserId: string;
+  toUserId: string;
+  currency: string;
+  signedGroupBalanceDelta: number;
+  note?: string;
+  createdAt: number;
 };
 
 export type CombinedSettlementCommitParams = {
@@ -28,6 +45,8 @@ export type CombinedSettlementCommitParams = {
   expectedBalance: number;
   directBalance: number;
   groupBalances: FriendGroupBalanceSummary[];
+  mode?: 'all_balances' | 'group';
+  groupId?: string;
 };
 
 export type CombinedSettlementCommitRequest = {
@@ -38,6 +57,9 @@ export type CombinedSettlementCommitRequest = {
   date: number;
   expectedBalance: number;
   allocations: CombinedSettlementAllocation[];
+  transfers?: CombinedSettlementScopeTransfer[];
+  mode?: 'all_balances' | 'group';
+  groupId?: string;
 };
 
 export type CombinedSettlementPersistenceAdapter = {
@@ -66,7 +88,7 @@ export function createCombinedSettlementService(
 ): CombinedSettlementService {
   return {
     async commit(params) {
-      const allocations = buildCombinedSettlementAllocations(params);
+      const plan = buildCombinedSettlementPlan(params);
       return persistence.commit({
         paymentIntentId: params.paymentIntentId,
         friendId: params.friendId,
@@ -74,7 +96,10 @@ export function createCombinedSettlementService(
         currency: params.currency,
         date: params.date,
         expectedBalance: params.expectedBalance,
-        allocations,
+        allocations: plan.allocations,
+        ...(plan.transfers.length > 0 ? { transfers: plan.transfers } : {}),
+        mode: params.mode,
+        groupId: params.groupId,
       });
     },
   };

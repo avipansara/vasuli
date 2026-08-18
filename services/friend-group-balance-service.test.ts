@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createFriendGroupBalanceService } from '@/services/friend-group-balance-service';
-import type { Expense, ExpenseSplit, Group, Settlement } from '@/types/database';
+import type { Expense, ExpenseSplit, Group, Settlement, SettlementScopeTransfer } from '@/types/database';
 
 const group = (id: string, name: string): Group => ({
   id,
@@ -101,6 +101,32 @@ describe('friend group balance service', () => {
       amount: 0,
       direction: 'settled',
       lastActivityAt: 25,
+    }]);
+  });
+
+  it('reports raw group balances and includes transfer activity for the relationship projection', async () => {
+    const transfer: SettlementScopeTransfer = {
+      id: 'transfer-1',
+      operationId: 'operation-1',
+      groupId: 'alaska',
+      fromUserId: 'avee',
+      toUserId: 'current-user',
+      currency: 'USD',
+      signedGroupBalanceDelta: -100,
+      createdAt: 40,
+    };
+    const service = createFriendGroupBalanceService({
+      getUserGroups: async () => [group('alaska', 'Alaska 2026')],
+      getExpenses: async () => [expense],
+      getSplits: async () => splits,
+      getSettlements: async () => [],
+      getScopeTransfers: async () => [transfer],
+    });
+
+    await expect(service.getSharedGroupBalances('current-user', 'avee')).resolves.toMatchObject([{
+      amount: 100,
+      direction: 'you_are_owed',
+      lastActivityAt: 40,
     }]);
   });
 });

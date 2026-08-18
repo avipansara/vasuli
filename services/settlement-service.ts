@@ -118,15 +118,27 @@ export function buildPairSettlementAllocations({
 
 export const settlementService = {
   async commit(request: CombinedSettlementCommitRequest): Promise<CombinedSettlementReceipt> {
-    const { data, error } = await supabase.rpc('commit_combined_settlement', {
-      p_payment_intent_id: request.paymentIntentId,
-      p_friend_id: request.friendId,
-      p_amount: request.amount,
-      p_currency: request.currency,
-      p_date: new Date(request.date).toISOString(),
-      p_expected_balance: request.expectedBalance,
-      p_allocations: request.allocations,
-    });
+    const { data, error } = request.amount === 0
+      ? await supabase.rpc('commit_zero_net_settlement_operation', {
+        p_payment_intent_id: request.paymentIntentId,
+        p_friend_id: request.friendId,
+        p_currency: request.currency,
+        p_date: new Date(request.date).toISOString(),
+        p_expected_balance: request.expectedBalance,
+        p_transfers: request.transfers ?? [],
+      })
+      : await supabase.rpc('commit_settlement_operation', {
+        p_payment_intent_id: request.paymentIntentId,
+        p_friend_id: request.friendId,
+        p_group_id: request.groupId ?? null,
+        p_mode: request.mode ?? 'all_balances',
+        p_amount: request.amount,
+        p_currency: request.currency,
+        p_date: new Date(request.date).toISOString(),
+        p_expected_balance: request.expectedBalance,
+        p_allocations: request.allocations,
+        p_transfers: request.transfers ?? [],
+      });
 
     if (error) throw mapCombinedSettlementError(error);
 
@@ -291,6 +303,10 @@ function mapCombinedSettlementReceipt(data: unknown): CombinedSettlementReceipt 
     currency?: unknown;
     direction?: unknown;
     settlements?: unknown;
+    operationId?: unknown;
+    mode?: unknown;
+    affectedGroupIds?: unknown;
+    transfers?: unknown;
   };
 
   if (
@@ -313,6 +329,46 @@ function mapCombinedSettlementReceipt(data: unknown): CombinedSettlementReceipt 
     currency: receipt.currency,
     direction: receipt.direction,
     settlements: receipt.settlements.map(mapSettlementReceipt),
+    operationId: typeof receipt.operationId === 'string' ? receipt.operationId : undefined,
+    mode: receipt.mode === 'group' ? 'group' : 'all_balances',
+    affectedGroupIds: Array.isArray(receipt.affectedGroupIds)
+      ? receipt.affectedGroupIds.filter((value): value is string => typeof value === 'string')
+      : [...new Set(receipt.settlements.flatMap(settlement => settlement.groupId ? [settlement.groupId] : []))],
+    transfers: Array.isArray(receipt.transfers)
+      ? receipt.transfers.map(mapSettlementScopeTransfer)
+      : [],
+  };
+}
+
+function mapSettlementScopeTransfer(value: unknown): import('./combined-settlement-service').SettlementScopeTransfer {
+  if (!value || typeof value !== 'object') {
+    throw new Error('Settlement operation returned an invalid scope transfer.');
+  }
+
+  const row = value as Record<string, unknown>;
+  if (
+    typeof row.id !== 'string'
+    || typeof row.operationId !== 'string'
+    || typeof row.groupId !== 'string'
+    || typeof row.fromUserId !== 'string'
+    || typeof row.toUserId !== 'string'
+    || typeof row.currency !== 'string'
+    || typeof row.signedGroupBalanceDelta !== 'number'
+    || typeof row.createdAt !== 'string'
+  ) {
+    throw new Error('Settlement operation returned an invalid scope transfer.');
+  }
+
+  return {
+    id: row.id,
+    operationId: row.operationId,
+    groupId: row.groupId,
+    fromUserId: row.fromUserId,
+    toUserId: row.toUserId,
+    currency: row.currency,
+    signedGroupBalanceDelta: row.signedGroupBalanceDelta,
+    note: typeof row.note === 'string' ? row.note : undefined,
+    createdAt: new Date(row.createdAt).getTime(),
   };
 }
 

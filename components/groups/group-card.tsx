@@ -1,6 +1,7 @@
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useThemeColors } from '@/hooks/use-theme-colors';
+import { useAuth } from '@/contexts/auth-context-otp';
 import { groupService } from '@/services/group-service';
 import type { GroupWithMembers } from '@/types/database';
 import { router } from 'expo-router';
@@ -31,6 +32,7 @@ function areGroupCardPropsEqual(prev: GroupCardProps, next: GroupCardProps): boo
 
 function GroupCardInner({ group, index, onRefresh }: GroupCardProps) {
   const { colors, isDark } = useThemeColors();
+  const { user } = useAuth();
   const swipeableRef = useRef<Swipeable>(null);
   const balance = group.yourBalance || 0;
   const isPositive = balance > 0;
@@ -44,7 +46,7 @@ function GroupCardInner({ group, index, onRefresh }: GroupCardProps) {
   async function handleDeleteGroup() {
     Alert.alert(
       'Delete Group',
-      'Are you sure you want to delete this group? This action cannot be undone.',
+      'Are you sure you want to delete this group? Its history will be preserved and it can be restored later.',
       [
         {
           text: 'Cancel',
@@ -55,7 +57,8 @@ function GroupCardInner({ group, index, onRefresh }: GroupCardProps) {
           style: 'destructive',
           onPress: async () => {
             try {
-              await groupService.delete(group.id);
+              if (!user?.id) throw new Error('You must be signed in to delete a group.');
+              await groupService.delete(group.id, user.id);
               onRefresh?.();
             } catch (error) {
               console.error('Error deleting group:', error);

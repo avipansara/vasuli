@@ -1,7 +1,7 @@
 import { activityService } from './activity-service';
 import type { CombinedSettlementReceipt } from './combined-settlement-service';
 import { shouldLogSettlementActivity } from './combined-settlement-service';
-import { applySettlementToGroupReadModel, type GroupDetailReadModel } from './group-detail-read-model';
+import { applyScopeTransferToGroupReadModel, applySettlementToGroupReadModel, type GroupDetailReadModel } from './group-detail-read-model';
 import { queryKeys } from './query-keys';
 import type { User } from '@/types/database';
 
@@ -28,6 +28,11 @@ export async function applyCombinedSettlementReceiptEffects({
   const settledGroupIds = [...new Set(
     receipt.settlements.flatMap(settlement => settlement.groupId ? [settlement.groupId] : [])
   )];
+  const affectedGroupIds = [...new Set([
+    ...settledGroupIds,
+    ...(receipt.affectedGroupIds ?? []),
+    ...(receipt.transfers ?? []).map(transfer => transfer.groupId),
+  ])];
 
   await invalidateSafely(queryClient, [
     queryKeys.friends.detail(currentUserId, friend.id),
@@ -52,15 +57,23 @@ export async function applyCombinedSettlementReceiptEffects({
     }
   }
 
-  for (const groupId of settledGroupIds) {
+  for (const groupId of affectedGroupIds) {
     const groupSettlements = receipt.settlements.filter(settlement => settlement.groupId === groupId);
     try {
       queryClient.setQueryData<GroupDetailReadModel | null>(
         queryKeys.groups.detail(currentUserId, groupId),
-        current => groupSettlements.reduce(
-          (model, settlement) => model ? applySettlementToGroupReadModel(model, settlement) : model,
-          current ?? null,
-        )
+        current => {
+          const withSettlements = groupSettlements.reduce(
+            (model, settlement) => model ? applySettlementToGroupReadModel(model, settlement) : model,
+            current ?? null,
+          );
+          return (receipt.transfers ?? [])
+            .filter(transfer => transfer.groupId === groupId)
+            .reduce(
+              (model, transfer) => model ? applyScopeTransferToGroupReadModel(model, transfer) : model,
+              withSettlements,
+            );
+        }
       );
     } catch (error) {
       console.warn(`Group ${groupId} cache update failed after settlement commit:`, error);
@@ -68,7 +81,7 @@ export async function applyCombinedSettlementReceiptEffects({
   }
 
   await invalidateSafely(queryClient, [
-    ...settledGroupIds.map(groupId => queryKeys.groups.detail(currentUserId, groupId)),
+    ...affectedGroupIds.map(groupId => queryKeys.groups.detail(currentUserId, groupId)),
     queryKeys.activity.list(currentUserId),
   ]);
 }

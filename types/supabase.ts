@@ -169,6 +169,7 @@ export type Database = {
         Row: {
           id: string
           group_id: string
+          operation_id: string | null
           from_user_id: string
           to_user_id: string
           amount: number
@@ -180,6 +181,7 @@ export type Database = {
         Insert: {
           id?: string
           group_id: string
+          operation_id?: string | null
           from_user_id: string
           to_user_id: string
           amount: number
@@ -191,12 +193,94 @@ export type Database = {
         Update: {
           id?: string
           group_id?: string
+          operation_id?: string | null
           from_user_id?: string
           to_user_id?: string
           amount?: number
           currency?: string
           date?: string
           notes?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+      settlement_operations: {
+        Row: {
+          id: string
+          actor_user_id: string
+          friend_user_id: string
+          group_id: string | null
+          mode: string
+          currency: string
+          expected_balance: number
+          requested_payment_amount: number
+          payment_intent_id: string
+          status: string
+          created_at: string
+          reversed_at: string | null
+        }
+        Insert: {
+          id?: string
+          actor_user_id: string
+          friend_user_id: string
+          group_id?: string | null
+          mode: string
+          currency: string
+          expected_balance: number
+          requested_payment_amount: number
+          payment_intent_id: string
+          status?: string
+          created_at?: string
+          reversed_at?: string | null
+        }
+        Update: {
+          id?: string
+          actor_user_id?: string
+          friend_user_id?: string
+          group_id?: string | null
+          mode?: string
+          currency?: string
+          expected_balance?: number
+          requested_payment_amount?: number
+          payment_intent_id?: string
+          status?: string
+          created_at?: string
+          reversed_at?: string | null
+        }
+        Relationships: []
+      }
+      settlement_scope_transfers: {
+        Row: {
+          id: string
+          operation_id: string
+          group_id: string
+          from_user_id: string
+          to_user_id: string
+          currency: string
+          signed_group_balance_delta: number
+          note: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          operation_id: string
+          group_id: string
+          from_user_id: string
+          to_user_id: string
+          currency: string
+          signed_group_balance_delta: number
+          note?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          operation_id?: string
+          group_id?: string
+          from_user_id?: string
+          to_user_id?: string
+          currency?: string
+          signed_group_balance_delta?: number
+          note?: string | null
           created_at?: string
         }
         Relationships: []
@@ -215,6 +299,64 @@ export type Database = {
           p_date: string
           p_expected_balance: number
           p_allocations: Json
+        }
+        Returns: Json
+      }
+      commit_settlement_operation: {
+        Args: {
+          p_payment_intent_id: string
+          p_friend_id: string
+          p_group_id: string | null
+          p_mode: string
+          p_amount: number
+          p_currency: string
+          p_date: string
+          p_expected_balance: number
+          p_allocations: Json
+          p_transfers: Json
+        }
+        Returns: Json
+      }
+      get_friend_scope_transfers: {
+        Args: {
+          p_friend_id: string
+        }
+        Returns: {
+          id: string
+          operation_id: string
+          group_id: string
+          from_user_id: string
+          to_user_id: string
+          currency: string
+          signed_group_balance_delta: number
+          note: string | null
+          created_at: string
+        }[]
+      }
+      get_group_scope_transfers: {
+        Args: {
+          p_group_id: string
+        }
+        Returns: {
+          id: string
+          operation_id: string
+          group_id: string
+          from_user_id: string
+          to_user_id: string
+          currency: string
+          signed_group_balance_delta: number
+          note: string | null
+          created_at: string
+        }[]
+      }
+      commit_zero_net_settlement_operation: {
+        Args: {
+          p_payment_intent_id: string
+          p_friend_id: string
+          p_currency: string
+          p_date: string
+          p_expected_balance: number
+          p_transfers: Json
         }
         Returns: Json
       }

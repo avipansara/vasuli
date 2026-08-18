@@ -3,6 +3,7 @@ import { friendshipService } from './friendship-service';
 import { groupService } from './group-service';
 import { settlementService } from './settlement-service';
 import { userService } from './user-service';
+import { scopeTransferService } from './scope-transfer-service';
 import {
   buildGroupDetailReadModel,
   type GroupDetailReadModel,
@@ -15,6 +16,7 @@ export type GroupDetailDataSource = {
   getExpenses(groupId: string): ReturnType<typeof expenseService.getByGroup>;
   getMembers(groupId: string): ReturnType<typeof groupService.getMembers>;
   getSettlements(groupId: string): ReturnType<typeof settlementService.getByGroup>;
+  getScopeTransfers?(groupId: string): ReturnType<typeof scopeTransferService.getByGroup>;
   getUserFriends(userId: string): ReturnType<typeof userService.getUserFriends>;
   getFriendships(userId: string): ReturnType<typeof friendshipService.getAllFriendships>;
   getUsers(userIds: string[]): ReturnType<typeof userService.getByIds>;
@@ -26,6 +28,7 @@ const defaultDataSource: GroupDetailDataSource = {
   getExpenses: expenseService.getByGroup,
   getMembers: groupService.getMembers,
   getSettlements: settlementService.getByGroup,
+  getScopeTransfers: scopeTransferService.getByGroup,
   getUserFriends: userService.getUserFriends,
   getFriendships: friendshipService.getAllFriendships,
   getUsers: userService.getByIds,
@@ -38,10 +41,11 @@ export function createGroupDetailService(dataSource: GroupDetailDataSource = def
       const group = await dataSource.getGroup(groupId);
       if (!group) return null;
 
-      const [expenses, members, settlements, userFriends, friendships] = await Promise.all([
+      const [expenses, members, settlements, scopeTransfers, userFriends, friendships] = await Promise.all([
         dataSource.getExpenses(groupId),
         dataSource.getMembers(groupId),
         dataSource.getSettlements(groupId),
+        dataSource.getScopeTransfers?.(groupId) ?? Promise.resolve([]),
         dataSource.getUserFriends(currentUserId),
         dataSource.getFriendships(currentUserId),
       ]);
@@ -65,6 +69,7 @@ export function createGroupDetailService(dataSource: GroupDetailDataSource = def
       friendships,
       splits,
       settlements,
+      scopeTransfers,
     });
     },
   };

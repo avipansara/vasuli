@@ -1,15 +1,17 @@
-import type { Expense, ExpenseSplit, Group, Settlement } from '@/types/database';
+import type { Expense, ExpenseSplit, Group, Settlement, SettlementScopeTransfer } from '@/types/database';
 import { expenseService } from './expense-service';
 import { groupService } from './group-service';
 import { settlementService } from './settlement-service';
 import { calculateGroupBalances } from './group-balance';
 import type { FriendGroupBalanceSummary } from './friend-detail-service';
+import { scopeTransferService } from './scope-transfer-service';
 
 export type FriendGroupBalanceDataSource = {
   getUserGroups(userId: string): Promise<Group[]>;
   getExpenses(groupIds: string[]): Promise<Expense[]>;
   getSplits(expenseIds: string[]): Promise<ExpenseSplit[]>;
   getSettlements(groupIds: string[]): Promise<Settlement[]>;
+  getScopeTransfers?(groupIds: string[]): Promise<SettlementScopeTransfer[]>;
 };
 
 const defaultDataSource: FriendGroupBalanceDataSource = {
@@ -17,6 +19,10 @@ const defaultDataSource: FriendGroupBalanceDataSource = {
   getExpenses: expenseService.getByGroups,
   getSplits: expenseService.getSplitsForExpenses,
   getSettlements: settlementService.getByGroups,
+  getScopeTransfers: async (groupIds) => {
+    const transfers = await Promise.all(groupIds.map(groupId => scopeTransferService.getByGroup(groupId)));
+    return transfers.flat();
+  },
 };
 
 export function createFriendGroupBalanceService(
@@ -33,10 +39,20 @@ export function createFriendGroupBalanceService(
       if (sharedGroups.length === 0) return [];
 
       const groupIds = sharedGroups.map(group => group.id);
-      const [expenses, settlements] = await Promise.all([
+      const [expenses, settlements, scopeTransfers] = await Promise.all([
         dataSource.getExpenses(groupIds),
         dataSource.getSettlements(groupIds),
+        dataSource.getScopeTransfers?.(groupIds) ?? Promise.resolve([]),
       ]);
+      if (__DEV__) {
+        console.log('[FriendGroupBalance] loaded inputs', {
+          friendId,
+          groupCount: groupIds.length,
+          expenseCount: expenses.length,
+          settlementCount: settlements.length,
+          scopeTransferCount: scopeTransfers.length,
+        });
+      }
       const activeExpenses = expenses.filter(expense => !expense.deletedAt);
       const splits = await dataSource.getSplits(activeExpenses.map(expense => expense.id));
 
@@ -46,6 +62,9 @@ export function createFriendGroupBalanceService(
         const currencies = new Set([
           ...groupExpenses.map(expense => expense.currency),
           ...groupSettlements.map(settlement => settlement.currency),
+          ...scopeTransfers
+            .filter(transfer => transfer.groupId === group.id)
+            .map(transfer => transfer.currency),
         ]);
 
         return [...currencies].map(currency => {
@@ -63,10 +82,24 @@ export function createFriendGroupBalanceService(
            * current user owes that Friend. Friend detail displays the same
            * relationship as a signed amount.
            */
+          const transfersForCurrency = scopeTransfers.filter(transfer => transfer.groupId === group.id && transfer.currency === currency);
           const lastActivityAt = Math.max(
             ...expensesForCurrency.map(expense => expense.updatedAt || expense.date),
             ...settlementsForCurrency.map(settlement => settlement.createdAt || settlement.date),
+            ...transfersForCurrency.map(transfer => transfer.createdAt),
           );
+
+          if (__DEV__) {
+            console.log('[FriendGroupBalance] projected group currency', {
+              friendId,
+              groupId: group.id,
+              currency,
+              expenseCount: expensesForCurrency.length,
+              settlementCount: settlementsForCurrency.length,
+              scopeTransferCount: transfersForCurrency.length,
+              balance: amount,
+            });
+          }
 
           return {
             groupId: group.id,

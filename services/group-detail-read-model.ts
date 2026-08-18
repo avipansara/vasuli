@@ -1,4 +1,4 @@
-import type { Expense, ExpenseSplit, Group, GroupMember, Settlement, User } from '@/types/database';
+import type { Expense, ExpenseSplit, Group, GroupMember, Settlement, SettlementScopeTransfer, User } from '@/types/database';
 import { calculateGroupBalances } from './group-balance';
 import type { Friendship } from './friendship-service';
 
@@ -25,6 +25,7 @@ export interface GroupDetailReadModel {
   availableUsers: User[];
   friendshipStatus: Map<string, FriendshipStatus>;
   settlements: Settlement[];
+  scopeTransfers: SettlementScopeTransfer[];
 }
 
 export type GroupDetailReadModelInput = {
@@ -37,6 +38,7 @@ export type GroupDetailReadModelInput = {
   friendships: Friendship[];
   splits: ExpenseSplit[];
   settlements: Settlement[];
+  scopeTransfers?: SettlementScopeTransfer[];
 };
 
 export function buildFriendshipStatus(
@@ -77,8 +79,19 @@ function calculateGroupDetailBalances(
   expenses: GroupExpenseView[],
   members: GroupMemberView[],
   settlements: Settlement[],
+  scopeTransfers: SettlementScopeTransfer[],
 ): Map<string, number> {
   const balances = calculateGroupBalances(expenses, expenses.flatMap(expense => expense.splits), settlements);
+  for (const transfer of scopeTransfers) {
+    balances.set(
+      transfer.fromUserId,
+      (balances.get(transfer.fromUserId) ?? 0) - transfer.signedGroupBalanceDelta,
+    );
+    balances.set(
+      transfer.toUserId,
+      (balances.get(transfer.toUserId) ?? 0) + transfer.signedGroupBalanceDelta,
+    );
+  }
   for (const member of members) {
     if (!balances.has(member.userId)) balances.set(member.userId, 0);
   }
@@ -105,11 +118,12 @@ export function buildGroupDetailReadModel(input: GroupDetailReadModelInput): Gro
     availableUsers: input.userFriends.filter(user => !memberIds.has(user.id)),
     friendshipStatus: buildFriendshipStatus(input.currentUserId, input.friendships),
     settlements: input.settlements,
+    scopeTransfers: input.scopeTransfers ?? [],
   };
 
   return {
     ...model,
-    balances: calculateGroupDetailBalances(model.expenses, model.members, model.settlements),
+    balances: calculateGroupDetailBalances(model.expenses, model.members, model.settlements, model.scopeTransfers),
   };
 }
 
@@ -118,6 +132,7 @@ export function addExpenseToGroupReadModel(
   expense: Expense,
   splits: ExpenseSplit[],
 ): GroupDetailReadModel {
+  const scopeTransfers = model.scopeTransfers ?? [];
   const usersById = new Map(model.members.flatMap(member => member.user ? [[member.user.id, member.user] as const] : []));
   const nextExpenses = [
     createExpenseView(expense, splits, usersById),
@@ -126,7 +141,8 @@ export function addExpenseToGroupReadModel(
   return {
     ...model,
     expenses: nextExpenses,
-    balances: calculateGroupDetailBalances(nextExpenses, model.members, model.settlements),
+    balances: calculateGroupDetailBalances(nextExpenses, model.members, model.settlements, scopeTransfers),
+    scopeTransfers,
   };
 }
 
@@ -134,13 +150,30 @@ export function applySettlementToGroupReadModel(
   model: GroupDetailReadModel,
   settlement: Settlement,
 ): GroupDetailReadModel {
+  const scopeTransfers = model.scopeTransfers ?? [];
   if (model.settlements.some(existing => existing.id === settlement.id)) return model;
 
   const settlements = [...model.settlements, settlement];
   return {
     ...model,
     settlements,
-    balances: calculateGroupDetailBalances(model.expenses, model.members, settlements),
+    balances: calculateGroupDetailBalances(model.expenses, model.members, settlements, scopeTransfers),
+    scopeTransfers,
+  };
+}
+
+export function applyScopeTransferToGroupReadModel(
+  model: GroupDetailReadModel,
+  transfer: SettlementScopeTransfer,
+): GroupDetailReadModel {
+  const existingTransfers = model.scopeTransfers ?? [];
+  if (existingTransfers.some(existing => existing.id === transfer.id)) return model;
+
+  const scopeTransfers = [...existingTransfers, transfer];
+  return {
+    ...model,
+    scopeTransfers,
+    balances: calculateGroupDetailBalances(model.expenses, model.members, model.settlements, scopeTransfers),
   };
 }
 
@@ -148,11 +181,13 @@ export function removeExpenseFromGroupReadModel(
   model: GroupDetailReadModel,
   expenseId: string,
 ): GroupDetailReadModel {
+  const scopeTransfers = model.scopeTransfers ?? [];
   const expenses = model.expenses.filter(expense => expense.id !== expenseId);
   return {
     ...model,
     expenses,
-    balances: calculateGroupDetailBalances(expenses, model.members, model.settlements),
+    balances: calculateGroupDetailBalances(expenses, model.members, model.settlements, scopeTransfers),
+    scopeTransfers,
   };
 }
 

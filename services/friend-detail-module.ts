@@ -11,7 +11,8 @@ import { settlementService } from '@/services/settlement-service';
 import { expenseService } from '@/services/expense-service';
 import { friendshipService } from '@/services/friendship-service';
 import type { PushNotificationData } from '@/services/notification-service';
-import type { Settlement } from '@/types/database';
+import type { Settlement, SettlementScopeTransfer } from '@/types/database';
+import { scopeTransferService } from './scope-transfer-service';
 
 export type FriendDetailReadAdapter = {
   getDetail(currentUserId: string, friendId: string): Promise<FriendDetailData | null>;
@@ -19,6 +20,10 @@ export type FriendDetailReadAdapter = {
 
 export type FriendGroupBalanceAdapter = {
   getSharedGroupBalances(currentUserId: string, friendId: string): Promise<FriendGroupBalanceSummary[]>;
+};
+
+export type FriendScopeTransferAdapter = {
+  getByFriend(friendId: string): Promise<SettlementScopeTransfer[]>;
 };
 
 export type FriendDetailSettlementAdapter = {
@@ -57,6 +62,7 @@ export type FriendDetailNotificationAdapter = {
 export type FriendDetailModuleDependencies = {
   readAdapter?: FriendDetailReadAdapter;
   groupBalanceAdapter?: FriendGroupBalanceAdapter;
+  scopeTransferAdapter?: FriendScopeTransferAdapter;
   settlementAdapter?: FriendDetailSettlementAdapter;
   activityAdapter?: FriendDetailActivityAdapter;
   expenseAdapter?: FriendDetailExpenseAdapter;
@@ -138,6 +144,7 @@ export function createFriendDetailModule(
 ): FriendDetailModule {
   const readAdapter = dependencies.readAdapter ?? friendDetailReadModel;
   const groupBalanceAdapter = dependencies.groupBalanceAdapter;
+  const scopeTransferAdapter = dependencies.scopeTransferAdapter;
   const settlementAdapter = dependencies.settlementAdapter ?? settlementService;
   const activityAdapter = dependencies.activityAdapter ?? activityService;
   const expenseAdapter = dependencies.expenseAdapter ?? expenseService;
@@ -145,16 +152,25 @@ export function createFriendDetailModule(
 
   return {
     async getDetail(currentUserId, friendId) {
-      const [detail, groupBalances] = await Promise.all([
+      const [detail, groupBalances, scopeTransfers] = await Promise.all([
         readAdapter.getDetail(currentUserId, friendId),
         groupBalanceAdapter?.getSharedGroupBalances(currentUserId, friendId) ?? Promise.resolve([]),
+        scopeTransferAdapter?.getByFriend(friendId) ?? Promise.resolve([]),
       ]);
       if (!detail) return null;
       const relationship = projectFriendRelationship({
         ...detail,
         groupBalances,
+        scopeTransfers,
       });
-      return { ...detail, groupBalances, relationship };
+      return {
+        ...detail,
+        // Return the same transfer-adjusted projection used to calculate the
+        // relationship total so the summary card and group rows cannot drift.
+        groupBalances: relationship.groupBalances,
+        ...(scopeTransferAdapter ? { scopeTransfers } : {}),
+        relationship,
+      };
     },
     async settleUp({
       currentUserId,
@@ -239,4 +255,5 @@ export function createFriendDetailModule(
 
 export const friendDetailModule = createFriendDetailModule({
   groupBalanceAdapter: friendGroupBalanceService,
+  scopeTransferAdapter: scopeTransferService,
 });

@@ -16,6 +16,8 @@ export interface Group {
   imageUrl?: string;
   createdAt: number;
   updatedAt: number;
+  deletedAt?: number;
+  deletedBy?: string;
 }
 
 export interface GroupMember {
@@ -62,6 +64,18 @@ export interface Settlement {
   currency: string;
   date: number;
   notes?: string;
+  createdAt: number;
+}
+
+export interface SettlementScopeTransfer {
+  id: string;
+  operationId: string;
+  groupId: string;
+  fromUserId: string;
+  toUserId: string;
+  currency: string;
+  signedGroupBalanceDelta: number;
+  note?: string;
   createdAt: number;
 }
 

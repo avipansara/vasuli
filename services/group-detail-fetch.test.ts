@@ -5,12 +5,14 @@ import { friendshipService } from './friendship-service';
 import { groupService } from './group-service';
 import { settlementService } from './settlement-service';
 import { userService } from './user-service';
+import { scopeTransferService } from './scope-transfer-service';
 
 vi.mock('./expense-service', () => ({ expenseService: { getByGroup: vi.fn(), getSplitsForExpenses: vi.fn() } }));
 vi.mock('./friendship-service', () => ({ friendshipService: { getAllFriendships: vi.fn() } }));
 vi.mock('./group-service', () => ({ groupService: { getById: vi.fn(), getMembers: vi.fn() } }));
 vi.mock('./settlement-service', () => ({ settlementService: { getByGroup: vi.fn() } }));
 vi.mock('./user-service', () => ({ userService: { getUserFriends: vi.fn(), getByIds: vi.fn() } }));
+vi.mock('./scope-transfer-service', () => ({ scopeTransferService: { getByGroup: vi.fn() } }));
 
 describe('groupDetailService', () => {
   beforeEach(() => {
@@ -33,6 +35,7 @@ describe('groupDetailService', () => {
       { id: 'split-b', expenseId: 'expense-1', userId: 'user-b', amount: 15, splitType: 'equal' },
     ]);
     vi.mocked(settlementService.getByGroup).mockResolvedValue([]);
+    vi.mocked(scopeTransferService.getByGroup).mockResolvedValue([]);
     vi.mocked(userService.getUserFriends).mockResolvedValue([]);
     vi.mocked(userService.getByIds).mockResolvedValue([
       { id: 'user-a', name: 'Alex', isActive: true, createdAt: 1 },

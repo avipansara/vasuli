@@ -1,4 +1,4 @@
-import { ActivityType, type Activity, type Expense, type ExpenseSplit, type Settlement, type User } from '@/types/database';
+import { ActivityType, type Activity, type Expense, type ExpenseSplit, type Settlement, type SettlementScopeTransfer, type User } from '@/types/database';
 import { friendDetailReadModel } from './friend-detail-read-model';
 
 export interface FriendWithBalance extends User {
@@ -62,6 +62,19 @@ export type FriendActivityItem =
     groupName?: string;
     isDeleted: boolean;
     isUpdated: boolean;
+  }
+  | {
+    id: string;
+    type: 'scope_transfer';
+    date: number;
+    transferId: string;
+    operationId: string;
+    groupId: string;
+    groupName?: string;
+    amount: number;
+    currency: string;
+    direction: FriendSettlementDirection;
+    notes?: string;
   };
 
 export type FriendRelationshipTotal = {
@@ -77,6 +90,7 @@ export type FriendRelationshipProjection = {
   activity: FriendActivityItem[];
   totalsByCurrency: FriendRelationshipTotal[];
   settleableTotal?: FriendRelationshipTotal;
+  zeroNetCurrency?: string;
 };
 
 export interface FriendDetailData {
@@ -84,14 +98,36 @@ export interface FriendDetailData {
   expenses: FriendExpenseWithSplit[];
   activity: FriendActivityItem[];
   groupBalances?: FriendGroupBalanceSummary[];
+  scopeTransfers?: SettlementScopeTransfer[];
   relationship: FriendRelationshipProjection;
 }
 
 export function projectFriendRelationship(
-  detail: Pick<FriendDetailData, 'friend' | 'expenses' | 'activity' | 'groupBalances'>
+  detail: Pick<FriendDetailData, 'friend' | 'expenses' | 'activity' | 'groupBalances' | 'scopeTransfers'>
 ): FriendRelationshipProjection {
-  const directBalance = normalizeBalance(detail.friend.balance);
-  const groupBalances = detail.groupBalances ?? [];
+  const scopeTransfers = detail.scopeTransfers ?? [];
+  const transferDeltasByCurrency = new Map<string, number>();
+  for (const transfer of scopeTransfers) {
+    transferDeltasByCurrency.set(
+      transfer.currency,
+      (transferDeltasByCurrency.get(transfer.currency) ?? 0) + transfer.signedGroupBalanceDelta,
+    );
+  }
+  // Scope transfers reclassify Group balances into the direct friendship
+  // ledger. Apply the signed delta to each group balance and the opposite sum
+  // to the direct balance so the relationship total stays unchanged.
+  const transferDeltasByGroup = new Map<string, number>();
+  for (const transfer of scopeTransfers) {
+    transferDeltasByGroup.set(
+      transfer.groupId,
+      (transferDeltasByGroup.get(transfer.groupId) ?? 0) + transfer.signedGroupBalanceDelta,
+    );
+  }
+  const groupBalances = (detail.groupBalances ?? []).map(summary => ({
+    ...summary,
+    amount: normalizeBalance(summary.amount + (transferDeltasByGroup.get(summary.groupId) ?? 0)),
+    direction: getBalanceDirection(summary.amount + (transferDeltasByGroup.get(summary.groupId) ?? 0)),
+  }));
   const directCurrencies = new Set(
     detail.expenses
       .filter(expense => !expense.groupId)
@@ -104,12 +140,15 @@ export function projectFriendRelationship(
     }
   }
 
+  const directCurrency = directCurrencies.size === 1 ? [...directCurrencies][0] : undefined;
+  const directTransferDelta = directCurrency ? (transferDeltasByCurrency.get(directCurrency) ?? 0) : 0;
+  const directBalance = normalizeBalance(detail.friend.balance - directTransferDelta);
+
   const totals = new Map<string, number>();
   for (const summary of groupBalances) {
     totals.set(summary.currency, (totals.get(summary.currency) ?? 0) + summary.amount);
   }
 
-  const directCurrency = directCurrencies.size === 1 ? [...directCurrencies][0] : undefined;
   if (directBalance !== 0 && directCurrency) {
     totals.set(directCurrency, (totals.get(directCurrency) ?? 0) + directBalance);
   }
@@ -123,28 +162,49 @@ export function projectFriendRelationship(
     .sort((a, b) => a.currency.localeCompare(b.currency));
 
   const outstandingTotals = totalsByCurrency.filter(total => total.amount !== 0);
-  const outstandingScopes = [
-    ...(directBalance === 0 ? [] : [directBalance]),
-    ...groupBalances
-      .filter(summary => summary.amount !== 0)
-      .map(summary => summary.amount),
-  ];
-  const hasOppositeDirections = outstandingScopes.some(
-    amount => Math.sign(amount) !== Math.sign(outstandingScopes[0])
-  );
+  const transferActivity: FriendActivityItem[] = scopeTransfers.map(transfer => {
+    const group = groupBalances.find(summary => summary.groupId === transfer.groupId);
+    return {
+      id: `scope-transfer:${transfer.id}`,
+      type: 'scope_transfer',
+      date: transfer.createdAt,
+      transferId: transfer.id,
+      operationId: transfer.operationId,
+      groupId: transfer.groupId,
+      groupName: group?.groupName,
+      amount: Math.abs(transfer.signedGroupBalanceDelta),
+      currency: transfer.currency,
+      direction: transfer.signedGroupBalanceDelta < 0 ? 'friend_paid_you' : 'you_paid_friend',
+      notes: transfer.note,
+    };
+  });
+  const activity = [...detail.activity, ...transferActivity].sort((a, b) => b.date - a.date);
   const settleableTotal = outstandingTotals.length === 1
     && (directBalance === 0 || directCurrency === outstandingTotals[0].currency)
-    && !hasOppositeDirections
     ? outstandingTotals[0]
+    : undefined;
+  const relationshipCurrencies = new Set([
+    ...directCurrencies,
+    ...groupBalances.map(summary => summary.currency),
+    ...scopeTransfers.map(transfer => transfer.currency),
+  ]);
+  const hasClearedScopes = directBalance !== 0
+    || groupBalances.some(summary => summary.amount !== 0)
+    || scopeTransfers.length > 0;
+  const zeroNetCurrency = outstandingTotals.length === 0
+    && hasClearedScopes
+    && relationshipCurrencies.size === 1
+    ? [...relationshipCurrencies][0]
     : undefined;
 
   return {
     directBalance,
     directCurrency,
     groupBalances,
-    activity: detail.activity,
+    activity,
     totalsByCurrency,
     settleableTotal,
+    zeroNetCurrency,
   };
 }
 

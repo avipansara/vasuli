@@ -37,6 +37,12 @@ export function mapCombinedSettlementError(error: unknown): unknown {
     SETTLEMENT_ALLOCATION_INVALID: ['invalid_input', 'The settlement allocation is invalid.'],
     SETTLEMENT_CURRENCY_UNSUPPORTED: ['invalid_input', 'This settlement currency is not supported.'],
     SETTLEMENT_PAYMENT_INTENT_REUSED_WITH_DIFFERENT_PAYMENT: ['conflict', 'This payment was already submitted with different details.'],
+    SETTLEMENT_MODE_INVALID: ['invalid_input', 'This settlement mode is not supported.'],
+    SETTLEMENT_GROUP_REQUIRED: ['invalid_input', 'Choose a group to settle.'],
+    SETTLEMENT_TRANSFERS_INVALID: ['invalid_input', 'The settlement transfer plan is invalid.'],
+    SETTLEMENT_TRANSFERS_REQUIRED: ['invalid_input', 'Choose the balances to clear.'],
+    SETTLEMENT_TRANSFER_INVALID: ['invalid_input', 'The settlement transfer is invalid.'],
+    SETTLEMENT_OPERATION_INVALID: ['transient', 'The settlement operation could not be confirmed. Please retry.'],
   };
   const mapping = mappings[code];
   return mapping ? new CombinedSettlementError(mapping[0], mapping[1]) : error;

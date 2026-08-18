@@ -1,6 +1,7 @@
 import type { ExpenseSplit } from '@/types/database';
 import { expenseService } from './expense-service';
 import { groupService } from './group-service';
+import { scopeTransferService } from './scope-transfer-service';
 import { settlementService } from './settlement-service';
 
 function groupSplitsByExpenseId(splits: ExpenseSplit[]): Map<string, ExpenseSplit[]> {
@@ -30,9 +31,10 @@ export async function calculateGroupBalances(groupIds: string[]): Promise<Map<st
   );
   if (uniqueGroupIds.length === 0) return balances;
 
-  const [expenses, settlements] = await Promise.all([
+  const [expenses, settlements, scopeTransfersByGroup] = await Promise.all([
     expenseService.getByGroups(uniqueGroupIds),
     settlementService.getByGroups(uniqueGroupIds),
+    Promise.all(uniqueGroupIds.map(groupId => scopeTransferService.getByGroup(groupId))),
   ]);
   const splits = await expenseService.getSplitsForExpenses(expenses.map(expense => expense.id));
   const splitsByExpenseId = groupSplitsByExpenseId(splits);
@@ -69,6 +71,27 @@ export async function calculateGroupBalances(groupIds: string[]): Promise<Map<st
       settlement.toUserId,
       (groupBalances.get(settlement.toUserId) ?? 0) - settlement.amount
     );
+  }
+
+  for (let i = 0; i < uniqueGroupIds.length; i++) {
+    const groupId = uniqueGroupIds[i];
+    const groupBalances = balances.get(groupId);
+    if (!groupBalances) continue;
+
+    const scopeTransfers = scopeTransfersByGroup[i];
+    for (const transfer of scopeTransfers) {
+      // signedGroupBalanceDelta is the change to the actor's group balance.
+      // The transfer's from/to users are the counterparties, so apply the
+      // inverse delta to the sender and the delta to the recipient.
+      groupBalances.set(
+        transfer.fromUserId,
+        (groupBalances.get(transfer.fromUserId) ?? 0) - transfer.signedGroupBalanceDelta,
+      );
+      groupBalances.set(
+        transfer.toUserId,
+        (groupBalances.get(transfer.toUserId) ?? 0) + transfer.signedGroupBalanceDelta,
+      );
+    }
   }
 
   return balances;

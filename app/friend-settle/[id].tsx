@@ -64,7 +64,7 @@ export default function FriendSettleScreen() {
       const nextRelationship = data.relationship ?? null;
       setRelationship(nextRelationship);
       const settleableTotal = nextRelationship?.settleableTotal;
-      setAmount(settleableTotal ? Math.abs(settleableTotal.amount).toFixed(2) : '');
+      setAmount(settleableTotal ? Math.abs(settleableTotal.amount).toFixed(2) : nextRelationship?.zeroNetCurrency ? '0.00' : '');
     } catch (error) {
       console.error('Error loading friend data:', error);
       setLoadError(getFetchErrorMessage(error));
@@ -86,18 +86,22 @@ export default function FriendSettleScreen() {
     }
 
     const amountNum = parseFloat(amount);
-    if (isNaN(amountNum) || amountNum <= 0) {
+    const isZeroNet = Boolean(relationship?.zeroNetCurrency && !relationship.settleableTotal);
+    if (isNaN(amountNum) || amountNum < 0 || (amountNum === 0 && !isZeroNet)) {
       Alert.alert('Error', 'Please enter a valid amount');
       return;
     }
 
     const settleableTotal = relationship?.settleableTotal;
-    if (!settleableTotal) {
+    if (!settleableTotal && !isZeroNet) {
       Alert.alert('Choose a currency', 'This relationship has balances in multiple currencies. Open the Friend detail page and choose one currency to settle.');
       return;
     }
+    if (!relationship) return;
 
-    const combinedBalance = settleableTotal.amount;
+    const combinedBalance = settleableTotal?.amount ?? 0;
+    const settlementCurrency = settleableTotal?.currency ?? relationship?.zeroNetCurrency;
+    if (!settlementCurrency) return;
     const amountCents = Math.round(amountNum * 100);
     const maxCents = Math.round(Math.abs(combinedBalance) * 100);
     if (amountCents > maxCents) {
@@ -116,7 +120,7 @@ export default function FriendSettleScreen() {
         currentUserId,
         friendId: id,
         paymentIntentId,
-        currency: settleableTotal.currency,
+        currency: settlementCurrency,
         amount: amountNum,
         expectedBalance: combinedBalance,
         directBalance: relationship.directBalance,
@@ -125,7 +129,7 @@ export default function FriendSettleScreen() {
       });
       const settlements = receipt.settlements;
 
-      if (settlements.length === 0) {
+      if (settlements.length === 0 && !receipt.transfers?.length) {
         Alert.alert('Choose a scope', 'There is no outstanding balance to settle.');
         return;
       }
@@ -201,11 +205,15 @@ export default function FriendSettleScreen() {
   }
 
   const settleableTotal = relationship?.settleableTotal;
+  const zeroNetCurrency = relationship?.zeroNetCurrency;
+  const isZeroNet = Boolean(zeroNetCurrency && !settleableTotal);
   const combinedBalance = settleableTotal?.amount ?? 0;
   const isOwed = combinedBalance > 0;
   const maxAmount = Math.abs(combinedBalance);
   const amountNum = parseFloat(amount) || 0;
-  const isValidAmount = amountNum > 0 && Math.round(amountNum * 100) <= Math.round(maxAmount * 100);
+  const isValidAmount = isZeroNet
+    ? amountNum === 0
+    : amountNum > 0 && Math.round(amountNum * 100) <= Math.round(maxAmount * 100);
 
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
@@ -239,7 +247,7 @@ export default function FriendSettleScreen() {
                 Combined relationship summary
               </ThemedText>
               <ThemedText style={[styles.balanceValueText, { color: settle.accentText }]}>
-              {settleableTotal?.currency ?? ''} {maxAmount.toFixed(2)}
+              {settleableTotal?.currency ?? zeroNetCurrency ?? ''} {maxAmount.toFixed(2)}
               </ThemedText>
             </View>
           </View>
@@ -254,7 +262,7 @@ export default function FriendSettleScreen() {
               borderColor: settle.heroBorder,
             }]}>
               <View style={styles.inputInnerRow}>
-              <Text style={[styles.currency, { color: settle.accentText }]}>{settleableTotal?.currency ?? '$'}</Text>
+              <Text style={[styles.currency, { color: settle.accentText }]}>{settleableTotal?.currency ?? zeroNetCurrency ?? '$'}</Text>
                 <TextInput
                   style={[styles.input, { color: settle.accentText }]}
                   value={amount}
@@ -289,13 +297,15 @@ export default function FriendSettleScreen() {
 
           {/* Confirmation Text */}
           <ThemedText style={[styles.helperText, { color: isDark ? '#bbcabf' : colors.textSecondary }]}>
-            {settleableTotal
+            {isZeroNet
+              ? 'This moves outstanding group scopes into the friendship balance and records the relationship as cleared. '
+              : settleableTotal
               ? `This records that ${isOwed ? `${friend.name} paid you ` : `you paid ${friend.name} `}`
               : 'Choose one currency with an outstanding balance before settling.'}
             <Text style={[styles.helperBoldAmount, { color: isDark ? '#dae2fd' : colors.text }]}>
-              {settleableTotal ? `${settleableTotal.currency} ${amountNum.toFixed(2)}` : amountNum.toFixed(2)}
+              {settleableTotal ? `${settleableTotal.currency} ${amountNum.toFixed(2)}` : `${zeroNetCurrency ?? ''} ${amountNum.toFixed(2)}`}
             </Text>
-            {' to settle up.'}
+            {isZeroNet ? '' : ' to settle up.'}
           </ThemedText>
         </KeyboardAwareScroll>
 
@@ -320,7 +330,7 @@ export default function FriendSettleScreen() {
             {settling ? (
               <ActivityIndicator size="small" color={isDark ? '#003824' : '#ffffff'} />
             ) : (
-              <Text style={[styles.submitButtonText, { color: isDark ? '#003824' : '#ffffff' }]}>Record Payment</Text>
+              <Text style={[styles.submitButtonText, { color: isDark ? '#003824' : '#ffffff' }]}>{isZeroNet ? 'Clear Balances' : 'Record Payment'}</Text>
             )}
           </TouchableOpacity>
         </View>

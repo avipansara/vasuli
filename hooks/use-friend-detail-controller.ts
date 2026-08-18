@@ -60,6 +60,11 @@ export function useFriendDetailController({
     enabled: !!currentUserId && !!friendId,
   });
   useRealtime({
+    table: 'settlement_scope_transfers',
+    onChange: invalidateFriendDetail,
+    enabled: !!currentUserId && !!friendId,
+  });
+  useRealtime({
     table: 'settlements',
     filter: currentUserId ? `to_user_id=eq.${currentUserId}` : undefined,
     onChange: invalidateFriendDetail,

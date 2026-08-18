@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { buildCombinedSettlementAllocations } from '@/services/friend-settlement-allocation';
+import {
+  buildCombinedSettlementAllocations,
+  buildCombinedSettlementPlan,
+} from '@/services/friend-settlement-allocation';
 
 describe('buildCombinedSettlementAllocations', () => {
   it('supports a direct-only payment', () => {
@@ -114,5 +117,121 @@ describe('buildCombinedSettlementAllocations', () => {
         direction: 'you_are_owed',
       }],
     })).toThrow(/opposite/i);
+  });
+
+  it('transfers an opposing group balance before allocating the net payment', () => {
+    expect(buildCombinedSettlementPlan({
+      currentUserId: 'current-user',
+      friendId: 'avee',
+      currency: 'USD',
+      amount: 7,
+      directBalance: 15,
+      groupBalances: [{
+        groupId: 'group-1',
+        groupName: 'Trip',
+        currency: 'USD',
+        amount: -8,
+        direction: 'you_owe',
+      }],
+    })).toEqual({
+      transfers: [{
+        groupId: 'group-1',
+        fromUserId: 'avee',
+        toUserId: 'current-user',
+        amount: 8,
+        currency: 'USD',
+        signedGroupBalanceDelta: 8,
+      }],
+      allocations: [{
+        groupId: undefined,
+        fromUserId: 'avee',
+        toUserId: 'current-user',
+        amount: 7,
+        currency: 'USD',
+      }],
+    });
+  });
+
+  it('transfers an opposing group balance when direct is opposite to the total', () => {
+    expect(buildCombinedSettlementPlan({
+      currentUserId: 'current-user',
+      friendId: 'avee',
+      currency: 'USD',
+      amount: 5,
+      directBalance: -5,
+      groupBalances: [{
+        groupId: 'group-1',
+        groupName: 'Trip',
+        currency: 'USD',
+        amount: 10,
+        direction: 'you_are_owed',
+      }],
+    })).toEqual({
+      transfers: [{
+        groupId: 'group-1',
+        fromUserId: 'avee',
+        toUserId: 'current-user',
+        amount: 10,
+        currency: 'USD',
+        signedGroupBalanceDelta: -10,
+      }],
+      allocations: [{
+        groupId: undefined,
+        fromUserId: 'avee',
+        toUserId: 'current-user',
+        amount: 5,
+        currency: 'USD',
+      }],
+    });
+  });
+
+  it('transfers all scopes when the relationship is zero-net', () => {
+    expect(buildCombinedSettlementPlan({
+      currentUserId: 'current-user',
+      friendId: 'avee',
+      currency: 'USD',
+      amount: 0,
+      directBalance: 8,
+      groupBalances: [{
+        groupId: 'group-1',
+        groupName: 'Trip',
+        currency: 'USD',
+        amount: -8,
+        direction: 'you_owe',
+      }],
+    })).toEqual({
+      transfers: [{
+        groupId: 'group-1',
+        fromUserId: 'avee',
+        toUserId: 'current-user',
+        amount: 8,
+        currency: 'USD',
+        signedGroupBalanceDelta: 8,
+      }],
+      allocations: [],
+    });
+  });
+
+  it('transfers every group scope when direct balance is empty but groups offset', () => {
+    const plan = buildCombinedSettlementPlan({
+      currentUserId: 'current-user',
+      friendId: 'avee',
+      currency: 'USD',
+      amount: 2,
+      directBalance: 0,
+      groupBalances: [
+        { groupId: 'group-1', groupName: 'Trip', currency: 'USD', amount: 10, direction: 'you_are_owed' },
+        { groupId: 'group-2', groupName: 'Home', currency: 'USD', amount: -8, direction: 'you_owe' },
+      ],
+    });
+
+    expect(plan.transfers).toHaveLength(2);
+    expect(plan.allocations).toEqual([{
+      groupId: undefined,
+      fromUserId: 'avee',
+      toUserId: 'current-user',
+      amount: 2,
+      currency: 'USD',
+    }]);
   });
 });

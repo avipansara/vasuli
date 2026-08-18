@@ -5,7 +5,7 @@ import {
   filterFriendActivity,
   groupFriendActivityByMonth,
 } from '@/services/friend-detail-module';
-import type { Settlement } from '@/types/database';
+import type { Settlement, SettlementScopeTransfer } from '@/types/database';
 
 const detail: FriendDetailData = {
   friend: {
@@ -102,6 +102,54 @@ describe('Friend detail module', () => {
       currency: 'USD',
       date: 10,
     })).resolves.toEqual([settlement]);
+  });
+
+  it('returns transfer-adjusted group rows alongside the relationship projection', async () => {
+    const transfer: SettlementScopeTransfer = {
+      id: 'transfer-1',
+      operationId: 'operation-1',
+      groupId: 'group-alaska',
+      fromUserId: 'friend-a',
+      toUserId: 'current-user',
+      currency: 'USD',
+      signedGroupBalanceDelta: -100,
+      createdAt: 30,
+    };
+    const module = createFriendDetailModule({
+      readAdapter: {
+        getDetail: async () => ({
+          ...detail,
+          expenses: [{
+            id: 'direct-expense',
+            description: 'Dinner',
+            amount: 24,
+            currency: 'USD',
+            paidBy: 'current-user',
+            date: 1,
+            createdAt: 1,
+            updatedAt: 1,
+            yourShare: 0,
+            friendShare: 24,
+            paidByName: 'You',
+          }],
+        }),
+      },
+      groupBalanceAdapter: {
+        getSharedGroupBalances: async () => [{
+          groupId: 'group-alaska',
+          groupName: 'Alaska 2026',
+          currency: 'USD',
+          amount: 100,
+          direction: 'you_are_owed',
+        }],
+      },
+      scopeTransferAdapter: { getByFriend: async () => [transfer] },
+    });
+
+    await expect(module.getDetail('current-user', 'friend-a')).resolves.toMatchObject({
+      groupBalances: [{ groupId: 'group-alaska', amount: 0, direction: 'settled' }],
+      relationship: { totalsByCurrency: [{ currency: 'USD', amount: 124, direction: 'you_are_owed' }] },
+    });
   });
 
   it('rejects a group-scoped settlement from the direct Friend flow', async () => {
