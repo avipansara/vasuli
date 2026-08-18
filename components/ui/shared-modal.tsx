@@ -36,9 +36,9 @@ interface SharedModalProps {
   submitIcon?: IconSymbolName;
   submitDisabled?: boolean;
   submitLoading?: boolean;
-  onSubmit?: () => void;
-  submitGradientColors?: readonly [string, string];
   submitTextColor?: string;
+  headerStyle?: 'default' | 'centered';
+  submitBadge?: string | number;
 }
 
 export function SharedModal({
@@ -59,6 +59,8 @@ export function SharedModal({
   onSubmit,
   submitGradientColors,
   submitTextColor = '#0A0A0F',
+  headerStyle = 'default',
+  submitBadge,
 }: SharedModalProps) {
   const { colors, gradients, isDark } = useThemeColors();
 
@@ -111,17 +113,33 @@ export function SharedModal({
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.keyboard}>
-          <View style={styles.header}>
-            <TouchableOpacity
-              onPress={onClose}
-              style={styles.closeButton}>
-              <IconSymbol size={20} name="xmark" color={closeIconColor} />
-            </TouchableOpacity>
-          </View>
+          {headerStyle === 'centered' ? (
+            <View style={[styles.centeredHeader, { borderBottomColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)' }]}>
+              <TouchableOpacity
+                onPress={onClose}
+                accessibilityRole="button"
+                accessibilityLabel="Close modal"
+                style={styles.centeredCloseButton}>
+                <IconSymbol size={20} name="xmark" color={colors.text} />
+              </TouchableOpacity>
+              <ThemedText style={[styles.centeredTitle, { color: colors.text }]}>
+                {title}
+              </ThemedText>
+              <View style={{ width: 36 }} />
+            </View>
+          ) : (
+            <View style={styles.header}>
+              <TouchableOpacity
+                onPress={onClose}
+                style={styles.closeButton}>
+                <IconSymbol size={20} name="xmark" color={closeIconColor} />
+              </TouchableOpacity>
+            </View>
+          )}
 
           {bodyContent ? (
             <View style={styles.bodyContent}>
-              {headerContent}
+              {headerStyle !== 'centered' && headerContent}
               {bodyContent}
             </View>
           ) : (
@@ -130,7 +148,7 @@ export function SharedModal({
               showsVerticalScrollIndicator={false}
               contentContainerStyle={styles.scrollContent}
               keyboardShouldPersistTaps="handled">
-              {headerContent}
+              {headerStyle !== 'centered' && headerContent}
               {children}
             </ScrollView>
           )}
@@ -170,6 +188,13 @@ export function SharedModal({
                           ]}>
                           {submitLabel}
                         </ThemedText>
+                        {submitBadge !== undefined && (
+                          <View style={[styles.submitBadgeContainer, { backgroundColor: submitDisabled ? '#6B7280' : '#ffffff' }]}>
+                            <ThemedText style={[styles.submitBadgeText, { color: submitDisabled ? '#ffffff' : (isDark ? '#003824' : '#054e3b') }]}>
+                              {submitBadge}
+                            </ThemedText>
+                          </View>
+                        )}
                       </>
                     )}
                   </LinearGradient>
@@ -308,5 +333,37 @@ const styles = StyleSheet.create({
   },
   disabledButton: {
     opacity: 0.6,
+  },
+  centeredHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: Platform.OS === 'ios' ? 60 : 24,
+    paddingBottom: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  centeredCloseButton: {
+    width: 36,
+    height: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  centeredTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  submitBadgeContainer: {
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+    marginLeft: 6,
+  },
+  submitBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
   },
 });

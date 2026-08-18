@@ -820,14 +820,9 @@ export default function GroupDetailScreen() {
 
         {/* Floating Header Title (Group Name) */}
         <View style={styles.headerTitleContainer} pointerEvents="none">
-          <Animated.View style={{
-            opacity: headerTitleOpacity,
-            transform: [{ translateY: headerTitleTranslateY }],
-          }}>
-            <ThemedText style={[styles.headerTitle, { color: isDark ? '#F8FAFC' : colors.text }]} numberOfLines={1}>
-              {group.name}
-            </ThemedText>
-          </Animated.View>
+          <ThemedText style={[styles.headerTitle, { color: isDark ? '#F8FAFC' : colors.text }]} numberOfLines={1}>
+            {group.name}
+          </ThemedText>
         </View>
 
         <View style={styles.headerActions}>
@@ -903,10 +898,7 @@ export default function GroupDetailScreen() {
                 paddingHorizontal: 16,
                 borderRadius: 24,
               }]}>
-              
-              <ThemedText type='title' style={[styles.summaryCardGroupName, { color: isDark ? '#F8FAFC' : colors.text }]}>
-                {group.name}
-              </ThemedText>
+
 
               <ThemedText type='defaultSemiBold' style={[styles.summaryCardTitle, { color: isDark ? (currentUserBalance < 0 ? '#ffb3b0' : currentUserBalance > 0 ? '#45dfa4' : '#94A3B8') : balanceColor }]}>
                 {currentUserBalance > 0 

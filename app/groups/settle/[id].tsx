@@ -68,17 +68,6 @@ const SettleMemberRow = memo(function SettleMemberRow({ item, isSelected, onSele
   const youOwe = balance > 0;
   const isSettleable = isSettleableGroupBalance(balance);
 
-  const cardStyle = {
-    backgroundColor: isSelected ? settle.selectedCardBackground : settle.cardBackground,
-    borderRadius: 16,
-    elevation: 4,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: isDark ? 0.35 : 0.08,
-    shadowRadius: 12,
-    marginBottom: 12,
-  };
-
   return (
     <TouchableOpacity
       accessible={true}
@@ -88,8 +77,6 @@ const SettleMemberRow = memo(function SettleMemberRow({ item, isSelected, onSele
       onPress={() => onSelect(item)}
       disabled={!isSettleable}
       style={[
-        styles.memberCard,
-        cardStyle,
         !isSettleable && styles.memberCardDisabled,
       ]}>
       <View style={styles.memberContent}>
@@ -516,9 +503,6 @@ const styles = StyleSheet.create({
   },
   membersList: {
     gap: 12,
-  },
-  memberCard: {
-    // Styles applied via dynamic cardStyle
   },
   memberCardDisabled: {
     opacity: 0.55,

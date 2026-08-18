@@ -17,9 +17,9 @@ export const ThemedInput = forwardRef<TextInput, ThemedInputProps>(
         style={[
           styles.container,
           {
-            backgroundColor: isDark ? 'rgba(20, 35, 38, 0.95)' : '#ffffff',
+            backgroundColor: isDark ? (colors.inputBackground || '#0b1120') : '#ffffff',
             borderWidth: 1,
-            borderColor: isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(0, 0, 0, 0.08)',
+            borderColor: isDark ? (colors.inputBorder || '#2a3441') : '#dce2f7',
             shadowColor: isDark ? '#000000' : '#475569',
             shadowOffset: { width: 0, height: 3 },
             shadowOpacity: isDark ? 0.35 : 0.09,
@@ -31,7 +31,7 @@ export const ThemedInput = forwardRef<TextInput, ThemedInputProps>(
           <IconSymbol
             name={icon}
             size={iconSize}
-            color={isDark ? '#2DD4BF' : '#0F4C3A'}
+            color={isDark ? '#10b981' : colors.tint}
           />
         )}
         <TextInput
