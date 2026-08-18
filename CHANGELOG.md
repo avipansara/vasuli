@@ -1,5 +1,7 @@
 ## 2026-08-17
 
+- Refined the group settlement screen with a calmer member-card hierarchy,
+  clearer selection treatment, shared theme tokens, and friendlier guidance copy.
 - Documented the current product and visual system in `PRODUCT.md`,
   `DESIGN.md`, and `.impeccable/design.json` for future contributors and
   design-aware agents.

@@ -69,12 +69,10 @@ const SettleMemberRow = memo(function SettleMemberRow({ item, isSelected, onSele
   const isSettleable = isSettleableGroupBalance(balance);
 
   const cardStyle = {
-    backgroundColor: isSelected
-      ? settle.selectedCardBackground
-      : (isDark ? 'rgba(20, 35, 38, 0.95)' : '#FFFFFF'),
+    backgroundColor: isSelected ? settle.selectedCardBackground : settle.cardBackground,
     borderRadius: 12,
-    borderWidth: isSelected ? 0 : 1,
-    borderColor: isSelected ? 'transparent' : (isDark ? 'rgba(255,255,255,0.08)' : 'rgba(191, 201, 195, 0.3)'),
+    borderWidth: isSelected ? 1.5 : 1,
+    borderColor: isSelected ? settle.selectedCardBorder : settle.cardBorder,
   };
 
   return (
@@ -107,9 +105,9 @@ const SettleMemberRow = memo(function SettleMemberRow({ item, isSelected, onSele
                   styles.balanceText,
                   {
                     color: owesYou
-                      ? (isDark ? '#2DD4BF' : '#004F34')
+                      ? settle.positiveText
                       : youOwe
-                        ? (isDark ? '#F87171' : '#A83639')
+                        ? settle.negativeText
                         : colors.textSecondary,
                   },
                 ]}>
@@ -342,7 +340,7 @@ export default function GroupSettleScreen() {
 
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-      <View style={[styles.container, { backgroundColor: isDark ? '#0b1326' : colors.background }]}>
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
         <Stack.Screen options={{ headerShown: false }} />
         <NavigationHeader title="Settle Up" onBack={() => router.back()} />
 
@@ -351,9 +349,6 @@ export default function GroupSettleScreen() {
           <View style={styles.content}>
             {/* Group Info */}
             <View style={styles.groupInfo}>
-              <ThemedText style={[styles.groupLabel, { color: isDark ? '#bbcabf' : colors.textSecondary }]}>
-                SETTLING IN
-              </ThemedText>
               <ThemedText style={[styles.groupName, { color: isDark ? '#dae2fd' : colors.text }]}>
                 {group?.name}
               </ThemedText>
@@ -380,7 +375,7 @@ export default function GroupSettleScreen() {
             {/* Members List */}
             <View style={styles.membersSection}>
               <ThemedText style={[styles.sectionLabel, { color: isDark ? '#bbcabf' : colors.textSecondary }]}>
-                SELECT MEMBER TO SETTLE WITH
+                Choose someone to settle with
               </ThemedText>
               <FlatList
                 data={members}
@@ -451,13 +446,7 @@ const styles = StyleSheet.create({
     gap: 24,
   },
   groupInfo: {
-    marginTop: 4,
-  },
-  groupLabel: {
-    fontSize: 12,
-    fontWeight: '500',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
+    marginTop: 8,
   },
   groupName: {
     fontSize: 24,
@@ -503,10 +492,8 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   sectionLabel: {
-    fontSize: 12,
-    fontWeight: '500',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
+    fontSize: 14,
+    fontWeight: '600',
     marginBottom: 12,
   },
   membersList: {
