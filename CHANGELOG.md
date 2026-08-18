@@ -1,5 +1,11 @@
 ## 2026-08-17
 
+- Routed combined Friend settlement through a dedicated commit service and
+  allocation receipt, preserving direct and shared Group settlement scopes.
+- Added an implementation-ready specification for deepening the combined
+  settlement module with transactional writes, idempotent retries, and scoped
+  allocation receipts.
+
 - Switched expense deletion to soft deletion, preserving split history and
   permanent deletion activity while excluding deleted expenses from active
   lists, balances, summaries, and edit/delete flows.

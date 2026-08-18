@@ -6,13 +6,12 @@ import { useAuth } from '@/contexts/auth-context-otp';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { activityService } from '@/services/activity-service';
+import { combinedSettlementService } from '@/services/combined-settlement-service';
 import { friendDetailModule } from '@/services/friend-detail-module';
 import type { FriendGroupBalanceSummary } from '@/services/friend-detail-service';
-import { buildCombinedSettlementAllocations } from '@/services/friend-settlement-allocation';
 import type { GroupDetailReadModel } from '@/services/group-detail-read-model';
 import { applySettlementToGroupReadModel } from '@/services/group-detail-read-model';
 import { queryKeys } from '@/services/query-keys';
-import { settlementService } from '@/services/settlement-service';
 import type { User } from '@/types/database';
 import { normalizeCurrencyInput } from '@/utils/validation';
 import { useQueryClient } from '@tanstack/react-query';
@@ -100,68 +99,32 @@ export default function FriendSettleScreen() {
       return;
     }
 
-    let allocations;
+    const friendsHomeQueryKey = queryKeys.friends.home(currentUserId);
+    const friendDetailQueryKey = queryKeys.friends.detail(currentUserId, id);
+
     try {
-      allocations = buildCombinedSettlementAllocations({
+      setSettling(true);
+
+      const receipt = await combinedSettlementService.commit({
         currentUserId,
         friendId: id,
         currency: 'USD',
         amount: amountNum,
         directBalance: friend.balance,
         groupBalances,
-      });
-    } catch (error) {
-      Alert.alert('Choose a scope', error instanceof Error ? error.message : 'Settle each balance separately.');
-      return;
-    }
-
-    const friendsHomeQueryKey = queryKeys.friends.home(currentUserId);
-    const friendDetailQueryKey = queryKeys.friends.detail(currentUserId, id);
-
-    let previousHomeFriends: any[] | undefined;
-    let previousDetail: any | undefined;
-
-    try {
-      setSettling(false);
-
-      // Optimistic updates
-      const directAllocation = allocations.find(allocation => !allocation.groupId)?.amount ?? 0;
-      const optimisticBalance = friend.balance > 0
-        ? friend.balance - directAllocation
-        : friend.balance + directAllocation;
-      const normalizedOptimisticBalance = Math.abs(optimisticBalance) < 0.01 ? 0 : optimisticBalance;
-
-      await queryClient.cancelQueries({ queryKey: friendsHomeQueryKey });
-      await queryClient.cancelQueries({ queryKey: friendDetailQueryKey });
-
-      previousHomeFriends = queryClient.getQueryData<any[]>(friendsHomeQueryKey);
-      previousDetail = queryClient.getQueryData<any>(friendDetailQueryKey);
-
-      queryClient.setQueryData<any[] | undefined>(friendsHomeQueryKey, (current: any) => current?.map((homeFriend: any) => (
-        homeFriend.id === id
-          ? {
-            ...homeFriend,
-            balance: normalizedOptimisticBalance,
-            recentExpenses: normalizedOptimisticBalance === 0 ? [] : homeFriend.recentExpenses,
-          }
-          : homeFriend
-      )));
-
-      queryClient.setQueryData<any | null>(friendDetailQueryKey, (current: any) => current ? {
-        ...current,
-        friend: { ...current.friend, balance: normalizedOptimisticBalance },
-      } : current);
-
-      setSettling(true);
-
-      const settlements = await Promise.all(allocations.map(allocation => settlementService.create({
-        groupId: allocation.groupId,
-        fromUserId: allocation.fromUserId,
-        toUserId: allocation.toUserId,
-        amount: allocation.amount,
-        currency: allocation.currency,
         date: Date.now(),
-      })));
+      });
+      const settlements = receipt.settlements;
+
+      if (settlements.length === 0) {
+        Alert.alert('Choose a scope', 'There is no outstanding balance to settle.');
+        return;
+      }
+
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: friendDetailQueryKey }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.groups.list(currentUserId) }),
+      ]);
 
       try {
         for (const settlement of settlements) {
@@ -191,22 +154,16 @@ export default function FriendSettleScreen() {
         );
       }
 
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: friendDetailQueryKey }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.groups.list(currentUserId) }),
-        ...settledGroupIds.map(groupId => queryClient.invalidateQueries({
-          queryKey: queryKeys.groups.detail(currentUserId, groupId),
-        })),
-      ]);
+      await Promise.all(settledGroupIds.map(groupId => queryClient.invalidateQueries({
+        queryKey: queryKeys.groups.detail(currentUserId, groupId),
+      })));
 
       Alert.alert('Success', `Recorded settlement of $${amountNum.toFixed(2)} with ${friend.name}`);
       router.back();
     } catch (error) {
-      if (previousDetail) {
-        queryClient.setQueryData(friendDetailQueryKey, previousDetail);
-      }
-      if (previousHomeFriends) {
-        queryClient.setQueryData(friendsHomeQueryKey, previousHomeFriends);
+      if (error instanceof Error && /currency|direction|outstanding|greater than zero/i.test(error.message)) {
+        Alert.alert('Choose a scope', error.message);
+        return;
       }
       console.error('Error settling up:', error);
       Alert.alert('Error', 'Failed to settle up');
