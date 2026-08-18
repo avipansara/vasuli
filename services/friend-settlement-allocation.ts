@@ -25,7 +25,12 @@ export function buildCombinedSettlementAllocations({
   directBalance,
   groupBalances,
 }: CombinedSettlementParams): CombinedSettlementAllocation[] {
-  if (amount <= 0) throw new Error('Settlement amount must be greater than zero.');
+  if (!Number.isFinite(amount) || amount <= 0 || !isWholeCent(amount)) {
+    throw new Error('Settlement amount must be greater than zero and use at most two decimal places.');
+  }
+  if (!Number.isFinite(directBalance) || groupBalances.some(group => !Number.isFinite(group.amount))) {
+    throw new Error('Settlement balance is invalid.');
+  }
   if (groupBalances.some(group => group.currency !== currency && group.direction !== 'settled')) {
     throw new Error('Settlement currencies must be handled separately.');
   }
@@ -42,25 +47,34 @@ export function buildCombinedSettlementAllocations({
     throw new Error('Cannot combine opposite settlement directions in one payment.');
   }
 
-  const totalOutstanding = scopes.reduce((total, scope) => total + Math.abs(scope.amount), 0);
-  if (amount > totalOutstanding + 0.01) {
+  const totalOutstandingCents = scopes.reduce((total, scope) => total + toCents(Math.abs(scope.amount)), 0);
+  const amountCents = toCents(amount);
+  if (amountCents > totalOutstandingCents) {
     throw new Error('Settlement amount cannot exceed the combined outstanding balance.');
   }
 
   const orderedScopes = [...scopes].sort((a, b) => a.groupId ? a.lastActivityAt - b.lastActivityAt : -Infinity);
-  let remaining = normalizeAmount(amount);
+  let remainingCents = amountCents;
   const fromUserId = direction < 0 ? currentUserId : friendId;
   const toUserId = direction < 0 ? friendId : currentUserId;
 
   return orderedScopes.flatMap(scope => {
-    if (remaining <= 0) return [];
-    const allocation = normalizeAmount(Math.min(Math.abs(scope.amount), remaining));
-    remaining = normalizeAmount(remaining - allocation);
-    if (allocation === 0) return [];
-    return [{ groupId: scope.groupId, fromUserId, toUserId, amount: allocation, currency }];
+    if (remainingCents <= 0) return [];
+    const allocationCents = Math.min(toCents(Math.abs(scope.amount)), remainingCents);
+    remainingCents -= allocationCents;
+    if (allocationCents === 0) return [];
+    return [{ groupId: scope.groupId, fromUserId, toUserId, amount: allocationCents / 100, currency }];
   });
 }
 
 function normalizeAmount(amount: number): number {
   return Math.abs(amount) < 0.01 ? 0 : Number(amount.toFixed(2));
+}
+
+function toCents(amount: number): number {
+  return Math.round(amount * 100);
+}
+
+function isWholeCent(amount: number): boolean {
+  return Math.abs(amount * 100 - Math.round(amount * 100)) < Number.EPSILON * 100;
 }

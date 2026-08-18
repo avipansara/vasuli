@@ -21,6 +21,7 @@ export type CombinedSettlementCommitParams = {
   amount: number;
   currency: string;
   date: number;
+  expectedBalance: number;
   directBalance: number;
   groupBalances: FriendGroupBalanceSummary[];
 };
@@ -31,6 +32,7 @@ export type CombinedSettlementCommitRequest = {
   amount: number;
   currency: string;
   date: number;
+  expectedBalance: number;
   allocations: CombinedSettlementAllocation[];
 };
 
@@ -63,6 +65,7 @@ export function createCombinedSettlementService(
         amount: params.amount,
         currency: params.currency,
         date: params.date,
+        expectedBalance: params.expectedBalance,
         allocations,
       });
     },

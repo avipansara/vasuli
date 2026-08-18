@@ -5,6 +5,7 @@ import type {
   CombinedSettlementCommitRequest,
   CombinedSettlementReceipt,
 } from './combined-settlement-service';
+import { mapCombinedSettlementError } from './combined-settlement-errors';
 
 interface PairSettlementAllocationParams {
   currentUserId: string;
@@ -123,10 +124,11 @@ export const settlementService = {
       p_amount: request.amount,
       p_currency: request.currency,
       p_date: new Date(request.date).toISOString(),
+      p_expected_balance: request.expectedBalance,
       p_allocations: request.allocations,
     });
 
-    if (error) throw error;
+    if (error) throw mapCombinedSettlementError(error);
 
     return mapCombinedSettlementReceipt(data);
   },

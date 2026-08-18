@@ -1,5 +1,7 @@
 ## 2026-08-17
 
+- Added stale-balance detection, server-derived settlement authorization,
+  exact-cent validation, and recoverable Friend settle-up errors.
 - Routed combined Friend settlement through a dedicated commit service and
   allocation receipt, preserving direct and shared Group settlement scopes.
 - Added a transactional combined settlement RPC with payment-intent

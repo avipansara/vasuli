@@ -213,6 +213,7 @@ export type Database = {
           p_amount: number
           p_currency: string
           p_date: string
+          p_expected_balance: number
           p_allocations: Json
         }
         Returns: Json

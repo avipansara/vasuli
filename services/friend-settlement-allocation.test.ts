@@ -36,4 +36,32 @@ describe('buildCombinedSettlementAllocations', () => {
       }],
     })).toThrow(/currenc/i);
   });
+
+  it('rejects sub-cent amounts instead of rounding them into a different payment', () => {
+    expect(() => buildCombinedSettlementAllocations({
+      currentUserId: 'current-user',
+      friendId: 'avee',
+      currency: 'USD',
+      amount: 10.001,
+      directBalance: -20,
+      groupBalances: [],
+    })).toThrow(/two decimal/i);
+  });
+
+  it('rejects opposite-direction balances in the same payment', () => {
+    expect(() => buildCombinedSettlementAllocations({
+      currentUserId: 'current-user',
+      friendId: 'avee',
+      currency: 'USD',
+      amount: 10,
+      directBalance: -20,
+      groupBalances: [{
+        groupId: 'group-1',
+        groupName: 'Trip',
+        currency: 'USD',
+        amount: 20,
+        direction: 'you_are_owed',
+      }],
+    })).toThrow(/opposite/i);
+  });
 });

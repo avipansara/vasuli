@@ -7,6 +7,7 @@ import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { activityService } from '@/services/activity-service';
 import { combinedSettlementService, createPaymentIntentId } from '@/services/combined-settlement-service';
+import { CombinedSettlementError } from '@/services/combined-settlement-errors';
 import { friendDetailModule } from '@/services/friend-detail-module';
 import type { FriendGroupBalanceSummary } from '@/services/friend-detail-service';
 import type { GroupDetailReadModel } from '@/services/group-detail-read-model';
@@ -114,6 +115,7 @@ export default function FriendSettleScreen() {
         paymentIntentId,
         currency: 'USD',
         amount: amountNum,
+        expectedBalance: combinedBalance,
         directBalance: friend.balance,
         groupBalances,
         date: Date.now(),
@@ -166,8 +168,12 @@ export default function FriendSettleScreen() {
       paymentIntentIdRef.current = null;
       router.back();
     } catch (error) {
-      if (error instanceof Error && /currency|direction|outstanding|greater than zero/i.test(error.message)) {
-        Alert.alert('Choose a scope', error.message);
+      if (error instanceof CombinedSettlementError && error.code === 'stale_balance') {
+        Alert.alert('Balance changed', error.message, [{ text: 'Refresh', onPress: loadData }, { text: 'Cancel', style: 'cancel' }]);
+        return;
+      }
+      if (error instanceof CombinedSettlementError) {
+        Alert.alert(error.code === 'unauthorized' ? 'Settlement unavailable' : 'Invalid settlement', error.message);
         return;
       }
       console.error('Error settling up:', error);

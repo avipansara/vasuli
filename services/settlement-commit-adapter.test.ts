@@ -36,6 +36,7 @@ describe('settlement commit adapter', () => {
       amount: 30,
       currency: 'USD',
       date: Date.parse('2026-08-18T03:00:00.000Z'),
+      expectedBalance: 30,
       allocations: [{
         groupId: undefined,
         fromUserId: 'current-user',
@@ -61,6 +62,7 @@ describe('settlement commit adapter', () => {
       p_amount: 30,
       p_currency: 'USD',
       p_date: '2026-08-18T03:00:00.000Z',
+      p_expected_balance: 30,
       p_allocations: [{
         groupId: undefined,
         fromUserId: 'current-user',

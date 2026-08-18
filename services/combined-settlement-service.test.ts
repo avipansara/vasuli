@@ -46,6 +46,7 @@ describe('combined settlement service', () => {
       amount: 30,
       currency: 'USD',
       date: 100,
+      expectedBalance: -30,
       directBalance: -10,
       groupBalances,
     })).resolves.toEqual({
@@ -66,6 +67,7 @@ describe('combined settlement service', () => {
       amount: 30,
       currency: 'USD',
       date: 100,
+      expectedBalance: -30,
       allocations: [
         {
           groupId: undefined,
@@ -96,6 +98,7 @@ describe('combined settlement service', () => {
       amount: 30,
       currency: 'USD',
       date: 100,
+      expectedBalance: -30,
       directBalance: -10,
       groupBalances: [{ ...groupBalances[0], currency: 'EUR' }],
     })).rejects.toThrow(/currenc/i);

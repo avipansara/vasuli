@@ -25,12 +25,15 @@ ALTER TABLE public.settlement_commitments ENABLE ROW LEVEL SECURITY;
 
 REVOKE ALL ON TABLE public.settlement_commitments FROM PUBLIC, anon, authenticated;
 
+DROP FUNCTION IF EXISTS public.commit_combined_settlement(UUID, UUID, NUMERIC, TEXT, TIMESTAMPTZ, JSONB);
+
 CREATE OR REPLACE FUNCTION public.commit_combined_settlement(
   p_payment_intent_id UUID,
   p_friend_id UUID,
   p_amount NUMERIC,
   p_currency TEXT,
   p_date TIMESTAMPTZ,
+  p_expected_balance NUMERIC,
   p_allocations JSONB
 )
 RETURNS JSONB
@@ -50,6 +53,10 @@ DECLARE
   allocation_amount NUMERIC;
   allocation_currency TEXT;
   allocation_total NUMERIC := 0;
+  current_balance NUMERIC := 0;
+  current_scope_balance NUMERIC := 0;
+  direct_scope_seen BOOLEAN := FALSE;
+  seen_group_ids TEXT[] := ARRAY[]::TEXT[];
   settlement_rows JSONB;
 BEGIN
   SELECT u.id
@@ -68,6 +75,10 @@ BEGIN
 
   IF p_amount IS NULL OR p_amount <= 0 OR p_amount <> ROUND(p_amount, 2) THEN
     RAISE EXCEPTION 'SETTLEMENT_AMOUNT_INVALID';
+  END IF;
+
+  IF p_expected_balance IS NULL OR p_expected_balance <> ROUND(p_expected_balance, 2) THEN
+    RAISE EXCEPTION 'SETTLEMENT_STALE_BALANCE';
   END IF;
 
   IF p_currency IS NULL OR BTRIM(p_currency) = '' THEN
@@ -149,6 +160,75 @@ BEGIN
     RAISE EXCEPTION 'SETTLEMENT_FRIENDSHIP_REQUIRED';
   END IF;
 
+  SELECT COALESCE((
+    SELECT SUM(
+      CASE
+        WHEN e.paid_by = app_user_id THEN COALESCE(friend_split.amount, 0)
+        WHEN e.paid_by = p_friend_id THEN -COALESCE(current_split.amount, 0)
+        ELSE 0
+      END
+    )
+    FROM public.expenses e
+    LEFT JOIN public.expense_splits current_split
+      ON current_split.expense_id = e.id
+     AND current_split.user_id = app_user_id
+     AND (current_split.amount > 0 OR e.paid_by = app_user_id)
+    LEFT JOIN public.expense_splits friend_split
+      ON friend_split.expense_id = e.id
+     AND friend_split.user_id = p_friend_id
+     AND (friend_split.amount > 0 OR e.paid_by = p_friend_id)
+    WHERE e.deleted_at IS NULL
+      AND e.group_id IS NULL
+      AND e.currency = p_currency
+      AND (COALESCE(current_split.amount, 0) > 0 OR e.paid_by = app_user_id)
+      AND (COALESCE(friend_split.amount, 0) > 0 OR e.paid_by = p_friend_id)
+  ), 0)
+  + COALESCE((
+    SELECT SUM(CASE WHEN s.from_user_id = app_user_id THEN s.amount ELSE -s.amount END)
+    FROM public.settlements s
+    WHERE s.group_id IS NULL
+      AND s.currency = p_currency
+      AND (
+        (s.from_user_id = app_user_id AND s.to_user_id = p_friend_id)
+        OR (s.from_user_id = p_friend_id AND s.to_user_id = app_user_id)
+      )
+  ), 0)
+  + COALESCE((
+    SELECT SUM(COALESCE(friend_split.amount, 0) - CASE WHEN e.paid_by = p_friend_id THEN e.amount ELSE 0 END)
+    FROM public.expenses e
+    JOIN public.group_members current_member
+      ON current_member.group_id = e.group_id
+     AND current_member.user_id = app_user_id
+    JOIN public.group_members friend_member
+      ON friend_member.group_id = e.group_id
+     AND friend_member.user_id = p_friend_id
+    LEFT JOIN public.expense_splits friend_split
+      ON friend_split.expense_id = e.id
+     AND friend_split.user_id = p_friend_id
+    WHERE e.deleted_at IS NULL
+      AND e.currency = p_currency
+  ), 0)
+  + COALESCE((
+    SELECT SUM(CASE
+      WHEN s.from_user_id = p_friend_id THEN -s.amount
+      WHEN s.to_user_id = p_friend_id THEN s.amount
+      ELSE 0
+    END)
+    FROM public.settlements s
+    JOIN public.group_members current_member
+      ON current_member.group_id = s.group_id
+     AND current_member.user_id = app_user_id
+    JOIN public.group_members friend_member
+      ON friend_member.group_id = s.group_id
+     AND friend_member.user_id = p_friend_id
+    WHERE s.currency = p_currency
+  ), 0)
+  INTO current_balance;
+
+  IF ROUND(current_balance, 2) <> ROUND(p_expected_balance, 2) THEN
+    RAISE EXCEPTION 'SETTLEMENT_STALE_BALANCE';
+  END IF;
+
   FOR allocation IN SELECT value FROM jsonb_array_elements(p_allocations)
   LOOP
     allocation_group_id := NULLIF(allocation->>'groupId', '')::UUID;
@@ -177,6 +257,83 @@ BEGIN
         AND current_member.user_id = app_user_id
     ) THEN
       RAISE EXCEPTION 'SETTLEMENT_GROUP_SCOPE_INVALID';
+    END IF;
+
+    IF allocation_group_id IS NULL THEN
+      IF direct_scope_seen THEN
+        RAISE EXCEPTION 'SETTLEMENT_ALLOCATION_INVALID';
+      END IF;
+      direct_scope_seen := TRUE;
+    ELSIF allocation_group_id::TEXT = ANY(seen_group_ids) THEN
+      RAISE EXCEPTION 'SETTLEMENT_ALLOCATION_INVALID';
+    ELSE
+      seen_group_ids := array_append(seen_group_ids, allocation_group_id::TEXT);
+    END IF;
+
+    IF allocation_group_id IS NULL THEN
+      SELECT COALESCE(SUM(
+        CASE
+          WHEN e.paid_by = app_user_id THEN COALESCE(friend_split.amount, 0)
+          WHEN e.paid_by = p_friend_id THEN -COALESCE(current_split.amount, 0)
+          ELSE 0
+        END
+      ), 0)
+      INTO current_scope_balance
+      FROM public.expenses e
+      LEFT JOIN public.expense_splits current_split
+        ON current_split.expense_id = e.id
+       AND current_split.user_id = app_user_id
+       AND (current_split.amount > 0 OR e.paid_by = app_user_id)
+      LEFT JOIN public.expense_splits friend_split
+        ON friend_split.expense_id = e.id
+       AND friend_split.user_id = p_friend_id
+       AND (friend_split.amount > 0 OR e.paid_by = p_friend_id)
+      WHERE e.deleted_at IS NULL
+        AND e.group_id IS NULL
+        AND e.currency = p_currency
+        AND (COALESCE(current_split.amount, 0) > 0 OR e.paid_by = app_user_id)
+        AND (COALESCE(friend_split.amount, 0) > 0 OR e.paid_by = p_friend_id);
+
+      current_scope_balance := current_scope_balance + COALESCE((
+        SELECT SUM(CASE WHEN s.from_user_id = app_user_id THEN s.amount ELSE -s.amount END)
+        FROM public.settlements s
+        WHERE s.group_id IS NULL
+          AND s.currency = p_currency
+          AND (
+            (s.from_user_id = app_user_id AND s.to_user_id = p_friend_id)
+            OR (s.from_user_id = p_friend_id AND s.to_user_id = app_user_id)
+          )
+      ), 0);
+    ELSE
+      SELECT COALESCE(SUM(COALESCE(friend_split.amount, 0) - CASE WHEN e.paid_by = p_friend_id THEN e.amount ELSE 0 END), 0)
+      + COALESCE((
+        SELECT SUM(CASE
+          WHEN s.from_user_id = p_friend_id THEN -s.amount
+          WHEN s.to_user_id = p_friend_id THEN s.amount
+          ELSE 0
+        END)
+        FROM public.settlements s
+        WHERE s.group_id = allocation_group_id
+          AND s.currency = p_currency
+      ), 0)
+      INTO current_scope_balance
+      FROM public.expenses e
+      LEFT JOIN public.expense_splits friend_split
+        ON friend_split.expense_id = e.id
+       AND friend_split.user_id = p_friend_id
+      WHERE e.group_id = allocation_group_id
+        AND e.deleted_at IS NULL
+        AND e.currency = p_currency;
+    END IF;
+
+    IF current_scope_balance = 0
+       OR (current_scope_balance > 0 AND allocation_from_user_id <> p_friend_id)
+       OR (current_scope_balance < 0 AND allocation_from_user_id <> app_user_id) THEN
+      RAISE EXCEPTION 'SETTLEMENT_ALLOCATION_DIRECTION_INVALID';
+    END IF;
+
+    IF allocation_amount > ABS(current_scope_balance) THEN
+      RAISE EXCEPTION 'SETTLEMENT_ALLOCATION_OVER_BALANCE';
     END IF;
 
     allocation_total := allocation_total + allocation_amount;
@@ -232,5 +389,5 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.commit_combined_settlement(UUID, UUID, NUMERIC, TEXT, TIMESTAMPTZ, JSONB) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.commit_combined_settlement(UUID, UUID, NUMERIC, TEXT, TIMESTAMPTZ, JSONB) TO authenticated;
+REVOKE ALL ON FUNCTION public.commit_combined_settlement(UUID, UUID, NUMERIC, TEXT, TIMESTAMPTZ, NUMERIC, JSONB) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.commit_combined_settlement(UUID, UUID, NUMERIC, TEXT, TIMESTAMPTZ, NUMERIC, JSONB) TO authenticated;
