@@ -278,6 +278,10 @@ export default function GroupDetailScreen() {
             try {
               setIsDeletingGroup(true);
               await groupService.delete(id);
+              await queryClient.invalidateQueries({
+                queryKey: queryKeys.groups.list(currentUserId),
+                refetchType: 'all',
+              });
               router.replace('/groups' as any);
             } catch (error) {
               console.error('Error deleting group:', error);

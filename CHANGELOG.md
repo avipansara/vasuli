@@ -2,6 +2,10 @@
 
 - Fixed the sign-up verification action so the Create account button fills its
   control, keeps the confirmation icon aligned, and matches the sign-in button.
+- Refreshed the Groups home query after creating a group so newly created groups
+  appear immediately when returning to the list.
+- Refreshed the Groups home query after deleting a group so removed groups no
+  longer remain visible when returning to the list.
 - Added a shared relationship freshness contract across Home, Friend detail,
   and settle-up, including Realtime refreshes for ledger and membership inputs,
   stale-load protection, and sign-out cache isolation.

@@ -6,9 +6,11 @@ import { ThemedInput } from '@/components/ui/themed-input';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { groupService } from '@/services/group-service';
+import { queryKeys } from '@/services/query-keys';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
+import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState, useRef } from 'react';
 import {
   ActivityIndicator,
@@ -36,6 +38,7 @@ export default function CreateGroupScreen() {
   const { gradients, colors, isDark } = useThemeColors();
   const { user } = useAuth();
   const currentUserId = user?.id || '';
+  const queryClient = useQueryClient();
 
   const [groupName, setGroupName] = useState('');
   const [description, setDescription] = useState('');
@@ -84,6 +87,10 @@ export default function CreateGroupScreen() {
       await groupService.addMember(newGroup.id, currentUserId, 'admin');
       console.log('[CreateGroup] Creator added successfully');
 
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.groups.list(currentUserId),
+        refetchType: 'all',
+      });
       router.back();
     } catch (error: any) {
       console.error('Error creating group:', error);
