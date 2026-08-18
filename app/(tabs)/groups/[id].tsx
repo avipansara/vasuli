@@ -8,6 +8,7 @@ import { useDebouncedQueryInvalidation } from '@/hooks/use-debounced-query-inval
 import { useRealtime } from '@/hooks/use-realtime';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
+import { CombinedSettlementError } from '@/services/combined-settlement-errors';
 import { activityService } from '@/services/activity-service';
 import { expenseService } from '@/services/expense-service';
 import { friendshipService } from '@/services/friendship-service';
@@ -16,6 +17,8 @@ import type { GroupDetailReadModel, GroupExpenseView } from '@/services/group-de
 import { removeExpenseFromGroupReadModel, removeExpenseFromHomeFriends } from '@/services/group-detail-read-model';
 import { groupDetailService } from '@/services/group-detail-service';
 import { groupService } from '@/services/group-service';
+import { friendDetailModule } from '@/services/friend-detail-module';
+import { settlementService } from '@/services/settlement-service';
 import {
   createExpenseDeletedNotification,
   createMemberAddedNotification,
@@ -139,6 +142,38 @@ export default function GroupDetailScreen() {
   const loadGroupData = useCallback(async () => {
     await refetch();
   }, [refetch]);
+
+  const handleReverseTransfer = useCallback((transfer: NonNullable<GroupDetailReadModel['scopeTransfers']>[number]) => {
+    if (transfer.isReversal || (transfer.fromUserId !== currentUserId && transfer.toUserId !== currentUserId)) return;
+
+    Alert.alert(
+      'Reverse settlement?',
+      'This restores the balances affected by the settlement operation. The original history remains visible.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Reverse',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const otherUserId = transfer.fromUserId === currentUserId ? transfer.toUserId : transfer.fromUserId;
+              const friendDetail = await friendDetailModule.getDetail(currentUserId, otherUserId);
+              const expectedBalance = friendDetail?.relationship.totalsByCurrency.find(total => total.currency === transfer.currency)?.amount;
+              if (expectedBalance === undefined) throw new Error('Refresh the Friend details and try again.');
+              await settlementService.reverse(transfer.operationId, expectedBalance);
+              await Promise.all([refetch(), queryClient.invalidateQueries({ queryKey: friendsHomeQueryKey })]);
+              Alert.alert('Settlement reversed', 'The affected balances were restored.');
+            } catch (error) {
+              Alert.alert(
+                error instanceof CombinedSettlementError ? 'Unable to reverse' : 'Settlement reversal failed',
+                error instanceof Error ? error.message : 'The settlement could not be reversed.',
+              );
+            }
+          },
+        },
+      ],
+    );
+  }, [currentUserId, friendsHomeQueryKey, queryClient, refetch]);
 
   useEffect(() => {
     if (groupDetail === null) {
@@ -272,7 +307,7 @@ export default function GroupDetailScreen() {
 
     Alert.alert(
       'Delete Group',
-      `Delete "${group.name}"? This will remove the group and its expenses for everyone.`,
+      `Delete "${group.name}"? The group will be hidden for everyone, but its expenses and payment history will be preserved.`,
       [
         {
           text: 'Cancel',
@@ -1041,9 +1076,14 @@ export default function GroupDetailScreen() {
                 <View key={transfer.id} style={[styles.transferRow, { backgroundColor: friendDetailTheme.surface, borderColor: friendDetailTheme.surfaceBorder }]}>
                   <IconSymbol name="arrow.left.arrow.right" size={17} color={friendDetailTheme.actionIcon} />
                   <View style={styles.transferCopy}>
-                    <ThemedText type="defaultSemiBold" style={{ color: colors.text }}>{movedToFriendship ? 'Moved to friendship balance' : 'Moved from friendship balance'}</ThemedText>
+                    <ThemedText type="defaultSemiBold" style={{ color: colors.text }}>{transfer.isReversal ? 'Reversed balance offset' : movedToFriendship ? 'Moved to friendship balance' : 'Moved from friendship balance'}</ThemedText>
                     <ThemedText style={{ color: colors.textSecondary }}>{transfer.currency} {Math.abs(transfer.signedGroupBalanceDelta).toFixed(2)}</ThemedText>
                   </View>
+                  {!transfer.isReversal && (transfer.fromUserId === currentUserId || transfer.toUserId === currentUserId) ? (
+                    <TouchableOpacity accessibilityRole="button" accessibilityLabel="Reverse settlement" hitSlop={8} onPress={() => handleReverseTransfer(transfer)}>
+                      <ThemedText style={{ color: isDark ? '#FCA5A5' : '#B91C1C', fontSize: 12, fontWeight: '700' }}>Reverse</ThemedText>
+                    </TouchableOpacity>
+                  ) : null}
                 </View>
               );
             })}
