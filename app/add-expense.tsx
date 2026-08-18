@@ -350,7 +350,7 @@ export default function AddExpenseScreen() {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: isDark ? '#0b1326' : colors.background }]}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <NavigationHeader
         title={expenseStep === 1 ? 'Choose people' : 'Add Expense'}
         onBack={handleHeaderBack}

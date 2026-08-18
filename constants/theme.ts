@@ -72,6 +72,7 @@ export const Colors = {
     inputBorder: '#E5E5E5',
     modalBackground: '#F5F5F5',
     headerBackground: '#F5F5F5',
+    infoSurface: 'rgba(34, 197, 94, 0.1)',
   },
   dark: {
     text: '#f8fafc',
@@ -94,6 +95,7 @@ export const Colors = {
     inputBorder: '#2a3441',
     modalBackground: '#040914',
     headerBackground: '#040914',
+    infoSurface: '#0f172a',
   },
 };
 

@@ -66,6 +66,40 @@ important interactive UI when screen or device automation needs them.
 Keep production logs actionable: use `console.warn` for deprecations and
 `console.error` for actual errors; remove temporary debugging output.
 
+## UI and theming standards
+
+- Preserve the existing Vasuli visual language: warm, social, calm, and
+  legible rather than corporate or spreadsheet-like.
+- Treat light and dark appearance as first-class states. Every new or changed
+  screen must be checked in both modes, including loading, empty, error,
+  disabled, selected, and modal states.
+- Use `useThemeColors()` and the semantic palettes in `constants/theme.ts` for
+  surfaces, text, borders, accents, status colors, and component states. When
+  a new reusable surface needs a color, add a light/dark token to the relevant
+  theme object instead of scattering a new hex value through route code.
+- Prefer `ThemedText`, `ThemedInput`, `NavigationHeader`, shared cards, shared
+  modals, and existing skeleton/error components before creating one-off UI.
+  Raw `Text` and `TextInput` are acceptable when their foreground,
+  placeholder, background, and border colors are explicitly theme-aware.
+- Do not leave white or black backgrounds, text colors, borders, shadows, or
+  placeholder colors that are visible in the opposite appearance. Accent
+  colors must retain readable contrast on both light and dark surfaces.
+- Keep interactive controls at comfortable mobile touch sizes (at least 44pt
+  where practical), expose accessibility roles/labels/state, and provide
+  useful loading, disabled, empty, offline, and error feedback.
+- Keep business behavior separate from presentation. Put split, balance,
+  settlement, and query logic in services or pure utilities; keep route files
+  focused on composing the screen and handling navigation.
+- For native UI changes, verify safe-area and keyboard behavior on iOS and
+  Android, preserve platform gestures, and avoid web-only interaction patterns.
+- When changing Expo or React Native native dependencies, use `npx expo
+  install` and regenerate/rebuild the development client as needed. JavaScript
+  package versions and native Pods/Gradle artifacts must be kept in sync.
+
+Before handing off a UI change, run the relevant checks and manually inspect
+the changed flow in light and dark mode. For visual changes, include the
+affected route(s) and the states checked in the handoff.
+
 ## EAS and deployment
 
 Build profiles are defined in `eas.json`:

@@ -1,5 +1,12 @@
 ## 2026-08-17
 
+- Documented the current product and visual system in `PRODUCT.md`,
+  `DESIGN.md`, and `.impeccable/design.json` for future contributors and
+  design-aware agents.
+- Documented the shared contribution standards for theming, accessibility,
+  native UI behavior, dependency synchronization, and UI validation in
+  `AGENTS.md`.
+- Fixed dark-mode surfaces across expense setup, group settlement, and group creation, including themed member avatars and the group info panel.
 - Added a pair-scoped Friend detail read model backed by a session-derived
   Supabase RPC, reducing broad client-side history assembly and exposing
   development-only load timing metrics.

@@ -92,7 +92,7 @@ const SettleMemberRow = memo(function SettleMemberRow({ item, isSelected, onSele
       ]}>
       <View style={styles.memberContent}>
         <View style={styles.memberLeft}>
-          <View style={[styles.avatar, { backgroundColor: '#ffffff' }]}>
+          <View style={[styles.avatar, { backgroundColor: settle.avatarBackground }]}>
             <Text style={[styles.avatarText, { color: isSelected ? settle.accentText : colors.text }]}>
               {item.user?.name?.charAt(0).toUpperCase() || 'U'}
             </Text>

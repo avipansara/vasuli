@@ -94,7 +94,7 @@ export default function CreateGroupScreen() {
   }
 
   const cardStyle = {
-    backgroundColor: isDark ? 'rgba(20, 35, 38, 0.95)' : '#ffffff',
+    backgroundColor: colors.card,
     borderWidth: 0,
     shadowColor: isDark ? '#000000' : '#475569',
     shadowOffset: { width: 0, height: 3 },
@@ -188,7 +188,7 @@ export default function CreateGroupScreen() {
                       {
                         backgroundColor: isSelected
                           ? (isDark ? 'rgba(13, 148, 136, 0.16)' : 'rgba(15, 76, 58, 0.08)')
-                          : (isDark ? 'rgba(20, 35, 38, 0.95)' : '#ffffff'),
+                          : colors.card,
                         borderWidth: isSelected ? 1 : 0,
                         borderColor: isSelected ? primaryBtnColor : 'transparent',
                       },
@@ -207,7 +207,7 @@ export default function CreateGroupScreen() {
 
           {/* Info Card */}
           <View style={[styles.infoCard, cardStyle]}>
-            <View style={styles.infoContent}>
+            <View style={[styles.infoContent, { backgroundColor: colors.infoSurface }]}>
               <IconSymbol name="info.circle" size={20} color={primaryBtnColor} />
               <ThemedText style={[styles.infoText, { color: colors.textSecondary }]}>
                 You can add members to your group after creating it.
