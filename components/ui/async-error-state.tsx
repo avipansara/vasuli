@@ -1,9 +1,9 @@
 import { ThemedText } from '@/components/themed-text';
 import { useThemeColors } from '@/hooks/use-theme-colors';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { IconSymbol } from './icon-symbol';
+import { ThemedButton } from './themed-button';
 
 export type AsyncErrorStateProps = {
   title?: string;
@@ -21,7 +21,7 @@ export function AsyncErrorState({
   retryLabel = 'Try again',
   variant = 'full',
 }: AsyncErrorStateProps) {
-  const { colors, gradients, isDark } = useThemeColors();
+  const { colors, isDark } = useThemeColors();
   const compact = variant === 'compact';
 
   return (
@@ -48,18 +48,11 @@ export function AsyncErrorState({
         {message}
       </ThemedText>
       {onRetry ? (
-        <Pressable
-          accessibilityRole="button"
+        <ThemedButton
+          label={retryLabel}
           onPress={onRetry}
-          style={({ pressed }) => [{ opacity: pressed ? 0.88 : 1 }]}>
-          <LinearGradient
-            colors={gradients.buttonPrimary}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={[styles.retryBtn, compact && styles.retryBtnCompact]}>
-            <ThemedText style={styles.retryLabel}>{retryLabel}</ThemedText>
-          </LinearGradient>
-        </Pressable>
+          style={[styles.retryBtn, compact && styles.retryBtnCompact]}
+        />
       ) : null}
     </View>
   );
@@ -116,18 +109,11 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   retryBtn: {
+    alignSelf: 'center',
     paddingHorizontal: 22,
-    paddingVertical: 12,
-    borderRadius: 14,
     marginTop: 4,
   },
   retryBtnCompact: {
-    paddingVertical: 10,
-    alignItems: 'center',
-  },
-  retryLabel: {
-    fontSize: 16,
-    fontFamily: 'Manrope_600SemiBold',
-    color: '#0A0A0F',
+    alignSelf: 'stretch',
   },
 });

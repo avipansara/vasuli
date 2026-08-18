@@ -1,7 +1,7 @@
 import { ThemedText } from '@/components/themed-text';
-import { FormInput } from '@/components/ui/form-input';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { FormGroup, PrivacyNote, SharedModal } from '@/components/ui/shared-modal';
+import { ThemedInput } from '@/components/ui/themed-input';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -47,7 +47,7 @@ export function InviteFriendModal({
       </View>
 
       <FormGroup label="Email Address *">
-        <FormInput
+        <ThemedInput
           placeholder="friend@example.com"
           value={email}
           onChangeText={setEmail}
@@ -55,6 +55,7 @@ export function InviteFriendModal({
           autoCapitalize="none"
           autoFocus
           returnKeyType="done"
+          icon="envelope.fill"
         />
       </FormGroup>
 

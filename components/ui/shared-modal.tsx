@@ -1,15 +1,12 @@
 import {
   ACCENT_TEAL,
   BG_ICON_DARK,
-  BG_ICON_LIGHT,
-  BTN_DISABLED_DARK,
-  BTN_DISABLED_LIGHT
+  BG_ICON_LIGHT
 } from '@/constants/theme';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
 import {
-  ActivityIndicator,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -20,6 +17,7 @@ import {
 } from 'react-native';
 import { ThemedText } from '../themed-text';
 import { IconSymbol, IconSymbolName } from './icon-symbol';
+import { ThemedButton } from './themed-button';
 
 interface SharedModalProps {
   visible: boolean;
@@ -57,7 +55,6 @@ export function SharedModal({
   submitDisabled = false,
   submitLoading = false,
   onSubmit,
-  submitGradientColors,
   submitTextColor = '#0A0A0F',
   headerStyle = 'default',
   submitBadge,
@@ -67,11 +64,6 @@ export function SharedModal({
   const defaultIconBg = isDark ? BG_ICON_DARK : BG_ICON_LIGHT;
   const defaultIconColor = isDark ? ACCENT_TEAL : colors.tint;
   const closeIconColor = '#EF4444';
-
-  const disabledColors = isDark ? BTN_DISABLED_DARK : BTN_DISABLED_LIGHT;
-  const buttonColors = submitDisabled
-    ? disabledColors
-    : (submitGradientColors || gradients.buttonPrimary);
 
   const headerContent = (
     <View style={styles.headerContent}>
@@ -160,45 +152,14 @@ export function SharedModal({
                 { borderTopColor: isDark ? 'rgba(45, 212, 191, 0.15)' : colors.border },
               ]}>
               {footerContent || (
-                <TouchableOpacity
-                  activeOpacity={0.8}
-                  onPress={onSubmit}
-                  disabled={submitDisabled || submitLoading}>
-                  <LinearGradient
-                    colors={buttonColors as [string, string]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={[
-                      styles.submitButton,
-                      (submitDisabled || submitLoading) && styles.disabledButton,
-                    ]}>
-                    {submitLoading ? (
-                      <ActivityIndicator size="small" color={submitDisabled ? '#6B7280' : submitTextColor} />
-                    ) : (
-                      <>
-                        <IconSymbol
-                          size={20}
-                          name={submitIcon}
-                          color={submitDisabled ? '#6B7280' : submitTextColor}
-                        />
-                        <ThemedText
-                          style={[
-                            styles.submitButtonText,
-                            { color: submitDisabled ? '#6B7280' : submitTextColor },
-                          ]}>
-                          {submitLabel}
-                        </ThemedText>
-                        {submitBadge !== undefined && (
-                          <View style={[styles.submitBadgeContainer, { backgroundColor: submitDisabled ? '#6B7280' : '#ffffff' }]}>
-                            <ThemedText style={[styles.submitBadgeText, { color: submitDisabled ? '#ffffff' : (isDark ? '#003824' : '#054e3b') }]}>
-                              {submitBadge}
-                            </ThemedText>
-                          </View>
-                        )}
-                      </>
-                    )}
-                  </LinearGradient>
-                </TouchableOpacity>
+                <ThemedButton
+                  label={submitLabel || ''}
+                  onPress={onSubmit || (() => {})}
+                  disabled={submitDisabled}
+                  loading={submitLoading}
+                  icon={submitIcon}
+                  badge={submitBadge}
+                />
               )}
             </View>
           )}

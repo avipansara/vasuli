@@ -1,15 +1,17 @@
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { forwardRef } from 'react';
-import { Platform, StyleSheet, TextInput, TextInputProps, View } from 'react-native';
+import { Platform, StyleSheet, TextInput, TextInputProps, View, ViewStyle } from 'react-native';
 
 interface ThemedInputProps extends TextInputProps {
   icon?: any;
   iconSize?: number;
+  trailing?: React.ReactNode;
+  containerStyle?: ViewStyle;
 }
 
 export const ThemedInput = forwardRef<TextInput, ThemedInputProps>(
-  ({ icon, iconSize = 20, style, ...props }, ref) => {
+  ({ icon, iconSize = 20, trailing, containerStyle, style, ...props }, ref) => {
     const { colors, isDark } = useThemeColors();
 
     return (
@@ -26,6 +28,7 @@ export const ThemedInput = forwardRef<TextInput, ThemedInputProps>(
             shadowRadius: 10,
             elevation: 3,
           },
+          containerStyle,
         ]}>
         {icon && (
           <IconSymbol
@@ -47,6 +50,7 @@ export const ThemedInput = forwardRef<TextInput, ThemedInputProps>(
           placeholderTextColor={colors.textSecondary}
           {...props}
         />
+        {trailing}
       </View>
     );
   }

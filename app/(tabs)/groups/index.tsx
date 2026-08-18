@@ -1,6 +1,7 @@
 import { CreateGroupModal, GroupCard } from '@/components/groups';
 import { ThemedText } from '@/components/themed-text';
 import { AsyncErrorState } from '@/components/ui/async-error-state';
+import { EmptyState } from '@/components/ui/empty-state';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { GroupsListSkeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/auth-context-otp';
@@ -182,32 +183,15 @@ export default function GroupsScreen() {
         />
       ) : groups.length === 0 ? (
         <Animated.View style={[
-          styles.emptyContainer,
-          { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }
+          { opacity: fadeAnim, transform: [{ translateY: slideAnim }], flex: 1 }
         ]}>
-          <View style={[styles.emptyIconContainer, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.1)' : 'rgba(34, 197, 94, 0.1)' }]}>
-            <IconSymbol size={80} name="person.3" color={isDark ? '#2DD4BF' : colors.tint} />
-          </View>
-          <ThemedText type="subtitle" style={[styles.emptyTitle, { color: colors.text }]}>
-            No groups yet
-          </ThemedText>
-          <ThemedText style={[styles.emptyText, { color: colors.textSecondary }]}>
-            Create a group to start splitting expenses with friends
-          </ThemedText>
-          <TouchableOpacity
-            activeOpacity={0.8}
-            onPress={() => router.push('/create-group')}
-            accessibilityRole="button"
-            accessibilityLabel="Create your first group">
-            <LinearGradient
-              colors={gradients.buttonPrimary}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.createButton}>
-              <IconSymbol size={20} name="plus.circle.fill" color="#0A0A0F" />
-              <ThemedText style={[styles.createButtonText, { color: '#0A0A0F' }]}>Create Your First Group</ThemedText>
-            </LinearGradient>
-          </TouchableOpacity>
+          <EmptyState
+            icon="person.3"
+            title="No groups yet"
+            subtitle="Create a group to start splitting expenses with friends"
+            buttonLabel="Create Your First Group"
+            onButtonPress={() => router.push('/create-group')}
+          />
         </Animated.View>
       ) : (
         <FlatList
