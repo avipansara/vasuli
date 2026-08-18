@@ -247,7 +247,7 @@ export default function FriendSettleScreen() {
           {/* User Identity Card */}
           <View style={[styles.profileCard, { backgroundColor: settle.cardBackground, borderColor: settle.cardBorder }]}>
             <View style={styles.profileRow}>
-              <View style={[styles.avatar, { backgroundColor: settle.avatarBackground }]}>
+              <View style={[styles.avatar, { backgroundColor: settle.avatarSelectedBackground }]}>
                 <Text style={[styles.avatarText, { color: settle.avatarText }]}>
                   {friend.name.charAt(0).toUpperCase()}
                 </Text>
