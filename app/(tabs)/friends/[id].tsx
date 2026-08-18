@@ -15,7 +15,7 @@ import {
   groupFriendActivityByMonth,
   type FriendActivityFilter,
 } from '@/services/friend-detail-module';
-import type { FriendDetailData } from '@/services/friend-detail-service';
+import { projectFriendRelationship, type FriendDetailData } from '@/services/friend-detail-service';
 import type { GroupDetailReadModel } from '@/services/group-detail-read-model';
 import { applySettlementToGroupReadModel } from '@/services/group-detail-read-model';
 import { queryKeys } from '@/services/query-keys';
@@ -112,6 +112,7 @@ export default function FriendDetailScreen() {
     expenses,
     activity,
     groupBalances,
+    relationship,
     friendDetailQueryKey,
     friendsHomeQueryKey,
     queryClient,
@@ -237,17 +238,24 @@ export default function FriendDetailScreen() {
                   };
                 }));
 
-                queryClient.setQueryData<FriendDetailData | null>(friendDetailQueryKey, current => current ? {
-                  ...current,
-                  friend: {
-                    ...current.friend,
-                    balance: Math.abs(current.friend.balance + balanceDelta) < 0.01 ? 0 : current.friend.balance + balanceDelta,
-                  },
-                  expenses: current.expenses.filter(expense => expense.id !== expenseId),
-                  activity: current.activity.filter(activityItem => (
-                    activityItem.type !== 'expense' || activityItem.expense.id !== expenseId
-                  )),
-                } : current);
+                queryClient.setQueryData<FriendDetailData | null>(friendDetailQueryKey, current => {
+                  if (!current) return current;
+                  const nextDetail = {
+                    ...current,
+                    friend: {
+                      ...current.friend,
+                      balance: Math.abs(current.friend.balance + balanceDelta) < 0.01 ? 0 : current.friend.balance + balanceDelta,
+                    },
+                    expenses: current.expenses.filter(expense => expense.id !== expenseId),
+                    activity: current.activity.filter(activityItem => (
+                      activityItem.type !== 'expense' || activityItem.expense.id !== expenseId
+                    )),
+                  };
+                  return {
+                    ...nextDetail,
+                    relationship: projectFriendRelationship(nextDetail),
+                  };
+                });
               }
 
               await friendDetailModule.deleteExpense({
@@ -384,8 +392,20 @@ export default function FriendDetailScreen() {
     return null;
   }
 
-  const directBalance = friend.balance;
-  const combinedBalance = directBalance + groupBalances.reduce((total, summary) => total + summary.amount, 0);
+  if (!relationship) {
+    return null;
+  }
+
+  const directBalance = relationship.directBalance;
+  const combinedBalance = relationship.settleableTotal?.amount
+    ?? (relationship.totalsByCurrency.length === 0 ? directBalance : 0);
+  const hasCurrencyAmbiguity = Boolean(
+    !relationship.settleableTotal
+    && (
+      relationship.directBalance !== 0
+      || relationship.totalsByCurrency.filter(total => total.amount !== 0).length > 1
+    )
+  );
   const balance = combinedBalance;
   const groupBalanceCount = groupBalances.filter(summary => summary.direction !== 'settled').length;
   const isOwed = balance > 0;
@@ -400,17 +420,23 @@ export default function FriendDetailScreen() {
     : isOwing
       ? friendDetailTheme.negativeSurface
       : friendDetailTheme.settledSurface;
-  const balanceCopy = isOwed
+  const balanceCopy = hasCurrencyAmbiguity
+    ? 'Multiple currencies'
+    : isOwed
     ? `${friend.name.split(' ')[0]} owes you`
     : isOwing
       ? `You owe ${friend.name.split(' ')[0]}`
       : 'All settled up';
-  const balanceCardTitle = isOwed
+  const balanceCardTitle = hasCurrencyAmbiguity
+    ? 'MULTIPLE CURRENCIES'
+    : isOwed
     ? `${friend.name.split(' ')[0].toUpperCase()} OWES YOU`
     : isOwing
       ? `YOU OWE ${friend.name.split(' ')[0].toUpperCase()}`
       : 'ALL SETTLED UP';
-  const balanceAccessibilityValue = `${balanceCopy}, $${Math.abs(balance).toFixed(2)}`;
+  const balanceAccessibilityValue = hasCurrencyAmbiguity
+    ? `${balanceCopy}, choose a currency to settle`
+    : `${balanceCopy}, ${relationship.settleableTotal?.currency ?? relationship.directCurrency ?? ''} ${Math.abs(balance).toFixed(2)}`;
 
 
   return (
@@ -534,7 +560,9 @@ export default function FriendDetailScreen() {
               </ThemedText>
 
               <ThemedText type='subtitle' style={[styles.summaryCardAmount, { color: isDark ? (isOwing ? '#ffb3b0' : isOwed ? '#4edea3' : '#94A3B8') : balanceColor }]}>
-                {isOwing ? '-' : isOwed ? '+' : ''}${Math.abs(balance).toFixed(2)}
+                {hasCurrencyAmbiguity
+                  ? 'Multiple currencies'
+                  : `${isOwing ? '-' : isOwed ? '+' : ''}${relationship.settleableTotal?.currency ?? relationship.directCurrency ?? ''} ${Math.abs(balance).toFixed(2)}`}
               </ThemedText>
 
               <ThemedText style={[styles.summaryCardSubtitle, { color: isDark ? '#94A3B8' : colors.textSecondary }]}>
@@ -543,7 +571,11 @@ export default function FriendDetailScreen() {
                   : `Across ${sharedExpensesCount} direct expenses`}
               </ThemedText>
 
-              {balance !== 0 && (
+              <ThemedText style={[styles.summaryCardSubtitle, { color: isDark ? '#94A3B8' : colors.textSecondary }] }>
+                Direct ledger: {relationship.directCurrency ?? 'multiple currencies'} {relationship.directBalance >= 0 ? '+' : '-'}{Math.abs(relationship.directBalance).toFixed(2)}
+              </ThemedText>
+
+              {balance !== 0 && !hasCurrencyAmbiguity && (
                 <View style={styles.cardQuickActions}>
                   <TouchableOpacity
                     style={[styles.cardQuickActionButton, {

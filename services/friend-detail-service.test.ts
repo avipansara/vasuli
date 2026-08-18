@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { buildFriendDetailData, calculatePairBalance } from '@/services/friend-detail-service';
+import {
+  buildFriendDetailData,
+  calculatePairBalance,
+  projectFriendRelationship,
+} from '@/services/friend-detail-service';
 import { ActivityType, type Activity, type Expense, type ExpenseSplit, type Settlement, type User } from '@/types/database';
 
 const currentUserId = 'current-user';
@@ -277,5 +281,94 @@ describe('friend detail builders', () => {
         isUpdated: false,
       },
     ]);
+  });
+
+  it('projects direct and shared Group balances into one currency-safe relationship view', () => {
+    const projection = projectFriendRelationship({
+      friend: { ...friend, balance: 40 },
+      expenses: [{
+        ...expense('dinner', currentUserId, 80, 10),
+        currency: 'USD',
+        yourShare: 40,
+        friendShare: 40,
+        paidByName: 'You',
+      }],
+      activity: [],
+      groupBalances: [{
+        groupId: 'alaska',
+        groupName: 'Alaska 2026',
+        currency: 'USD',
+        amount: -100,
+        direction: 'you_owe',
+        lastActivityAt: 20,
+      }, {
+        groupId: 'euro-trip',
+        groupName: 'Euro Trip',
+        currency: 'EUR',
+        amount: 25,
+        direction: 'you_are_owed',
+        lastActivityAt: 30,
+      }],
+    });
+
+    expect(projection).toEqual({
+      directBalance: 40,
+      directCurrency: 'USD',
+      groupBalances: expect.any(Array),
+      activity: [],
+      totalsByCurrency: [
+        { currency: 'EUR', amount: 25, direction: 'you_are_owed' },
+        { currency: 'USD', amount: -60, direction: 'you_owe' },
+      ],
+      settleableTotal: undefined,
+    });
+  });
+
+  it('returns one settleable total when the relationship has one currency', () => {
+    const projection = projectFriendRelationship({
+      friend: { ...friend, balance: -40 },
+      expenses: [{
+        ...expense('dinner', currentUserId, 80, 10),
+        yourShare: 40,
+        friendShare: 40,
+        paidByName: 'You',
+      }],
+      activity: [],
+      groupBalances: [{
+        groupId: 'alaska',
+        groupName: 'Alaska 2026',
+        currency: 'USD',
+        amount: -100,
+        direction: 'you_owe',
+      }],
+    });
+
+    expect(projection.settleableTotal).toEqual({
+      currency: 'USD',
+      amount: -140,
+      direction: 'you_owe',
+    });
+  });
+
+  it('does not expose a settleable total when same-currency scopes owe opposite directions', () => {
+    const projection = projectFriendRelationship({
+      friend: { ...friend, balance: -40 },
+      expenses: [{
+        ...expense('dinner', friendId, 80, 10),
+        yourShare: 40,
+        friendShare: 40,
+        paidByName: 'Asha',
+      }],
+      activity: [],
+      groupBalances: [{
+        groupId: 'alaska',
+        groupName: 'Alaska 2026',
+        currency: 'USD',
+        amount: 40,
+        direction: 'you_are_owed',
+      }],
+    });
+
+    expect(projection.settleableTotal).toBeUndefined();
   });
 });

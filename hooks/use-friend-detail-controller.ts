@@ -2,7 +2,7 @@ import { useDebouncedQueryInvalidation } from '@/hooks/use-debounced-query-inval
 import { useRealtime } from '@/hooks/use-realtime';
 import { friendDetailModule } from '@/services/friend-detail-module';
 import { queryKeys } from '@/services/query-keys';
-import type { FriendDetailData } from '@/services/friend-detail-service';
+import type { FriendDetailData, FriendRelationshipProjection } from '@/services/friend-detail-service';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo } from 'react';
 
@@ -84,6 +84,7 @@ export function useFriendDetailController({
     expenses: query.data?.expenses ?? [],
     activity: query.data?.activity ?? [],
     groupBalances: query.data?.groupBalances ?? [],
+    relationship: query.data?.relationship ?? null,
     friendDetailQueryKey,
     friendsHomeQueryKey,
     queryClient,
@@ -94,6 +95,7 @@ export function useFriendDetailController({
     expenses: FriendDetailData['expenses'];
     activity: FriendDetailData['activity'];
     groupBalances: NonNullable<FriendDetailData['groupBalances']>;
+    relationship: FriendRelationshipProjection | null;
     friendDetailQueryKey: typeof friendDetailQueryKey;
     friendsHomeQueryKey: typeof friendsHomeQueryKey;
     queryClient: typeof queryClient;

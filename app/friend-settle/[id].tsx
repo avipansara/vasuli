@@ -9,7 +9,7 @@ import { combinedSettlementService, createPaymentIntentId } from '@/services/com
 import { CombinedSettlementError } from '@/services/combined-settlement-errors';
 import { applyCombinedSettlementReceiptEffects } from '@/services/combined-settlement-receipt-effects';
 import { friendDetailModule } from '@/services/friend-detail-module';
-import type { FriendGroupBalanceSummary } from '@/services/friend-detail-service';
+import type { FriendRelationshipProjection } from '@/services/friend-detail-service';
 import { queryKeys } from '@/services/query-keys';
 import type { User } from '@/types/database';
 import { normalizeCurrencyInput } from '@/utils/validation';
@@ -42,7 +42,7 @@ export default function FriendSettleScreen() {
   const queryClient = useQueryClient();
 
   const [friend, setFriend] = useState<UserWithBalance | null>(null);
-  const [groupBalances, setGroupBalances] = useState<FriendGroupBalanceSummary[]>([]);
+  const [relationship, setRelationship] = useState<FriendRelationshipProjection | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [amount, setAmount] = useState('');
@@ -61,10 +61,10 @@ export default function FriendSettleScreen() {
         return;
       }
       setFriend(data.friend);
-      const nextGroupBalances = data.groupBalances ?? [];
-      setGroupBalances(nextGroupBalances);
-      const combinedBalance = data.friend.balance + nextGroupBalances.reduce((total, summary) => total + summary.amount, 0);
-      setAmount(Math.abs(combinedBalance).toFixed(2));
+      const nextRelationship = data.relationship ?? null;
+      setRelationship(nextRelationship);
+      const settleableTotal = nextRelationship?.settleableTotal;
+      setAmount(settleableTotal ? Math.abs(settleableTotal.amount).toFixed(2) : '');
     } catch (error) {
       console.error('Error loading friend data:', error);
       setLoadError(getFetchErrorMessage(error));
@@ -91,7 +91,13 @@ export default function FriendSettleScreen() {
       return;
     }
 
-    const combinedBalance = friend.balance + groupBalances.reduce((total, summary) => total + summary.amount, 0);
+    const settleableTotal = relationship?.settleableTotal;
+    if (!settleableTotal) {
+      Alert.alert('Choose a currency', 'This relationship has balances in multiple currencies. Open the Friend detail page and choose one currency to settle.');
+      return;
+    }
+
+    const combinedBalance = settleableTotal.amount;
     const amountCents = Math.round(amountNum * 100);
     const maxCents = Math.round(Math.abs(combinedBalance) * 100);
     if (amountCents > maxCents) {
@@ -110,11 +116,11 @@ export default function FriendSettleScreen() {
         currentUserId,
         friendId: id,
         paymentIntentId,
-        currency: 'USD',
+        currency: settleableTotal.currency,
         amount: amountNum,
         expectedBalance: combinedBalance,
-        directBalance: friend.balance,
-        groupBalances,
+        directBalance: relationship.directBalance,
+        groupBalances: relationship.groupBalances,
         date: Date.now(),
       });
       const settlements = receipt.settlements;
@@ -162,7 +168,7 @@ export default function FriendSettleScreen() {
 
   const handleQuickPercent = (percent: number) => {
     if (!friend) return;
-    const value = Math.abs(friend.balance) * percent;
+    const value = Math.abs(relationship?.settleableTotal?.amount ?? 0) * percent;
     setAmount(value.toFixed(2));
   };
 
@@ -194,7 +200,8 @@ export default function FriendSettleScreen() {
     );
   }
 
-  const combinedBalance = friend.balance + groupBalances.reduce((total, summary) => total + summary.amount, 0);
+  const settleableTotal = relationship?.settleableTotal;
+  const combinedBalance = settleableTotal?.amount ?? 0;
   const isOwed = combinedBalance > 0;
   const maxAmount = Math.abs(combinedBalance);
   const amountNum = parseFloat(amount) || 0;
@@ -229,10 +236,10 @@ export default function FriendSettleScreen() {
             <View style={[styles.divider, { backgroundColor: settle.cardBorder }]} />
             <View style={styles.balanceRow}>
               <ThemedText style={[styles.balanceLabelText, { color: isDark ? '#bbcabf' : colors.textSecondary }]}>
-                Total balance
+                Combined relationship summary
               </ThemedText>
               <ThemedText style={[styles.balanceValueText, { color: settle.accentText }]}>
-                ${maxAmount.toFixed(2)}
+              {settleableTotal?.currency ?? ''} {maxAmount.toFixed(2)}
               </ThemedText>
             </View>
           </View>
@@ -247,7 +254,7 @@ export default function FriendSettleScreen() {
               borderColor: settle.heroBorder,
             }]}>
               <View style={styles.inputInnerRow}>
-                <Text style={[styles.currency, { color: settle.accentText }]}>$</Text>
+              <Text style={[styles.currency, { color: settle.accentText }]}>{settleableTotal?.currency ?? '$'}</Text>
                 <TextInput
                   style={[styles.input, { color: settle.accentText }]}
                   value={amount}
@@ -265,12 +272,16 @@ export default function FriendSettleScreen() {
             <View style={styles.quickSelectRow}>
               <TouchableOpacity
                 onPress={() => handleQuickPercent(0.5)}
-                style={[styles.quickSelectButton, { backgroundColor: settle.pillBackground }]}>
+                disabled={!settleableTotal}
+                accessibilityState={{ disabled: !settleableTotal }}
+                style={[styles.quickSelectButton, { backgroundColor: settle.pillBackground, opacity: settleableTotal ? 1 : 0.45 }]}>
                 <Text style={[styles.quickSelectText, { color: isDark ? '#dae2fd' : colors.text }]}>50%</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => handleQuickPercent(1.0)}
-                style={[styles.quickSelectButton, { backgroundColor: settle.pillBackground }]}>
+                disabled={!settleableTotal}
+                accessibilityState={{ disabled: !settleableTotal }}
+                style={[styles.quickSelectButton, { backgroundColor: settle.pillBackground, opacity: settleableTotal ? 1 : 0.45 }]}>
                 <Text style={[styles.quickSelectText, { color: isDark ? '#dae2fd' : colors.text }]}>Full Balance</Text>
               </TouchableOpacity>
             </View>
@@ -278,9 +289,11 @@ export default function FriendSettleScreen() {
 
           {/* Confirmation Text */}
           <ThemedText style={[styles.helperText, { color: isDark ? '#bbcabf' : colors.textSecondary }]}>
-            This records that {isOwed ? `${friend.name} paid you ` : `you paid ${friend.name} `}
+            {settleableTotal
+              ? `This records that ${isOwed ? `${friend.name} paid you ` : `you paid ${friend.name} `}`
+              : 'Choose one currency with an outstanding balance before settling.'}
             <Text style={[styles.helperBoldAmount, { color: isDark ? '#dae2fd' : colors.text }]}>
-              ${amountNum.toFixed(2)}
+              {settleableTotal ? `${settleableTotal.currency} ${amountNum.toFixed(2)}` : amountNum.toFixed(2)}
             </Text>
             {' to settle up.'}
           </ThemedText>

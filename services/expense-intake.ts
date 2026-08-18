@@ -1,4 +1,4 @@
-import type { FriendDetailData } from './friend-detail-service';
+import { projectFriendRelationship, type FriendDetailData } from './friend-detail-service';
 import { addExpenseToGroupReadModel, type GroupDetailReadModel } from './group-detail-read-model';
 import type { QueryCacheAdapter, QueryCacheKey } from './query-cache-adapter';
 import type { Expense, User } from '@/types/database';
@@ -120,13 +120,18 @@ function updateFriendDetail(
     paidByName: expense.paidBy === currentUserId ? 'You' : current.friend.name,
   };
 
-  return {
+  const nextDetail = {
     ...current,
     friend: {
       ...current.friend,
       balance: Math.abs(current.friend.balance + balanceDelta) < 0.01 ? 0 : current.friend.balance + balanceDelta,
     },
     expenses: [expenseWithSplit, ...current.expenses.filter(item => item.id !== expense.id)],
+  };
+
+  return {
+    ...nextDetail,
+    relationship: projectFriendRelationship(nextDetail),
   };
 }
 

@@ -184,6 +184,11 @@ describe('submitExpense', () => {
     expect(cache.get<{ friend: { balance: number }; expenses: Expense[] }>('friend-detail')).toMatchObject({
       friend: { balance: 15 },
       expenses: [{ id: 'friend-expense-1', description: 'Coffee' }],
+      relationship: {
+        directBalance: 15,
+        activity: [],
+        totalsByCurrency: [{ currency: 'USD', amount: 15, direction: 'you_are_owed' }],
+      },
     });
   });
 });

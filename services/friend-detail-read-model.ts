@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { ActivityType, type User } from '@/types/database';
-import type { FriendActivityItem, FriendDetailData } from './friend-detail-service';
+import { projectFriendRelationship, type FriendActivityItem, type FriendDetailData } from './friend-detail-service';
 
 type FriendDetailRpcClient = {
   rpc: (functionName: string, args: Record<string, string>) => Promise<{
@@ -207,10 +207,15 @@ export function createFriendDetailReadModel(rpcClient: FriendDetailRpcClient = d
         });
       }
 
-      return {
+      const detail: Omit<FriendDetailData, 'relationship'> = {
         friend,
         expenses,
         activity: buildActivity(expenses, groupExpenses, settlements, activities),
+      };
+
+      return {
+        ...detail,
+        relationship: projectFriendRelationship(detail),
       };
     },
   };

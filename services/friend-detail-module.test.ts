@@ -1,11 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import type { FriendDetailData } from '@/services/friend-detail-service';
+import type { FriendActivityItem, FriendDetailData } from '@/services/friend-detail-service';
 import {
   createFriendDetailModule,
   filterFriendActivity,
   groupFriendActivityByMonth,
 } from '@/services/friend-detail-module';
-import type { FriendActivityItem } from '@/services/friend-detail-service';
 import type { Settlement } from '@/types/database';
 
 const detail: FriendDetailData = {
@@ -19,6 +18,12 @@ const detail: FriendDetailData = {
   expenses: [],
   activity: [],
   groupBalances: [],
+  relationship: {
+    directBalance: 24,
+    groupBalances: [],
+    activity: [],
+    totalsByCurrency: [],
+  },
 };
 
 describe('Friend detail module', () => {
@@ -27,7 +32,17 @@ describe('Friend detail module', () => {
       readAdapter: { getDetail: async () => detail },
     });
 
-    await expect(module.getDetail('current-user', 'friend-a')).resolves.toEqual(detail);
+    await expect(module.getDetail('current-user', 'friend-a')).resolves.toEqual({
+      ...detail,
+      relationship: {
+        directBalance: 24,
+        directCurrency: undefined,
+        groupBalances: [],
+        activity: [],
+        totalsByCurrency: [],
+        settleableTotal: undefined,
+      },
+    });
   });
 
   it('returns group balance summaries separately from the direct Friend detail', async () => {
@@ -53,6 +68,12 @@ describe('Friend detail module', () => {
         amount: -100,
         direction: 'you_owe',
       }],
+      relationship: {
+        directBalance: 24,
+        directCurrency: undefined,
+        totalsByCurrency: [{ currency: 'USD', amount: -100, direction: 'you_owe' }],
+        activity: [],
+      },
     });
   });
 

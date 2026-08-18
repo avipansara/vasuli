@@ -64,11 +64,96 @@ export type FriendActivityItem =
     isUpdated: boolean;
   };
 
+export type FriendRelationshipTotal = {
+  currency: string;
+  amount: number;
+  direction: 'you_owe' | 'you_are_owed' | 'settled';
+};
+
+export type FriendRelationshipProjection = {
+  directBalance: number;
+  directCurrency?: string;
+  groupBalances: FriendGroupBalanceSummary[];
+  activity: FriendActivityItem[];
+  totalsByCurrency: FriendRelationshipTotal[];
+  settleableTotal?: FriendRelationshipTotal;
+};
+
 export interface FriendDetailData {
   friend: FriendWithBalance;
   expenses: FriendExpenseWithSplit[];
   activity: FriendActivityItem[];
   groupBalances?: FriendGroupBalanceSummary[];
+  relationship: FriendRelationshipProjection;
+}
+
+export function projectFriendRelationship(
+  detail: Pick<FriendDetailData, 'friend' | 'expenses' | 'activity' | 'groupBalances'>
+): FriendRelationshipProjection {
+  const directBalance = normalizeBalance(detail.friend.balance);
+  const groupBalances = detail.groupBalances ?? [];
+  const directCurrencies = new Set(
+    detail.expenses
+      .filter(expense => !expense.groupId)
+      .map(expense => expense.currency)
+  );
+
+  for (const item of detail.activity) {
+    if (item.type === 'settlement' && !item.groupId) {
+      directCurrencies.add(item.currency);
+    }
+  }
+
+  const totals = new Map<string, number>();
+  for (const summary of groupBalances) {
+    totals.set(summary.currency, (totals.get(summary.currency) ?? 0) + summary.amount);
+  }
+
+  const directCurrency = directCurrencies.size === 1 ? [...directCurrencies][0] : undefined;
+  if (directBalance !== 0 && directCurrency) {
+    totals.set(directCurrency, (totals.get(directCurrency) ?? 0) + directBalance);
+  }
+
+  const totalsByCurrency = [...totals.entries()]
+    .map(([currency, amount]) => ({
+      currency,
+      amount: normalizeBalance(amount),
+      direction: getBalanceDirection(amount),
+    }))
+    .sort((a, b) => a.currency.localeCompare(b.currency));
+
+  const outstandingTotals = totalsByCurrency.filter(total => total.amount !== 0);
+  const outstandingScopes = [
+    ...(directBalance === 0 ? [] : [directBalance]),
+    ...groupBalances
+      .filter(summary => summary.amount !== 0)
+      .map(summary => summary.amount),
+  ];
+  const hasOppositeDirections = outstandingScopes.some(
+    amount => Math.sign(amount) !== Math.sign(outstandingScopes[0])
+  );
+  const settleableTotal = outstandingTotals.length === 1
+    && (directBalance === 0 || directCurrency === outstandingTotals[0].currency)
+    && !hasOppositeDirections
+    ? outstandingTotals[0]
+    : undefined;
+
+  return {
+    directBalance,
+    directCurrency,
+    groupBalances,
+    activity: detail.activity,
+    totalsByCurrency,
+    settleableTotal,
+  };
+}
+
+function normalizeBalance(balance: number): number {
+  return Math.abs(balance) < 0.01 ? 0 : Number(balance.toFixed(2));
+}
+
+function getBalanceDirection(balance: number): FriendRelationshipTotal['direction'] {
+  return balance > 0.01 ? 'you_are_owed' : balance < -0.01 ? 'you_owe' : 'settled';
 }
 
 export function calculatePairBalance(
@@ -241,13 +326,18 @@ export function buildFriendDetailData(
     }),
   ].sort((a, b) => b.date - a.date);
 
-  return {
+  const detail: Omit<FriendDetailData, 'relationship'> = {
     friend: {
       ...friend,
       balance: calculatePairBalance(currentUserId, friend.id, expenses, splits, settlements),
     },
     expenses: sharedExpenses,
     activity,
+  };
+
+  return {
+    ...detail,
+    relationship: projectFriendRelationship(detail),
   };
 }
 

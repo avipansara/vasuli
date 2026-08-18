@@ -1,5 +1,9 @@
 ## 2026-08-17
 
+- Deepened the Friend relationship read seam so Friend detail and combined
+  settle-up consume one currency-aware Direct and shared Group projection,
+  including multi-currency and opposite-direction safeguards.
+
 - Hardened combined settlement receipts and retries with explicit timestamp and
   direction fields, supported-currency validation, pair serialization, and
   retryable transient-error handling.

@@ -1,4 +1,9 @@
-import type { FriendActivityItem, FriendDetailData, FriendGroupBalanceSummary } from '@/services/friend-detail-service';
+import {
+  projectFriendRelationship,
+  type FriendActivityItem,
+  type FriendDetailData,
+  type FriendGroupBalanceSummary,
+} from '@/services/friend-detail-service';
 import { friendDetailReadModel } from '@/services/friend-detail-read-model';
 import { friendGroupBalanceService } from '@/services/friend-group-balance-service';
 import { activityService } from '@/services/activity-service';
@@ -145,7 +150,11 @@ export function createFriendDetailModule(
         groupBalanceAdapter?.getSharedGroupBalances(currentUserId, friendId) ?? Promise.resolve([]),
       ]);
       if (!detail) return null;
-      return { ...detail, groupBalances };
+      const relationship = projectFriendRelationship({
+        ...detail,
+        groupBalances,
+      });
+      return { ...detail, groupBalances, relationship };
     },
     async settleUp({
       currentUserId,
