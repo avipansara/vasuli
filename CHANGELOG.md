@@ -1,5 +1,10 @@
 ## 2026-08-18
 
+- Fixed the sign-up verification action so the Create account button fills its
+  control, keeps the confirmation icon aligned, and matches the sign-in button.
+- Added a shared relationship freshness contract across Home, Friend detail,
+  and settle-up, including Realtime refreshes for ledger and membership inputs,
+  stale-load protection, and sign-out cache isolation.
 - Routed Home Friend summaries through the currency-aware relationship projection,
   preserving direct-versus-Group scope and avoiding incompatible-currency totals.
 

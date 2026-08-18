@@ -504,25 +504,27 @@ export default function SignUpOTPScreen() {
           <Pressable
             onPress={handleVerifyCode}
             disabled={loading || otp.join('').length !== 6}
+            accessibilityRole="button"
+            accessibilityLabel={loading ? 'Creating account' : 'Create account'}
+            accessibilityState={{
+              busy: loading,
+              disabled: loading || otp.join('').length !== 6,
+            }}
+            testID="create-account-button"
             style={({ pressed }) => [
               styles.primaryButton,
+              { backgroundColor: isDark ? '#0D9488' : '#0F4C3A' },
               pressed && styles.buttonPressed,
               (loading || otp.join('').length !== 6) && styles.buttonDisabled,
             ]}>
-            <LinearGradient
-              colors={isDark ? ['#2DD4BF', '#14B8A6'] : ['#22C55E', '#10B981']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-            >
-              {loading ? (
-                <Text style={styles.buttonText}>Creating account...</Text>
-              ) : (
-                <>
-                  <Text style={styles.buttonText}>Create Account</Text>
-                  <IconSymbol name="checkmark" size={18} color="#fff" />
-                </>
-              )}
-            </LinearGradient>
+            {loading ? (
+              <Text style={styles.buttonText}>Creating account...</Text>
+            ) : (
+              <View style={styles.buttonContentRow}>
+                <Text style={styles.buttonText}>Create account</Text>
+                <IconSymbol name="checkmark" size={18} color="#ffffff" />
+              </View>
+            )}
           </Pressable>
         </View>
       </TouchableWithoutFeedback>
