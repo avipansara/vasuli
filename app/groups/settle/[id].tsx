@@ -351,34 +351,33 @@ export default function GroupSettleScreen() {
         <Stack.Screen options={{ headerShown: false }} />
         <NavigationHeader title="Settle Up" onBack={() => router.back()} />
 
+        <View style={styles.stickySummary}>
+          <View style={styles.groupInfo}>
+            <ThemedText style={[styles.groupName, { color: isDark ? '#dae2fd' : colors.text }]}>
+              {group?.name}
+            </ThemedText>
+          </View>
+          <View style={[styles.amountSection, { backgroundColor: settle.heroBackground, borderColor: settle.heroBorder }]}>
+            <View style={styles.amountInputRow}>
+              <Text style={[styles.currencySymbol, { color: settle.accentText }]}>$</Text>
+              <TextInput
+                style={[styles.amountInput, { color: settle.accentText }]}
+                value={amount}
+                onChangeText={(text) => setAmount(normalizeCurrencyInput(text))}
+                placeholder="0.00"
+                placeholderTextColor={isDark ? 'rgba(16, 185, 129, 0.4)' : 'rgba(6, 78, 59, 0.3)'}
+                keyboardType="decimal-pad"
+                returnKeyType="done"
+                maxFontSizeMultiplier={1.4}
+                onSubmitEditing={() => Keyboard.dismiss()}
+              />
+            </View>
+          </View>
+        </View>
+
         <KeyboardAwareScroll
-          contentContainerStyle={styles.scrollContent}>
+          contentContainerStyle={styles.memberScrollContent}>
           <View style={styles.content}>
-            {/* Group Info */}
-            <View style={styles.groupInfo}>
-              <ThemedText style={[styles.groupName, { color: isDark ? '#dae2fd' : colors.text }]}>
-                {group?.name}
-              </ThemedText>
-            </View>
-
-            {/* Amount Input - Hero Card */}
-            <View style={[styles.amountSection, { backgroundColor: settle.heroBackground, borderColor: settle.heroBorder }]}>
-              <View style={styles.amountInputRow}>
-                <Text style={[styles.currencySymbol, { color: settle.accentText }]}>$</Text>
-                <TextInput
-                  style={[styles.amountInput, { color: settle.accentText }]}
-                  value={amount}
-                  onChangeText={(text) => setAmount(normalizeCurrencyInput(text))}
-                  placeholder="0.00"
-                  placeholderTextColor={isDark ? 'rgba(16, 185, 129, 0.4)' : 'rgba(6, 78, 59, 0.3)'}
-                  keyboardType="decimal-pad"
-                  returnKeyType="done"
-                  maxFontSizeMultiplier={1.4}
-                  onSubmitEditing={() => Keyboard.dismiss()}
-                />
-              </View>
-            </View>
-
             {/* Members List */}
             <View style={styles.membersSection}>
               <ThemedText style={[styles.sectionLabel, { color: isDark ? '#bbcabf' : colors.textSecondary }]}>
@@ -445,9 +444,16 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  scrollContent: {
+  stickySummary: {
     paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingTop: 8,
+    paddingBottom: 16,
+    gap: 16,
+  },
+  memberScrollContent: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 140,
   },
   content: {
     gap: 24,

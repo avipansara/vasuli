@@ -2,6 +2,7 @@
 
 - Matched settlement member selection to the add-expense row pattern by removing floating card treatment from unselected rows and using a full-row selected state.
 - Matched settlement avatars to add-expense selection behavior, using an accent avatar only for the selected member and a neutral avatar otherwise.
+- Kept the settlement group and amount context visible while allowing long member lists to scroll independently.
 - Refined the group settlement screen with a calmer member-card hierarchy,
   clearer selection treatment, shared theme tokens, and friendlier guidance copy.
 - Documented the current product and visual system in `PRODUCT.md`,
