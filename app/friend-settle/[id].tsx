@@ -6,7 +6,7 @@ import { useAuth } from '@/contexts/auth-context-otp';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { activityService } from '@/services/activity-service';
-import { combinedSettlementService, createPaymentIntentId } from '@/services/combined-settlement-service';
+import { combinedSettlementService, createPaymentIntentId, shouldLogSettlementActivity } from '@/services/combined-settlement-service';
 import { CombinedSettlementError } from '@/services/combined-settlement-errors';
 import { friendDetailModule } from '@/services/friend-detail-module';
 import type { FriendGroupBalanceSummary } from '@/services/friend-detail-service';
@@ -133,16 +133,18 @@ export default function FriendSettleScreen() {
       ]);
 
       try {
-        for (const settlement of settlements) {
-          const currentUserPaid = settlement.fromUserId === currentUserId;
-          await activityService.logSettlementCreated({
-            settlementId: settlement.id,
-            fromUserId: settlement.fromUserId,
-            fromUserName: currentUserPaid ? user!.name : friend.name,
-            toUserName: currentUserPaid ? friend.name : user!.name,
-            amount: settlement.amount,
-            groupId: settlement.groupId,
-          });
+        if (shouldLogSettlementActivity(receipt)) {
+          for (const settlement of settlements) {
+            const currentUserPaid = settlement.fromUserId === currentUserId;
+            await activityService.logSettlementCreated({
+              settlementId: settlement.id,
+              fromUserId: settlement.fromUserId,
+              fromUserName: currentUserPaid ? user!.name : friend.name,
+              toUserName: currentUserPaid ? friend.name : user!.name,
+              amount: settlement.amount,
+              groupId: settlement.groupId,
+            });
+          }
         }
       } catch {
         // Activity logging should not block a completed settlement.
@@ -164,7 +166,9 @@ export default function FriendSettleScreen() {
         queryKey: queryKeys.groups.detail(currentUserId, groupId),
       })));
 
-      Alert.alert('Success', `Recorded settlement of $${amountNum.toFixed(2)} with ${friend.name}`);
+      await queryClient.invalidateQueries({ queryKey: queryKeys.activity.list(currentUserId) });
+
+      Alert.alert('Success', `Recorded settlement of ${receipt.currency} ${receipt.totalAmount.toFixed(2)} with ${friend.name}`);
       paymentIntentIdRef.current = null;
       router.back();
     } catch (error) {

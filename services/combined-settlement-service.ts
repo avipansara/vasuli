@@ -44,6 +44,10 @@ export type CombinedSettlementService = {
   commit(params: CombinedSettlementCommitParams): Promise<CombinedSettlementReceipt>;
 };
 
+export function shouldLogSettlementActivity(receipt: CombinedSettlementReceipt): boolean {
+  return !receipt.reused;
+}
+
 export function createPaymentIntentId(): string {
   if (typeof globalThis.crypto?.randomUUID === 'function') {
     return globalThis.crypto.randomUUID();

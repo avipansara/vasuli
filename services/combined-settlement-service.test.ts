@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { Settlement } from '@/types/database';
 import type { FriendGroupBalanceSummary } from '@/services/friend-detail-service';
-import { createCombinedSettlementService } from '@/services/combined-settlement-service';
+import { createCombinedSettlementService, shouldLogSettlementActivity } from '@/services/combined-settlement-service';
 
 const groupBalances: FriendGroupBalanceSummary[] = [
   {
@@ -26,6 +26,23 @@ const settlement = (input: Partial<Settlement>): Settlement => ({
 });
 
 describe('combined settlement service', () => {
+  it('logs activity only for a newly committed receipt', () => {
+    expect(shouldLogSettlementActivity({
+      paymentIntentId: 'intent-1',
+      reused: false,
+      totalAmount: 10,
+      currency: 'USD',
+      settlements: [],
+    })).toBe(true);
+    expect(shouldLogSettlementActivity({
+      paymentIntentId: 'intent-1',
+      reused: true,
+      totalAmount: 10,
+      currency: 'USD',
+      settlements: [],
+    })).toBe(false);
+  });
+
   it('commits the planned allocations and returns one allocation receipt', async () => {
     const commit = vi.fn(async (request) => ({
       paymentIntentId: request.paymentIntentId,
