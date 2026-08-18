@@ -3,6 +3,7 @@
 - Added the backend foundation for atomic settlement-operation reversal with
   compensating payment and scope-offset records, authorization for the two
   involved users, and idempotent reversal responses.
+- Labeled reversal offset entries distinctly in Friend settlement history.
 - Updated Friend Settle Up allocation so partial payments stay Direct-first
   without moving opposing Group balances, while full-net and zero-net flows
   preview and record explicit cross-scope offsets.

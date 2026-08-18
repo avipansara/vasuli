@@ -74,6 +74,7 @@ export type FriendActivityItem =
     amount: number;
     currency: string;
     direction: FriendSettlementDirection;
+    isReversal?: boolean;
     notes?: string;
   };
 
@@ -175,6 +176,7 @@ export function projectFriendRelationship(
       amount: Math.abs(transfer.signedGroupBalanceDelta),
       currency: transfer.currency,
       direction: transfer.signedGroupBalanceDelta < 0 ? 'friend_paid_you' : 'you_paid_friend',
+      isReversal: transfer.isReversal,
       notes: transfer.note,
     };
   });

@@ -22,7 +22,9 @@ export function FriendScopeTransferActivity({
 }: FriendScopeTransferActivityProps) {
   const groupName = item.groupName ?? 'shared group';
   const movedByYou = item.direction === 'you_paid_friend';
-  const title = movedByYou ? 'Moved to friendship balance' : 'Moved from friendship balance';
+  const title = item.isReversal
+    ? 'Reversed balance offset'
+    : movedByYou ? 'Moved to friendship balance' : 'Moved from friendship balance';
 
   return (
     <Animated.View
@@ -38,7 +40,7 @@ export function FriendScopeTransferActivity({
           {title}
         </ThemedText>
         <ThemedText style={[styles.subtitle, { color: isDark ? '#94A3B8' : colors.textSecondary }]} numberOfLines={2}>
-          {groupName} • {formatDate(item.date)}{`\n`}{friendName}
+          {groupName} • {formatDate(item.date)}{`\n`}{friendName}{item.isReversal ? ' • Reversal' : ''}
         </ThemedText>
       </View>
       <ThemedText type="subtitle" style={[styles.amount, { color: isDark ? '#7DD3FC' : '#0369A1' }]}>

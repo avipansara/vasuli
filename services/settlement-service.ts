@@ -412,6 +412,7 @@ function mapSettlementScopeTransfer(value: unknown): import('./combined-settleme
     currency: row.currency,
     signedGroupBalanceDelta: row.signedGroupBalanceDelta,
     note: typeof row.note === 'string' ? row.note : undefined,
+    isReversal: row.isReversal === true,
     createdAt: new Date(row.createdAt).getTime(),
   };
 }

@@ -10,6 +10,7 @@ type ScopeTransferRpcRow = {
   currency: string;
   signed_group_balance_delta: number;
   note: string | null;
+  is_reversal?: boolean;
   created_at: string;
 };
 
@@ -23,6 +24,7 @@ function mapScopeTransfer(row: ScopeTransferRpcRow): SettlementScopeTransfer {
     currency: row.currency,
     signedGroupBalanceDelta: row.signed_group_balance_delta,
     note: row.note || undefined,
+    isReversal: row.is_reversal ?? false,
     createdAt: new Date(row.created_at).getTime(),
   };
 }

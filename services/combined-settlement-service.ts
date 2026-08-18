@@ -32,6 +32,7 @@ export type SettlementScopeTransfer = {
   currency: string;
   signedGroupBalanceDelta: number;
   note?: string;
+  isReversal?: boolean;
   createdAt: number;
 };
 
