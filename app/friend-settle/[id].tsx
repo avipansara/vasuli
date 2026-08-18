@@ -148,6 +148,13 @@ export default function FriendSettleScreen() {
         paymentIntentIdRef.current = null;
         router.back();
       } catch (error) {
+        console.error('[Settlement][friend-screen] commit failed', {
+          friendId: id,
+          currency: settlementCurrency,
+          amount: amountNum,
+          expectedBalance: combinedBalance,
+          error: error instanceof Error ? { name: error.name, message: error.message, stack: error.stack } : error,
+        });
         if (error instanceof CombinedSettlementError && error.code === 'stale_balance') {
           Alert.alert('Balance changed', error.message, [{ text: 'Refresh', onPress: loadData }, { text: 'Cancel', style: 'cancel' }]);
           return;

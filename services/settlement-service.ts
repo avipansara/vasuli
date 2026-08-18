@@ -147,7 +147,27 @@ export const settlementService = {
         p_transfers: request.transfers ?? [],
       });
 
-    if (error) throw mapCombinedSettlementError(error);
+    if (error) {
+      console.error('[Settlement][commit] RPC failed', {
+        rpc: request.amount === 0 ? 'commit_zero_net_settlement_operation' : 'commit_settlement_operation',
+        paymentIntentSuffix: request.paymentIntentId.slice(-8),
+        friendId: request.friendId,
+        amount: request.amount,
+        currency: request.currency,
+        mode: request.mode ?? 'all_balances',
+        groupId: request.groupId ?? null,
+        expectedBalance: request.expectedBalance,
+        allocationCount: request.allocations.length,
+        transferCount: request.transfers?.length ?? 0,
+        error: {
+          code: 'code' in error ? error.code : undefined,
+          message: 'message' in error ? error.message : String(error),
+          details: 'details' in error ? error.details : undefined,
+          hint: 'hint' in error ? error.hint : undefined,
+        },
+      });
+      throw mapCombinedSettlementError(error);
+    }
 
     return mapCombinedSettlementReceipt(data);
   },
@@ -158,7 +178,19 @@ export const settlementService = {
       p_expected_balance: expectedBalance,
     });
 
-    if (error) throw mapCombinedSettlementError(error);
+    if (error) {
+      console.error('[Settlement][reverse] RPC failed', {
+        operationId,
+        expectedBalance,
+        error: {
+          code: 'code' in error ? error.code : undefined,
+          message: 'message' in error ? error.message : String(error),
+          details: 'details' in error ? error.details : undefined,
+          hint: 'hint' in error ? error.hint : undefined,
+        },
+      });
+      throw mapCombinedSettlementError(error);
+    }
     return mapSettlementOperationReversal(data);
   },
 
