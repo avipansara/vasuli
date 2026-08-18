@@ -69,9 +69,14 @@ const SettleMemberRow = memo(function SettleMemberRow({ item, isSelected, onSele
   const isSettleable = isSettleableGroupBalance(balance);
 
   const cardStyle = {
-    backgroundColor: isSelected ? settle.selectedCardBackground : 'transparent',
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: settle.cardBorder,
+    backgroundColor: isSelected ? settle.selectedCardBackground : settle.cardBackground,
+    borderRadius: 16,
+    elevation: 4,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: isDark ? 0.35 : 0.08,
+    shadowRadius: 12,
+    marginBottom: 12,
   };
 
   return (
@@ -513,7 +518,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   memberCard: {
-    borderRadius: 0,
+    // Styles applied via dynamic cardStyle
   },
   memberCardDisabled: {
     opacity: 0.55,
