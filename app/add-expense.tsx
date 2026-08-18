@@ -3,6 +3,7 @@ import { AsyncErrorState } from '@/components/ui/async-error-state';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { KeyboardAwareScroll } from '@/components/ui/keyboard-aware-scroll';
 import { NavigationHeader } from '@/components/ui/screen-header';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
@@ -691,8 +692,13 @@ export default function AddExpenseScreen() {
               )}
 
               {dataLoading ? (
-                <View style={styles.loadingContainer}>
-                  <ThemedText style={{ opacity: 0.6 }}>Loading...</ThemedText>
+                <View style={{ gap: 12 }}>
+                  {Array.from({ length: 4 }).map((_, index) => (
+                    <View key={index} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 12, gap: 14 }}>
+                      <Skeleton width={44} height={44} borderRadius={22} />
+                      <Skeleton width={150} height={16} />
+                    </View>
+                  ))}
                 </View>
               ) : splitType === SplitType.GROUP ? (
                 <View style={styles.optionsList}>

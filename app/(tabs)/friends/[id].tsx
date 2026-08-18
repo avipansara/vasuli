@@ -392,11 +392,6 @@ export default function FriendDetailScreen() {
     : isOwing
       ? friendDetailTheme.negative
       : friendDetailTheme.actionIcon;
-  const balanceSurface = isOwed
-    ? friendDetailTheme.positiveSurface
-    : isOwing
-      ? friendDetailTheme.negativeSurface
-      : friendDetailTheme.settledSurface;
   const balanceCopy = isOwed
     ? `${friend.name.split(' ')[0]} owes you`
     : isOwing
@@ -630,7 +625,6 @@ export default function FriendDetailScreen() {
           )}
           {ACTIVITY_FILTERS.map(filter => {
             const isSelected = activityFilter === filter.id;
-            const activeColor = isDark ? '#0D9488' : '#0F4C3A';
 
             return (
               <TouchableOpacity
