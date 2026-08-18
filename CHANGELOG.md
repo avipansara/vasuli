@@ -1,5 +1,9 @@
 ## 2026-08-18
 
+- Hardened settlement RPC boundaries in Dev by removing the legacy callable
+  settlement overload, protecting payment-intent replays from changed payloads,
+  and validating cross-scope transfer offsets against server-calculated group
+  balances.
 - Added the backend foundation for atomic settlement-operation reversal with
   compensating payment and scope-offset records, authorization for the two
   involved users, and idempotent reversal responses.
