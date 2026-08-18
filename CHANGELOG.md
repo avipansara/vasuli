@@ -1,3 +1,8 @@
+## 2026-08-18
+
+- Routed Home Friend summaries through the currency-aware relationship projection,
+  preserving direct-versus-Group scope and avoiding incompatible-currency totals.
+
 ## 2026-08-17
 
 - Deepened the Friend relationship read seam so Friend detail and combined

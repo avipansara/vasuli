@@ -1,9 +1,15 @@
 import { supabase } from '@/lib/supabase';
+import type { FriendRelationshipProjection } from '@/services/friend-detail-service';
 import type { Expense, ExpenseSplit, Settlement, User } from '@/types/database';
 
 export interface FriendSummary extends User {
   balance: number;
   recentExpenses?: Expense[];
+  relationship?: FriendRelationshipProjection;
+}
+
+export interface FriendHomeSummary extends FriendSummary {
+  relationship: FriendRelationshipProjection;
 }
 
 type FriendHomeExpenseRow = {
@@ -33,6 +39,7 @@ type FriendHomeRow = {
   created_at: string;
   balance: number;
   recent_expenses: FriendHomeExpenseRow[] | null;
+  relationship: FriendRelationshipProjection;
 };
 
 function mapFriendHomeExpense(row: FriendHomeExpenseRow): Expense {
@@ -53,7 +60,7 @@ function mapFriendHomeExpense(row: FriendHomeExpenseRow): Expense {
   };
 }
 
-function mapFriendHomeRow(row: FriendHomeRow): FriendSummary {
+function mapFriendHomeRow(row: FriendHomeRow): FriendHomeSummary {
   return {
     id: row.id,
     name: row.name,
@@ -64,6 +71,7 @@ function mapFriendHomeRow(row: FriendHomeRow): FriendSummary {
     isActive: row.is_active,
     createdAt: new Date(row.created_at).getTime(),
     balance: row.balance,
+    relationship: row.relationship,
     recentExpenses: (row.recent_expenses || []).map(mapFriendHomeExpense),
   };
 }
@@ -171,8 +179,8 @@ export function buildFriendSummaries(
 }
 
 export const friendSummaryService = {
-  async getHomeSummaries(currentUserId: string): Promise<FriendSummary[]> {
-    const { data, error } = await supabase.rpc('get_friend_home_summaries');
+  async getHomeSummaries(currentUserId: string): Promise<FriendHomeSummary[]> {
+    const { data, error } = await supabase.rpc('get_friend_home_relationships');
 
     if (error) throw error;
     return ((data || []) as FriendHomeRow[]).map(mapFriendHomeRow);
