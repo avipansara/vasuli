@@ -206,6 +206,17 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      commit_combined_settlement: {
+        Args: {
+          p_payment_intent_id: string
+          p_friend_id: string
+          p_amount: number
+          p_currency: string
+          p_date: string
+          p_allocations: Json
+        }
+        Returns: Json
+      }
       soft_delete_expense: {
         Args: {
           p_expense_id: string

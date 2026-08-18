@@ -27,22 +27,30 @@ const settlement = (input: Partial<Settlement>): Settlement => ({
 
 describe('combined settlement service', () => {
   it('commits the planned allocations and returns one allocation receipt', async () => {
-    const create = vi.fn(async (input: Omit<Settlement, 'id' | 'createdAt'>) => settlement({
-      ...input,
-      id: input.groupId ? 'group-settlement' : 'direct-settlement',
-      createdAt: input.date,
+    const commit = vi.fn(async (request) => ({
+      paymentIntentId: request.paymentIntentId,
+      reused: false,
+      totalAmount: request.amount,
+      currency: request.currency,
+      settlements: [
+        settlement({ id: 'direct-settlement', amount: 10, date: 100 }),
+        settlement({ id: 'group-settlement', groupId: 'group-1', amount: 20, date: 100 }),
+      ],
     }));
-    const service = createCombinedSettlementService({ create });
+    const service = createCombinedSettlementService({ commit });
 
     await expect(service.commit({
       currentUserId: 'current-user',
       friendId: 'friend-a',
+      paymentIntentId: 'intent-1',
       amount: 30,
       currency: 'USD',
       date: 100,
       directBalance: -10,
       groupBalances,
     })).resolves.toEqual({
+      paymentIntentId: 'intent-1',
+      reused: false,
       totalAmount: 30,
       currency: 'USD',
       settlements: [
@@ -51,24 +59,40 @@ describe('combined settlement service', () => {
       ],
     });
 
-    expect(create).toHaveBeenCalledTimes(2);
-    expect(create).toHaveBeenNthCalledWith(1, {
-      groupId: undefined,
-      fromUserId: 'current-user',
-      toUserId: 'friend-a',
-      amount: 10,
+    expect(commit).toHaveBeenCalledTimes(1);
+    expect(commit).toHaveBeenCalledWith({
+      paymentIntentId: 'intent-1',
+      friendId: 'friend-a',
+      amount: 30,
       currency: 'USD',
       date: 100,
+      allocations: [
+        {
+          groupId: undefined,
+          fromUserId: 'current-user',
+          toUserId: 'friend-a',
+          amount: 10,
+          currency: 'USD',
+        },
+        {
+          groupId: 'group-1',
+          fromUserId: 'current-user',
+          toUserId: 'friend-a',
+          amount: 20,
+          currency: 'USD',
+        },
+      ],
     });
   });
 
   it('does not persist when planning rejects the combined payment', async () => {
-    const create = vi.fn();
-    const service = createCombinedSettlementService({ create });
+    const commit = vi.fn();
+    const service = createCombinedSettlementService({ commit });
 
     await expect(service.commit({
       currentUserId: 'current-user',
       friendId: 'friend-a',
+      paymentIntentId: 'intent-1',
       amount: 30,
       currency: 'USD',
       date: 100,
@@ -76,6 +100,6 @@ describe('combined settlement service', () => {
       groupBalances: [{ ...groupBalances[0], currency: 'EUR' }],
     })).rejects.toThrow(/currenc/i);
 
-    expect(create).not.toHaveBeenCalled();
+    expect(commit).not.toHaveBeenCalled();
   });
 });

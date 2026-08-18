@@ -1,6 +1,10 @@
 import { supabase } from '@/lib/supabase';
 import type { Expense, ExpenseSplit, Settlement } from '@/types/database';
 import { expenseService } from './expense-service';
+import type {
+  CombinedSettlementCommitRequest,
+  CombinedSettlementReceipt,
+} from './combined-settlement-service';
 
 interface PairSettlementAllocationParams {
   currentUserId: string;
@@ -112,6 +116,21 @@ export function buildPairSettlementAllocations({
 }
 
 export const settlementService = {
+  async commit(request: CombinedSettlementCommitRequest): Promise<CombinedSettlementReceipt> {
+    const { data, error } = await supabase.rpc('commit_combined_settlement', {
+      p_payment_intent_id: request.paymentIntentId,
+      p_friend_id: request.friendId,
+      p_amount: request.amount,
+      p_currency: request.currency,
+      p_date: new Date(request.date).toISOString(),
+      p_allocations: request.allocations,
+    });
+
+    if (error) throw error;
+
+    return mapCombinedSettlementReceipt(data);
+  },
+
   async create(settlement: Omit<Settlement, 'id' | 'createdAt'>): Promise<Settlement> {
     const createdAt = new Date().toISOString();
 
@@ -256,3 +275,67 @@ export const settlementService = {
     return settlements;
   },
 };
+
+function mapCombinedSettlementReceipt(data: unknown): CombinedSettlementReceipt {
+  if (!data || typeof data !== 'object') {
+    throw new Error('Combined settlement commit returned an invalid receipt.');
+  }
+
+  const receipt = data as {
+    paymentIntentId?: unknown;
+    reused?: unknown;
+    totalAmount?: unknown;
+    currency?: unknown;
+    settlements?: unknown;
+  };
+
+  if (
+    typeof receipt.paymentIntentId !== 'string'
+    || typeof receipt.reused !== 'boolean'
+    || typeof receipt.totalAmount !== 'number'
+    || typeof receipt.currency !== 'string'
+    || !Array.isArray(receipt.settlements)
+  ) {
+    throw new Error('Combined settlement commit returned an invalid receipt.');
+  }
+
+  return {
+    paymentIntentId: receipt.paymentIntentId,
+    reused: receipt.reused,
+    totalAmount: receipt.totalAmount,
+    currency: receipt.currency,
+    settlements: receipt.settlements.map(mapSettlementReceipt),
+  };
+}
+
+function mapSettlementReceipt(value: unknown): Settlement {
+  if (!value || typeof value !== 'object') {
+    throw new Error('Combined settlement commit returned an invalid settlement.');
+  }
+
+  const row = value as Record<string, unknown>;
+  if (
+    typeof row.id !== 'string'
+    || (row.groupId !== null && row.groupId !== undefined && typeof row.groupId !== 'string')
+    || typeof row.fromUserId !== 'string'
+    || typeof row.toUserId !== 'string'
+    || typeof row.amount !== 'number'
+    || typeof row.currency !== 'string'
+    || typeof row.date !== 'string'
+    || typeof row.createdAt !== 'string'
+  ) {
+    throw new Error('Combined settlement commit returned an invalid settlement.');
+  }
+
+  return {
+    id: row.id,
+    groupId: typeof row.groupId === 'string' ? row.groupId : undefined,
+    fromUserId: row.fromUserId,
+    toUserId: row.toUserId,
+    amount: row.amount,
+    currency: row.currency,
+    date: new Date(row.date).getTime(),
+    notes: typeof row.notes === 'string' ? row.notes : undefined,
+    createdAt: new Date(row.createdAt).getTime(),
+  };
+}

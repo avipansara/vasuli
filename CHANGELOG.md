@@ -2,6 +2,8 @@
 
 - Routed combined Friend settlement through a dedicated commit service and
   allocation receipt, preserving direct and shared Group settlement scopes.
+- Added a transactional combined settlement RPC with payment-intent
+  idempotency, scoped authorization, and receipt reuse for safe retries.
 - Added an implementation-ready specification for deepening the combined
   settlement module with transactional writes, idempotent retries, and scoped
   allocation receipts.

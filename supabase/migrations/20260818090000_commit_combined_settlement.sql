@@ -1,0 +1,236 @@
+-- Commit a combined Friend payment as one idempotent database transaction.
+-- The client supplies a deterministic allocation plan; this function validates
+-- the participants, scopes, currency, and exact total before writing rows.
+
+CREATE TABLE IF NOT EXISTS public.settlement_commitments (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  payment_intent_id UUID NOT NULL,
+  actor_user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+  friend_user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+  amount DECIMAL(12, 2) NOT NULL CHECK (amount > 0),
+  currency TEXT NOT NULL,
+  date TIMESTAMPTZ NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (actor_user_id, payment_intent_id)
+);
+
+ALTER TABLE public.settlements
+  ADD COLUMN IF NOT EXISTS commitment_id UUID
+  REFERENCES public.settlement_commitments(id) ON DELETE SET NULL;
+
+CREATE INDEX IF NOT EXISTS idx_settlements_commitment_id
+  ON public.settlements(commitment_id);
+
+ALTER TABLE public.settlement_commitments ENABLE ROW LEVEL SECURITY;
+
+REVOKE ALL ON TABLE public.settlement_commitments FROM PUBLIC, anon, authenticated;
+
+CREATE OR REPLACE FUNCTION public.commit_combined_settlement(
+  p_payment_intent_id UUID,
+  p_friend_id UUID,
+  p_amount NUMERIC,
+  p_currency TEXT,
+  p_date TIMESTAMPTZ,
+  p_allocations JSONB
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+VOLATILE
+SECURITY DEFINER
+SET search_path = public, private, pg_temp
+AS $$
+DECLARE
+  app_user_id UUID;
+  new_commitment_id UUID;
+  existing_commitment public.settlement_commitments%ROWTYPE;
+  allocation JSONB;
+  allocation_group_id UUID;
+  allocation_from_user_id UUID;
+  allocation_to_user_id UUID;
+  allocation_amount NUMERIC;
+  allocation_currency TEXT;
+  allocation_total NUMERIC := 0;
+  settlement_rows JSONB;
+BEGIN
+  SELECT u.id
+  INTO app_user_id
+  FROM public.users u
+  WHERE u.auth_user_id = (SELECT auth.uid())
+  LIMIT 1;
+
+  IF app_user_id IS NULL THEN
+    RAISE EXCEPTION 'SETTLEMENT_UNAUTHENTICATED';
+  END IF;
+
+  IF p_payment_intent_id IS NULL THEN
+    RAISE EXCEPTION 'SETTLEMENT_PAYMENT_INTENT_REQUIRED';
+  END IF;
+
+  IF p_amount IS NULL OR p_amount <= 0 OR p_amount <> ROUND(p_amount, 2) THEN
+    RAISE EXCEPTION 'SETTLEMENT_AMOUNT_INVALID';
+  END IF;
+
+  IF p_currency IS NULL OR BTRIM(p_currency) = '' THEN
+    RAISE EXCEPTION 'SETTLEMENT_CURRENCY_REQUIRED';
+  END IF;
+
+  IF jsonb_typeof(p_allocations) <> 'array' OR jsonb_array_length(p_allocations) = 0 THEN
+    RAISE EXCEPTION 'SETTLEMENT_ALLOCATIONS_REQUIRED';
+  END IF;
+
+  INSERT INTO public.settlement_commitments (
+    payment_intent_id,
+    actor_user_id,
+    friend_user_id,
+    amount,
+    currency,
+    date
+  )
+  VALUES (
+    p_payment_intent_id,
+    app_user_id,
+    p_friend_id,
+    p_amount,
+    p_currency,
+    p_date
+  )
+  ON CONFLICT (actor_user_id, payment_intent_id) DO NOTHING
+  RETURNING id INTO new_commitment_id;
+
+  IF new_commitment_id IS NULL THEN
+    SELECT *
+    INTO existing_commitment
+    FROM public.settlement_commitments
+    WHERE actor_user_id = app_user_id
+      AND payment_intent_id = p_payment_intent_id
+    FOR UPDATE;
+
+    IF existing_commitment.friend_user_id <> p_friend_id
+       OR existing_commitment.amount <> p_amount
+       OR existing_commitment.currency <> p_currency THEN
+      RAISE EXCEPTION 'SETTLEMENT_PAYMENT_INTENT_REUSED_WITH_DIFFERENT_PAYMENT';
+    END IF;
+
+    SELECT COALESCE(jsonb_agg(
+      jsonb_build_object(
+        'id', s.id,
+        'groupId', s.group_id,
+        'fromUserId', s.from_user_id,
+        'toUserId', s.to_user_id,
+        'amount', s.amount,
+        'currency', s.currency,
+        'date', s.date,
+        'notes', s.notes,
+        'createdAt', s.created_at
+      ) ORDER BY s.created_at, s.id
+    ), '[]'::jsonb)
+    INTO settlement_rows
+    FROM public.settlements s
+    WHERE s.commitment_id = existing_commitment.id;
+
+    RETURN jsonb_build_object(
+      'paymentIntentId', p_payment_intent_id,
+      'reused', true,
+      'totalAmount', existing_commitment.amount,
+      'currency', existing_commitment.currency,
+      'settlements', settlement_rows
+    );
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM public.friendships f
+    WHERE f.status = 'accepted'
+      AND (
+        (f.user_id = app_user_id AND f.friend_id = p_friend_id)
+        OR (f.user_id = p_friend_id AND f.friend_id = app_user_id)
+      )
+  ) THEN
+    RAISE EXCEPTION 'SETTLEMENT_FRIENDSHIP_REQUIRED';
+  END IF;
+
+  FOR allocation IN SELECT value FROM jsonb_array_elements(p_allocations)
+  LOOP
+    allocation_group_id := NULLIF(allocation->>'groupId', '')::UUID;
+    allocation_from_user_id := (allocation->>'fromUserId')::UUID;
+    allocation_to_user_id := (allocation->>'toUserId')::UUID;
+    allocation_amount := (allocation->>'amount')::NUMERIC;
+    allocation_currency := allocation->>'currency';
+
+    IF allocation_amount IS NULL
+       OR allocation_amount <= 0
+       OR allocation_amount <> ROUND(allocation_amount, 2)
+       OR allocation_currency <> p_currency
+       OR allocation_from_user_id = allocation_to_user_id
+       OR allocation_from_user_id NOT IN (app_user_id, p_friend_id)
+       OR allocation_to_user_id NOT IN (app_user_id, p_friend_id) THEN
+      RAISE EXCEPTION 'SETTLEMENT_ALLOCATION_INVALID';
+    END IF;
+
+    IF allocation_group_id IS NOT NULL AND NOT EXISTS (
+      SELECT 1
+      FROM public.group_members current_member
+      JOIN public.group_members friend_member
+        ON friend_member.group_id = current_member.group_id
+       AND friend_member.user_id = p_friend_id
+      WHERE current_member.group_id = allocation_group_id
+        AND current_member.user_id = app_user_id
+    ) THEN
+      RAISE EXCEPTION 'SETTLEMENT_GROUP_SCOPE_INVALID';
+    END IF;
+
+    allocation_total := allocation_total + allocation_amount;
+
+    INSERT INTO public.settlements (
+      group_id,
+      from_user_id,
+      to_user_id,
+      amount,
+      currency,
+      date,
+      commitment_id
+    )
+    VALUES (
+      allocation_group_id,
+      allocation_from_user_id,
+      allocation_to_user_id,
+      allocation_amount,
+      allocation_currency,
+      p_date,
+      new_commitment_id
+    );
+  END LOOP;
+
+  IF allocation_total <> p_amount THEN
+    RAISE EXCEPTION 'SETTLEMENT_ALLOCATION_TOTAL_MISMATCH';
+  END IF;
+
+  SELECT COALESCE(jsonb_agg(
+    jsonb_build_object(
+      'id', s.id,
+      'groupId', s.group_id,
+      'fromUserId', s.from_user_id,
+      'toUserId', s.to_user_id,
+      'amount', s.amount,
+      'currency', s.currency,
+      'date', s.date,
+      'notes', s.notes,
+      'createdAt', s.created_at
+    ) ORDER BY s.created_at, s.id
+  ), '[]'::jsonb)
+  INTO settlement_rows
+  FROM public.settlements s
+  WHERE s.commitment_id = new_commitment_id;
+
+  RETURN jsonb_build_object(
+    'paymentIntentId', p_payment_intent_id,
+    'reused', false,
+    'totalAmount', p_amount,
+    'currency', p_currency,
+    'settlements', settlement_rows
+  );
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.commit_combined_settlement(UUID, UUID, NUMERIC, TEXT, TIMESTAMPTZ, JSONB) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.commit_combined_settlement(UUID, UUID, NUMERIC, TEXT, TIMESTAMPTZ, JSONB) TO authenticated;

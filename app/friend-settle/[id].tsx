@@ -6,7 +6,7 @@ import { useAuth } from '@/contexts/auth-context-otp';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { activityService } from '@/services/activity-service';
-import { combinedSettlementService } from '@/services/combined-settlement-service';
+import { combinedSettlementService, createPaymentIntentId } from '@/services/combined-settlement-service';
 import { friendDetailModule } from '@/services/friend-detail-module';
 import type { FriendGroupBalanceSummary } from '@/services/friend-detail-service';
 import type { GroupDetailReadModel } from '@/services/group-detail-read-model';
@@ -16,7 +16,7 @@ import type { User } from '@/types/database';
 import { normalizeCurrencyInput } from '@/utils/validation';
 import { useQueryClient } from '@tanstack/react-query';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -48,6 +48,7 @@ export default function FriendSettleScreen() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [amount, setAmount] = useState('');
   const [settling, setSettling] = useState(false);
+  const paymentIntentIdRef = useRef<string | null>(null);
 
   const loadData = useCallback(async () => {
     try {
@@ -101,6 +102,8 @@ export default function FriendSettleScreen() {
 
     const friendsHomeQueryKey = queryKeys.friends.home(currentUserId);
     const friendDetailQueryKey = queryKeys.friends.detail(currentUserId, id);
+    const paymentIntentId = paymentIntentIdRef.current ?? createPaymentIntentId();
+    paymentIntentIdRef.current = paymentIntentId;
 
     try {
       setSettling(true);
@@ -108,6 +111,7 @@ export default function FriendSettleScreen() {
       const receipt = await combinedSettlementService.commit({
         currentUserId,
         friendId: id,
+        paymentIntentId,
         currency: 'USD',
         amount: amountNum,
         directBalance: friend.balance,
@@ -159,6 +163,7 @@ export default function FriendSettleScreen() {
       })));
 
       Alert.alert('Success', `Recorded settlement of $${amountNum.toFixed(2)} with ${friend.name}`);
+      paymentIntentIdRef.current = null;
       router.back();
     } catch (error) {
       if (error instanceof Error && /currency|direction|outstanding|greater than zero/i.test(error.message)) {

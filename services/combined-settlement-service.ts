@@ -7,6 +7,8 @@ import { settlementService } from './settlement-service';
 import type { FriendGroupBalanceSummary } from './friend-detail-service';
 
 export type CombinedSettlementReceipt = {
+  paymentIntentId: string;
+  reused: boolean;
   totalAmount: number;
   currency: string;
   settlements: Settlement[];
@@ -15,6 +17,7 @@ export type CombinedSettlementReceipt = {
 export type CombinedSettlementCommitParams = {
   currentUserId: string;
   friendId: string;
+  paymentIntentId: string;
   amount: number;
   currency: string;
   date: number;
@@ -22,13 +25,31 @@ export type CombinedSettlementCommitParams = {
   groupBalances: FriendGroupBalanceSummary[];
 };
 
+export type CombinedSettlementCommitRequest = {
+  paymentIntentId: string;
+  friendId: string;
+  amount: number;
+  currency: string;
+  date: number;
+  allocations: CombinedSettlementAllocation[];
+};
+
 export type CombinedSettlementPersistenceAdapter = {
-  create(settlement: Omit<Settlement, 'id' | 'createdAt'>): Promise<Settlement>;
+  commit(request: CombinedSettlementCommitRequest): Promise<CombinedSettlementReceipt>;
 };
 
 export type CombinedSettlementService = {
   commit(params: CombinedSettlementCommitParams): Promise<CombinedSettlementReceipt>;
 };
+
+export function createPaymentIntentId(): string {
+  if (typeof globalThis.crypto?.randomUUID === 'function') {
+    return globalThis.crypto.randomUUID();
+  }
+
+  const segment = () => Math.floor(Math.random() * 0xffffffff).toString(16).padStart(8, '0');
+  return `${segment()}-${segment().slice(0, 4)}-4${segment().slice(0, 3)}-${segment().slice(0, 4)}-${segment()}${segment().slice(0, 4)}`;
+}
 
 export function createCombinedSettlementService(
   persistence: CombinedSettlementPersistenceAdapter = settlementService,
@@ -36,32 +57,15 @@ export function createCombinedSettlementService(
   return {
     async commit(params) {
       const allocations = buildCombinedSettlementAllocations(params);
-      const settlements: Settlement[] = [];
-
-      for (const allocation of allocations) {
-        settlements.push(await persistence.create(toSettlementInput(allocation, params.date)));
-      }
-
-      return {
-        totalAmount: params.amount,
+      return persistence.commit({
+        paymentIntentId: params.paymentIntentId,
+        friendId: params.friendId,
+        amount: params.amount,
         currency: params.currency,
-        settlements,
-      };
+        date: params.date,
+        allocations,
+      });
     },
-  };
-}
-
-function toSettlementInput(
-  allocation: CombinedSettlementAllocation,
-  date: number,
-): Omit<Settlement, 'id' | 'createdAt'> {
-  return {
-    groupId: allocation.groupId,
-    fromUserId: allocation.fromUserId,
-    toUserId: allocation.toUserId,
-    amount: allocation.amount,
-    currency: allocation.currency,
-    date,
   };
 }
 
