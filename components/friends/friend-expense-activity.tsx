@@ -5,7 +5,7 @@ import type { MutableRefObject } from 'react';
 import { Animated, StyleSheet, TouchableOpacity, View } from 'react-native';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
 
-type ExpenseItem = Extract<FriendActivityItem, { type: 'expense' }>;
+type ExpenseItem = Extract<FriendActivityItem, { type: 'expense' | 'group_expense' }>;
 
 type FriendExpenseActivityProps = {
   item: ExpenseItem;
@@ -20,6 +20,7 @@ type FriendExpenseActivityProps = {
   onOpenExpense: (expenseId: string) => void;
   formatDate: (timestamp: number) => string;
   friendName: string;
+  readOnly?: boolean;
 };
 
 const CATEGORY_MAP: Record<string, { icon: any, lightBg: string, darkBg: string, lightColor: string, darkColor: string }> = {
@@ -43,9 +44,22 @@ export function FriendExpenseActivity({
   onOpenExpense,
   formatDate,
   friendName,
+  readOnly = false,
 }: FriendExpenseActivityProps) {
   const expense = item.expense;
-  const canEdit = expense.createdBy === currentUserId || expense.paidBy === currentUserId;
+  const canEdit = !readOnly && (expense.createdBy === currentUserId || expense.paidBy === currentUserId);
+  const isGroupExpense = Boolean(expense.groupId);
+  const sourceLabel = expense.groupName || (isGroupExpense ? 'Group' : 'Direct expense');
+  const groupRelationship = isGroupExpense
+    ? expense.paidBy === currentUserId && expense.friendShare > 0
+      ? { amount: expense.friendShare, label: `${friendName.split(' ')[0]} owes you in this group`, color: friendDetailTheme.positive }
+      : expense.paidBy !== currentUserId && expense.paidByName === friendName && expense.yourShare > 0
+        ? { amount: expense.yourShare, label: `You owe ${friendName.split(' ')[0]} in this group`, color: friendDetailTheme.danger }
+        : null
+    : null;
+  const amountColor = isGroupExpense
+    ? (groupRelationship?.color ?? (isDark ? '#CBD5E1' : colors.textSecondary))
+    : expense.paidBy === currentUserId ? friendDetailTheme.positive : friendDetailTheme.danger;
   const categoryStyle = (expense.category && CATEGORY_MAP[expense.category])
     ? CATEGORY_MAP[expense.category]
     : { icon: 'arrow.up.right', lightBg: '#F3F4F6', darkBg: 'rgba(156, 163, 175, 0.15)', lightColor: '#4B5563', darkColor: '#9CA3AF' };
@@ -99,7 +113,7 @@ export function FriendExpenseActivity({
       containerStyle={{ overflow: 'visible' }}>
       <TouchableOpacity
         accessibilityRole="button"
-        accessibilityLabel={`${expense.description}, ${formatDate(expense.date)}, ${expense.paidByName} paid $${expense.amount.toFixed(2)}, ${expense.paidBy === currentUserId ? `you are owed $${expense.friendShare.toFixed(2)}` : `you owe $${expense.yourShare.toFixed(2)}`}`}
+        accessibilityLabel={`${expense.description}, ${sourceLabel}, ${formatDate(expense.date)}, ${expense.paidByName} paid $${expense.amount.toFixed(2)}, ${isGroupExpense ? groupRelationship ? `${groupRelationship.label}, $${groupRelationship.amount.toFixed(2)}` : 'no balance impact' : expense.paidBy === currentUserId ? `you are owed $${expense.friendShare.toFixed(2)}` : `you owe $${expense.yourShare.toFixed(2)}`}`}
         accessibilityHint="Opens expense details"
         activeOpacity={0.7}
         onPress={() => onOpenExpense(expense.id)}>
@@ -131,14 +145,28 @@ export function FriendExpenseActivity({
             <ThemedText style={[styles.expenseDate, { color: isDark ? '#94A3B8' : colors.textSecondary }]} numberOfLines={2}>
               {expense.paidBy === currentUserId ? 'Paid by you' : `Paid by ${expense.paidByName}`}{'\n'}{formatDate(expense.date)}
             </ThemedText>
+            <View style={[styles.sourcePill, { backgroundColor: isGroupExpense ? friendDetailTheme.positiveSurface : friendDetailTheme.settledSurface }]}>
+              <IconSymbol
+                size={12}
+                name={isGroupExpense ? 'person.3.fill' : 'person.fill'}
+                color={isGroupExpense ? friendDetailTheme.positive : friendDetailTheme.actionIcon}
+              />
+              <ThemedText style={[styles.sourceLabel, { color: isGroupExpense ? friendDetailTheme.positive : friendDetailTheme.actionIcon }]} numberOfLines={1}>
+                {sourceLabel}
+              </ThemedText>
+            </View>
           </View>
           <View style={styles.amountBlock}>
-            <ThemedText type="title" style={[styles.expenseAmount, { color: expense.paidBy === currentUserId ? friendDetailTheme.positive : friendDetailTheme.danger }]}>
-              {expense.paidBy === currentUserId ? `+$${expense.friendShare.toFixed(2)}` : `-$${expense.yourShare.toFixed(2)}`}
+            <ThemedText type="title" style={[styles.expenseAmount, { color: amountColor }]}>
+              {isGroupExpense
+                ? groupRelationship ? `$${groupRelationship.amount.toFixed(2)}` : 'No balance impact'
+                : expense.paidBy === currentUserId ? `+$${expense.friendShare.toFixed(2)}` : `-$${expense.yourShare.toFixed(2)}`}
             </ThemedText>
-            <View style={[styles.badge, { backgroundColor: expense.paidBy === currentUserId ? friendDetailTheme.positiveSurface : friendDetailTheme.dangerSurface }]}>
-              <ThemedText style={[styles.badgeText, { color: expense.paidBy === currentUserId ? friendDetailTheme.positive : friendDetailTheme.danger }]}>
-                {expense.paidBy === currentUserId ? `${friendName.split(' ')[0]} owes` : 'You owe'}
+            <View style={[styles.badge, { backgroundColor: isGroupExpense ? friendDetailTheme.settledSurface : expense.paidBy === currentUserId ? friendDetailTheme.positiveSurface : friendDetailTheme.dangerSurface }]}>
+              <ThemedText style={[styles.badgeText, { color: isGroupExpense ? friendDetailTheme.actionIcon : expense.paidBy === currentUserId ? friendDetailTheme.positive : friendDetailTheme.danger }]}>
+                {isGroupExpense
+                  ? groupRelationship?.label ?? 'No balance impact'
+                  : expense.paidBy === currentUserId ? `${friendName.split(' ')[0]} owes` : 'You owe'}
               </ThemedText>
             </View>
           </View>
@@ -208,6 +236,21 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 16,
     marginTop: 2,
+  },
+  sourcePill: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    marginTop: 5,
+    borderRadius: 999,
+  },
+  sourceLabel: {
+    flexShrink: 1,
+    fontSize: 10,
+    fontWeight: '700',
   },
   amountBlock: {
     alignItems: 'flex-end',

@@ -122,6 +122,12 @@ export default function EditExpenseScreen() {
     const formData = editFormQuery.data;
     if (!formData) return;
 
+    if (formData.expense.deletedAt) {
+      Alert.alert('Expense deleted', 'Deleted expenses cannot be edited or restored.');
+      router.back();
+      return;
+    }
+
     // eslint-disable-next-line react-hooks/set-state-in-effect -- Query data hydrates the editable form state once the server record is available.
     setDescription(formData.expense.description);
     setAmount(formData.expense.amount.toString());

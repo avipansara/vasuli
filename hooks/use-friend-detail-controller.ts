@@ -83,6 +83,7 @@ export function useFriendDetailController({
     friend: query.data?.friend ?? null,
     expenses: query.data?.expenses ?? [],
     activity: query.data?.activity ?? [],
+    groupBalances: query.data?.groupBalances ?? [],
     friendDetailQueryKey,
     friendsHomeQueryKey,
     queryClient,
@@ -92,6 +93,7 @@ export function useFriendDetailController({
     friend: FriendDetailData['friend'] | null;
     expenses: FriendDetailData['expenses'];
     activity: FriendDetailData['activity'];
+    groupBalances: NonNullable<FriendDetailData['groupBalances']>;
     friendDetailQueryKey: typeof friendDetailQueryKey;
     friendsHomeQueryKey: typeof friendsHomeQueryKey;
     queryClient: typeof queryClient;

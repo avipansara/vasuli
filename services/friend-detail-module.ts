@@ -1,5 +1,6 @@
-import type { FriendActivityItem, FriendDetailData } from '@/services/friend-detail-service';
+import type { FriendActivityItem, FriendDetailData, FriendGroupBalanceSummary } from '@/services/friend-detail-service';
 import { friendDetailReadModel } from '@/services/friend-detail-read-model';
+import { friendGroupBalanceService } from '@/services/friend-group-balance-service';
 import { activityService } from '@/services/activity-service';
 import { settlementService } from '@/services/settlement-service';
 import { expenseService } from '@/services/expense-service';
@@ -9,6 +10,10 @@ import type { Settlement } from '@/types/database';
 
 export type FriendDetailReadAdapter = {
   getDetail(currentUserId: string, friendId: string): Promise<FriendDetailData | null>;
+};
+
+export type FriendGroupBalanceAdapter = {
+  getSharedGroupBalances(currentUserId: string, friendId: string): Promise<FriendGroupBalanceSummary[]>;
 };
 
 export type FriendDetailSettlementAdapter = {
@@ -46,6 +51,7 @@ export type FriendDetailNotificationAdapter = {
 
 export type FriendDetailModuleDependencies = {
   readAdapter?: FriendDetailReadAdapter;
+  groupBalanceAdapter?: FriendGroupBalanceAdapter;
   settlementAdapter?: FriendDetailSettlementAdapter;
   activityAdapter?: FriendDetailActivityAdapter;
   expenseAdapter?: FriendDetailExpenseAdapter;
@@ -96,7 +102,7 @@ export function filterFriendActivity(
   filter: FriendActivityFilter
 ): FriendActivityItem[] {
   const filtered = filter === 'expenses'
-    ? activity.filter(item => item.type === 'expense')
+    ? activity.filter(item => item.type === 'expense' || item.type === 'group_expense')
     : filter === 'updates'
       ? activity.filter(item => item.type !== 'expense')
       : activity;
@@ -126,13 +132,21 @@ export function createFriendDetailModule(
   dependencies: FriendDetailModuleDependencies = {}
 ): FriendDetailModule {
   const readAdapter = dependencies.readAdapter ?? friendDetailReadModel;
+  const groupBalanceAdapter = dependencies.groupBalanceAdapter;
   const settlementAdapter = dependencies.settlementAdapter ?? settlementService;
   const activityAdapter = dependencies.activityAdapter ?? activityService;
   const expenseAdapter = dependencies.expenseAdapter ?? expenseService;
   const friendshipAdapter = dependencies.friendshipAdapter ?? friendshipService;
 
   return {
-    getDetail: (currentUserId, friendId) => readAdapter.getDetail(currentUserId, friendId),
+    async getDetail(currentUserId, friendId) {
+      const [detail, groupBalances] = await Promise.all([
+        readAdapter.getDetail(currentUserId, friendId),
+        groupBalanceAdapter?.getSharedGroupBalances(currentUserId, friendId) ?? Promise.resolve([]),
+      ]);
+      if (!detail) return null;
+      return { ...detail, groupBalances };
+    },
     async settleUp({
       currentUserId,
       friendId,
@@ -154,6 +168,10 @@ export function createFriendDetailModule(
         currency,
         date,
       });
+
+      if (settlements.some(settlement => settlement.groupId)) {
+        throw new Error('Group settlements must be recorded from the Group detail flow, not the direct Friend balance.');
+      }
 
       for (const settlement of settlements) {
         try {
@@ -210,4 +228,6 @@ export function createFriendDetailModule(
   };
 }
 
-export const friendDetailModule = createFriendDetailModule();
+export const friendDetailModule = createFriendDetailModule({
+  groupBalanceAdapter: friendGroupBalanceService,
+});

@@ -176,6 +176,84 @@ describe('friend detail builders', () => {
     ]);
   });
 
+  it('excludes expenses where either person has a zero-value split', () => {
+    const expenses = [expense('not-shared', currentUserId, 28, 2)];
+    const splits = [
+      split('s1', 'not-shared', currentUserId, 0),
+      split('s2', 'not-shared', friendId, 0),
+      split('s3', 'not-shared', 'isha-user', 14),
+      split('s4', 'not-shared', 'deep-user', 14),
+    ];
+
+    const detail = buildFriendDetailData(currentUserId, friend, expenses, splits, []);
+
+    expect(detail.expenses).toEqual([]);
+    expect(detail.activity).toEqual([]);
+  });
+
+  it('includes an expense paid by the friend when the current user has a positive share', () => {
+    const expenses = [expense('paid-by-friend', friendId, 1596, 2)];
+    const splits = [
+      split('s1', 'paid-by-friend', currentUserId, 798),
+    ];
+
+    const detail = buildFriendDetailData(currentUserId, friend, expenses, splits, []);
+
+    expect(detail.friend.balance).toBe(-798);
+    expect(detail.expenses).toHaveLength(1);
+  });
+
+  it('includes an expense paid by the current user when the payer has no split row', () => {
+    const expenses = [expense('paid-by-current-user', currentUserId, 100, 2)];
+    const splits = [split('s1', 'paid-by-current-user', friendId, 100)];
+
+    const detail = buildFriendDetailData(currentUserId, friend, expenses, splits, []);
+
+    expect(detail.friend.balance).toBe(100);
+    expect(detail.expenses).toMatchObject([{ yourShare: 0, friendShare: 100 }]);
+  });
+
+  it('keeps group expenses paid by a third party out of individual friend detail', () => {
+    const groupExpense = { ...expense('group-dinner', 'isha-user', 300, 2), groupId: 'group-1' };
+    const splits = [
+      split('s1', 'group-dinner', currentUserId, 100),
+      split('s2', 'group-dinner', friendId, 100),
+    ];
+
+    const detail = buildFriendDetailData(currentUserId, friend, [groupExpense], splits, []);
+
+    expect(detail.friend.balance).toBe(0);
+    expect(detail.expenses).toEqual([]);
+    expect(detail.activity).toMatchObject([{ type: 'group_expense', expense: { id: 'group-dinner' } }]);
+  });
+
+  it('keeps group expenses out of the direct Friend ledger', () => {
+    const groupExpense = { ...expense('group-dinner', currentUserId, 300, 2), groupId: 'group-1' };
+    const splits = [
+      split('s1', 'group-dinner', friendId, 100),
+    ];
+    const detail = buildFriendDetailData(currentUserId, friend, [groupExpense], splits, []);
+
+    expect(detail.friend.balance).toBe(0);
+    expect(detail.expenses).toEqual([]);
+    expect(detail.activity).toMatchObject([{ type: 'group_expense', expense: { id: 'group-dinner' } }]);
+  });
+
+  it('excludes soft-deleted expenses from active friend expenses and balances', () => {
+    const deletedExpense = expense('deleted-dinner', currentUserId, 80, 2);
+    deletedExpense.deletedAt = 5;
+    const splits = [
+      split('s1', deletedExpense.id, currentUserId, 40),
+      split('s2', deletedExpense.id, friendId, 40),
+    ];
+
+    const detail = buildFriendDetailData(currentUserId, friend, [deletedExpense], splits, []);
+
+    expect(detail.expenses).toEqual([]);
+    expect(detail.friend.balance).toBe(0);
+    expect(detail.activity).toEqual([]);
+  });
+
   it('includes deleted expense activity when metadata says the friend participated', () => {
     const activities = [
       activity(

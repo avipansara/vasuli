@@ -18,6 +18,7 @@ const detail: FriendDetailData = {
   },
   expenses: [],
   activity: [],
+  groupBalances: [],
 };
 
 describe('Friend detail module', () => {
@@ -27,6 +28,32 @@ describe('Friend detail module', () => {
     });
 
     await expect(module.getDetail('current-user', 'friend-a')).resolves.toEqual(detail);
+  });
+
+  it('returns group balance summaries separately from the direct Friend detail', async () => {
+    const module = createFriendDetailModule({
+      readAdapter: { getDetail: async () => detail },
+      groupBalanceAdapter: {
+        getSharedGroupBalances: async () => [{
+          groupId: 'group-alaska',
+          groupName: 'Alaska 2026',
+          currency: 'USD',
+          amount: -100,
+          direction: 'you_owe',
+          lastActivityAt: 20,
+        }],
+      },
+    });
+
+    await expect(module.getDetail('current-user', 'friend-a')).resolves.toMatchObject({
+      friend: { balance: 24 },
+      groupBalances: [{
+        groupId: 'group-alaska',
+        groupName: 'Alaska 2026',
+        amount: -100,
+        direction: 'you_owe',
+      }],
+    });
   });
 
   it('records a valid settlement and returns the resulting pair settlements', async () => {
@@ -54,6 +81,33 @@ describe('Friend detail module', () => {
       currency: 'USD',
       date: 10,
     })).resolves.toEqual([settlement]);
+  });
+
+  it('rejects a group-scoped settlement from the direct Friend flow', async () => {
+    const module = createFriendDetailModule({
+      readAdapter: { getDetail: async () => detail },
+      settlementAdapter: {
+        createPairSettlements: async () => [{
+          id: 'group-settlement',
+          groupId: 'group-alaska',
+          fromUserId: 'current-user',
+          toUserId: 'friend-a',
+          amount: 24,
+          currency: 'USD',
+          date: 10,
+          createdAt: 10,
+        }],
+      },
+    });
+
+    await expect(module.settleUp({
+      currentUserId: 'current-user',
+      friendId: 'friend-a',
+      amount: 24,
+      balance: 24,
+      currency: 'USD',
+      date: 10,
+    })).rejects.toThrow('direct Friend balance');
   });
 
   it('deletes an expense through the Friend detail action interface', async () => {

@@ -185,7 +185,7 @@ function FriendCardInner({ friend, onPress, onDelete }: FriendCardProps) {
                       <View style={[styles.hLine, { backgroundColor: friendsTheme.branch }]} />
                     </View>
                     <ThemedText style={[styles.noExpenses, { color: colors.textSecondary }]}>
-                      No pending expenses
+                      Group activity
                     </ThemedText>
                   </View>
                 )}

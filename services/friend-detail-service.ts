@@ -9,14 +9,30 @@ export interface FriendExpenseWithSplit extends Expense {
   yourShare: number;
   friendShare: number;
   paidByName: string;
+  groupName?: string;
 }
 
 export type FriendSettlementDirection = 'you_paid_friend' | 'friend_paid_you';
+
+export type FriendGroupBalanceSummary = {
+  groupId: string;
+  groupName: string;
+  currency: string;
+  amount: number;
+  direction: 'you_owe' | 'you_are_owed' | 'settled';
+  lastActivityAt?: number;
+};
 
 export type FriendActivityItem =
   | {
     id: string;
     type: 'expense';
+    date: number;
+    expense: FriendExpenseWithSplit;
+  }
+  | {
+    id: string;
+    type: 'group_expense';
     date: number;
     expense: FriendExpenseWithSplit;
   }
@@ -52,6 +68,7 @@ export interface FriendDetailData {
   friend: FriendWithBalance;
   expenses: FriendExpenseWithSplit[];
   activity: FriendActivityItem[];
+  groupBalances?: FriendGroupBalanceSummary[];
 }
 
 export function calculatePairBalance(
@@ -71,16 +88,23 @@ export function calculatePairBalance(
   }
 
   for (const expense of expenses) {
+    if (expense.groupId) continue;
+    if (expense.deletedAt) continue;
+
     const expenseSplits = splitsByExpenseId.get(expense.id) ?? [];
     const currentUserSplit = expenseSplits.find(split => split.userId === currentUserId);
     const friendSplit = expenseSplits.find(split => split.userId === friendId);
+    const yourShare = currentUserSplit?.amount ?? 0;
+    const friendShare = friendSplit?.amount ?? 0;
 
-    if (!currentUserSplit || !friendSplit) continue;
+    const currentUserParticipates = yourShare > 0 || expense.paidBy === currentUserId;
+    const friendParticipates = friendShare > 0 || expense.paidBy === friendId;
+    if (!currentUserParticipates || !friendParticipates) continue;
 
     if (expense.paidBy === currentUserId) {
-      balance += friendSplit.amount;
+      balance += friendShare;
     } else if (expense.paidBy === friendId) {
-      balance -= currentUserSplit.amount;
+      balance -= yourShare;
     }
   }
 
@@ -114,16 +138,23 @@ export function buildFriendDetailData(
   }
 
   const sharedExpenses = expenses.flatMap((expense): FriendExpenseWithSplit[] => {
+    if (expense.groupId) return [];
+    if (expense.deletedAt) return [];
+
     const expenseSplits = splitsByExpenseId.get(expense.id) ?? [];
     const currentUserSplit = expenseSplits.find(split => split.userId === currentUserId);
     const friendSplit = expenseSplits.find(split => split.userId === friend.id);
+    const yourShare = currentUserSplit?.amount ?? 0;
+    const friendShare = friendSplit?.amount ?? 0;
 
-    if (!currentUserSplit || !friendSplit) return [];
+    const currentUserParticipates = yourShare > 0 || expense.paidBy === currentUserId;
+    const friendParticipates = friendShare > 0 || expense.paidBy === friend.id;
+    if (!currentUserParticipates || !friendParticipates) return [];
 
     return [{
       ...expense,
-      yourShare: currentUserSplit.amount,
-      friendShare: friendSplit.amount,
+      yourShare,
+      friendShare,
       paidByName: expense.paidBy === currentUserId ? 'You' : friend.name,
     }];
   });
@@ -132,6 +163,7 @@ export function buildFriendDetailData(
   const sharedExpenseIds = new Set(sharedExpenses.map(expense => expense.id));
 
   const pairSettlements = settlements.flatMap((settlement): FriendActivityItem[] => {
+    if (settlement.groupId) return [];
     const isCurrentUserPayer = settlement.fromUserId === currentUserId && settlement.toUserId === friend.id;
     const isFriendPayer = settlement.fromUserId === friend.id && settlement.toUserId === currentUserId;
 
@@ -157,12 +189,33 @@ export function buildFriendDetailData(
       date: expense.date,
       expense,
     })),
+    ...expenses.flatMap((expense): FriendActivityItem[] => {
+      if (!expense.groupId || expense.deletedAt) return [];
+      const expenseSplits = splitsByExpenseId.get(expense.id) ?? [];
+      const yourShare = expenseSplits.find(split => split.userId === currentUserId)?.amount ?? 0;
+      const friendShare = expenseSplits.find(split => split.userId === friend.id)?.amount ?? 0;
+      const currentUserParticipates = yourShare > 0 || expense.paidBy === currentUserId;
+      const friendParticipates = friendShare > 0 || expense.paidBy === friend.id;
+      if (!currentUserParticipates || !friendParticipates) return [];
+
+      return [{
+        id: `group-expense:${expense.id}`,
+        type: 'group_expense',
+        date: expense.date,
+        expense: {
+          ...expense,
+          yourShare,
+          friendShare,
+          paidByName: expense.paidBy === currentUserId ? 'You' : expense.paidBy === friend.id ? friend.name : 'Group member',
+        },
+      }];
+    }),
     ...pairSettlements,
     ...activities.flatMap((activity): FriendActivityItem[] => {
       const isExpenseUpdate = activity.type === ActivityType.EXPENSE_UPDATED;
       const isExpenseDelete = activity.type === ActivityType.EXPENSE_DELETED;
       if (!isExpenseUpdate && !isExpenseDelete) return [];
-
+      if (activity.groupId) return [];
       const metadata = parseActivityMetadata(activity.metadata);
       const includesFriend = metadata.participantIds.includes(friend.id);
       const includesCurrentUser = metadata.participantIds.includes(currentUserId);
@@ -174,7 +227,7 @@ export function buildFriendDetailData(
         type: 'expense_activity',
         date: activity.createdAt,
         activityId: activity.id,
-        activityType: activity.type,
+        activityType: activity.type as ActivityType.EXPENSE_UPDATED | ActivityType.EXPENSE_DELETED,
         targetId: activity.targetId,
         description: activity.description,
         amount: activity.amount,
@@ -197,6 +250,7 @@ export function buildFriendDetailData(
     activity,
   };
 }
+
 
 export type FriendDetailDataSource = {
   getDetail(currentUserId: string, friendId: string): Promise<FriendDetailData | null>;

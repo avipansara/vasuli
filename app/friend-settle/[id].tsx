@@ -6,7 +6,9 @@ import { useAuth } from '@/contexts/auth-context-otp';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { activityService } from '@/services/activity-service';
-import { friendDetailService } from '@/services/friend-detail-service';
+import { friendDetailModule } from '@/services/friend-detail-module';
+import type { FriendGroupBalanceSummary } from '@/services/friend-detail-service';
+import { buildCombinedSettlementAllocations } from '@/services/friend-settlement-allocation';
 import type { GroupDetailReadModel } from '@/services/group-detail-read-model';
 import { applySettlementToGroupReadModel } from '@/services/group-detail-read-model';
 import { queryKeys } from '@/services/query-keys';
@@ -42,6 +44,7 @@ export default function FriendSettleScreen() {
   const queryClient = useQueryClient();
 
   const [friend, setFriend] = useState<UserWithBalance | null>(null);
+  const [groupBalances, setGroupBalances] = useState<FriendGroupBalanceSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [amount, setAmount] = useState('');
@@ -52,14 +55,17 @@ export default function FriendSettleScreen() {
       setLoadError(null);
       setLoading(true);
 
-      const data = await friendDetailService.getDetail(currentUserId, id);
+      const data = await friendDetailModule.getDetail(currentUserId, id);
       if (!data || !data.friend) {
         Alert.alert('Error', 'Friend not found');
         router.back();
         return;
       }
       setFriend(data.friend);
-      setAmount(Math.abs(data.friend.balance).toFixed(2));
+      const nextGroupBalances = data.groupBalances ?? [];
+      setGroupBalances(nextGroupBalances);
+      const combinedBalance = data.friend.balance + nextGroupBalances.reduce((total, summary) => total + summary.amount, 0);
+      setAmount(Math.abs(combinedBalance).toFixed(2));
     } catch (error) {
       console.error('Error loading friend data:', error);
       setLoadError(getFetchErrorMessage(error));
@@ -86,10 +92,26 @@ export default function FriendSettleScreen() {
       return;
     }
 
+    const combinedBalance = friend.balance + groupBalances.reduce((total, summary) => total + summary.amount, 0);
     const amountCents = Math.round(amountNum * 100);
-    const maxCents = Math.round(Math.abs(friend.balance) * 100);
+    const maxCents = Math.round(Math.abs(combinedBalance) * 100);
     if (amountCents > maxCents) {
-      Alert.alert('Error', 'Settlement amount cannot exceed the outstanding balance.');
+      Alert.alert('Error', 'Settlement amount cannot exceed the combined outstanding balance.');
+      return;
+    }
+
+    let allocations;
+    try {
+      allocations = buildCombinedSettlementAllocations({
+        currentUserId,
+        friendId: id,
+        currency: 'USD',
+        amount: amountNum,
+        directBalance: friend.balance,
+        groupBalances,
+      });
+    } catch (error) {
+      Alert.alert('Choose a scope', error instanceof Error ? error.message : 'Settle each balance separately.');
       return;
     }
 
@@ -103,9 +125,10 @@ export default function FriendSettleScreen() {
       setSettling(false);
 
       // Optimistic updates
+      const directAllocation = allocations.find(allocation => !allocation.groupId)?.amount ?? 0;
       const optimisticBalance = friend.balance > 0
-        ? friend.balance - amountNum
-        : friend.balance + amountNum;
+        ? friend.balance - directAllocation
+        : friend.balance + directAllocation;
       const normalizedOptimisticBalance = Math.abs(optimisticBalance) < 0.01 ? 0 : optimisticBalance;
 
       await queryClient.cancelQueries({ queryKey: friendsHomeQueryKey });
@@ -131,13 +154,14 @@ export default function FriendSettleScreen() {
 
       setSettling(true);
 
-      const settlements = await settlementService.createPairSettlements({
-        currentUserId,
-        friendId: id,
-        amount: amountNum,
-        currency: 'USD',
+      const settlements = await Promise.all(allocations.map(allocation => settlementService.create({
+        groupId: allocation.groupId,
+        fromUserId: allocation.fromUserId,
+        toUserId: allocation.toUserId,
+        amount: allocation.amount,
+        currency: allocation.currency,
         date: Date.now(),
-      });
+      })));
 
       try {
         for (const settlement of settlements) {
@@ -230,8 +254,9 @@ export default function FriendSettleScreen() {
     );
   }
 
-  const isOwed = friend.balance > 0;
-  const maxAmount = Math.abs(friend.balance);
+  const combinedBalance = friend.balance + groupBalances.reduce((total, summary) => total + summary.amount, 0);
+  const isOwed = combinedBalance > 0;
+  const maxAmount = Math.abs(combinedBalance);
   const amountNum = parseFloat(amount) || 0;
   const isValidAmount = amountNum > 0 && Math.round(amountNum * 100) <= Math.round(maxAmount * 100);
 

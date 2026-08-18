@@ -47,7 +47,9 @@ CREATE TABLE public.users (
   email_verified BOOLEAN DEFAULT false,
   phone_verified BOOLEAN DEFAULT false,
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  deleted_at TIMESTAMPTZ,
+  deleted_by UUID REFERENCES public.users(id)
 );
 
 -- VERIFICATION CODES TABLE

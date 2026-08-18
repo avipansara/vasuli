@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase';
-import type { User } from '@/types/database';
+import { ActivityType, type User } from '@/types/database';
 import type { FriendActivityItem, FriendDetailData } from './friend-detail-service';
 
 type FriendDetailRpcClient = {
@@ -38,7 +38,9 @@ type FriendDetailReadModelRow = {
     yourShare: number;
     friendShare: number;
     paidByName: string;
+    groupName?: string;
   }[];
+  groupExpenses?: FriendDetailReadModelRow['expenses'];
   settlements: {
     id: string;
     groupId?: string;
@@ -94,11 +96,13 @@ function mapExpense(expense: FriendDetailReadModelRow['expenses'][number]): Frie
     yourShare: expense.yourShare,
     friendShare: expense.friendShare,
     paidByName: expense.paidByName,
+    groupName: expense.groupName,
   };
 }
 
 function buildActivity(
   expenses: FriendDetailData['expenses'],
+  groupExpenses: FriendDetailData['expenses'],
   settlements: FriendDetailReadModelRow['settlements'],
   activities: FriendDetailReadModelRow['activities']
 ): FriendActivityItem[] {
@@ -106,6 +110,12 @@ function buildActivity(
     ...expenses.map((expense): FriendActivityItem => ({
       id: `expense:${expense.id}`,
       type: 'expense',
+      date: expense.date,
+      expense,
+    })),
+    ...groupExpenses.map((expense): FriendActivityItem => ({
+      id: `group-expense:${expense.id}`,
+      type: 'group_expense',
       date: expense.date,
       expense,
     })),
@@ -125,7 +135,7 @@ function buildActivity(
       type: 'expense_activity',
       date: toTimestamp(activity.date),
       activityId: activity.id,
-      activityType: activity.activityType,
+      activityType: activity.activityType as ActivityType.EXPENSE_UPDATED | ActivityType.EXPENSE_DELETED,
       targetId: activity.targetId,
       description: activity.description,
       amount: activity.amount,
@@ -175,21 +185,32 @@ export function createFriendDetailReadModel(rpcClient: FriendDetailRpcClient = d
         createdAt: toTimestamp(row.friend.createdAt),
         balance: row.friend.balance,
       };
-      const expenses = row.expenses.map(mapExpense);
+      // Friend detail is pair-only. Group records belong exclusively to the
+      // group ledger, so keep this boundary defensive even if an older or
+      // cached RPC definition returns one accidentally.
+      const mappedExpenses = row.expenses.map(mapExpense);
+      const mappedGroupExpenses = (row.groupExpenses ?? []).map(mapExpense);
+      const expenses = mappedExpenses.filter(expense => !expense.groupId);
+      const groupExpenses = [
+        ...mappedExpenses.filter(expense => Boolean(expense.groupId)),
+        ...mappedGroupExpenses,
+      ];
+      const settlements = row.settlements.filter(settlement => !settlement.groupId);
+      const activities = row.activities.filter(activity => !activity.groupId);
 
       if (process.env.NODE_ENV === 'development') {
         console.info('[FriendDetail] read model loaded', {
           durationMs: Date.now() - startedAt,
           expenseCount: expenses.length,
-          activityCount: row.activities.length,
-          settlementCount: row.settlements.length,
+          activityCount: activities.length,
+          settlementCount: settlements.length,
         });
       }
 
       return {
         friend,
         expenses,
-        activity: buildActivity(expenses, row.settlements, row.activities),
+        activity: buildActivity(expenses, groupExpenses, settlements, activities),
       };
     },
   };
