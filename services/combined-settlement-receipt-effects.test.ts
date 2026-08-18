@@ -11,8 +11,10 @@ vi.mock('@/services/activity-service', () => ({
 const receipt = (reused: boolean) => ({
   paymentIntentId: 'intent-1',
   reused,
+  committedAt: 1,
   totalAmount: 30,
   currency: 'USD',
+  direction: 'you_paid_friend' as const,
   settlements: [{
     id: 'settlement-1',
     groupId: 'group-1',

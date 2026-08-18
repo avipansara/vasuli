@@ -1,5 +1,8 @@
 ## 2026-08-17
 
+- Hardened combined settlement receipts and retries with explicit timestamp and
+  direction fields, supported-currency validation, pair serialization, and
+  retryable transient-error handling.
 - Finalized the combined settlement receipt flow with centralized cache updates,
   activity deduplication, and regression coverage for direct, Group, and
   combined payments.

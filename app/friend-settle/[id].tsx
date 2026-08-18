@@ -141,6 +141,10 @@ export default function FriendSettleScreen() {
         return;
       }
       if (error instanceof CombinedSettlementError) {
+        if (error.code === 'transient') {
+          Alert.alert('Payment not confirmed', error.message, [{ text: 'Retry' }, { text: 'Cancel', style: 'cancel' }]);
+          return;
+        }
         Alert.alert(error.code === 'unauthorized' ? 'Settlement unavailable' : 'Invalid settlement', error.message);
         return;
       }

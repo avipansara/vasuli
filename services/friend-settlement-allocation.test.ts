@@ -77,6 +77,17 @@ describe('buildCombinedSettlementAllocations', () => {
     })).toThrow(/currenc/i);
   });
 
+  it('rejects currencies outside the supported settlement allowlist', () => {
+    expect(() => buildCombinedSettlementAllocations({
+      currentUserId: 'current-user',
+      friendId: 'avee',
+      currency: 'XYZ',
+      amount: 10,
+      directBalance: -10,
+      groupBalances: [],
+    })).toThrow(/supported/i);
+  });
+
   it('rejects sub-cent amounts instead of rounding them into a different payment', () => {
     expect(() => buildCombinedSettlementAllocations({
       currentUserId: 'current-user',

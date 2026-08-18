@@ -1,6 +1,8 @@
 -- Commit a combined Friend payment as one idempotent database transaction.
 -- The client supplies a deterministic allocation plan; this function validates
 -- the participants, scopes, currency, and exact total before writing rows.
+-- The active Supabase schema uses UUID app-domain IDs. The older 001 migration
+-- is a legacy text-ID bootstrap and is not the schema contract for this RPC.
 
 CREATE TABLE IF NOT EXISTS public.settlement_commitments (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -24,6 +26,34 @@ CREATE INDEX IF NOT EXISTS idx_settlements_commitment_id
 ALTER TABLE public.settlement_commitments ENABLE ROW LEVEL SECURITY;
 
 REVOKE ALL ON TABLE public.settlement_commitments FROM PUBLIC, anon, authenticated;
+
+CREATE SCHEMA IF NOT EXISTS private;
+
+CREATE OR REPLACE FUNCTION private.settlement_commitment_rows(p_commitment_id UUID)
+RETURNS JSONB
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+  SELECT COALESCE(jsonb_agg(
+    jsonb_build_object(
+      'id', s.id,
+      'groupId', s.group_id,
+      'fromUserId', s.from_user_id,
+      'toUserId', s.to_user_id,
+      'amount', s.amount,
+      'currency', s.currency,
+      'date', s.date,
+      'notes', s.notes,
+      'createdAt', s.created_at
+    ) ORDER BY s.created_at, s.id
+  ), '[]'::jsonb)
+  FROM public.settlements s
+  WHERE s.commitment_id = p_commitment_id;
+$$;
+
+REVOKE ALL ON FUNCTION private.settlement_commitment_rows(UUID) FROM PUBLIC, anon, authenticated;
 
 DROP FUNCTION IF EXISTS public.commit_combined_settlement(UUID, UUID, NUMERIC, TEXT, TIMESTAMPTZ, JSONB);
 
@@ -58,6 +88,8 @@ DECLARE
   direct_scope_seen BOOLEAN := FALSE;
   seen_group_ids TEXT[] := ARRAY[]::TEXT[];
   settlement_rows JSONB;
+  settlement_direction TEXT;
+  commitment_created_at TIMESTAMPTZ;
 BEGIN
   SELECT u.id
   INTO app_user_id
@@ -83,6 +115,10 @@ BEGIN
 
   IF p_currency IS NULL OR BTRIM(p_currency) = '' THEN
     RAISE EXCEPTION 'SETTLEMENT_CURRENCY_REQUIRED';
+  END IF;
+
+  IF BTRIM(p_currency) <> 'USD' THEN
+    RAISE EXCEPTION 'SETTLEMENT_CURRENCY_UNSUPPORTED';
   END IF;
 
   IF jsonb_typeof(p_allocations) <> 'array' OR jsonb_array_length(p_allocations) = 0 THEN
@@ -122,28 +158,19 @@ BEGIN
       RAISE EXCEPTION 'SETTLEMENT_PAYMENT_INTENT_REUSED_WITH_DIFFERENT_PAYMENT';
     END IF;
 
-    SELECT COALESCE(jsonb_agg(
-      jsonb_build_object(
-        'id', s.id,
-        'groupId', s.group_id,
-        'fromUserId', s.from_user_id,
-        'toUserId', s.to_user_id,
-        'amount', s.amount,
-        'currency', s.currency,
-        'date', s.date,
-        'notes', s.notes,
-        'createdAt', s.created_at
-      ) ORDER BY s.created_at, s.id
-    ), '[]'::jsonb)
-    INTO settlement_rows
-    FROM public.settlements s
-    WHERE s.commitment_id = existing_commitment.id;
+    settlement_rows := private.settlement_commitment_rows(existing_commitment.id);
+    settlement_direction := CASE
+      WHEN settlement_rows->0->>'fromUserId' = app_user_id::TEXT THEN 'you_paid_friend'
+      ELSE 'friend_paid_you'
+    END;
 
     RETURN jsonb_build_object(
       'paymentIntentId', p_payment_intent_id,
       'reused', true,
+      'committedAt', existing_commitment.created_at,
       'totalAmount', existing_commitment.amount,
       'currency', existing_commitment.currency,
+      'direction', settlement_direction,
       'settlements', settlement_rows
     );
   END IF;
@@ -159,6 +186,15 @@ BEGIN
   ) THEN
     RAISE EXCEPTION 'SETTLEMENT_FRIENDSHIP_REQUIRED';
   END IF;
+
+  -- Serialize all settlement commits for this pair. A second payment intent
+  -- waits for the first transaction, then observes its newly committed balance
+  -- and fails the expected-balance check instead of over-settling.
+  PERFORM 1
+  FROM public.users u
+  WHERE u.id IN (app_user_id, p_friend_id)
+  ORDER BY u.id
+  FOR UPDATE;
 
   SELECT COALESCE((
     SELECT SUM(
@@ -338,6 +374,13 @@ BEGIN
 
     allocation_total := allocation_total + allocation_amount;
 
+    IF settlement_direction IS NULL THEN
+      settlement_direction := CASE
+        WHEN allocation_from_user_id = app_user_id THEN 'you_paid_friend'
+        ELSE 'friend_paid_you'
+      END;
+    END IF;
+
     INSERT INTO public.settlements (
       group_id,
       from_user_id,
@@ -362,28 +405,18 @@ BEGIN
     RAISE EXCEPTION 'SETTLEMENT_ALLOCATION_TOTAL_MISMATCH';
   END IF;
 
-  SELECT COALESCE(jsonb_agg(
-    jsonb_build_object(
-      'id', s.id,
-      'groupId', s.group_id,
-      'fromUserId', s.from_user_id,
-      'toUserId', s.to_user_id,
-      'amount', s.amount,
-      'currency', s.currency,
-      'date', s.date,
-      'notes', s.notes,
-      'createdAt', s.created_at
-    ) ORDER BY s.created_at, s.id
-  ), '[]'::jsonb)
-  INTO settlement_rows
-  FROM public.settlements s
-  WHERE s.commitment_id = new_commitment_id;
+  settlement_rows := private.settlement_commitment_rows(new_commitment_id);
+  SELECT created_at INTO commitment_created_at
+  FROM public.settlement_commitments
+  WHERE id = new_commitment_id;
 
   RETURN jsonb_build_object(
     'paymentIntentId', p_payment_intent_id,
     'reused', false,
+    'committedAt', commitment_created_at,
     'totalAmount', p_amount,
     'currency', p_currency,
+    'direction', settlement_direction,
     'settlements', settlement_rows
   );
 END;

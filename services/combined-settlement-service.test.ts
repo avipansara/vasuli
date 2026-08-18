@@ -30,15 +30,19 @@ describe('combined settlement service', () => {
     expect(shouldLogSettlementActivity({
       paymentIntentId: 'intent-1',
       reused: false,
+      committedAt: 1,
       totalAmount: 10,
       currency: 'USD',
+      direction: 'you_paid_friend' as const,
       settlements: [],
     })).toBe(true);
     expect(shouldLogSettlementActivity({
       paymentIntentId: 'intent-1',
       reused: true,
+      committedAt: 1,
       totalAmount: 10,
       currency: 'USD',
+      direction: 'you_paid_friend',
       settlements: [],
     })).toBe(false);
   });
@@ -47,8 +51,10 @@ describe('combined settlement service', () => {
     const commit = vi.fn(async (request) => ({
       paymentIntentId: request.paymentIntentId,
       reused: false,
+      committedAt: 1,
       totalAmount: request.amount,
       currency: request.currency,
+      direction: 'you_paid_friend' as const,
       settlements: [
         settlement({ id: 'direct-settlement', amount: 10, date: 100 }),
         settlement({ id: 'group-settlement', groupId: 'group-1', amount: 20, date: 100 }),
@@ -69,8 +75,10 @@ describe('combined settlement service', () => {
     })).resolves.toEqual({
       paymentIntentId: 'intent-1',
       reused: false,
+      committedAt: 1,
       totalAmount: 30,
       currency: 'USD',
+      direction: 'you_paid_friend',
       settlements: [
         settlement({ id: 'direct-settlement', amount: 10, date: 100 }),
         settlement({ id: 'group-settlement', groupId: 'group-1', amount: 20, date: 100 }),

@@ -286,16 +286,20 @@ function mapCombinedSettlementReceipt(data: unknown): CombinedSettlementReceipt 
   const receipt = data as {
     paymentIntentId?: unknown;
     reused?: unknown;
+    committedAt?: unknown;
     totalAmount?: unknown;
     currency?: unknown;
+    direction?: unknown;
     settlements?: unknown;
   };
 
   if (
     typeof receipt.paymentIntentId !== 'string'
     || typeof receipt.reused !== 'boolean'
+    || typeof receipt.committedAt !== 'string'
     || typeof receipt.totalAmount !== 'number'
     || typeof receipt.currency !== 'string'
+    || (receipt.direction !== 'you_paid_friend' && receipt.direction !== 'friend_paid_you')
     || !Array.isArray(receipt.settlements)
   ) {
     throw new Error('Combined settlement commit returned an invalid receipt.');
@@ -304,8 +308,10 @@ function mapCombinedSettlementReceipt(data: unknown): CombinedSettlementReceipt 
   return {
     paymentIntentId: receipt.paymentIntentId,
     reused: receipt.reused,
+    committedAt: new Date(receipt.committedAt).getTime(),
     totalAmount: receipt.totalAmount,
     currency: receipt.currency,
+    direction: receipt.direction,
     settlements: receipt.settlements.map(mapSettlementReceipt),
   };
 }

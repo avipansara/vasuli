@@ -6,11 +6,15 @@ import {
 import { settlementService } from './settlement-service';
 import type { FriendGroupBalanceSummary } from './friend-detail-service';
 
+export type CombinedSettlementDirection = 'you_paid_friend' | 'friend_paid_you';
+
 export type CombinedSettlementReceipt = {
   paymentIntentId: string;
   reused: boolean;
+  committedAt: number;
   totalAmount: number;
   currency: string;
+  direction: CombinedSettlementDirection;
   settlements: Settlement[];
 };
 

@@ -1,5 +1,7 @@
 import type { FriendGroupBalanceSummary } from './friend-detail-service';
 
+export const SUPPORTED_SETTLEMENT_CURRENCIES = ['USD'] as const;
+
 export type CombinedSettlementAllocation = {
   groupId?: string;
   fromUserId: string;
@@ -30,6 +32,9 @@ export function buildCombinedSettlementAllocations({
   }
   if (!Number.isFinite(directBalance) || groupBalances.some(group => !Number.isFinite(group.amount))) {
     throw new Error('Settlement balance is invalid.');
+  }
+  if (!SUPPORTED_SETTLEMENT_CURRENCIES.includes(currency as typeof SUPPORTED_SETTLEMENT_CURRENCIES[number])) {
+    throw new Error('Settlement currency is not supported.');
   }
   if (groupBalances.some(group => group.currency !== currency && group.direction !== 'settled')) {
     throw new Error('Settlement currencies must be handled separately.');

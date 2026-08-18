@@ -13,8 +13,10 @@ describe('settlement commit adapter', () => {
       data: {
         paymentIntentId: 'intent-1',
         reused: true,
+        committedAt: '2026-08-18T03:00:00.000Z',
         totalAmount: 30,
         currency: 'USD',
+        direction: 'you_paid_friend',
         settlements: [{
           id: 'settlement-1',
           groupId: null,
@@ -47,7 +49,9 @@ describe('settlement commit adapter', () => {
     })).resolves.toMatchObject({
       paymentIntentId: 'intent-1',
       reused: true,
+      committedAt: Date.parse('2026-08-18T03:00:00.000Z'),
       totalAmount: 30,
+      direction: 'you_paid_friend',
       settlements: [{
         id: 'settlement-1',
         groupId: undefined,
@@ -71,5 +75,19 @@ describe('settlement commit adapter', () => {
         currency: 'USD',
       }],
     });
+  });
+
+  it('maps unknown RPC failures to a retryable transient outcome', async () => {
+    rpc.mockResolvedValueOnce({ data: null, error: new Error('network unavailable') });
+
+    await expect(settlementService.commit({
+      paymentIntentId: 'intent-2',
+      friendId: 'friend-a',
+      amount: 30,
+      currency: 'USD',
+      date: Date.parse('2026-08-18T03:00:00.000Z'),
+      expectedBalance: 30,
+      allocations: [],
+    })).rejects.toMatchObject({ code: 'transient' });
   });
 });
