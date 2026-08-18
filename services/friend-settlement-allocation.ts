@@ -128,11 +128,34 @@ export function buildCombinedSettlementPlan({
     throw new Error('Settlement amount cannot exceed the combined outstanding balance.');
   }
 
+  const paymentDirection = Math.sign(totalBalance);
+  const isFullNetSettlement = toCents(amount) === Math.abs(totalBalanceCents);
+  if (!isFullNetSettlement) {
+    const paymentScopes = [
+      { groupId: undefined, amount: normalizeAmount(directBalance), lastActivityAt: Number.MIN_SAFE_INTEGER },
+      ...groups,
+    ]
+      .filter(scope => scope.amount !== 0 && Math.sign(scope.amount) === paymentDirection)
+      .sort((a, b) => a.groupId ? a.lastActivityAt - b.lastActivityAt : -Infinity);
+
+    return {
+      ...buildPaymentAllocations({
+        paymentScopes,
+        amount,
+        currentUserId,
+        friendId,
+        currency,
+        paymentDirection,
+      }),
+      transfers: [],
+    };
+  }
+
   const directSign = Math.sign(directBalance);
   const transferAllGroups = directBalance === 0 || totalBalance === 0;
-  const transferGroups = groups.filter(scope => (
-    transferAllGroups || Math.sign(scope.amount) !== directSign
-  ));
+  const transferGroups = transferAllGroups || directSign !== paymentDirection
+    ? groups.filter(scope => transferAllGroups || Math.sign(scope.amount) !== directSign)
+    : groups.filter(scope => Math.sign(scope.amount) !== paymentDirection);
   const transferredGroupIds = new Set(transferGroups.map(scope => scope.groupId));
   const transfers = transferGroups.map(scope => ({
     groupId: scope.groupId,
@@ -143,42 +166,87 @@ export function buildCombinedSettlementPlan({
     signedGroupBalanceDelta: -scope.amount,
   }));
 
-  const adjustedDirectBalance = normalizeAmount(
-    directBalance - transfers.reduce((total, transfer) => total + transfer.signedGroupBalanceDelta, 0),
-  );
-  const paymentScopes = [
-    { groupId: undefined, amount: adjustedDirectBalance, lastActivityAt: Number.MIN_SAFE_INTEGER },
-    ...groups.filter(scope => !transferredGroupIds.has(scope.groupId)),
-  ].filter(scope => scope.amount !== 0);
-  const paymentDirection = Math.sign(totalBalance);
+  const paymentScopes = directSign !== paymentDirection && directBalance !== 0
+    ? [
+        {
+          groupId: undefined,
+          amount: normalizeAmount(
+            directBalance - transfers.reduce((total, transfer) => total + transfer.signedGroupBalanceDelta, 0),
+          ),
+          lastActivityAt: Number.MIN_SAFE_INTEGER,
+        },
+        ...groups.filter(scope => !transferredGroupIds.has(scope.groupId)),
+      ]
+    : directBalance === 0
+      ? [
+          {
+            groupId: undefined,
+            amount: normalizeAmount(
+              directBalance - transfers.reduce((total, transfer) => total + transfer.signedGroupBalanceDelta, 0),
+            ),
+            lastActivityAt: Number.MIN_SAFE_INTEGER,
+          },
+          ...groups.filter(scope => !transferredGroupIds.has(scope.groupId)),
+        ]
+    : [
+        { groupId: undefined, amount: normalizeAmount(directBalance), lastActivityAt: Number.MIN_SAFE_INTEGER },
+        ...groups.filter(scope => !transferredGroupIds.has(scope.groupId)),
+      ];
+
   if (paymentScopes.some(scope => Math.sign(scope.amount) !== paymentDirection)) {
     throw new Error('Settlement transfer plan did not normalize the payment direction.');
   }
 
+  return {
+    ...buildPaymentAllocations({
+      paymentScopes: [...paymentScopes].sort((a, b) => a.groupId ? a.lastActivityAt - b.lastActivityAt : -Infinity),
+      amount,
+      currentUserId,
+      friendId,
+      currency,
+      paymentDirection,
+    }),
+    transfers,
+  };
+}
+
+function buildPaymentAllocations({
+  paymentScopes,
+  amount,
+  currentUserId,
+  friendId,
+  currency,
+  paymentDirection,
+}: {
+  paymentScopes: { groupId?: string; amount: number; lastActivityAt: number }[];
+  amount: number;
+  currentUserId: string;
+  friendId: string;
+  currency: string;
+  paymentDirection: number;
+}): { allocations: CombinedSettlementAllocation[] } {
   let remainingCents = toCents(amount);
   const fromUserId = paymentDirection < 0 ? currentUserId : friendId;
   const toUserId = paymentDirection < 0 ? friendId : currentUserId;
-  const allocations = [...paymentScopes]
-    .sort((a, b) => a.groupId ? a.lastActivityAt - b.lastActivityAt : -Infinity)
-    .flatMap(scope => {
-      if (remainingCents <= 0) return [];
-      const allocationCents = Math.min(toCents(Math.abs(scope.amount)), remainingCents);
-      remainingCents -= allocationCents;
-      if (allocationCents === 0) return [];
-      return [{
-        groupId: scope.groupId,
-        fromUserId,
-        toUserId,
-        amount: allocationCents / 100,
-        currency,
-      }];
-    });
+  const allocations = paymentScopes.flatMap(scope => {
+    if (remainingCents <= 0) return [];
+    const allocationCents = Math.min(toCents(Math.abs(scope.amount)), remainingCents);
+    remainingCents -= allocationCents;
+    if (allocationCents === 0) return [];
+    return [{
+      groupId: scope.groupId,
+      fromUserId,
+      toUserId,
+      amount: allocationCents / 100,
+      currency,
+    }];
+  });
 
   if (remainingCents !== 0) {
     throw new Error('Settlement transfer plan could not allocate the requested amount.');
   }
 
-  return { allocations, transfers };
+  return { allocations };
 }
 
 function normalizeAmount(amount: number): number {

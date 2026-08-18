@@ -1,11 +1,30 @@
 ## 2026-08-18
 
+- Updated Friend Settle Up allocation so partial payments stay Direct-first
+  without moving opposing Group balances, while full-net and zero-net flows
+  preview and record explicit cross-scope offsets.
 - Fixed the sign-up verification action so the Create account button fills its
   control, keeps the confirmation icon aligned, and matches the sign-in button.
 - Refreshed the Groups home query after creating a group so newly created groups
   appear immediately when returning to the list.
 - Refreshed the Groups home query after deleting a group so removed groups no
   longer remain visible when returning to the list.
+- Clarified Friend detail balance states so same-currency direct and group
+  balances are not mislabeled as multiple currencies.
+- Condensed the Friend detail split-balance summary so the status stays compact
+  while detailed direct and group amounts remain visible below.
+- Updated Friends home cards to show the one-currency net balance across direct
+  and group scopes, labeled as a net balance when those scopes stay separate.
+- Made the Friends home relationship RPC return that same one-currency net
+  balance while preserving separate-scope settlement safeguards.
+- Restored the simple Friend detail balance wording and Settle Up action; when
+  direct and group balances point in opposite directions, the action settles
+  the direct ledger independently.
+- Clarified the direct-only settlement screen so it no longer labels the direct
+  amount as a combined relationship balance.
+- Changed group deletion to Splitwise-style reversible soft deletion: groups
+  are hidden from active views while expenses, payments, and history remain
+  preserved.
 - Added a shared relationship freshness contract across Home, Friend detail,
   and settle-up, including Realtime refreshes for ledger and membership inputs,
   stale-load protection, and sign-out cache isolation.

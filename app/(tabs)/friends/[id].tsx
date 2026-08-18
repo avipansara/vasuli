@@ -590,7 +590,7 @@ export default function FriendDetailScreen() {
                     accessibilityState={{ disabled: isSettlingUp, busy: isSettlingUp }}
                     onPress={() => router.push(`/friend-settle/${id}`)}>
                     <IconSymbol size={18} name="banknote" color="#ffffff" />
-                    <ThemedText style={[styles.cardQuickActionText, { color: '#ffffff' }]}>{canClearZeroNet && balance === 0 ? 'Clear Balances' : 'Settle Up'}</ThemedText>
+                    <ThemedText style={[styles.cardQuickActionText, { color: '#ffffff' }]}>Settle Up</ThemedText>
                   </TouchableOpacity>
                 </View>
               )}
@@ -609,7 +609,7 @@ export default function FriendDetailScreen() {
               </ThemedText>
             </View>
             <ThemedText style={[styles.groupBalancesHint, { color: isDark ? '#94A3B8' : colors.textSecondary }]}>
-              Group balances are settled from the group, not directly with {friend.name.split(' ')[0]}.
+              Settle Up can apply payments and balance offsets across your shared ledgers.
             </ThemedText>
             {outstandingGroupBalances.map(summary => {
               const isOwedInGroup = summary.direction === 'you_are_owed';

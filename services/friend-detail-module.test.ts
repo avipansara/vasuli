@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { FriendActivityItem, FriendDetailData } from '@/services/friend-detail-service';
+import { ActivityType } from '@/types/database';
 import {
   createFriendDetailModule,
   filterFriendActivity,
@@ -74,6 +75,57 @@ describe('Friend detail module', () => {
         totalsByCurrency: [{ currency: 'USD', amount: -100, direction: 'you_owe' }],
         activity: [],
       },
+    });
+  });
+
+  it('uses the injected authoritative relationship adapter for production parity', async () => {
+    const authoritativeRelationship = {
+      directBalance: 120,
+      directCurrency: 'USD',
+      groupBalances: [],
+      activity: [],
+      totalsByCurrency: [{ currency: 'USD', amount: 120, direction: 'you_are_owed' as const }],
+      settleableTotal: { currency: 'USD', amount: 120, direction: 'you_are_owed' as const },
+    };
+    const module = createFriendDetailModule({
+      readAdapter: { getDetail: async () => detail },
+      relationshipAdapter: { getRelationship: async () => authoritativeRelationship },
+    });
+
+    await expect(module.getDetail('current-user', 'friend-a')).resolves.toMatchObject({
+      relationship: authoritativeRelationship,
+    });
+  });
+
+  it('preserves detail activity while sharing authoritative balance fields', async () => {
+    const detailActivity: FriendActivityItem[] = [{
+      id: 'activity:detail',
+      type: 'expense_activity',
+      date: 2,
+      activityId: 'activity-1',
+      activityType: ActivityType.EXPENSE_UPDATED,
+      targetId: 'expense-1',
+      description: 'Updated expense',
+      userId: 'friend-a',
+      isDeleted: false,
+      isUpdated: true,
+    }];
+    const module = createFriendDetailModule({
+      readAdapter: { getDetail: async () => ({ ...detail, relationship: { ...detail.relationship, activity: detailActivity } }) },
+      relationshipAdapter: {
+        getRelationship: async () => ({
+          directBalance: 120,
+          directCurrency: 'USD',
+          groupBalances: [],
+          activity: [],
+          totalsByCurrency: [{ currency: 'USD', amount: 120, direction: 'you_are_owed' as const }],
+          settleableTotal: { currency: 'USD', amount: 120, direction: 'you_are_owed' as const },
+        }),
+      },
+    });
+
+    await expect(module.getDetail('current-user', 'friend-a')).resolves.toMatchObject({
+      relationship: { directBalance: 120, activity: detailActivity },
     });
   });
 

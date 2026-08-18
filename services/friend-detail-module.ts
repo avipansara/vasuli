@@ -3,6 +3,7 @@ import {
   type FriendActivityItem,
   type FriendDetailData,
   type FriendGroupBalanceSummary,
+  type FriendRelationshipProjection,
 } from '@/services/friend-detail-service';
 import { friendDetailReadModel } from '@/services/friend-detail-read-model';
 import { friendGroupBalanceService } from '@/services/friend-group-balance-service';
@@ -16,6 +17,10 @@ import { scopeTransferService } from './scope-transfer-service';
 
 export type FriendDetailReadAdapter = {
   getDetail(currentUserId: string, friendId: string): Promise<FriendDetailData | null>;
+};
+
+export type FriendRelationshipAdapter = {
+  getRelationship(currentUserId: string, friendId: string): Promise<FriendRelationshipProjection>;
 };
 
 export type FriendGroupBalanceAdapter = {
@@ -61,6 +66,7 @@ export type FriendDetailNotificationAdapter = {
 
 export type FriendDetailModuleDependencies = {
   readAdapter?: FriendDetailReadAdapter;
+  relationshipAdapter?: FriendRelationshipAdapter;
   groupBalanceAdapter?: FriendGroupBalanceAdapter;
   scopeTransferAdapter?: FriendScopeTransferAdapter;
   settlementAdapter?: FriendDetailSettlementAdapter;
@@ -152,17 +158,25 @@ export function createFriendDetailModule(
 
   return {
     async getDetail(currentUserId, friendId) {
+      const relationshipAdapter = dependencies.relationshipAdapter;
       const [detail, groupBalances, scopeTransfers] = await Promise.all([
         readAdapter.getDetail(currentUserId, friendId),
         groupBalanceAdapter?.getSharedGroupBalances(currentUserId, friendId) ?? Promise.resolve([]),
         scopeTransferAdapter?.getByFriend(friendId) ?? Promise.resolve([]),
       ]);
       if (!detail) return null;
-      const relationship = projectFriendRelationship({
-        ...detail,
-        groupBalances,
-        scopeTransfers,
-      });
+      const relationship = relationshipAdapter
+        ? {
+            ...(await relationshipAdapter.getRelationship(currentUserId, friendId)),
+            activity: detail.relationship.activity.length > 0
+              ? detail.relationship.activity
+              : detail.activity,
+          }
+        : projectFriendRelationship({
+            ...detail,
+            groupBalances,
+            scopeTransfers,
+          });
       return {
         ...detail,
         // Return the same transfer-adjusted projection used to calculate the

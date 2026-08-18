@@ -234,4 +234,66 @@ describe('buildCombinedSettlementAllocations', () => {
       currency: 'USD',
     }]);
   });
+
+  it('keeps opposing scopes unchanged for a partial payment', () => {
+    expect(buildCombinedSettlementPlan({
+      currentUserId: 'current-user',
+      friendId: 'avee',
+      currency: 'USD',
+      amount: 20,
+      directBalance: -20,
+      groupBalances: [
+        { groupId: 'trip', groupName: 'Trip 2026', currency: 'USD', amount: 5, direction: 'you_are_owed' },
+        { groupId: 'roommates', groupName: 'Roommates', currency: 'USD', amount: -8, direction: 'you_owe' },
+      ],
+    })).toEqual({
+      transfers: [],
+      allocations: [{
+        groupId: undefined,
+        fromUserId: 'current-user',
+        toUserId: 'avee',
+        amount: 20,
+        currency: 'USD',
+      }],
+    });
+  });
+
+  it('offsets opposing scopes only when the full net payment settles every scope', () => {
+    expect(buildCombinedSettlementPlan({
+      currentUserId: 'current-user',
+      friendId: 'avee',
+      currency: 'USD',
+      amount: 23,
+      directBalance: -20,
+      groupBalances: [
+        { groupId: 'trip', groupName: 'Trip 2026', currency: 'USD', amount: 5, direction: 'you_are_owed' },
+        { groupId: 'roommates', groupName: 'Roommates', currency: 'USD', amount: -8, direction: 'you_owe' },
+      ],
+    })).toEqual({
+      transfers: [{
+        groupId: 'trip',
+        fromUserId: 'avee',
+        toUserId: 'current-user',
+        amount: 5,
+        currency: 'USD',
+        signedGroupBalanceDelta: -5,
+      }],
+      allocations: [
+        {
+          groupId: undefined,
+          fromUserId: 'current-user',
+          toUserId: 'avee',
+          amount: 20,
+          currency: 'USD',
+        },
+        {
+          groupId: 'roommates',
+          fromUserId: 'current-user',
+          toUserId: 'avee',
+          amount: 3,
+          currency: 'USD',
+        },
+      ],
+    });
+  });
 });

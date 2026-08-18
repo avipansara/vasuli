@@ -9,6 +9,7 @@ import { combinedSettlementService, createPaymentIntentId } from '@/services/com
 import { CombinedSettlementError } from '@/services/combined-settlement-errors';
 import { applyCombinedSettlementReceiptEffects } from '@/services/combined-settlement-receipt-effects';
 import { friendDetailModule } from '@/services/friend-detail-module';
+import { buildCombinedSettlementPlan } from '@/services/friend-settlement-allocation';
 import type { FriendRelationshipProjection } from '@/services/friend-detail-service';
 import { queryKeys } from '@/services/query-keys';
 import type { User } from '@/types/database';
@@ -113,57 +114,78 @@ export default function FriendSettleScreen() {
     const paymentIntentId = paymentIntentIdRef.current ?? createPaymentIntentId();
     paymentIntentIdRef.current = paymentIntentId;
 
-    try {
-      setSettling(true);
+    const commitSettlement = async () => {
+      try {
+        setSettling(true);
 
-      const receipt = await combinedSettlementService.commit({
-        currentUserId,
-        friendId: id,
-        paymentIntentId,
-        currency: settlementCurrency,
-        amount: amountNum,
-        expectedBalance: combinedBalance,
-        directBalance: relationship.directBalance,
-        groupBalances: relationship.groupBalances,
-        date: Date.now(),
-      });
-      const settlements = receipt.settlements;
+        const receipt = await combinedSettlementService.commit({
+          currentUserId,
+          friendId: id,
+          paymentIntentId,
+          currency: settlementCurrency,
+          amount: amountNum,
+          expectedBalance: combinedBalance,
+          directBalance: relationship.directBalance,
+          groupBalances: relationship.groupBalances,
+          date: Date.now(),
+        });
+        const settlements = receipt.settlements;
 
-      if (settlements.length === 0 && !receipt.transfers?.length) {
-        Alert.alert('Choose a scope', 'There is no outstanding balance to settle.');
-        return;
-      }
-
-      await applyCombinedSettlementReceiptEffects({
-        receipt,
-        currentUserId,
-        currentUser: user!,
-        friend,
-        queryClient,
-      });
-
-      Alert.alert('Success', `Recorded settlement of ${receipt.currency} ${receipt.totalAmount.toFixed(2)} with ${friend.name}`);
-      paymentIntentIdRef.current = null;
-      router.back();
-    } catch (error) {
-      if (error instanceof CombinedSettlementError && error.code === 'stale_balance') {
-        Alert.alert('Balance changed', error.message, [{ text: 'Refresh', onPress: loadData }, { text: 'Cancel', style: 'cancel' }]);
-        return;
-      }
-      if (error instanceof CombinedSettlementError) {
-        if (error.code === 'transient') {
-          Alert.alert('Payment not confirmed', error.message, [{ text: 'Retry' }, { text: 'Cancel', style: 'cancel' }]);
+        if (settlements.length === 0 && !receipt.transfers?.length) {
+          Alert.alert('Choose a scope', 'There is no outstanding balance to settle.');
           return;
         }
-        Alert.alert(error.code === 'unauthorized' ? 'Settlement unavailable' : 'Invalid settlement', error.message);
-        return;
+
+        await applyCombinedSettlementReceiptEffects({
+          receipt,
+          currentUserId,
+          currentUser: user!,
+          friend,
+          queryClient,
+        });
+
+        Alert.alert('Success', `Recorded settlement of ${receipt.currency} ${receipt.totalAmount.toFixed(2)} with ${friend.name}`);
+        paymentIntentIdRef.current = null;
+        router.back();
+      } catch (error) {
+        if (error instanceof CombinedSettlementError && error.code === 'stale_balance') {
+          Alert.alert('Balance changed', error.message, [{ text: 'Refresh', onPress: loadData }, { text: 'Cancel', style: 'cancel' }]);
+          return;
+        }
+        if (error instanceof CombinedSettlementError) {
+          if (error.code === 'transient') {
+            Alert.alert('Payment not confirmed', error.message, [{ text: 'Retry' }, { text: 'Cancel', style: 'cancel' }]);
+            return;
+          }
+          Alert.alert(error.code === 'unauthorized' ? 'Settlement unavailable' : 'Invalid settlement', error.message);
+          return;
+        }
+        console.error('Error settling up:', error);
+        Alert.alert('Error', 'Failed to settle up');
+      } finally {
+        setSettling(false);
+        queryClient.invalidateQueries({ queryKey: friendsHomeQueryKey });
       }
-      console.error('Error settling up:', error);
-      Alert.alert('Error', 'Failed to settle up');
-    } finally {
-      setSettling(false);
-      queryClient.invalidateQueries({ queryKey: friendsHomeQueryKey });
-    }
+    };
+
+    const previewLines = [
+      ...((allocationPreview?.allocations ?? []).map(allocation =>
+        `${allocation.groupId ? relationship.groupBalances.find(group => group.groupId === allocation.groupId)?.groupName ?? 'Group' : 'Direct'}: ${allocation.currency} ${allocation.amount.toFixed(2)} cash`
+      )),
+      ...((allocationPreview?.transfers ?? []).map(transfer =>
+        `${relationship.groupBalances.find(group => group.groupId === transfer.groupId)?.groupName ?? 'Group'}: ${transfer.currency} ${transfer.amount.toFixed(2)} internal offset`
+      )),
+    ];
+    Alert.alert(
+      'Confirm Settle Up',
+      previewLines.length > 0
+        ? [`Cash payment: ${settlementCurrency} ${amountNum.toFixed(2)}`, ...previewLines].join('\n')
+        : `Cash payment: ${settlementCurrency} ${amountNum.toFixed(2)}`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Confirm', onPress: () => { void commitSettlement(); } },
+      ],
+    );
   };
 
   const handleAmountChange = (text: string) => {
@@ -211,6 +233,22 @@ export default function FriendSettleScreen() {
   const isOwed = combinedBalance > 0;
   const maxAmount = Math.abs(combinedBalance);
   const amountNum = parseFloat(amount) || 0;
+  const settlementCurrency = settleableTotal?.currency ?? zeroNetCurrency;
+  let allocationPreview: ReturnType<typeof buildCombinedSettlementPlan> | null = null;
+  if (relationship && settlementCurrency && Number.isFinite(amountNum)) {
+    try {
+      allocationPreview = buildCombinedSettlementPlan({
+        currentUserId,
+        friendId: id,
+        currency: settlementCurrency,
+        amount: amountNum,
+        directBalance: relationship.directBalance,
+        groupBalances: relationship.groupBalances,
+      });
+    } catch {
+      allocationPreview = null;
+    }
+  }
   const isValidAmount = isZeroNet
     ? amountNum === 0
     : amountNum > 0 && Math.round(amountNum * 100) <= Math.round(maxAmount * 100);
@@ -296,7 +334,9 @@ export default function FriendSettleScreen() {
           </View>
 
           {/* Confirmation Text */}
-          <ThemedText style={[styles.helperText, { color: isDark ? '#bbcabf' : colors.textSecondary }]}>
+          <ThemedText
+            style={[styles.helperText, { color: isDark ? '#bbcabf' : colors.textSecondary }]}
+          >
             {isZeroNet
               ? 'This moves outstanding group scopes into the friendship balance and records the relationship as cleared. '
               : settleableTotal
@@ -307,6 +347,32 @@ export default function FriendSettleScreen() {
             </Text>
             {isZeroNet ? '' : ' to settle up.'}
           </ThemedText>
+
+          {allocationPreview && (allocationPreview.allocations.length > 0 || allocationPreview.transfers.length > 0) && (
+            <View style={[styles.previewCard, { backgroundColor: settle.cardBackground, borderColor: settle.cardBorder }]}>
+              <ThemedText style={[styles.previewTitle, { color: colors.text }]}>Settlement preview</ThemedText>
+              {allocationPreview.allocations.map((allocation, index) => (
+                <View key={`allocation-${allocation.groupId ?? 'direct'}-${index}`} style={styles.previewRow}>
+                  <ThemedText style={[styles.previewLabel, { color: colors.textSecondary }]}>
+                    {allocation.groupId ? relationship?.groupBalances.find(group => group.groupId === allocation.groupId)?.groupName ?? 'Group' : 'Direct'}
+                  </ThemedText>
+                  <ThemedText style={[styles.previewValue, { color: colors.text }]}>
+                    {allocation.currency} {allocation.amount.toFixed(2)} cash
+                  </ThemedText>
+                </View>
+              ))}
+              {allocationPreview.transfers.map(transfer => (
+                <View key={`transfer-${transfer.groupId}`} style={styles.previewRow}>
+                  <ThemedText style={[styles.previewLabel, { color: colors.textSecondary }]}>
+                    {relationship?.groupBalances.find(group => group.groupId === transfer.groupId)?.groupName ?? 'Group'}
+                  </ThemedText>
+                  <ThemedText style={[styles.previewValue, { color: colors.text }]}>
+                    {transfer.currency} {transfer.amount.toFixed(2)} internal offset
+                  </ThemedText>
+                </View>
+              ))}
+            </View>
+          )}
         </KeyboardAwareScroll>
 
         {/* Bottom Action Area */}
@@ -474,6 +540,30 @@ const styles = StyleSheet.create({
   },
   helperBoldAmount: {
     fontWeight: '700',
+  },
+  previewCard: {
+    borderWidth: 1,
+    borderRadius: 16,
+    padding: 16,
+    gap: 10,
+  },
+  previewTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  previewRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  previewLabel: {
+    flex: 1,
+    fontSize: 14,
+  },
+  previewValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'right',
   },
   bottomActionsContainer: {
     width: '100%',
