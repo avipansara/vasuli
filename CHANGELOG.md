@@ -6,6 +6,8 @@
   balances.
 - Refreshed Group detail balances whenever the screen regains focus so recent
   settlements cannot remain hidden behind a fresh query cache.
+- Corrected scope-transfer sign handling so Group detail and Group settle-up
+  balances do not double-count cross-scope offsets.
 - Added the backend foundation for atomic settlement-operation reversal with
   compensating payment and scope-offset records, authorization for the two
   involved users, and idempotent reversal responses.

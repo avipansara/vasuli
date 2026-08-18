@@ -31,11 +31,11 @@ export function calculateGroupBalances(
   }
 
   for (const transfer of scopeTransfers) {
-    // signedGroupBalanceDelta is the change to the actor's group balance.
-    // The transfer's from/to users are the counterparties, so apply the
-    // inverse delta to the sender and the delta to the recipient.
-    balances.set(transfer.fromUserId, (balances.get(transfer.fromUserId) ?? 0) - transfer.signedGroupBalanceDelta);
-    balances.set(transfer.toUserId, (balances.get(transfer.toUserId) ?? 0) + transfer.signedGroupBalanceDelta);
+    // signedGroupBalanceDelta is the change to the transfer actor's group
+    // balance. The from/to users identify the two counterparties, so apply
+    // the signed delta to the sender and its inverse to the recipient.
+    balances.set(transfer.fromUserId, (balances.get(transfer.fromUserId) ?? 0) + transfer.signedGroupBalanceDelta);
+    balances.set(transfer.toUserId, (balances.get(transfer.toUserId) ?? 0) - transfer.signedGroupBalanceDelta);
   }
 
   for (const [userId, balance] of balances) {

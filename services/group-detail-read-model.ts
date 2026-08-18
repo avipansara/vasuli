@@ -81,17 +81,12 @@ function calculateGroupDetailBalances(
   settlements: Settlement[],
   scopeTransfers: SettlementScopeTransfer[],
 ): Map<string, number> {
-  const balances = calculateGroupBalances(expenses, expenses.flatMap(expense => expense.splits), settlements);
-  for (const transfer of scopeTransfers) {
-    balances.set(
-      transfer.fromUserId,
-      (balances.get(transfer.fromUserId) ?? 0) - transfer.signedGroupBalanceDelta,
-    );
-    balances.set(
-      transfer.toUserId,
-      (balances.get(transfer.toUserId) ?? 0) + transfer.signedGroupBalanceDelta,
-    );
-  }
+  const balances = calculateGroupBalances(
+    expenses,
+    expenses.flatMap(expense => expense.splits),
+    settlements,
+    scopeTransfers,
+  );
   for (const member of members) {
     if (!balances.has(member.userId)) balances.set(member.userId, 0);
   }

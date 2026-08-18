@@ -103,8 +103,8 @@ describe('balance query batching', () => {
     const balances = await calculateBalances('group-1');
 
     expect(mocks.getByGroupScopeTransfers).toHaveBeenCalledWith('group-1');
-    expect(balances.get('user-1')).toBe(20);
-    expect(balances.get('user-2')).toBe(-20);
+    expect(balances.get('user-1')).toBe(10);
+    expect(balances.get('user-2')).toBe(-10);
   });
 
   it('loads multiple group balances through one shared batch', async () => {

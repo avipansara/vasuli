@@ -80,16 +80,16 @@ export async function calculateGroupBalances(groupIds: string[]): Promise<Map<st
 
     const scopeTransfers = scopeTransfersByGroup[i];
     for (const transfer of scopeTransfers) {
-      // signedGroupBalanceDelta is the change to the actor's group balance.
-      // The transfer's from/to users are the counterparties, so apply the
-      // inverse delta to the sender and the delta to the recipient.
+      // signedGroupBalanceDelta is the change to the transfer actor's group
+      // balance. Apply the signed delta to the sender and its inverse to the
+      // recipient.
       groupBalances.set(
         transfer.fromUserId,
-        (groupBalances.get(transfer.fromUserId) ?? 0) - transfer.signedGroupBalanceDelta,
+        (groupBalances.get(transfer.fromUserId) ?? 0) + transfer.signedGroupBalanceDelta,
       );
       groupBalances.set(
         transfer.toUserId,
-        (groupBalances.get(transfer.toUserId) ?? 0) + transfer.signedGroupBalanceDelta,
+        (groupBalances.get(transfer.toUserId) ?? 0) - transfer.signedGroupBalanceDelta,
       );
     }
   }

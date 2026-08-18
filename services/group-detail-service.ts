@@ -59,7 +59,7 @@ export function createGroupDetailService(dataSource: GroupDetailDataSource = def
       dataSource.getSplits(expenses.map(expense => expense.id)),
     ]);
 
-    return buildGroupDetailReadModel({
+    const readModel = buildGroupDetailReadModel({
       currentUserId,
       group,
       expenses,
@@ -71,6 +71,39 @@ export function createGroupDetailService(dataSource: GroupDetailDataSource = def
       settlements,
       scopeTransfers,
     });
+
+    if (__DEV__) {
+      console.log('[GroupDetail] read model loaded', {
+        currentUserId,
+        groupId,
+        expenseCount: expenses.length,
+        expenseAmounts: expenses.map(expense => ({
+          id: expense.id,
+          amount: expense.amount,
+          paidBy: expense.paidBy,
+        })),
+        splitCount: splits.length,
+        splits: splits.map(split => ({ expenseId: split.expenseId, userId: split.userId, amount: split.amount })),
+        settlementCount: settlements.length,
+        settlements: settlements.map(settlement => ({
+          id: settlement.id,
+          amount: settlement.amount,
+          fromUserId: settlement.fromUserId,
+          toUserId: settlement.toUserId,
+        })),
+        scopeTransferCount: scopeTransfers.length,
+        scopeTransfers: scopeTransfers.map(transfer => ({
+          id: transfer.id,
+          signedGroupBalanceDelta: transfer.signedGroupBalanceDelta,
+          fromUserId: transfer.fromUserId,
+          toUserId: transfer.toUserId,
+          isReversal: transfer.isReversal,
+        })),
+        balances: [...readModel.balances.entries()],
+      });
+    }
+
+    return readModel;
     },
   };
 }
