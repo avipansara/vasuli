@@ -1,7 +1,7 @@
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import type { FriendActivityItem } from '@/services/friend-detail-service';
-import { Animated, StyleSheet, View } from 'react-native';
+import { Animated, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 type SettlementItem = Extract<FriendActivityItem, { type: 'settlement' }>;
 
@@ -12,6 +12,8 @@ type FriendSettlementActivityProps = {
   friendDetailTheme: Record<string, string>;
   isDark: boolean;
   formatDate: (timestamp: number) => string;
+  canReverse: boolean;
+  onReverse: () => void;
 };
 
 export function FriendSettlementActivity({
@@ -21,6 +23,8 @@ export function FriendSettlementActivity({
   friendDetailTheme,
   isDark,
   formatDate,
+  canReverse,
+  onReverse,
 }: FriendSettlementActivityProps) {
   const youPaid = item.direction === 'you_paid_friend';
   const firstName = friendName.split(' ')[0];
@@ -73,6 +77,16 @@ export function FriendSettlementActivity({
           </ThemedText>
         </View>
       </View>
+      {canReverse ? (
+        <TouchableOpacity
+          accessibilityRole="button"
+          accessibilityLabel="Reverse settlement"
+          hitSlop={8}
+          onPress={onReverse}
+          style={styles.reverseButton}>
+          <ThemedText style={[styles.reverseButtonText, { color: isDark ? '#FCA5A5' : '#B91C1C' }]}>Reverse</ThemedText>
+        </TouchableOpacity>
+      ) : null}
     </Animated.View>
   );
 }
@@ -131,4 +145,6 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '700',
   },
+  reverseButton: { marginLeft: 8, paddingVertical: 8, paddingHorizontal: 4 },
+  reverseButtonText: { fontSize: 12, fontWeight: '700' },
 });

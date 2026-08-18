@@ -184,6 +184,7 @@ export const settlementService = {
 
     return {
       id: data.id,
+      operationId: data.operation_id || undefined,
       groupId: data.group_id,
       fromUserId: data.from_user_id,
       toUserId: data.to_user_id,
@@ -206,6 +207,7 @@ export const settlementService = {
 
     return (data || []).map(r => ({
       id: r.id,
+      operationId: r.operation_id || undefined,
       groupId: r.group_id || undefined,
       fromUserId: r.from_user_id,
       toUserId: r.to_user_id,
@@ -228,6 +230,7 @@ export const settlementService = {
 
     return (data || []).map(r => ({
       id: r.id,
+      operationId: r.operation_id || undefined,
       groupId: r.group_id,
       fromUserId: r.from_user_id,
       toUserId: r.to_user_id,
@@ -253,6 +256,7 @@ export const settlementService = {
 
     return (data || []).map(r => ({
       id: r.id,
+      operationId: r.operation_id || undefined,
       groupId: r.group_id || undefined,
       fromUserId: r.from_user_id,
       toUserId: r.to_user_id,
@@ -438,6 +442,7 @@ function mapSettlementReceipt(value: unknown): Settlement {
 
   return {
     id: row.id,
+    operationId: typeof row.operationId === 'string' ? row.operationId : undefined,
     groupId: typeof row.groupId === 'string' ? row.groupId : undefined,
     fromUserId: row.fromUserId,
     toUserId: row.toUserId,

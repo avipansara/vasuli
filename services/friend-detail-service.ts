@@ -41,6 +41,7 @@ export type FriendActivityItem =
     type: 'settlement';
     date: number;
     settlementId: string;
+    operationId?: string;
     amount: number;
     currency: string;
     direction: FriendSettlementDirection;
@@ -325,6 +326,7 @@ export function buildFriendDetailData(
       type: 'settlement',
       date: settlement.date,
       settlementId: settlement.id,
+      operationId: settlement.operationId,
       amount: settlement.amount,
       currency: settlement.currency,
       direction: isCurrentUserPayer ? 'you_paid_friend' : 'friend_paid_you',

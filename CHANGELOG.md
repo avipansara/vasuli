@@ -4,6 +4,8 @@
   compensating payment and scope-offset records, authorization for the two
   involved users, and idempotent reversal responses.
 - Labeled reversal offset entries distinctly in Friend settlement history.
+- Added reversal actions for operation-linked cash settlements in Friend history;
+  legacy settlements without an operation link remain read-only.
 - Updated Friend Settle Up allocation so partial payments stay Direct-first
   without moving opposing Group balances, while full-net and zero-net flows
   preview and record explicit cross-scope offsets.

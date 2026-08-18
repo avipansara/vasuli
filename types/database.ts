@@ -57,6 +57,7 @@ export interface ExpenseSplit {
 
 export interface Settlement {
   id: string;
+  operationId?: string;
   groupId?: string;
   fromUserId: string;
   toUserId: string;

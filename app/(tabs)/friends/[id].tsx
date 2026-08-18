@@ -290,8 +290,8 @@ export default function FriendDetailScreen() {
     );
   }
 
-  const handleReverseScopeTransfer = useCallback((item: Extract<FriendDetailData['activity'][number], { type: 'scope_transfer' }>) => {
-    const expectedBalance = relationship?.totalsByCurrency.find(total => total.currency === item.currency)?.amount;
+  const handleReverseOperation = useCallback((operationId: string, currency: string) => {
+    const expectedBalance = relationship?.totalsByCurrency.find(total => total.currency === currency)?.amount;
     if (expectedBalance === undefined) {
       Alert.alert('Unable to reverse', 'Refresh the Friend details and try again.');
       return;
@@ -307,7 +307,7 @@ export default function FriendDetailScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              await settlementService.reverse(item.operationId, expectedBalance);
+              await settlementService.reverse(operationId, expectedBalance);
               await Promise.all([
                 refetch(),
                 queryClient.invalidateQueries({ queryKey: friendsHomeQueryKey }),
@@ -329,6 +329,15 @@ export default function FriendDetailScreen() {
       ],
     );
   }, [friendsHomeQueryKey, queryClient, refetch, relationship?.totalsByCurrency]);
+
+  const handleReverseScopeTransfer = useCallback((item: Extract<FriendDetailData['activity'][number], { type: 'scope_transfer' }>) => {
+    handleReverseOperation(item.operationId, item.currency);
+  }, [handleReverseOperation]);
+
+  const handleReverseSettlement = useCallback((item: Extract<FriendDetailData['activity'][number], { type: 'settlement' }>) => {
+    if (!item.operationId) return;
+    handleReverseOperation(item.operationId, item.currency);
+  }, [handleReverseOperation]);
 
   const handleRemoveFriend = () => {
     if (isRemovingFriend) return;
@@ -802,6 +811,8 @@ export default function FriendDetailScreen() {
                             friendDetailTheme={friendDetailTheme as Record<string, string>}
                             isDark={isDark}
                             formatDate={formatDate}
+                            canReverse={Boolean(item.operationId) && !item.notes?.startsWith('Reversal of settlement operation')}
+                            onReverse={() => handleReverseSettlement(item)}
                           />
                           : item.type === 'scope_transfer'
                             ? <FriendScopeTransferActivity
