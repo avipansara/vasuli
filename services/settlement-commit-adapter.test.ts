@@ -23,7 +23,7 @@ describe('settlement commit adapter', () => {
       error: null,
     });
 
-    await expect(settlementService.reverse('operation-1')).resolves.toEqual({
+    await expect(settlementService.reverse('operation-1', 0)).resolves.toEqual({
       operationId: 'operation-1',
       status: 'reversed',
       reversedAt: Date.parse('2026-08-18T04:00:00.000Z'),
@@ -32,6 +32,7 @@ describe('settlement commit adapter', () => {
 
     expect(rpc).toHaveBeenCalledWith('reverse_settlement_operation', {
       p_operation_id: 'operation-1',
+      p_expected_balance: 0,
     });
   });
 
@@ -41,7 +42,7 @@ describe('settlement commit adapter', () => {
       error: { message: 'SETTLEMENT_REVERSAL_UNAUTHORIZED' },
     });
 
-    await expect(settlementService.reverse('operation-2')).rejects.toMatchObject({
+    await expect(settlementService.reverse('operation-2', 0)).rejects.toMatchObject({
       code: 'unauthorized',
     });
   });
@@ -57,7 +58,7 @@ describe('settlement commit adapter', () => {
       error: null,
     });
 
-    await expect(settlementService.reverse('operation-3')).rejects.toThrow(/invalid receipt/i);
+    await expect(settlementService.reverse('operation-3', 0)).rejects.toThrow(/invalid receipt/i);
   });
 
   it('sends one RPC request and maps a reused receipt', async () => {

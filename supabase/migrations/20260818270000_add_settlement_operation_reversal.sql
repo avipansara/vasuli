@@ -27,8 +27,11 @@ CREATE INDEX IF NOT EXISTS idx_settlement_operation_reversals_operation
 ALTER TABLE public.settlement_operation_reversals ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON TABLE public.settlement_operation_reversals FROM PUBLIC, anon, authenticated;
 
+DROP FUNCTION IF EXISTS public.reverse_settlement_operation(UUID);
+
 CREATE OR REPLACE FUNCTION public.reverse_settlement_operation(
-  p_operation_id UUID
+  p_operation_id UUID,
+  p_expected_balance NUMERIC
 )
 RETURNS JSONB
 LANGUAGE plpgsql
@@ -41,6 +44,8 @@ DECLARE
   operation_row public.settlement_operations%ROWTYPE;
   reversal_row public.settlement_operation_reversals%ROWTYPE;
   reversal_settlement_count INTEGER := 0;
+  current_balance NUMERIC;
+  expected_after_balance NUMERIC;
 BEGIN
   SELECT u.id
   INTO app_user_id
@@ -83,6 +88,89 @@ BEGIN
 
   IF operation_row.status <> 'committed' THEN
     RAISE EXCEPTION 'SETTLEMENT_OPERATION_INVALID_STATUS';
+  END IF;
+
+  IF p_expected_balance IS NULL OR p_expected_balance <> ROUND(p_expected_balance, 2) THEN
+    RAISE EXCEPTION 'SETTLEMENT_STALE_BALANCE';
+  END IF;
+
+  expected_after_balance := CASE
+    WHEN operation_row.expected_balance = 0 THEN 0
+    ELSE operation_row.expected_balance
+      - SIGN(operation_row.expected_balance) * operation_row.requested_payment_amount
+  END;
+
+  IF ROUND(p_expected_balance, 2) <> ROUND(expected_after_balance, 2) THEN
+    RAISE EXCEPTION 'SETTLEMENT_STALE_BALANCE';
+  END IF;
+
+  SELECT COALESCE((
+    SELECT SUM(
+      CASE
+        WHEN e.paid_by = operation_row.actor_user_id THEN COALESCE(friend_split.amount, 0)
+        WHEN e.paid_by = operation_row.friend_user_id THEN -COALESCE(current_split.amount, 0)
+        ELSE 0
+      END
+    )
+    FROM public.expenses e
+    LEFT JOIN public.expense_splits current_split
+      ON current_split.expense_id = e.id
+     AND current_split.user_id = operation_row.actor_user_id
+     AND (current_split.amount > 0 OR e.paid_by = operation_row.actor_user_id)
+    LEFT JOIN public.expense_splits friend_split
+      ON friend_split.expense_id = e.id
+     AND friend_split.user_id = operation_row.friend_user_id
+     AND (friend_split.amount > 0 OR e.paid_by = operation_row.friend_user_id)
+    WHERE e.deleted_at IS NULL
+      AND e.group_id IS NULL
+      AND e.currency = operation_row.currency
+      AND (COALESCE(current_split.amount, 0) > 0 OR e.paid_by = operation_row.actor_user_id)
+      AND (COALESCE(friend_split.amount, 0) > 0 OR e.paid_by = operation_row.friend_user_id)
+  ), 0)
+  + COALESCE((
+    SELECT SUM(CASE WHEN s.from_user_id = operation_row.actor_user_id THEN s.amount ELSE -s.amount END)
+    FROM public.settlements s
+    WHERE s.group_id IS NULL
+      AND s.currency = operation_row.currency
+      AND (
+        (s.from_user_id = operation_row.actor_user_id AND s.to_user_id = operation_row.friend_user_id)
+        OR (s.from_user_id = operation_row.friend_user_id AND s.to_user_id = operation_row.actor_user_id)
+      )
+  ), 0)
+  + COALESCE((
+    SELECT SUM(COALESCE(friend_split.amount, 0) - CASE WHEN e.paid_by = operation_row.friend_user_id THEN e.amount ELSE 0 END)
+    FROM public.expenses e
+    JOIN public.group_members current_member
+      ON current_member.group_id = e.group_id
+     AND current_member.user_id = operation_row.actor_user_id
+    JOIN public.group_members friend_member
+      ON friend_member.group_id = e.group_id
+     AND friend_member.user_id = operation_row.friend_user_id
+    LEFT JOIN public.expense_splits friend_split
+      ON friend_split.expense_id = e.id
+     AND friend_split.user_id = operation_row.friend_user_id
+    WHERE e.deleted_at IS NULL
+      AND e.currency = operation_row.currency
+  ), 0)
+  + COALESCE((
+    SELECT SUM(CASE
+      WHEN s.from_user_id = operation_row.friend_user_id THEN -s.amount
+      WHEN s.to_user_id = operation_row.friend_user_id THEN s.amount
+      ELSE 0
+    END)
+    FROM public.settlements s
+    JOIN public.group_members current_member
+      ON current_member.group_id = s.group_id
+     AND current_member.user_id = operation_row.actor_user_id
+    JOIN public.group_members friend_member
+      ON friend_member.group_id = s.group_id
+     AND friend_member.user_id = operation_row.friend_user_id
+    WHERE s.currency = operation_row.currency
+  ), 0)
+  INTO current_balance;
+
+  IF ROUND(current_balance, 2) <> ROUND(p_expected_balance, 2) THEN
+    RAISE EXCEPTION 'SETTLEMENT_STALE_BALANCE';
   END IF;
 
   INSERT INTO public.settlement_operation_reversals (operation_id, actor_user_id)
@@ -150,5 +238,5 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.reverse_settlement_operation(UUID) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.reverse_settlement_operation(UUID) TO authenticated;
+REVOKE ALL ON FUNCTION public.reverse_settlement_operation(UUID, NUMERIC) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.reverse_settlement_operation(UUID, NUMERIC) TO authenticated;

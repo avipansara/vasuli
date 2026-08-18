@@ -152,9 +152,10 @@ export const settlementService = {
     return mapCombinedSettlementReceipt(data);
   },
 
-  async reverse(operationId: string): Promise<SettlementOperationReversal> {
+  async reverse(operationId: string, expectedBalance: number): Promise<SettlementOperationReversal> {
     const { data, error } = await supabase.rpc('reverse_settlement_operation', {
       p_operation_id: operationId,
+      p_expected_balance: expectedBalance,
     });
 
     if (error) throw mapCombinedSettlementError(error);
