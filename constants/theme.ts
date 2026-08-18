@@ -86,7 +86,7 @@ export const Colors = {
     accent: '#10b981',
     accentSecondary: '#4edea3',
     card: '#000000',
-    cardGlass: 'rgba(0, 0, 0, 0.6)',
+    cardGlass: 'rgba(15, 23, 42, 0.6)',
     border: 'rgba(255, 255, 255, 0.08)',
     success: '#10b981',
     error: '#ffb4ab',
@@ -266,7 +266,7 @@ export const SettleTheme = {
   dark: {
     heroBackground: '#000000',
     heroBorder: 'rgba(255, 255, 255, 0.08)',
-    pillBackground: 'rgba(255, 255, 255, 0.06)',
+    pillBackground: 'rgba(255, 255, 255, 0.15))',
     buttonBackground: '#4edea3',
     buttonText: '#003824',
     accentText: '#10b981',
