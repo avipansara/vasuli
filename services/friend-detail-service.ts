@@ -73,6 +73,8 @@ export type FriendActivityItem =
     groupName?: string;
     amount: number;
     currency: string;
+    fromUserId: string;
+    toUserId: string;
     direction: FriendSettlementDirection;
     isReversal?: boolean;
     notes?: string;
@@ -175,6 +177,8 @@ export function projectFriendRelationship(
       groupName: group?.groupName,
       amount: Math.abs(transfer.signedGroupBalanceDelta),
       currency: transfer.currency,
+      fromUserId: transfer.fromUserId,
+      toUserId: transfer.toUserId,
       direction: transfer.signedGroupBalanceDelta < 0 ? 'friend_paid_you' : 'you_paid_friend',
       isReversal: transfer.isReversal,
       notes: transfer.note,

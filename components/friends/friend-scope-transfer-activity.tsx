@@ -1,7 +1,7 @@
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import type { FriendActivityItem } from '@/services/friend-detail-service';
-import { Animated, StyleSheet, View } from 'react-native';
+import { Animated, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 type ScopeTransferItem = Extract<FriendActivityItem, { type: 'scope_transfer' }>;
 
@@ -11,6 +11,8 @@ type FriendScopeTransferActivityProps = {
   colors: Record<string, string>;
   isDark: boolean;
   formatDate: (timestamp: number) => string;
+  canReverse: boolean;
+  onReverse: () => void;
 };
 
 export function FriendScopeTransferActivity({
@@ -19,6 +21,8 @@ export function FriendScopeTransferActivity({
   colors,
   isDark,
   formatDate,
+  canReverse,
+  onReverse,
 }: FriendScopeTransferActivityProps) {
   const groupName = item.groupName ?? 'shared group';
   const movedByYou = item.direction === 'you_paid_friend';
@@ -46,6 +50,16 @@ export function FriendScopeTransferActivity({
       <ThemedText type="subtitle" style={[styles.amount, { color: isDark ? '#7DD3FC' : '#0369A1' }]}>
         {item.currency} {item.amount.toFixed(2)}
       </ThemedText>
+      {canReverse && !item.isReversal ? (
+        <TouchableOpacity
+          accessibilityRole="button"
+          accessibilityLabel="Reverse settlement"
+          hitSlop={8}
+          onPress={onReverse}
+          style={styles.reverseButton}>
+          <ThemedText style={[styles.reverseButtonText, { color: isDark ? '#FCA5A5' : '#B91C1C' }]}>Reverse</ThemedText>
+        </TouchableOpacity>
+      ) : null}
     </Animated.View>
   );
 }
@@ -71,4 +85,6 @@ const styles = StyleSheet.create({
   info: { flex: 1, minWidth: 0 },
   subtitle: { fontSize: 12, lineHeight: 16, marginTop: 2 },
   amount: { fontSize: 14, marginLeft: 8 },
+  reverseButton: { marginLeft: 8, paddingVertical: 8, paddingHorizontal: 4 },
+  reverseButtonText: { fontSize: 12, fontWeight: '700' },
 });

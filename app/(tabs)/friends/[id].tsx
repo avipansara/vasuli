@@ -10,12 +10,14 @@ import { useAuth } from '@/contexts/auth-context-otp';
 import { useFriendDetailController } from '@/hooks/use-friend-detail-controller';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
+import { CombinedSettlementError } from '@/services/combined-settlement-errors';
 import {
   filterFriendActivity,
   friendDetailModule,
   groupFriendActivityByMonth,
   type FriendActivityFilter,
 } from '@/services/friend-detail-module';
+import { settlementService } from '@/services/settlement-service';
 import { projectFriendRelationship, type FriendDetailData } from '@/services/friend-detail-service';
 import type { GroupDetailReadModel } from '@/services/group-detail-read-model';
 import { applySettlementToGroupReadModel } from '@/services/group-detail-read-model';
@@ -287,6 +289,46 @@ export default function FriendDetailScreen() {
       ]
     );
   }
+
+  const handleReverseScopeTransfer = useCallback((item: Extract<FriendDetailData['activity'][number], { type: 'scope_transfer' }>) => {
+    const expectedBalance = relationship?.totalsByCurrency.find(total => total.currency === item.currency)?.amount;
+    if (expectedBalance === undefined) {
+      Alert.alert('Unable to reverse', 'Refresh the Friend details and try again.');
+      return;
+    }
+
+    Alert.alert(
+      'Reverse settlement?',
+      'This restores the balances affected by the settlement operation. The original history remains visible.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Reverse',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await settlementService.reverse(item.operationId, expectedBalance);
+              await Promise.all([
+                refetch(),
+                queryClient.invalidateQueries({ queryKey: friendsHomeQueryKey }),
+              ]);
+              Alert.alert('Settlement reversed', 'The affected balances were restored.');
+            } catch (error) {
+              if (error instanceof CombinedSettlementError && error.code === 'stale_balance') {
+                Alert.alert('Balance changed', 'Refresh the Friend details before reversing this settlement.');
+                return;
+              }
+              if (error instanceof CombinedSettlementError) {
+                Alert.alert('Unable to reverse', error.message);
+                return;
+              }
+              Alert.alert('Unable to reverse', 'The settlement could not be reversed.');
+            }
+          },
+        },
+      ],
+    );
+  }, [friendsHomeQueryKey, queryClient, refetch, relationship?.totalsByCurrency]);
 
   const handleRemoveFriend = () => {
     if (isRemovingFriend) return;
@@ -768,6 +810,8 @@ export default function FriendDetailScreen() {
                               colors={colors as Record<string, string>}
                               isDark={isDark}
                               formatDate={formatDate}
+                              canReverse={item.fromUserId === currentUserId || item.toUserId === currentUserId}
+                              onReverse={() => handleReverseScopeTransfer(item)}
                             />
                             : <FriendExpenseActivityEvent
                             item={item}
