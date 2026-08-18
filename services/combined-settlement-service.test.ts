@@ -171,8 +171,8 @@ describe('combined settlement service', () => {
       }],
       transfers: [{
         groupId: 'group-1',
-        fromUserId: 'friend-a',
-        toUserId: 'current-user',
+        fromUserId: 'current-user',
+        toUserId: 'friend-a',
         amount: 8,
         currency: 'USD',
         signedGroupBalanceDelta: 8,

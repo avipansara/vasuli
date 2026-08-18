@@ -159,8 +159,8 @@ export function buildCombinedSettlementPlan({
   const transferredGroupIds = new Set(transferGroups.map(scope => scope.groupId));
   const transfers = transferGroups.map(scope => ({
     groupId: scope.groupId,
-    fromUserId: friendId,
-    toUserId: currentUserId,
+    fromUserId: scope.amount > 0 ? friendId : currentUserId,
+    toUserId: scope.amount > 0 ? currentUserId : friendId,
     amount: Math.abs(scope.amount),
     currency,
     signedGroupBalanceDelta: -scope.amount,

@@ -178,9 +178,11 @@ export default function FriendSettleScreen() {
     ];
     Alert.alert(
       'Confirm Settle Up',
-      previewLines.length > 0
-        ? [`Cash payment: ${settlementCurrency} ${amountNum.toFixed(2)}`, ...previewLines].join('\n')
-        : `Cash payment: ${settlementCurrency} ${amountNum.toFixed(2)}`,
+      [
+        `Cash payment: ${settlementCurrency} ${amountNum.toFixed(2)}`,
+        ...(amountNum === 0 ? ['No money changes hands; internal offsets only.'] : []),
+        ...previewLines,
+      ].join('\n'),
       [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Confirm', onPress: () => { void commitSettlement(); } },

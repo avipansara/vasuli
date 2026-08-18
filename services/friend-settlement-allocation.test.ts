@@ -136,8 +136,8 @@ describe('buildCombinedSettlementAllocations', () => {
     })).toEqual({
       transfers: [{
         groupId: 'group-1',
-        fromUserId: 'avee',
-        toUserId: 'current-user',
+        fromUserId: 'current-user',
+        toUserId: 'avee',
         amount: 8,
         currency: 'USD',
         signedGroupBalanceDelta: 8,
@@ -202,8 +202,8 @@ describe('buildCombinedSettlementAllocations', () => {
     })).toEqual({
       transfers: [{
         groupId: 'group-1',
-        fromUserId: 'avee',
-        toUserId: 'current-user',
+        fromUserId: 'current-user',
+        toUserId: 'avee',
         amount: 8,
         currency: 'USD',
         signedGroupBalanceDelta: 8,
@@ -226,6 +226,24 @@ describe('buildCombinedSettlementAllocations', () => {
     });
 
     expect(plan.transfers).toHaveLength(2);
+    expect(plan.transfers).toEqual(expect.arrayContaining([
+      {
+        groupId: 'group-1',
+        fromUserId: 'avee',
+        toUserId: 'current-user',
+        amount: 10,
+        currency: 'USD',
+        signedGroupBalanceDelta: -10,
+      },
+      {
+        groupId: 'group-2',
+        fromUserId: 'current-user',
+        toUserId: 'avee',
+        amount: 8,
+        currency: 'USD',
+        signedGroupBalanceDelta: 8,
+      },
+    ]));
     expect(plan.allocations).toEqual([{
       groupId: undefined,
       fromUserId: 'avee',
