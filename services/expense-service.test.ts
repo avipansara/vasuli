@@ -2,19 +2,31 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => {
   const getSession = vi.fn()
+  const rpc = vi.fn()
   const from = vi.fn()
   const expenseSingle = vi.fn()
+  const expenseFetchSingle = vi.fn()
   const expenseInsert = vi.fn()
+  const expenseUpdate = vi.fn()
+  const expenseUpdateEq = vi.fn()
+  const splitSelect = vi.fn()
   const splitsInsert = vi.fn()
   const linkAuthUserToProfile = vi.fn()
+  const logExpenseDeleted = vi.fn()
 
   return {
     getSession,
+    rpc,
     from,
     expenseSingle,
+    expenseFetchSingle,
     expenseInsert,
+    expenseUpdate,
+    expenseUpdateEq,
+    splitSelect,
     splitsInsert,
     linkAuthUserToProfile,
+    logExpenseDeleted,
   }
 })
 
@@ -23,12 +35,19 @@ vi.mock('@/lib/supabase', () => ({
     auth: {
       getSession: mocks.getSession,
     },
+    rpc: mocks.rpc,
     from: mocks.from,
   },
 }))
 
 vi.mock('@/services/auth-profile-service', () => ({
   linkAuthUserToProfile: mocks.linkAuthUserToProfile,
+}))
+
+vi.mock('@/services/activity-service', () => ({
+  activityService: {
+    logExpenseDeleted: mocks.logExpenseDeleted,
+  },
 }))
 
 import { expenseService } from '@/services/expense-service'
@@ -186,5 +205,58 @@ describe('expenseService.create auth bridge', () => {
       paid_by: 'friend-user-id',
       created_by: 'current-user-id',
     }))
+  })
+
+  it('soft-deletes an expense and records only positive-share participants', async () => {
+    mocks.expenseFetchSingle.mockResolvedValue({
+      data: {
+        id: 'expense-id',
+        group_id: 'group-id',
+        description: 'Dinner',
+        amount: 60,
+        paid_by: 'payer-id',
+        created_by: 'creator-id',
+        groups: { name: 'Alaska 2026' },
+      },
+      error: null,
+    })
+    mocks.splitSelect.mockResolvedValue({
+      data: [
+        { user_id: 'positive-share-user', amount: 30 },
+        { user_id: 'zero-share-user', amount: 0 },
+      ],
+      error: null,
+    })
+    mocks.rpc.mockResolvedValue({ data: { id: 'expense-id' }, error: null })
+    mocks.logExpenseDeleted.mockResolvedValue({ id: 'activity-id' })
+    mocks.from.mockImplementation((table: string) => {
+      if (table === 'expenses') {
+        return {
+          select: () => ({
+            eq: () => ({ single: mocks.expenseFetchSingle }),
+          }),
+          update: mocks.expenseUpdate.mockImplementation(() => ({
+            eq: () => ({ is: mocks.expenseUpdateEq }),
+          })),
+        }
+      }
+
+      if (table === 'expense_splits') {
+        return {
+          select: () => ({
+            eq: mocks.splitSelect,
+          }),
+        }
+      }
+
+      return {}
+    })
+
+    await expenseService.delete('expense-id', 'payer-id', 'Payer')
+
+    expect(mocks.rpc).toHaveBeenCalledWith('soft_delete_expense', {
+      p_expense_id: 'expense-id',
+      p_user_name: 'Payer',
+    })
   })
 })

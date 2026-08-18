@@ -40,6 +40,8 @@ export interface Expense {
   notes?: string;
   createdAt: number;
   updatedAt: number;
+  deletedAt?: number;
+  deletedBy?: string;
 }
 
 export interface ExpenseSplit {

@@ -125,6 +125,7 @@ export default function ExpenseDetailScreen() {
                 const usersToNotify = await userService.getByIds(
                   splits
                     .map(split => split.userId)
+                    .filter((userId, index) => splits[index].amount > 0)
                     .filter(userId => userId !== currentUserId)
                 );
                 const pushTokens = usersToNotify
@@ -200,7 +201,8 @@ export default function ExpenseDetailScreen() {
 
   const isCreator = expense.createdBy === currentUserId || (!expense.createdBy && expense.paidBy === currentUserId);
   const isPayer = expense.paidBy === currentUserId;
-  const canManageExpense = isCreator || isPayer;
+  const isDeleted = Boolean(expense.deletedAt);
+  const canManageExpense = !isDeleted && (isCreator || isPayer);
   const payerName = isPayer ? 'You' : payer?.name || 'Unknown';
 
   const cardStyle = {
@@ -315,6 +317,23 @@ export default function ExpenseDetailScreen() {
               </View>
             </View>
           </View>
+
+          {isDeleted && (
+            <View style={[styles.deletedBanner, {
+              backgroundColor: isDark ? 'rgba(239, 68, 68, 0.14)' : '#fef2f2',
+              borderColor: isDark ? 'rgba(248, 113, 113, 0.35)' : '#fecaca',
+            }]}>
+              <IconSymbol name="trash" size={18} color={isDark ? '#fca5a5' : '#b91c1c'} />
+              <View style={styles.deletedBannerContent}>
+                <ThemedText type="defaultSemiBold" style={{ color: isDark ? '#fecaca' : '#991b1b' }}>
+                  Expense deleted
+                </ThemedText>
+                <ThemedText style={{ color: isDark ? '#fca5a5' : '#b91c1b' }}>
+                  This is a historical record and can’t be edited or restored.
+                </ThemedText>
+              </View>
+            </View>
+          )}
 
           <View style={styles.splitSection}>
             <View style={styles.sectionHeader}>
@@ -698,6 +717,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 12,
     gap: 12,
+  },
+  deletedBanner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    borderWidth: 1,
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 18,
+  },
+  deletedBannerContent: {
+    flex: 1,
+    gap: 3,
   },
   activityIcon: {
     width: 30,

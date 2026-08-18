@@ -101,6 +101,8 @@ export type Database = {
           notes: string | null
           created_at: string
           updated_at: string
+          deleted_at: string | null
+          deleted_by: string | null
         }
         Insert: {
           id?: string
@@ -115,6 +117,8 @@ export type Database = {
           notes?: string | null
           created_at?: string
           updated_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
         }
         Update: {
           id?: string
@@ -129,6 +133,8 @@ export type Database = {
           notes?: string | null
           created_at?: string
           updated_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
         }
         Relationships: []
       }
@@ -200,7 +206,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      soft_delete_expense: {
+        Args: {
+          p_expense_id: string
+          p_user_name: string
+        }
+        Returns: Json
+      }
     }
     Enums: {
       [_ in never]: never

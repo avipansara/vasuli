@@ -82,6 +82,8 @@ export const expenseService = {
       notes: data.notes || undefined,
       createdAt: new Date(data.created_at).getTime(),
       updatedAt: new Date(data.updated_at).getTime(),
+      deletedAt: data.deleted_at ? new Date(data.deleted_at).getTime() : undefined,
+      deletedBy: data.deleted_by || undefined,
     };
   },
 
@@ -106,7 +108,8 @@ export const expenseService = {
     const { error } = await supabase
       .from('expenses')
       .update(updateData)
-      .eq('id', id);
+      .eq('id', id)
+      .is('deleted_at', null);
 
     if (error) throw error;
 
@@ -165,6 +168,8 @@ export const expenseService = {
       notes: data.notes || undefined,
       createdAt: new Date(data.created_at).getTime(),
       updatedAt: new Date(data.updated_at).getTime(),
+      deletedAt: data.deleted_at ? new Date(data.deleted_at).getTime() : undefined,
+      deletedBy: data.deleted_by || undefined,
     };
   },
 
@@ -173,6 +178,7 @@ export const expenseService = {
       .from('expenses')
       .select('*')
       .eq('group_id', groupId)
+      .is('deleted_at', null)
       .order('date', { ascending: false });
 
     if (error) throw error;
@@ -202,6 +208,7 @@ export const expenseService = {
       .from('expenses')
       .select('*')
       .in('group_id', uniqueGroupIds)
+      .is('deleted_at', null)
       .order('date', { ascending: false });
 
     if (error) throw error;
@@ -274,7 +281,8 @@ export const expenseService = {
     const { data: paidData, error: paidError } = await supabase
       .from('expenses')
       .select('id')
-      .eq('paid_by', userId);
+      .eq('paid_by', userId)
+      .is('deleted_at', null);
 
     if (paidError) throw paidError;
 
@@ -290,6 +298,7 @@ export const expenseService = {
       .from('expenses')
       .select('*')
       .in('id', allExpenseIds)
+      .is('deleted_at', null)
       .order('date', { ascending: false });
 
     if (error) throw error;
@@ -312,51 +321,11 @@ export const expenseService = {
   },
 
   async delete(id: string, userId: string, userName: string): Promise<void> {
-    // First, get the expense details before deleting
-    const { data: expense, error: fetchError } = await supabase
-      .from('expenses')
-      .select('*, groups(name)')
-      .eq('id', id)
-      .single();
-
-    if (fetchError) throw fetchError;
-
-    // Check if user is the payer
-    if (expense.created_by !== userId && expense.paid_by !== userId) {
-      throw new Error('Only the creator or payer can delete this expense.');
-    }
-
-    const { data: splitData, error: splitError } = await supabase
-      .from('expense_splits')
-      .select('user_id')
-      .eq('expense_id', id);
-
-    if (splitError) throw splitError;
-
-    const participantIds = Array.from(new Set([
-      userId,
-      ...(splitData || []).map(split => split.user_id),
-    ]));
-
-    // Delete the expense
-    const { error } = await supabase
-      .from('expenses')
-      .delete()
-      .eq('id', id);
+    const { error } = await supabase.rpc('soft_delete_expense', {
+      p_expense_id: id,
+      p_user_name: userName,
+    });
 
     if (error) throw error;
-
-    // Log the activity
-    const { activityService } = await import('./activity-service');
-    await activityService.logExpenseDeleted({
-      expenseId: id,
-      userId,
-      userName,
-      description: expense.description,
-      amount: expense.amount,
-      groupId: expense.group_id || undefined,
-      groupName: expense.groups?.name || undefined,
-      participantIds,
-    });
   },
 };

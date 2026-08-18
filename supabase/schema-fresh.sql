@@ -53,7 +53,9 @@ CREATE TABLE public.groups (
   description TEXT,
   image_url TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  deleted_at TIMESTAMPTZ,
+  deleted_by UUID REFERENCES public.users(id)
 );
 
 -- GROUP MEMBERS TABLE

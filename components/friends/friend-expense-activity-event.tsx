@@ -34,24 +34,31 @@ export function FriendExpenseActivityEvent({
   const iconSurface = isDeleted ? friendDetailTheme.dangerSurface : friendDetailTheme.warningSurface;
   const iconName: IconSymbolName = isDeleted ? 'trash.fill' : 'pencil';
   const amountLabel = item.amount === undefined ? null : `$${item.amount.toFixed(2)}`;
+  const isGroupExpense = Boolean(item.groupId);
+  const sourceLabel = item.groupName || (isGroupExpense ? 'Group' : 'Direct expense');
 
   const content = (
-    <Animated.View style={[styles.updateRow, {
-      backgroundColor: isDark ? '#0d1321' : '#ffffff',
+    <Animated.View style={[styles.updateCard, {
+      backgroundColor: isDark ? '#0f172a' : '#ffffff',
       borderWidth: 0,
       shadowColor: isDark ? '#000000' : '#475569',
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: isDark ? 0.4 : 0.09,
       shadowRadius: 12,
       elevation: 4,
-    }]}> 
-      <View style={[styles.updateMarker, { backgroundColor: statusColor }]} />
+    }]}>
+      <View style={[styles.updateIcon, { backgroundColor: iconSurface }]}>
+        <IconSymbol size={20} name={iconName} color={statusColor} />
+      </View>
       <View style={styles.updateInfo}>
         <View style={styles.activityEventTitleRow}>
-          <ThemedText style={[styles.updateTitle, { color: isDark ? '#F8FAFC' : colors.text }]} numberOfLines={1}>
+          <ThemedText
+            type="subtitle"
+            style={[styles.updateTitle, { color: isDark ? '#F8FAFC' : colors.text }]}
+            numberOfLines={1}>
             {title}
           </ThemedText>
-          <View style={[styles.activityEventBadge, { backgroundColor: iconSurface }]}> 
+          <View style={[styles.activityEventBadge, { backgroundColor: iconSurface }]}>
             <ThemedText style={[styles.activityEventBadgeText, { color: statusColor }]}>
               {statusLabel}
             </ThemedText>
@@ -60,34 +67,46 @@ export function FriendExpenseActivityEvent({
         <ThemedText style={[styles.updateMeta, { color: isDark ? '#94A3B8' : colors.textSecondary }]} numberOfLines={1}>
           {formatDate(item.date)} • {actorName}
         </ThemedText>
+        <View style={[styles.sourcePill, { backgroundColor: isGroupExpense ? friendDetailTheme.positiveSurface : friendDetailTheme.settledSurface }]}>
+          <IconSymbol
+            size={12}
+            name={isGroupExpense ? 'person.3.fill' : 'person.fill'}
+            color={isGroupExpense ? friendDetailTheme.positive : friendDetailTheme.actionIcon}
+          />
+          <ThemedText style={[styles.sourceLabel, { color: isGroupExpense ? friendDetailTheme.positive : friendDetailTheme.actionIcon }]} numberOfLines={1}>
+            {sourceLabel}
+          </ThemedText>
+        </View>
       </View>
       {amountLabel && (
         <View style={styles.updateAmountBlock}>
-          <ThemedText style={[styles.updateStatus, { color: isDark ? '#94A3B8' : colors.textSecondary }]}>total</ThemedText>
-          <ThemedText style={[styles.updateAmount, { color: isDark ? '#94A3B8' : colors.textSecondary }]}>{amountLabel}</ThemedText>
+          <ThemedText style={[styles.updateStatus, { color: isDark ? '#94A3B8' : colors.textSecondary }]}>Total</ThemedText>
+          <ThemedText
+            type="subtitle"
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.82}
+            style={[styles.updateAmount, { color: isDark ? '#F8FAFC' : colors.text }]}>
+            {amountLabel}
+          </ThemedText>
         </View>
       )}
-      <View style={[styles.updateIcon, { backgroundColor: iconSurface }]}> 
-        <IconSymbol size={16} name={iconName} color={statusColor} />
-      </View>
+      {isDeleted ? (
+        <View style={[styles.updateAction, { backgroundColor: iconSurface }]}>
+          <IconSymbol size={17} name="trash.fill" color={statusColor} />
+        </View>
+      ) : (
+        <View style={[styles.updateAction, { backgroundColor: iconSurface }]}>
+          <IconSymbol size={17} name="chevron.right" color={statusColor} />
+        </View>
+      )}
     </Animated.View>
   );
-
-  if (isDeleted) {
-    return (
-      <View
-        accessible
-        accessibilityRole="text"
-        accessibilityLabel={`${statusLabel} ${title}, ${formatDate(item.date)}, by ${actorName}`}>
-        {content}
-      </View>
-    );
-  }
 
   return (
     <TouchableOpacity
       accessibilityRole="button"
-      accessibilityLabel={`${statusLabel} ${title}, ${formatDate(item.date)}, by ${actorName}`}
+      accessibilityLabel={`${statusLabel} ${title}, ${sourceLabel}, ${formatDate(item.date)}, by ${actorName}`}
       accessibilityHint="Opens expense details"
       activeOpacity={0.7}
       onPress={() => onOpenExpense(item.targetId)}>
@@ -97,23 +116,15 @@ export function FriendExpenseActivityEvent({
 }
 
 const styles = StyleSheet.create({
-  updateRow: {
+  updateCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    marginBottom: 7,
-    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 8,
+    borderRadius: 12,
     borderWidth: 0,
-    gap: 9,
-    shadowOffset: { width: 0, height: 1 },
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  updateMarker: {
-    width: 3,
-    height: 28,
-    borderRadius: 999,
+    gap: 10,
   },
   updateInfo: {
     flex: 1,
@@ -121,29 +132,52 @@ const styles = StyleSheet.create({
   },
   updateTitle: {
     flexShrink: 1,
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: 16,
   },
   updateMeta: {
-    fontSize: 11,
+    fontSize: 12,
+    lineHeight: 16,
     marginTop: 2,
+  },
+  sourcePill: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    marginTop: 5,
+    borderRadius: 999,
+  },
+  sourceLabel: {
+    flexShrink: 1,
+    fontSize: 10,
+    fontWeight: '700',
   },
   updateAmountBlock: {
     alignItems: 'flex-end',
-    minWidth: 58,
+    justifyContent: 'center',
+    minWidth: 62,
+    paddingLeft: 2,
   },
   updateStatus: {
-    fontSize: 10,
-    marginBottom: 1,
+    fontSize: 11,
+    marginBottom: 2,
   },
   updateAmount: {
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: 16,
   },
   updateIcon: {
-    width: 26,
-    height: 26,
-    borderRadius: 7,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  updateAction: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -155,11 +189,11 @@ const styles = StyleSheet.create({
   },
   activityEventBadge: {
     borderRadius: 999,
-    paddingHorizontal: 7,
-    paddingVertical: 2,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
   },
   activityEventBadgeText: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '700',
   },
 });
