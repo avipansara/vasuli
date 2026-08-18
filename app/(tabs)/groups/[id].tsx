@@ -5,6 +5,7 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { GroupDetailSkeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useDebouncedQueryInvalidation } from '@/hooks/use-debounced-query-invalidation';
+import { useRefetchOnFocus } from '@/hooks/use-refetch-on-focus';
 import { useRealtime } from '@/hooks/use-realtime';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
@@ -112,11 +113,14 @@ export default function GroupDetailScreen() {
   const {
     data: groupDetail,
     error,
+    isFetching,
     isLoading,
+    isStale,
     refetch,
   } = useQuery({
     queryKey: groupDetailQueryKey,
     enabled: !!currentUserId && !!id,
+    staleTime: 0,
     queryFn: () => groupDetailService.getDetail(currentUserId, id),
   });
   const group = groupDetail?.group ?? null;
@@ -142,6 +146,13 @@ export default function GroupDetailScreen() {
   const loadGroupData = useCallback(async () => {
     await refetch();
   }, [refetch]);
+
+  useRefetchOnFocus({
+    enabled: !!currentUserId && !!id,
+    isFetching,
+    isStale,
+    refetch,
+  });
 
   const handleReverseTransfer = useCallback((transfer: NonNullable<GroupDetailReadModel['scopeTransfers']>[number]) => {
     if (transfer.isReversal || (transfer.fromUserId !== currentUserId && transfer.toUserId !== currentUserId)) return;
