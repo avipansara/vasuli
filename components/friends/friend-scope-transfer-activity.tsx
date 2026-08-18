@@ -57,7 +57,7 @@ export function FriendScopeTransferActivity({
           hitSlop={8}
           onPress={onReverse}
           style={styles.reverseButton}>
-          <ThemedText style={[styles.reverseButtonText, { color: isDark ? '#FCA5A5' : '#B91C1C' }]}>Reverse</ThemedText>
+          <ThemedText style={[styles.reverseButtonText, { color: colors.danger }]}>Reverse</ThemedText>
         </TouchableOpacity>
       ) : null}
     </Animated.View>

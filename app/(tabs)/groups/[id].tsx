@@ -1081,7 +1081,7 @@ export default function GroupDetailScreen() {
                   </View>
                   {!transfer.isReversal && (transfer.fromUserId === currentUserId || transfer.toUserId === currentUserId) ? (
                     <TouchableOpacity accessibilityRole="button" accessibilityLabel="Reverse settlement" hitSlop={8} onPress={() => handleReverseTransfer(transfer)}>
-                      <ThemedText style={{ color: isDark ? '#FCA5A5' : '#B91C1C', fontSize: 12, fontWeight: '700' }}>Reverse</ThemedText>
+                      <ThemedText style={{ color: colors.danger, fontSize: 12, fontWeight: '700' }}>Reverse</ThemedText>
                     </TouchableOpacity>
                   ) : null}
                 </View>
