@@ -43,6 +43,9 @@ export function mapCombinedSettlementError(error: unknown): unknown {
     SETTLEMENT_TRANSFERS_REQUIRED: ['invalid_input', 'Choose the balances to clear.'],
     SETTLEMENT_TRANSFER_INVALID: ['invalid_input', 'The settlement transfer is invalid.'],
     SETTLEMENT_OPERATION_INVALID: ['transient', 'The settlement operation could not be confirmed. Please retry.'],
+    SETTLEMENT_OPERATION_NOT_FOUND: ['invalid_input', 'This settlement operation no longer exists.'],
+    SETTLEMENT_REVERSAL_UNAUTHORIZED: ['unauthorized', 'Only the people in this settlement can reverse it.'],
+    SETTLEMENT_OPERATION_INVALID_STATUS: ['conflict', 'This settlement operation cannot be reversed.'],
   };
   const mapping = mappings[code];
   return mapping ? new CombinedSettlementError(mapping[0], mapping[1]) : error;

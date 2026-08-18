@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { settlementService } from '@/services/settlement-service';
 
 const rpc = vi.hoisted(() => vi.fn());
@@ -8,6 +8,58 @@ vi.mock('@/lib/supabase', () => ({
 }));
 
 describe('settlement commit adapter', () => {
+  beforeEach(() => {
+    rpc.mockReset();
+  });
+
+  it('reverses a settlement operation through the operation-level RPC', async () => {
+    rpc.mockResolvedValueOnce({
+      data: {
+        operationId: 'operation-1',
+        status: 'reversed',
+        reversedAt: '2026-08-18T04:00:00.000Z',
+        reused: false,
+      },
+      error: null,
+    });
+
+    await expect(settlementService.reverse('operation-1')).resolves.toEqual({
+      operationId: 'operation-1',
+      status: 'reversed',
+      reversedAt: Date.parse('2026-08-18T04:00:00.000Z'),
+      reused: false,
+    });
+
+    expect(rpc).toHaveBeenCalledWith('reverse_settlement_operation', {
+      p_operation_id: 'operation-1',
+    });
+  });
+
+  it('maps an unauthorized reversal to the shared settlement error', async () => {
+    rpc.mockResolvedValueOnce({
+      data: null,
+      error: { message: 'SETTLEMENT_REVERSAL_UNAUTHORIZED' },
+    });
+
+    await expect(settlementService.reverse('operation-2')).rejects.toMatchObject({
+      code: 'unauthorized',
+    });
+  });
+
+  it('rejects a reversal receipt with an invalid timestamp', async () => {
+    rpc.mockResolvedValueOnce({
+      data: {
+        operationId: 'operation-3',
+        status: 'reversed',
+        reversedAt: 'not-a-date',
+        reused: false,
+      },
+      error: null,
+    });
+
+    await expect(settlementService.reverse('operation-3')).rejects.toThrow(/invalid receipt/i);
+  });
+
   it('sends one RPC request and maps a reused receipt', async () => {
     rpc.mockResolvedValueOnce({
       data: {

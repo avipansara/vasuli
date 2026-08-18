@@ -7,6 +7,13 @@ import type {
 } from './combined-settlement-service';
 import { mapCombinedSettlementError } from './combined-settlement-errors';
 
+export type SettlementOperationReversal = {
+  operationId: string;
+  status: 'reversed';
+  reversedAt: number;
+  reused: boolean;
+};
+
 interface PairSettlementAllocationParams {
   currentUserId: string;
   friendId: string;
@@ -143,6 +150,15 @@ export const settlementService = {
     if (error) throw mapCombinedSettlementError(error);
 
     return mapCombinedSettlementReceipt(data);
+  },
+
+  async reverse(operationId: string): Promise<SettlementOperationReversal> {
+    const { data, error } = await supabase.rpc('reverse_settlement_operation', {
+      p_operation_id: operationId,
+    });
+
+    if (error) throw mapCombinedSettlementError(error);
+    return mapSettlementOperationReversal(data);
   },
 
   async create(settlement: Omit<Settlement, 'id' | 'createdAt'>): Promise<Settlement> {
@@ -337,6 +353,33 @@ function mapCombinedSettlementReceipt(data: unknown): CombinedSettlementReceipt 
     transfers: Array.isArray(receipt.transfers)
       ? receipt.transfers.map(mapSettlementScopeTransfer)
       : [],
+  };
+}
+
+function mapSettlementOperationReversal(data: unknown): SettlementOperationReversal {
+  if (!data || typeof data !== 'object') {
+    throw new Error('Settlement reversal returned an invalid receipt.');
+  }
+
+  const receipt = data as Record<string, unknown>;
+  const reversedAt = typeof receipt.reversedAt === 'string'
+    ? new Date(receipt.reversedAt).getTime()
+    : Number.NaN;
+  if (
+    typeof receipt.operationId !== 'string'
+    || receipt.status !== 'reversed'
+    || typeof receipt.reversedAt !== 'string'
+    || !Number.isFinite(reversedAt)
+    || typeof receipt.reused !== 'boolean'
+  ) {
+    throw new Error('Settlement reversal returned an invalid receipt.');
+  }
+
+  return {
+    operationId: receipt.operationId,
+    status: 'reversed',
+    reversedAt,
+    reused: receipt.reused,
   };
 }
 
