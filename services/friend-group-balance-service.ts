@@ -70,10 +70,14 @@ export function createFriendGroupBalanceService(
         return [...currencies].map(currency => {
           const expensesForCurrency = groupExpenses.filter(expense => expense.currency === currency);
           const settlementsForCurrency = groupSettlements.filter(settlement => settlement.currency === currency);
+          const transfersForCurrency = scopeTransfers.filter(
+            transfer => transfer.groupId === group.id && transfer.currency === currency,
+          );
           const friendGroupBalance = calculateGroupBalances(
             expensesForCurrency,
             splits.filter(split => expensesForCurrency.some(expense => expense.id === split.expenseId)),
             settlementsForCurrency,
+            transfersForCurrency,
           ).get(friendId) ?? 0;
           const amount = normalizeAmount(-friendGroupBalance);
           /*
@@ -82,7 +86,6 @@ export function createFriendGroupBalanceService(
            * current user owes that Friend. Friend detail displays the same
            * relationship as a signed amount.
            */
-          const transfersForCurrency = scopeTransfers.filter(transfer => transfer.groupId === group.id && transfer.currency === currency);
           const lastActivityAt = Math.max(
             ...expensesForCurrency.map(expense => expense.updatedAt || expense.date),
             ...settlementsForCurrency.map(settlement => settlement.createdAt || settlement.date),

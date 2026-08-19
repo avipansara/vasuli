@@ -104,7 +104,7 @@ describe('friend group balance service', () => {
     }]);
   });
 
-  it('reports raw group balances and includes transfer activity for the relationship projection', async () => {
+  it('applies the signed scope-transfer delta to the projected friend group balance', async () => {
     const transfer: SettlementScopeTransfer = {
       id: 'transfer-1',
       operationId: 'operation-1',
@@ -124,8 +124,34 @@ describe('friend group balance service', () => {
     });
 
     await expect(service.getSharedGroupBalances('current-user', 'avee')).resolves.toMatchObject([{
-      amount: 100,
+      amount: 200,
       direction: 'you_are_owed',
+      lastActivityAt: 40,
+    }]);
+  });
+
+  it('applies a negative signed scope-transfer delta to the projected friend group balance', async () => {
+    const transfer: SettlementScopeTransfer = {
+      id: 'transfer-2',
+      operationId: 'operation-2',
+      groupId: 'alaska',
+      fromUserId: 'avee',
+      toUserId: 'current-user',
+      currency: 'USD',
+      signedGroupBalanceDelta: -50,
+      createdAt: 40,
+    };
+    const service = createFriendGroupBalanceService({
+      getUserGroups: async () => [group('alaska', 'Alaska 2026')],
+      getExpenses: async () => [{ ...expense, paidBy: 'avee' }],
+      getSplits: async () => splits,
+      getSettlements: async () => [],
+      getScopeTransfers: async () => [transfer],
+    });
+
+    await expect(service.getSharedGroupBalances('current-user', 'avee')).resolves.toMatchObject([{
+      amount: -150,
+      direction: 'you_owe',
       lastActivityAt: 40,
     }]);
   });
