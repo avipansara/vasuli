@@ -1,15 +1,12 @@
 import {
   ACCENT_TEAL,
   BG_ICON_DARK,
-  BG_ICON_LIGHT,
-  BTN_DISABLED_DARK,
-  BTN_DISABLED_LIGHT
+  BG_ICON_LIGHT
 } from '@/constants/theme';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
 import {
-  ActivityIndicator,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -20,6 +17,7 @@ import {
 } from 'react-native';
 import { ThemedText } from '../themed-text';
 import { IconSymbol, IconSymbolName } from './icon-symbol';
+import { ThemedButton } from './themed-button';
 
 interface SharedModalProps {
   visible: boolean;
@@ -36,9 +34,9 @@ interface SharedModalProps {
   submitIcon?: IconSymbolName;
   submitDisabled?: boolean;
   submitLoading?: boolean;
-  onSubmit?: () => void;
-  submitGradientColors?: readonly [string, string];
   submitTextColor?: string;
+  headerStyle?: 'default' | 'centered';
+  submitBadge?: string | number;
 }
 
 export function SharedModal({
@@ -57,19 +55,15 @@ export function SharedModal({
   submitDisabled = false,
   submitLoading = false,
   onSubmit,
-  submitGradientColors,
   submitTextColor = '#0A0A0F',
+  headerStyle = 'default',
+  submitBadge,
 }: SharedModalProps) {
   const { colors, gradients, isDark } = useThemeColors();
 
   const defaultIconBg = isDark ? BG_ICON_DARK : BG_ICON_LIGHT;
   const defaultIconColor = isDark ? ACCENT_TEAL : colors.tint;
   const closeIconColor = '#EF4444';
-
-  const disabledColors = isDark ? BTN_DISABLED_DARK : BTN_DISABLED_LIGHT;
-  const buttonColors = submitDisabled
-    ? disabledColors
-    : (submitGradientColors || gradients.buttonPrimary);
 
   const headerContent = (
     <View style={styles.headerContent}>
@@ -111,17 +105,33 @@ export function SharedModal({
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.keyboard}>
-          <View style={styles.header}>
-            <TouchableOpacity
-              onPress={onClose}
-              style={styles.closeButton}>
-              <IconSymbol size={20} name="xmark" color={closeIconColor} />
-            </TouchableOpacity>
-          </View>
+          {headerStyle === 'centered' ? (
+            <View style={[styles.centeredHeader, { borderBottomColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)' }]}>
+              <TouchableOpacity
+                onPress={onClose}
+                accessibilityRole="button"
+                accessibilityLabel="Close modal"
+                style={styles.centeredCloseButton}>
+                <IconSymbol size={20} name="xmark" color={colors.text} />
+              </TouchableOpacity>
+              <ThemedText style={[styles.centeredTitle, { color: colors.text }]}>
+                {title}
+              </ThemedText>
+              <View style={{ width: 36 }} />
+            </View>
+          ) : (
+            <View style={styles.header}>
+              <TouchableOpacity
+                onPress={onClose}
+                style={styles.closeButton}>
+                <IconSymbol size={20} name="xmark" color={closeIconColor} />
+              </TouchableOpacity>
+            </View>
+          )}
 
           {bodyContent ? (
             <View style={styles.bodyContent}>
-              {headerContent}
+              {headerStyle !== 'centered' && headerContent}
               {bodyContent}
             </View>
           ) : (
@@ -130,7 +140,7 @@ export function SharedModal({
               showsVerticalScrollIndicator={false}
               contentContainerStyle={styles.scrollContent}
               keyboardShouldPersistTaps="handled">
-              {headerContent}
+              {headerStyle !== 'centered' && headerContent}
               {children}
             </ScrollView>
           )}
@@ -142,38 +152,14 @@ export function SharedModal({
                 { borderTopColor: isDark ? 'rgba(45, 212, 191, 0.15)' : colors.border },
               ]}>
               {footerContent || (
-                <TouchableOpacity
-                  activeOpacity={0.8}
-                  onPress={onSubmit}
-                  disabled={submitDisabled || submitLoading}>
-                  <LinearGradient
-                    colors={buttonColors as [string, string]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={[
-                      styles.submitButton,
-                      (submitDisabled || submitLoading) && styles.disabledButton,
-                    ]}>
-                    {submitLoading ? (
-                      <ActivityIndicator size="small" color={submitDisabled ? '#6B7280' : submitTextColor} />
-                    ) : (
-                      <>
-                        <IconSymbol
-                          size={20}
-                          name={submitIcon}
-                          color={submitDisabled ? '#6B7280' : submitTextColor}
-                        />
-                        <ThemedText
-                          style={[
-                            styles.submitButtonText,
-                            { color: submitDisabled ? '#6B7280' : submitTextColor },
-                          ]}>
-                          {submitLabel}
-                        </ThemedText>
-                      </>
-                    )}
-                  </LinearGradient>
-                </TouchableOpacity>
+                <ThemedButton
+                  label={submitLabel || ''}
+                  onPress={onSubmit || (() => {})}
+                  disabled={submitDisabled}
+                  loading={submitLoading}
+                  icon={submitIcon}
+                  badge={submitBadge}
+                />
               )}
             </View>
           )}
@@ -308,5 +294,37 @@ const styles = StyleSheet.create({
   },
   disabledButton: {
     opacity: 0.6,
+  },
+  centeredHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: Platform.OS === 'ios' ? 60 : 24,
+    paddingBottom: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  centeredCloseButton: {
+    width: 36,
+    height: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  centeredTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  submitBadgeContainer: {
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+    marginLeft: 6,
+  },
+  submitBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
   },
 });

@@ -1,6 +1,7 @@
 import { FriendCard } from '@/components/friends/friend-card';
 import { ThemedText } from '@/components/themed-text';
 import { AsyncErrorState } from '@/components/ui/async-error-state';
+import { EmptyState } from '@/components/ui/empty-state';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { FriendsListSkeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/auth-context-otp';
@@ -13,7 +14,6 @@ import { friendshipService } from '@/services/friendship-service';
 import { queryKeys } from '@/services/query-keys';
 import type { Expense, User } from '@/types/database';
 import { useQuery } from '@tanstack/react-query';
-import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import { Alert, FlatList, Platform, RefreshControl, StyleSheet, TouchableOpacity, View } from 'react-native';
@@ -150,12 +150,12 @@ export default function FriendsScreen() {
     ? (netBalance > 0 ? '#10b981' : netBalance < 0 ? '#ffb4ab' : '#10b981')
     : (netBalance > 0 ? colors.success : netBalance < 0 ? colors.error : colors.tint);
   const actionButtonStyle = {
-    backgroundColor: isDark ? '#0f172a' : friendsTheme.actionSurface,
-    borderColor: isDark ? '#2a3441' : friendsTheme.actionBorder,
+    backgroundColor: isDark ? '#000000' : friendsTheme.actionSurface,
+    borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : friendsTheme.actionBorder,
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: isDark ? '#040914' : colors.background }]}>
+    <View style={[styles.container, { backgroundColor: isDark ? '#05080e' : colors.background }]}>
       <View style={styles.header}>
         <View style={{ flexDirection: 'column', gap: 6 }}>
           <ThemedText style={[styles.headerLabel, { color: isDark ? '#9ba6b8' : colors.textSecondary }]}>{balanceLabel}</ThemedText>
@@ -198,30 +198,13 @@ export default function FriendsScreen() {
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
             friends.length === 0 ? (
-              <View style={styles.emptyContainer}>
-                <View style={[styles.emptyIconContainer, { backgroundColor: friendsTheme.emptyIconSurface }]}>
-                  <IconSymbol size={64} name="person.2" color={friendsTheme.actionIcon} />
-                </View>
-                <ThemedText type="subtitle" style={[styles.emptyTitle, { color: colors.text }]}>
-                  No friends yet
-                </ThemedText>
-                <ThemedText style={[styles.emptyText, { color: colors.textSecondary }]}>
-                  Add friends to start splitting expenses together
-                </ThemedText>
-                <TouchableOpacity
-                  style={styles.createButton}
-                  onPress={() => router.push('/add-friend')}>
-                  <LinearGradient
-                    colors={gradients.buttonPrimary}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={styles.createButtonGradient}>
-                    <ThemedText style={[styles.createButtonText, { color: friendsTheme.primaryButtonText }]}>
-                      Add Friend
-                    </ThemedText>
-                  </LinearGradient>
-                </TouchableOpacity>
-              </View>
+              <EmptyState
+                icon="person.2"
+                title="No friends yet"
+                subtitle="Add friends to start splitting expenses together"
+                buttonLabel="Add Friend"
+                onButtonPress={() => router.push('/add-friend')}
+              />
             ) : settledFriends.length > 0 ? (
               <View style={styles.allSettledContainer}>
                 <IconSymbol name="checkmark.seal.fill" size={48} color={colors.tint} />

@@ -39,7 +39,7 @@ interface UserWithBalance extends User {
 }
 
 const MIN_TOUCH_HIT_SLOP = { top: 8, right: 8, bottom: 8, left: 8 };
-const SEGMENTED_CONTROL_PADDING = 3;
+const SEGMENTED_CONTROL_PADDING = 2;
 const SEGMENTED_CONTROL_GAP = 3;
 type ActivityFilter = FriendActivityFilter;
 
@@ -51,7 +51,7 @@ const ACTIVITY_FILTERS: { id: ActivityFilter; label: string; icon: IconSymbolNam
 
 export default function FriendDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { gradients, colors, friendDetail: friendDetailTheme, isDark } = useThemeColors();
+  const { gradients, colors, settle, friendDetail: friendDetailTheme, isDark } = useThemeColors();
   const [activityFilter, setActivityFilter] = useState<ActivityFilter>('all');
   const [segmentedWidth, setSegmentedWidth] = useState(0);
   const [isRemovingFriend, setIsRemovingFriend] = useState(false);
@@ -619,7 +619,6 @@ export default function FriendDetailScreen() {
                   onPress={() => router.push(`/groups/${summary.groupId}` as any)}
                   style={[styles.groupBalanceRow, {
                     backgroundColor: friendDetailTheme.surface,
-                    borderColor: friendDetailTheme.surfaceBorder,
                   }]}
                 >
                   <View style={[styles.groupBalanceIcon, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.12)' : '#E7F3EF' }]}>
@@ -639,7 +638,6 @@ export default function FriendDetailScreen() {
                     <ThemedText type="defaultSemiBold" style={{ color: isOwedInGroup ? friendDetailTheme.positive : friendDetailTheme.negative }}>
                       {isOwedInGroup ? '+' : '-'}{summary.currency} {Math.abs(summary.amount).toFixed(2)}
                     </ThemedText>
-                    <IconSymbol name="chevron.right" size={16} color={colors.textSecondary} />
                   </View>
                 </TouchableOpacity>
               );
@@ -651,10 +649,7 @@ export default function FriendDetailScreen() {
           accessibilityRole="toolbar"
           accessibilityLabel="Activity filter"
           onLayout={({ nativeEvent }) => setSegmentedWidth(nativeEvent.layout.width)}
-          style={[styles.segmentedControl, {
-            backgroundColor: friendDetailTheme.surface,
-            borderColor: friendDetailTheme.surfaceBorder,
-          }]}
+          style={[styles.segmentedControl]}
         >
           {segmentWidth > 0 && (
             <Reanimated.View
@@ -663,9 +658,6 @@ export default function FriendDetailScreen() {
                 styles.segmentedIndicator,
                 {
                   width: segmentWidth,
-                  backgroundColor: isDark ? 'rgba(13, 148, 136, 0.08)' : '#ffffff',
-                  borderColor: isDark ? '#0D9488' : '#0F4C3A',
-                  borderWidth: 1,
                 },
                 tabIndicatorStyle,
               ]}
@@ -673,7 +665,6 @@ export default function FriendDetailScreen() {
           )}
           {ACTIVITY_FILTERS.map(filter => {
             const isSelected = activityFilter === filter.id;
-            const activeColor = isDark ? '#0D9488' : '#0F4C3A';
 
             return (
               <TouchableOpacity
@@ -683,14 +674,15 @@ export default function FriendDetailScreen() {
                 accessibilityState={{ selected: isSelected }}
                 activeOpacity={0.78}
                 onPress={() => handleActivityFilterChange(filter.id)}
-                style={styles.segmentedOption}>
+                style={[styles.segmentedOption, { backgroundColor: isSelected ? settle.pillBackground : colors.cardGlass }]}>
                 <IconSymbol
-                  size={14}
+                  size={18}
                   name={filter.icon}
-                  color={isSelected ? activeColor : colors.textSecondary}
+                  color={colors.text}
                 />
                 <ThemedText
-                  style={[styles.segmentedLabel, { color: isSelected ? activeColor : colors.textSecondary }]}>
+                  type='subtitle'
+                  style={[styles.segmentedLabel]}>
                   {filter.label}
                 </ThemedText>
               </TouchableOpacity>
@@ -881,10 +873,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     marginHorizontal: 16,
     marginBottom: 14,
-    borderRadius: 12,
-    borderWidth: 1,
     padding: SEGMENTED_CONTROL_PADDING,
-    gap: SEGMENTED_CONTROL_GAP,
+    gap: 12,
     overflow: 'hidden',
     position: 'relative',
   },
@@ -901,19 +891,22 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
   },
   segmentedOption: {
-    flex: 1,
-    minHeight: 44,
-    borderRadius: 9,
+    minHeight: 36,
+    borderRadius: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 5,
-    paddingHorizontal: 6,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
     zIndex: 1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.09,
+    shadowRadius: 0,
+    elevation: 4,
   },
   segmentedLabel: {
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 14,
   },
   summaryCardTitle: {
     fontSize: 12,
@@ -1031,12 +1024,15 @@ const styles = StyleSheet.create({
   groupBalanceRow: {
     minHeight: 68,
     borderRadius: 16,
-    borderWidth: 1,
     paddingHorizontal: 14,
     paddingVertical: 10,
     marginBottom: 8,
     flexDirection: 'row',
     alignItems: 'center',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.09,
+    shadowRadius: 0,
+    elevation: 4,
   },
   groupBalanceIcon: {
     width: 38,
@@ -1064,6 +1060,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 17,
     fontWeight: '600',
+    marginBottom: 4
   },
   expenseCount: {
     fontSize: 13,

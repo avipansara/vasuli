@@ -1,8 +1,7 @@
-import { FormInput } from '@/components/ui/form-input';
 import { FormGroup, PrivacyNote, SharedModal } from '@/components/ui/shared-modal';
-import { useThemeColors } from '@/hooks/use-theme-colors';
+import { ThemedInput } from '@/components/ui/themed-input';
 import React from 'react';
-import { StyleSheet, TextInput } from 'react-native';
+import { StyleSheet } from 'react-native';
 
 interface CreateGroupModalProps {
   visible: boolean;
@@ -23,7 +22,6 @@ export function CreateGroupModal({
   setGroupDescription,
   onSubmit,
 }: CreateGroupModalProps) {
-  const { colors, isDark } = useThemeColors();
   const isDisabled = !groupName.trim();
 
   return (
@@ -38,34 +36,27 @@ export function CreateGroupModal({
       submitDisabled={isDisabled}
       onSubmit={onSubmit}>
       <FormGroup label="Group Name *">
-        <FormInput
+        <ThemedInput
           placeholder="e.g. Summer Trip 2024"
           value={groupName}
           onChangeText={setGroupName}
           autoFocus
           returnKeyType="done"
+          icon="tag.fill"
         />
       </FormGroup>
 
       <FormGroup label="Description (Optional)">
-        <TextInput
-          style={[
-            styles.textArea,
-            {
-              backgroundColor: colors.inputBackground,
-              borderColor: isDark ? 'rgba(45, 212, 191, 0.2)' : colors.inputBorder,
-              color: colors.text,
-            },
-          ]}
+        <ThemedInput
           placeholder="What is this group for?"
-          placeholderTextColor="#6B7280"
           value={groupDescription}
           onChangeText={setGroupDescription}
           multiline
           numberOfLines={4}
-          textAlignVertical="top"
           returnKeyType="done"
           blurOnSubmit={true}
+          style={styles.textArea}
+          icon="doc.text.fill"
         />
       </FormGroup>
 
@@ -78,12 +69,9 @@ export function CreateGroupModal({
 
 const styles = StyleSheet.create({
   textArea: {
-    height: 120,
-    borderWidth: 1,
-    borderRadius: 14,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 16,
+    height: 100,
     textAlignVertical: 'top',
+    paddingTop: 12,
+    paddingBottom: 12,
   },
 });

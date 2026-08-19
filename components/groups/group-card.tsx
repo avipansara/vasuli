@@ -127,13 +127,14 @@ function GroupCardInner({ group, index, onRefresh }: GroupCardProps) {
           style={[
             styles.card,
             {
-              backgroundColor: isDark ? '#0f172a' : '#ffffff',
-              borderWidth: 0,
-              shadowColor: isDark ? '#000000' : '#475569',
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: isDark ? 0.4 : 0.09,
-              shadowRadius: 12,
-              elevation: 4,
+              backgroundColor: colors.card,
+              borderWidth: isDark ? 1 : 0,
+              borderColor: colors.border,
+              shadowColor: isDark ? 'transparent' : '#475569',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: isDark ? 0 : 0.09,
+              shadowRadius: 0,
+              elevation: isDark ? 0 : 4,
             },
           ]}>
           <TouchableOpacity

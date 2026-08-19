@@ -1,7 +1,7 @@
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { KeyboardAwareScroll } from '@/components/ui/keyboard-aware-scroll';
-import { NavigationHeader } from '@/components/ui/screen-header';
+import { NavigationHeader, HeaderActionButton } from '@/components/ui/screen-header';
 import { ThemedInput } from '@/components/ui/themed-input';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useThemeColors } from '@/hooks/use-theme-colors';
@@ -16,7 +16,6 @@ import {
     Keyboard,
     Platform,
     StyleSheet,
-    TouchableOpacity,
     View
 } from 'react-native';
 
@@ -86,23 +85,12 @@ export default function EditProfileScreen() {
         title="Edit Profile" 
         onBack={() => router.back()}
         rightAction={
-          <TouchableOpacity
+          <HeaderActionButton
+            label="Save"
             onPress={handleSubmit}
-            disabled={!isValid || loading}
-            style={[
-              styles.headerButton,
-              {
-                backgroundColor: isValid && !loading ? (isDark ? '#2DD4BF' : '#22C55E') : (isDark ? '#374151' : '#E5E7EB'),
-              },
-            ]}>
-            {loading ? (
-              <ThemedText style={[styles.headerButtonText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>...</ThemedText>
-            ) : (
-              <ThemedText style={[styles.headerButtonText, { color: isValid ? '#0A0A0F' : (isDark ? '#9CA3AF' : '#6B7280') }]}>
-                Save
-              </ThemedText>
-            )}
-          </TouchableOpacity>
+            disabled={!isValid}
+            loading={loading}
+          />
         }
       />
 

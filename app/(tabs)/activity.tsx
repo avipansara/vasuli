@@ -1,6 +1,7 @@
 import { ActivityCard } from '@/components/activity/activity-card';
 import { ThemedText } from '@/components/themed-text';
 import { AsyncErrorState } from '@/components/ui/async-error-state';
+import { EmptyState } from '@/components/ui/empty-state';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { ActivityListSkeleton, Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/auth-context-otp';
@@ -155,17 +156,18 @@ export default function ActivityScreen() {
 
   return (
     <View
-      style={[styles.container, { backgroundColor: isDark ? '#040914' : colors.background }]}>
+      style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.header}>
         <ThemedText type="header" style={[styles.headerTitle, { color: isDark ? '#f8fafc' : colors.text }]}>Activity</ThemedText>
         <View style={[styles.searchContainer, {
-          backgroundColor: isDark ? '#0b1120' : friendDetailTheme.surface,
-          borderWidth: 0,
-          shadowColor: isDark ? '#000000' : '#64748B',
+          backgroundColor: colors.card,
+          borderWidth: isDark ? 1 : 0,
+          borderColor: colors.border,
+          shadowColor: isDark ? 'transparent' : '#64748B',
           shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: isDark ? 0.25 : 0.04,
+          shadowOpacity: isDark ? 0 : 0.04,
           shadowRadius: 6,
-          elevation: 2,
+          elevation: isDark ? 0 : 2,
         }]}>
           <IconSymbol
             name="magnifyingglass"
@@ -209,18 +211,13 @@ export default function ActivityScreen() {
         />
       ) : activities.length === 0 ? (
         <Animated.View style={[
-          styles.emptyContainer,
-          { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }
+          { opacity: fadeAnim, transform: [{ translateY: slideAnim }], flex: 1 }
         ]}>
-          <View style={[styles.emptyIconContainer, { backgroundColor: isDark ? '#064e3b' : 'rgba(34, 197, 94, 0.1)' }]}>
-            <IconSymbol size={48} name={hasSearch ? 'magnifyingglass' : 'clock'} color={isDark ? '#10b981' : colors.tint} />
-          </View>
-          <ThemedText type="subtitle" style={[styles.emptyTitle, { color: isDark ? '#f8fafc' : colors.text }]}>
-            {hasSearch ? 'No matching activity' : 'No activity yet'}
-          </ThemedText>
-          <ThemedText style={[styles.emptyText, { color: isDark ? '#9ba6b8' : colors.textSecondary }]}>
-            {hasSearch ? `No activities match “${activitySearch}”.` : 'Your expense and payment history will appear here'}
-          </ThemedText>
+          <EmptyState
+            icon={hasSearch ? 'magnifyingglass' : 'clock'}
+            title={hasSearch ? 'No matching activity' : 'No activity yet'}
+            subtitle={hasSearch ? `No activities match “${activitySearch}”.` : 'Your expense and payment history will appear here'}
+          />
         </Animated.View>
       ) : (
         <SectionList
@@ -247,7 +244,7 @@ export default function ActivityScreen() {
               tintColor={isDark ? '#10b981' : colors.tint}
               titleColor={isDark ? '#9ba6b8' : colors.textSecondary}
               colors={[isDark ? '#10b981' : colors.tint]}
-              progressBackgroundColor={isDark ? '#040914' : colors.background}
+              progressBackgroundColor={colors.background}
             />
           }
         />

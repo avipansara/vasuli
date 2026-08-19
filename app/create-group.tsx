@@ -1,7 +1,7 @@
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { KeyboardAwareScroll } from '@/components/ui/keyboard-aware-scroll';
-import { NavigationHeader } from '@/components/ui/screen-header';
+import { NavigationHeader, HeaderActionButton } from '@/components/ui/screen-header';
 import { ThemedInput } from '@/components/ui/themed-input';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useThemeColors } from '@/hooks/use-theme-colors';
@@ -13,7 +13,6 @@ import { router } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState, useRef } from 'react';
 import {
-  ActivityIndicator,
   Alert,
   Animated,
   Keyboard,
@@ -35,7 +34,7 @@ const GROUP_ICONS = [
 ];
 
 export default function CreateGroupScreen() {
-  const { gradients, colors, isDark } = useThemeColors();
+  const { colors, isDark } = useThemeColors();
   const { user } = useAuth();
   const currentUserId = user?.id || '';
   const queryClient = useQueryClient();
@@ -119,23 +118,12 @@ export default function CreateGroupScreen() {
         title="Create Group"
         onBack={() => router.back()}
         rightAction={
-          <TouchableOpacity
+          <HeaderActionButton
+            label="Create"
             onPress={handleSubmit}
-            disabled={!isValid || loading}
-            style={[
-              styles.headerButton,
-              {
-                backgroundColor: isValid && !loading ? primaryBtnColor : (isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'),
-              },
-            ]}>
-            {loading ? (
-              <ActivityIndicator size="small" color="#ffffff" />
-            ) : (
-              <ThemedText style={[styles.headerButtonText, { color: isValid ? '#ffffff' : colors.textSecondary }]}>
-                Create
-              </ThemedText>
-            )}
-          </TouchableOpacity>
+            disabled={!isValid}
+            loading={loading}
+          />
         }
       />
 

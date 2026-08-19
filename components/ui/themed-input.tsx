@@ -1,15 +1,17 @@
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { forwardRef } from 'react';
-import { Platform, StyleSheet, TextInput, TextInputProps, View } from 'react-native';
+import { Platform, StyleSheet, TextInput, TextInputProps, View, ViewStyle } from 'react-native';
 
 interface ThemedInputProps extends TextInputProps {
   icon?: any;
   iconSize?: number;
+  trailing?: React.ReactNode;
+  containerStyle?: ViewStyle;
 }
 
 export const ThemedInput = forwardRef<TextInput, ThemedInputProps>(
-  ({ icon, iconSize = 20, style, ...props }, ref) => {
+  ({ icon, iconSize = 20, trailing, containerStyle, style, ...props }, ref) => {
     const { colors, isDark } = useThemeColors();
 
     return (
@@ -17,21 +19,22 @@ export const ThemedInput = forwardRef<TextInput, ThemedInputProps>(
         style={[
           styles.container,
           {
-            backgroundColor: isDark ? 'rgba(20, 35, 38, 0.95)' : '#ffffff',
+            backgroundColor: isDark ? (colors.inputBackground || '#0b1120') : '#ffffff',
             borderWidth: 1,
-            borderColor: isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(0, 0, 0, 0.08)',
+            borderColor: isDark ? (colors.inputBorder || '#2a3441') : '#dce2f7',
             shadowColor: isDark ? '#000000' : '#475569',
             shadowOffset: { width: 0, height: 3 },
             shadowOpacity: isDark ? 0.35 : 0.09,
             shadowRadius: 10,
             elevation: 3,
           },
+          containerStyle,
         ]}>
         {icon && (
           <IconSymbol
             name={icon}
             size={iconSize}
-            color={isDark ? '#2DD4BF' : '#0F4C3A'}
+            color={isDark ? '#10b981' : colors.tint}
           />
         )}
         <TextInput
@@ -47,6 +50,7 @@ export const ThemedInput = forwardRef<TextInput, ThemedInputProps>(
           placeholderTextColor={colors.textSecondary}
           {...props}
         />
+        {trailing}
       </View>
     );
   }

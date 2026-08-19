@@ -3,6 +3,7 @@ import { AsyncErrorState } from '@/components/ui/async-error-state';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { KeyboardAwareScroll } from '@/components/ui/keyboard-aware-scroll';
 import { NavigationHeader } from '@/components/ui/screen-header';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
@@ -406,8 +407,28 @@ export default function EditExpenseScreen() {
     return (
       <View style={styles.container}>
         <LinearGradient colors={gradients.screenBackground} style={StyleSheet.absoluteFill} />
-        <View style={styles.loadingContainer}>
-          <ThemedText>Loading...</ThemedText>
+        <NavigationHeader
+          title="Edit Expense"
+          onBack={() => router.back()}
+        />
+        <View style={styles.scrollContent}>
+          {/* Amount Section Skeleton */}
+          <View style={[styles.amountSection, { marginTop: 24, alignItems: 'center' }]}>
+            <Skeleton width={120} height={18} style={{ marginBottom: 12 }} />
+            <Skeleton width={180} height={48} borderRadius={16} />
+          </View>
+
+          {/* Description Section Skeleton */}
+          <View style={[styles.inputSection, { marginTop: 24 }]}>
+            <Skeleton width={100} height={16} style={{ marginBottom: 8 }} />
+            <Skeleton height={50} borderRadius={12} />
+          </View>
+
+          {/* Date Section Skeleton */}
+          <View style={[styles.inputSection, { marginTop: 24 }]}>
+            <Skeleton width={80} height={16} style={{ marginBottom: 8 }} />
+            <Skeleton height={50} borderRadius={12} />
+          </View>
         </View>
       </View>
     );
