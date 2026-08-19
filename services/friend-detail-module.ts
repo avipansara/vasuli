@@ -8,11 +8,10 @@ import {
 import { friendDetailReadModel } from '@/services/friend-detail-read-model';
 import { friendGroupBalanceService } from '@/services/friend-group-balance-service';
 import { activityService } from '@/services/activity-service';
-import { settlementService } from '@/services/settlement-service';
 import { expenseService } from '@/services/expense-service';
 import { friendshipService } from '@/services/friendship-service';
 import type { PushNotificationData } from '@/services/notification-service';
-import type { Settlement, SettlementScopeTransfer } from '@/types/database';
+import type { SettlementScopeTransfer } from '@/types/database';
 import { scopeTransferService } from './scope-transfer-service';
 
 export type FriendDetailReadAdapter = {
@@ -29,16 +28,6 @@ export type FriendGroupBalanceAdapter = {
 
 export type FriendScopeTransferAdapter = {
   getByFriend(friendId: string): Promise<SettlementScopeTransfer[]>;
-};
-
-export type FriendDetailSettlementAdapter = {
-  createPairSettlements(params: {
-    currentUserId: string;
-    friendId: string;
-    amount: number;
-    currency: string;
-    date: number;
-  }): Promise<Settlement[]>;
 };
 
 export type FriendDetailActivityAdapter = {
@@ -69,7 +58,6 @@ export type FriendDetailModuleDependencies = {
   relationshipAdapter?: FriendRelationshipAdapter;
   groupBalanceAdapter?: FriendGroupBalanceAdapter;
   scopeTransferAdapter?: FriendScopeTransferAdapter;
-  settlementAdapter?: FriendDetailSettlementAdapter;
   activityAdapter?: FriendDetailActivityAdapter;
   expenseAdapter?: FriendDetailExpenseAdapter;
   friendshipAdapter?: FriendDetailFriendshipAdapter;
@@ -78,16 +66,6 @@ export type FriendDetailModuleDependencies = {
 
 export type FriendDetailModule = {
   getDetail(currentUserId: string, friendId: string): Promise<FriendDetailData | null>;
-  settleUp(params: {
-    currentUserId: string;
-    friendId: string;
-    amount: number;
-    balance: number;
-    currency: string;
-    date: number;
-    currentUserName?: string;
-    friendName?: string;
-  }): Promise<Settlement[]>;
   deleteExpense(params: {
     expenseId: string;
     currentUserId: string;
@@ -151,7 +129,6 @@ export function createFriendDetailModule(
   const readAdapter = dependencies.readAdapter ?? friendDetailReadModel;
   const groupBalanceAdapter = dependencies.groupBalanceAdapter;
   const scopeTransferAdapter = dependencies.scopeTransferAdapter;
-  const settlementAdapter = dependencies.settlementAdapter ?? settlementService;
   const activityAdapter = dependencies.activityAdapter ?? activityService;
   const expenseAdapter = dependencies.expenseAdapter ?? expenseService;
   const friendshipAdapter = dependencies.friendshipAdapter ?? friendshipService;

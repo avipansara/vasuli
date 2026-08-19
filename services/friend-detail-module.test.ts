@@ -6,7 +6,7 @@ import {
   filterFriendActivity,
   groupFriendActivityByMonth,
 } from '@/services/friend-detail-module';
-import type { Settlement, SettlementScopeTransfer } from '@/types/database';
+import type { SettlementScopeTransfer } from '@/types/database';
 
 const detail: FriendDetailData = {
   friend: {
@@ -129,33 +129,6 @@ describe('Friend detail module', () => {
     });
   });
 
-  it('records a valid settlement and returns the resulting pair settlements', async () => {
-    const settlement: Settlement = {
-      id: 'settlement-1',
-      fromUserId: 'friend-a',
-      toUserId: 'current-user',
-      amount: 24,
-      currency: 'USD',
-      date: 10,
-      createdAt: 10,
-    };
-    const module = createFriendDetailModule({
-      readAdapter: { getDetail: async () => detail },
-      settlementAdapter: {
-        createPairSettlements: async () => [settlement],
-      },
-    });
-
-    await expect(module.settleUp({
-      currentUserId: 'current-user',
-      friendId: 'friend-a',
-      amount: 24,
-      balance: 24,
-      currency: 'USD',
-      date: 10,
-    })).resolves.toEqual([settlement]);
-  });
-
   it('returns transfer-adjusted group rows alongside the relationship projection', async () => {
     const transfer: SettlementScopeTransfer = {
       id: 'transfer-1',
@@ -202,33 +175,6 @@ describe('Friend detail module', () => {
       groupBalances: [{ groupId: 'group-alaska', amount: 0, direction: 'settled' }],
       relationship: { totalsByCurrency: [{ currency: 'USD', amount: 124, direction: 'you_are_owed' }] },
     });
-  });
-
-  it('rejects a group-scoped settlement from the direct Friend flow', async () => {
-    const module = createFriendDetailModule({
-      readAdapter: { getDetail: async () => detail },
-      settlementAdapter: {
-        createPairSettlements: async () => [{
-          id: 'group-settlement',
-          groupId: 'group-alaska',
-          fromUserId: 'current-user',
-          toUserId: 'friend-a',
-          amount: 24,
-          currency: 'USD',
-          date: 10,
-          createdAt: 10,
-        }],
-      },
-    });
-
-    await expect(module.settleUp({
-      currentUserId: 'current-user',
-      friendId: 'friend-a',
-      amount: 24,
-      balance: 24,
-      currency: 'USD',
-      date: 10,
-    })).rejects.toThrow('direct Friend balance');
   });
 
   it('deletes an expense through the Friend detail action interface', async () => {
