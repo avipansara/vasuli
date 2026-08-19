@@ -53,9 +53,13 @@ jobs:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
 
+      - name: Create Google Services Key File
+        run: echo '${{ secrets.GOOGLE_SERVICES_KEY }}' > ./google-services-key.json
+
       - name: Build Android
         run: eas build --platform android --profile preview --non-interactive --no-wait --auto-submit
         env:
+          APP_ENV: preview
           EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL_DEV }}
           EXPO_PUBLIC_SUPABASE_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_KEY_DEV }}
 
