@@ -1,5 +1,9 @@
 import { projectFriendRelationship, type FriendDetailData } from './friend-detail-service';
-import { addExpenseToGroupReadModel, type GroupDetailReadModel } from './group-detail-read-model';
+import {
+  addExpenseToGroupReadModel,
+  removeExpenseFromGroupReadModel,
+  type GroupDetailReadModel,
+} from './group-detail-read-model';
 import type { QueryCacheAdapter, QueryCacheKey } from './query-cache-adapter';
 import type { Expense, User } from '@/types/database';
 
@@ -163,7 +167,6 @@ export async function submitExpense(input: SubmitExpenseInput): Promise<void> {
       input.cache.set<FriendDetailData | null | undefined>(key, current => updateFriendDetail(current, optimisticExpense, input.splits, input.currentUserId));
     });
   }
-  input.navigateBack();
 
   try {
     const expense = await input.save({
@@ -178,7 +181,11 @@ export async function submitExpense(input: SubmitExpenseInput): Promise<void> {
 
     if (input.target.kind === 'group' && input.keys.groupDetail) {
       input.cache.set<GroupDetailReadModel | null>(input.keys.groupDetail, current => current
-        ? addExpenseToGroupReadModel(current, expense, buildCachedSplits(expense.id, input.splits))
+        ? addExpenseToGroupReadModel(
+          removeExpenseFromGroupReadModel(current, optimisticExpense.id),
+          expense,
+          buildCachedSplits(expense.id, input.splits),
+        )
         : null);
     }
     input.cache.set<HomeFriend[]>(input.keys.home, current => current?.map(friend => ({
@@ -195,6 +202,8 @@ export async function submitExpense(input: SubmitExpenseInput): Promise<void> {
         } : null);
       });
     }
+
+    input.navigateBack();
 
     await Promise.allSettled([
       input.logActivity({ expense, userName: input.currentUser.name || 'Someone', groupName: input.group?.name }),

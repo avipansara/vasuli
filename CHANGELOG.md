@@ -1,3 +1,9 @@
+## 2026-08-19
+
+- Fixed Group Detail balances flickering through incorrect intermediate values
+  after adding an expense by atomically replacing the optimistic cache entry
+  and waiting for persistence before returning to the Group.
+
 ## 2026-08-18
 
 - Collapsed the settlement pipeline into one deep `settlementModule`

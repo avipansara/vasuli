@@ -6,6 +6,7 @@ import { createQueryCacheAdapter } from './query-cache-adapter';
 function createCache() {
   const values = new Map<string, unknown>();
   const events: string[] = [];
+  const snapshots: { key: string; value: unknown }[] = [];
 
   const baseCache = {
     events,
@@ -14,7 +15,9 @@ function createCache() {
     },
     set<T>(key: string, updater: T | ((current: T | undefined) => T)): void {
       const current = values.get(key) as T | undefined;
-      values.set(key, typeof updater === 'function' ? (updater as (value: T | undefined) => T)(current) : updater);
+      const next = typeof updater === 'function' ? (updater as (value: T | undefined) => T)(current) : updater;
+      values.set(key, next);
+      snapshots.push({ key, value: next });
       events.push(`set:${key}`);
     },
     async cancel(key: string): Promise<void> {
@@ -28,7 +31,7 @@ function createCache() {
     },
   };
 
-  return Object.assign(createQueryCacheAdapter(baseCache), { events, seed: baseCache.seed });
+  return Object.assign(createQueryCacheAdapter(baseCache), { events, snapshots, seed: baseCache.seed });
 }
 
 const group = { id: 'group-1', name: 'Trip', createdAt: 0, updatedAt: 0 };
@@ -51,7 +54,100 @@ function expense(overrides: Partial<Expense> = {}): Expense {
 }
 
 describe('submitExpense', () => {
-  it('navigates after applying an optimistic group expense and replaces it after persistence', async () => {
+  it.each([
+    { payerId: 'user-1', expectedBalance: 15, caseName: 'the current User paid' },
+    { payerId: 'user-2', expectedBalance: -15, caseName: 'another GroupMember paid' },
+  ])('replaces the optimistic Group expense without changing the projected balance when $caseName', async ({ payerId, expectedBalance }) => {
+    const cache = createCache();
+    cache.seed('group-detail', {
+      group,
+      expenses: [],
+      members: [
+        { id: 'member-1', groupId: group.id, userId: 'user-1', role: 'admin', joinedAt: 0, user },
+        { id: 'member-2', groupId: group.id, userId: 'user-2', role: 'member', joinedAt: 0, user: { id: 'user-2', name: 'Blair', isActive: true, createdAt: 0 } },
+      ],
+      settlements: [],
+      scopeTransfers: [],
+      balances: new Map([['user-1', 0], ['user-2', 0]]),
+      availableUsers: [],
+      friendshipStatus: new Map(),
+    });
+
+    await submitExpense({
+      target: { kind: 'group', groupId: group.id, memberIds: ['user-1', 'user-2'] },
+      description: 'Dinner',
+      amount: 30,
+      currency: 'USD',
+      date: 1,
+      payerId,
+      currentUser: user,
+      currentUserId: user.id,
+      splits: [
+        { userId: 'user-1', amount: 15, splitType: 'equal' },
+        { userId: 'user-2', amount: 15, splitType: 'equal' },
+      ],
+      group,
+      cache,
+      keys: { home: 'home', groupDetail: 'group-detail', groups: 'groups', expenses: 'expenses', activity: 'activity' },
+      save: vi.fn(async () => expense({ paidBy: payerId })),
+      navigateBack: vi.fn(),
+      logActivity: vi.fn(async () => undefined),
+      sendNotifications: vi.fn(async () => undefined),
+      warn: vi.fn(),
+      now: () => 100,
+    });
+
+    const detail = cache.get<{ expenses: Expense[]; balances: Map<string, number> }>('group-detail');
+    expect(detail?.expenses.map(item => item.id)).toEqual(['expense-1']);
+    expect(detail?.balances.get('user-1')).toBe(expectedBalance);
+    expect(cache.snapshots
+      .filter(snapshot => snapshot.key === 'group-detail')
+      .map(snapshot => (snapshot.value as { balances: Map<string, number> }).balances.get('user-1'))
+    ).toEqual([expectedBalance, expectedBalance]);
+  });
+
+  it('returns to Group Detail only after the expense is persisted', async () => {
+    const cache = createCache();
+    const navigateBack = vi.fn();
+    let resolveSave!: (value: Expense) => void;
+    const pendingSave = new Promise<Expense>(resolve => {
+      resolveSave = resolve;
+    });
+    const save = vi.fn(() => pendingSave);
+
+    const submission = submitExpense({
+      target: { kind: 'group', groupId: group.id, memberIds: ['user-1', 'user-2'] },
+      description: 'Dinner',
+      amount: 30,
+      currency: 'USD',
+      date: 1,
+      payerId: user.id,
+      currentUser: user,
+      currentUserId: user.id,
+      splits: [
+        { userId: 'user-1', amount: 15, splitType: 'equal' },
+        { userId: 'user-2', amount: 15, splitType: 'equal' },
+      ],
+      group,
+      cache,
+      keys: { home: 'home', groupDetail: 'group-detail', groups: 'groups', expenses: 'expenses', activity: 'activity' },
+      save,
+      navigateBack,
+      logActivity: vi.fn(async () => undefined),
+      sendNotifications: vi.fn(async () => undefined),
+      warn: vi.fn(),
+      now: () => 100,
+    });
+
+    await vi.waitFor(() => expect(save).toHaveBeenCalledOnce());
+    expect(navigateBack).not.toHaveBeenCalled();
+
+    resolveSave(expense());
+    await submission;
+    expect(navigateBack).toHaveBeenCalledOnce();
+  });
+
+  it('navigates after persistence and reconciles the Home expense ID', async () => {
     const cache = createCache();
     const navigateBack = vi.fn(() => cache.events.push('navigate'));
     const save = vi.fn(async () => expense());
@@ -87,7 +183,7 @@ describe('submitExpense', () => {
     expect(cache.get<{ recentExpenses?: Expense[] }[]>('home')?.[0].recentExpenses?.[0].id).toBe('expense-1');
   });
 
-  it('rolls back optimistic state when persistence fails without navigating again', async () => {
+  it('rolls back optimistic state and keeps the form open when persistence fails', async () => {
     const cache = createCache();
     const original = {
       group,
@@ -123,7 +219,7 @@ describe('submitExpense', () => {
     })).rejects.toBe(persistenceError);
 
     expect(cache.get('group-detail')).toBe(original);
-    expect(navigateBack).toHaveBeenCalledOnce();
+    expect(navigateBack).not.toHaveBeenCalled();
     expect(cache.events).toContain('invalidate:group-detail');
   });
 
