@@ -61,11 +61,34 @@ vi.mock('@/components/ui/icon-symbol', () => ({
 
 const baseFriend = {
   id: 'friend-1',
-  name: 'Jay',
-  email: 'jay@example.com',
+  name: 'Test Friend',
+  email: 'friend@example.com',
   createdAt: 1,
   isActive: true,
   recentExpenses: [],
+};
+
+const breakdown = {
+  directBalance: -80.34,
+  directCurrency: 'USD',
+  groupBalances: [{
+    groupId: 'group-1',
+    groupName: 'Test Group',
+    currency: 'USD',
+    amount: 96.77,
+    direction: 'you_are_owed' as const,
+  }],
+  activity: [],
+  totalsByCurrency: [{
+    currency: 'USD',
+    amount: 16.43,
+    direction: 'you_are_owed' as const,
+  }],
+  settleableTotal: {
+    currency: 'USD',
+    amount: 16.43,
+    direction: 'you_are_owed' as const,
+  },
 };
 
 function renderFriendCard(balance: number) {
@@ -87,5 +110,34 @@ describe('FriendCard', () => {
     expect(screen.getByText('settled up ✓')).toBeTruthy();
     expect(screen.queryByText('you owe')).toBeNull();
     expect(screen.queryByText('$0.00')).toBeNull();
+  });
+
+  it('shows group and non-group balance breakdowns instead of recent expenses', () => {
+    render(
+      <ThemeProvider>
+        <FriendCard
+          friend={{
+            ...baseFriend,
+            balance: 16.43,
+            recentExpenses: [{
+              id: 'expense-1',
+              groupId: undefined,
+              description: 'Recent fixture expense',
+              amount: 80.34,
+              currency: 'USD',
+              paidBy: 'friend-1',
+              date: 1,
+              createdAt: 1,
+              updatedAt: 1,
+            }],
+            relationship: breakdown,
+          }}
+        />
+      </ThemeProvider>,
+    );
+
+    expect(screen.getAllByText((_, element) => element?.textContent === 'Test Friend owes you $96.77 in “Test Group”').length).toBeGreaterThan(0);
+    expect(screen.getAllByText((_, element) => element?.textContent === 'You owe Test Friend $80.34 in non-group expenses').length).toBeGreaterThan(0);
+    expect(screen.queryByText('Recent fixture expense')).toBeNull();
   });
 });

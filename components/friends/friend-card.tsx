@@ -1,6 +1,7 @@
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useThemeColors } from '@/hooks/use-theme-colors';
+import type { FriendRelationshipProjection } from '@/services/friend-detail-service';
 import type { User } from '@/types/database';
 import { getDisplayName } from '@/utils/validation';
 import { memo, useMemo } from 'react';
@@ -10,6 +11,7 @@ import Swipeable from 'react-native-gesture-handler/Swipeable';
 interface UserWithBalance extends User {
   balance: number;
   recentExpenses?: import('@/types/database').Expense[];
+  relationship?: FriendRelationshipProjection;
 }
 
 interface FriendCardProps {
@@ -24,6 +26,10 @@ function normalizeDisplayBalance(balance: number) {
   return Math.abs(balance) < SETTLED_BALANCE_THRESHOLD ? 0 : balance;
 }
 
+function formatBreakdownAmount(currency: string, amount: number) {
+  return currency === 'USD' ? `$${amount.toFixed(2)}` : `${currency} ${amount.toFixed(2)}`;
+}
+
 function areFriendCardPropsEqual(prev: FriendCardProps, next: FriendCardProps): boolean {
   if (prev.onPress !== next.onPress || prev.onDelete !== next.onDelete) {
     return false;
@@ -33,28 +39,70 @@ function areFriendCardPropsEqual(prev: FriendCardProps, next: FriendCardProps): 
   if (a.id !== b.id || a.balance !== b.balance || a.name !== b.name || a.email !== b.email) {
     return false;
   }
-  const ar = a.recentExpenses;
-  const br = b.recentExpenses;
-  if (ar === br) {
-    return true;
-  }
-  if (!ar || !br || ar.length !== br.length) {
-    return false;
-  }
-  for (let i = 0; i < ar.length; i++) {
-    if (ar[i].id !== br[i].id || ar[i].description !== br[i].description) {
-      return false;
-    }
-  }
-  return true;
+  const ar = a.relationship;
+  const br = b.relationship;
+  if (Boolean(ar) !== Boolean(br)) return false;
+  if (!ar || !br) return true;
+  const aHasSeparateBalances = !ar.settleableTotal && ar.totalsByCurrency.filter(total => total.amount !== 0).length === 1;
+  const bHasSeparateBalances = !br.settleableTotal && br.totalsByCurrency.filter(total => total.amount !== 0).length === 1;
+  if (aHasSeparateBalances !== bHasSeparateBalances) return false;
+  if (ar.directBalance !== br.directBalance || ar.directCurrency !== br.directCurrency) return false;
+  if (ar.groupBalances.length !== br.groupBalances.length) return false;
+  return ar.groupBalances.every((group, index) => {
+    const nextGroup = br.groupBalances[index];
+    return group.groupId === nextGroup.groupId
+      && group.groupName === nextGroup.groupName
+      && group.currency === nextGroup.currency
+      && group.amount === nextGroup.amount
+      && group.direction === nextGroup.direction;
+  });
 }
 
 function FriendCardInner({ friend, onPress, onDelete }: FriendCardProps) {
   const { colors, friends: friendsTheme, isDark } = useThemeColors();
   const balance = normalizeDisplayBalance(friend.balance);
+  const hasSeparateBalances = Boolean(
+    friend.relationship
+    && !friend.relationship.settleableTotal
+    && friend.relationship.totalsByCurrency.filter(total => total.amount !== 0).length === 1
+  );
   const displayName = getDisplayName(friend.name, friend.email);
 
-  const isLightMode = !isDark;
+  const balanceBreakdown = useMemo(() => {
+    if (!friend.relationship) return [];
+
+    const items: {
+      id: string;
+      label: string;
+      amount: number;
+      direction: 'you_owe' | 'you_are_owed';
+      currency: string;
+    }[] = [];
+    const nonZeroGroupBalances = friend.relationship.groupBalances.filter(group => group.amount !== 0);
+
+    for (const group of nonZeroGroupBalances) {
+      items.push({
+        id: `group:${group.groupId}:${group.currency}`,
+        label: `in “${group.groupName}”`,
+        amount: Math.abs(group.amount),
+        direction: group.amount > 0 ? 'you_are_owed' : 'you_owe',
+        currency: group.currency,
+      });
+    }
+
+    if (friend.relationship.directBalance !== 0) {
+      items.push({
+        id: `direct:${friend.relationship.directCurrency ?? 'unknown'}`,
+        label: 'in non-group expenses',
+        amount: Math.abs(friend.relationship.directBalance),
+        direction: friend.relationship.directBalance > 0 ? 'you_are_owed' : 'you_owe',
+        currency: friend.relationship.directCurrency ?? 'USD',
+      });
+    }
+
+    return items;
+  }, [friend.relationship]);
+
   const avatarTextColor = colors.tint;
   const emailColor = colors.textSecondary;
   const branchTextColor = colors.textSecondary;
@@ -147,8 +195,10 @@ function FriendCardInner({ friend, onPress, onDelete }: FriendCardProps) {
                   <ThemedText type='title' style={[styles.balanceAmount, { color: isDark ? (balance > 0 ? '#10b981' : '#ffb4ab') : balanceColor }]}>
                     ${Math.abs(balance).toFixed(2)}
                   </ThemedText>
-                  <ThemedText style={[styles.balanceLabel, { color: isDark ? '#64748b' : colors.textSecondary }]}>
-                    {balance > 0 ? 'owes you' : 'you owe'}
+                  <ThemedText
+                    style={[styles.balanceLabel, { color: isDark ? '#64748b' : colors.textSecondary }]}
+                  >
+                    {hasSeparateBalances ? 'net balance' : balance > 0 ? 'owes you' : 'you owe'}
                   </ThemedText>
                 </>
               ) : (
@@ -164,26 +214,28 @@ function FriendCardInner({ friend, onPress, onDelete }: FriendCardProps) {
           <View style={styles.branchSpacer} />
           <View style={styles.branchContainer}>
             {balance !== 0 ? (
-              <View style={styles.recentExpenses}>
-                {friend.recentExpenses && friend.recentExpenses.length > 0 ? (
-                  friend.recentExpenses.map((expense, index) => (
-                    <View key={expense.id} style={styles.expenseBranchItem}>
+              <View style={styles.balanceBreakdown}>
+                {balanceBreakdown.length > 0 ? (
+                  balanceBreakdown.map((item, index) => (
+                    <View key={item.id} style={styles.expenseBranchItem}>
                       <View style={styles.branchGraphics}>
                         <View
                           style={[
                             styles.vLine,
                             {
                               backgroundColor: friendsTheme.branch,
-                              height: index === (friend.recentExpenses?.length ?? 0) - 1 ? '50%' : '100%'
+                              height: index === balanceBreakdown.length - 1 ? '50%' : '100%'
                             }
                           ]}
                         />
                         <View style={[styles.hLine, { backgroundColor: friendsTheme.branch }]} />
                       </View>
-                      <ThemedText
-                        numberOfLines={1}
-                        style={[styles.expenseDescription, { color: branchTextColor }]}>
-                        {expense.description}
+                      <ThemedText numberOfLines={1} style={[styles.balanceBreakdownText, { color: branchTextColor }]}>
+                        {item.direction === 'you_are_owed' ? `${displayName} owes you` : `You owe ${displayName}`}{' '}
+                        <ThemedText style={{ color: item.direction === 'you_are_owed' ? colors.success : colors.error }}>
+                          {formatBreakdownAmount(item.currency, item.amount)}
+                        </ThemedText>{' '}
+                        {item.label}
                       </ThemedText>
                     </View>
                   ))
@@ -194,7 +246,7 @@ function FriendCardInner({ friend, onPress, onDelete }: FriendCardProps) {
                       <View style={[styles.hLine, { backgroundColor: friendsTheme.branch }]} />
                     </View>
                     <ThemedText style={[styles.noExpenses, { color: colors.textSecondary }]}>
-                      Group activity
+                      Balance details unavailable
                     </ThemedText>
                   </View>
                 )}
@@ -273,7 +325,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
     opacity: 0.8,
   },
-  recentExpenses: {
+  balanceBreakdown: {
     marginTop: 4,
   },
   expenseBranchItem: {
@@ -299,7 +351,7 @@ const styles = StyleSheet.create({
     left: 8,
     top: 11,
   },
-  expenseDescription: {
+  balanceBreakdownText: {
     fontSize: 12,
     fontWeight: '500',
     lineHeight: 16,
