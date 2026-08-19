@@ -418,6 +418,35 @@ describe('settlementModule.reverse', () => {
       p_expected_balance: 0,
     });
   });
+
+  it('maps a repeated reversal receipt without issuing a second command', async () => {
+    rpc.mockResolvedValueOnce({
+      data: {
+        operationId: 'operation-repeated',
+        status: 'reversed',
+        reversedAt: '2026-08-18T04:00:00.000Z',
+        reused: true,
+      },
+      error: null,
+    });
+
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+
+    await expect(settlementModule.reverse({
+      operationId: 'operation-repeated',
+      expectedBalance: 0,
+      currentUserId: currentUser.id,
+      friendId: 'friend-a',
+      queryClient,
+    })).resolves.toEqual({
+      operationId: 'operation-repeated',
+      status: 'reversed',
+      reversedAt: Date.parse('2026-08-18T04:00:00.000Z'),
+      reused: true,
+    });
+
+    expect(rpc).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe('settlementModule.commit', () => {
