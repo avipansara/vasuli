@@ -107,6 +107,8 @@
   so the Group settle-up screen shows the same reduced balance as the Group
   detail page after partial or cross-scope settlements.
 
+- Updated the iOS `preview` submit configuration with the newly registered App Store Connect App ID to resolve TestFlight submission errors.
+- Cleaned up CI/CD workflows by offloading Google Services JSON keys, Supabase URLs, and keys directly to native EAS Environment Variables and Credentials.
 ## 2026-08-17
 
 - Deepened the Friend relationship read seam so Friend detail and combined

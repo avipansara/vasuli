@@ -58,8 +58,6 @@ jobs:
         run: eas build --platform android --profile production --non-interactive --auto-submit --no-wait
         env:
           APP_ENV: production
-          EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL_PROD }}
-          EXPO_PUBLIC_SUPABASE_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_KEY_PROD }}
 
   build-ios:
     name: Build & Submit iOS Production
@@ -88,5 +86,3 @@ jobs:
         run: eas build --platform ios --profile production --non-interactive --auto-submit --no-wait
         env:
           APP_ENV: production
-          EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL_PROD }}
-          EXPO_PUBLIC_SUPABASE_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_KEY_PROD }}

@@ -1,4 +1,4 @@
-import { ExpoConfig, ConfigContext } from 'expo/config';
+import { ConfigContext, ExpoConfig } from 'expo/config';
 import fs from 'fs';
 import path from 'path';
 
@@ -13,17 +13,14 @@ export default ({ config }: ConfigContext): ExpoConfig => {
   const bundleIdentifier = isDev
     ? 'com.avipansara.vasuli.dev'
     : isPreview
-    ? 'com.avipansara.vasuli.preview'
-    : 'com.avipansara.vasuli';
+      ? 'com.avipansara.vasuli.preview'
+      : 'com.avipansara.vasuli';
 
   const package_ = bundleIdentifier;
 
-  // Resolve google-services.json file paths dynamically (fallback to default if environment-specific one doesn't exist)
-  const devGoogleServices = './google-services.development.json';
+  // Resolve google-services.json file paths dynamically (e.g. from EAS Secret path or default local path)
   const prodGoogleServices = './google-services.json';
-  const googleServicesFile = (isDev && fs.existsSync(path.resolve(__dirname, devGoogleServices)))
-    ? devGoogleServices
-    : prodGoogleServices;
+  const googleServicesFile = process.env.GOOGLE_SERVICES_FIREBASE_JSON || prodGoogleServices;
 
   return {
     ...config,

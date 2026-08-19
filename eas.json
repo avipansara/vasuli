@@ -24,9 +24,10 @@
       }
     },
     "preview": {
-      "distribution": "internal",
+      "distribution": "store",
       "channel": "master",
       "autoIncrement": true,
+      "environment": "preview",
       "env": {
         "APP_ENV": "preview"
       },
@@ -40,6 +41,7 @@
     "production": {
       "channel": "production",
       "autoIncrement": true,
+      "environment": "production",
       "env": {
         "APP_ENV": "production"
       },
@@ -52,9 +54,16 @@
     }
   },
   "submit": {
+    "preview": {
+      "android": {
+        "track": "internal"
+      },
+      "ios": {
+        "ascAppId": "6803208441"
+      }
+    },
     "production": {
       "android": {
-        "serviceAccountKeyPath": "./google-services-key.json",
         "track": "internal"
       },
       "ios": {
