@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase';
 import type { User } from '@/types/database';
 import { normalizeEmail } from '@/utils/validation';
+import { mapUserRow } from './database-row-mappers';
 
 const OUTSTANDING_BALANCES_CODE = 'ACCOUNT_HAS_OUTSTANDING_BALANCES';
 const OUTSTANDING_BALANCES_MESSAGE = 'Please settle all outstanding balances before deleting your account.';
@@ -66,16 +67,7 @@ export const userService = {
 
     if (error) throw error;
 
-    return {
-      id: data.id,
-      name: data.name,
-      email: data.email || undefined,
-      phone: data.phone || undefined,
-      avatar: data.avatar || undefined,
-      pushToken: data.push_token || undefined,
-      isActive: data.is_active ?? true,
-      createdAt: new Date(data.created_at).getTime(),
-    };
+    return mapUserRow(data);
   },
 
   async getById(id: string): Promise<User | null> {
@@ -90,16 +82,7 @@ export const userService = {
       throw error;
     }
 
-    return {
-      id: data.id,
-      name: data.name,
-      email: data.email || undefined,
-      phone: data.phone || undefined,
-      avatar: data.avatar || undefined,
-      pushToken: data.push_token || undefined,
-      isActive: data.is_active ?? true,
-      createdAt: new Date(data.created_at).getTime(),
-    };
+    return mapUserRow(data);
   },
 
   async getByIds(ids: string[]): Promise<User[]> {
@@ -113,16 +96,7 @@ export const userService = {
 
     if (error) throw error;
 
-    return (data || []).map(r => ({
-      id: r.id,
-      name: r.name,
-      email: r.email || undefined,
-      phone: r.phone || undefined,
-      avatar: r.avatar || undefined,
-      pushToken: r.push_token || undefined,
-      isActive: r.is_active ?? true,
-      createdAt: new Date(r.created_at).getTime(),
-    }));
+    return (data || []).map(mapUserRow);
   },
 
   async getByEmail(email: string): Promise<User | null> {
@@ -141,16 +115,7 @@ export const userService = {
     if (error) throw error;
     if (!data) return null;
 
-    return {
-      id: data.id,
-      name: data.name,
-      email: data.email || undefined,
-      phone: data.phone || undefined,
-      avatar: data.avatar || undefined,
-      pushToken: data.push_token || undefined,
-      isActive: data.is_active ?? true,
-      createdAt: new Date(data.created_at).getTime(),
-    };
+    return mapUserRow(data);
   },
 
   async getAll(): Promise<User[]> {
@@ -161,16 +126,7 @@ export const userService = {
 
     if (error) throw error;
 
-    return (data || []).map(r => ({
-      id: r.id,
-      name: r.name,
-      email: r.email || undefined,
-      phone: r.phone || undefined,
-      avatar: r.avatar || undefined,
-      pushToken: r.push_token || undefined,
-      isActive: r.is_active ?? true,
-      createdAt: new Date(r.created_at).getTime(),
-    }));
+    return (data || []).map(mapUserRow);
   },
 
   async getUserFriends(userId: string): Promise<User[]> {
@@ -201,16 +157,7 @@ export const userService = {
 
     if (error) throw error;
 
-    return (data || []).map(r => ({
-      id: r.id,
-      name: r.name,
-      email: r.email || undefined,
-      phone: r.phone || undefined,
-      avatar: r.avatar || undefined,
-      pushToken: r.push_token || undefined,
-      isActive: r.is_active ?? true,
-      createdAt: new Date(r.created_at).getTime(),
-    }));
+    return (data || []).map(mapUserRow);
   },
 
   async update(id: string, updates: Partial<Omit<User, 'id' | 'createdAt'>>): Promise<void> {

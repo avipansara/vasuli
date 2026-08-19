@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { userService } from '@/services/user-service';
+import { mapFriendshipRow } from './database-row-mappers';
 
 export interface Friendship {
   id: string;
@@ -33,13 +34,7 @@ export const friendshipService = {
 
     if (error) throw error;
 
-    return {
-      id: data.id,
-      userId: data.user_id,
-      friendId: data.friend_id,
-      status: data.status as 'pending' | 'accepted' | 'blocked',
-      createdAt: new Date(data.created_at).getTime(),
-    };
+    return mapFriendshipRow(data);
   },
 
   /**
@@ -97,13 +92,7 @@ export const friendshipService = {
 
     if (error) throw error;
 
-    return (data || []).map(r => ({
-      id: r.id,
-      userId: r.user_id,
-      friendId: r.friend_id,
-      status: r.status as 'pending' | 'accepted' | 'blocked',
-      createdAt: new Date(r.created_at).getTime(),
-    }));
+    return (data || []).map(mapFriendshipRow);
   },
 
   /**
@@ -118,13 +107,7 @@ export const friendshipService = {
 
     if (error) throw error;
 
-    return (data || []).map(r => ({
-      id: r.id,
-      userId: r.user_id,
-      friendId: r.friend_id,
-      status: r.status as 'pending' | 'accepted' | 'blocked',
-      createdAt: new Date(r.created_at).getTime(),
-    }));
+    return (data || []).map(mapFriendshipRow);
   },
 
   /**

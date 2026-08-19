@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase';
 import { linkAuthUserToProfile } from '@/services/auth-profile-service';
 import type { Expense, ExpenseSplit } from '@/types/database';
+import { mapExpenseRow, mapExpenseSplitRow } from './database-row-mappers';
 
 async function prepareExpenseWriteSession(expectedAppUserId: string): Promise<void> {
   const { data: { session } } = await supabase.auth.getSession();
@@ -68,23 +69,7 @@ export const expenseService = {
       if (splitsError) throw splitsError;
     }
 
-    return {
-      id: data.id,
-      groupId: data.group_id || undefined,
-      description: data.description,
-      amount: data.amount,
-      currency: data.currency,
-      paidBy: data.paid_by,
-      createdBy: data.created_by || undefined,
-      category: data.category || undefined,
-      date: new Date(data.date).getTime(),
-      imageUrl: data.image_url || undefined,
-      notes: data.notes || undefined,
-      createdAt: new Date(data.created_at).getTime(),
-      updatedAt: new Date(data.updated_at).getTime(),
-      deletedAt: data.deleted_at ? new Date(data.deleted_at).getTime() : undefined,
-      deletedBy: data.deleted_by || undefined,
-    };
+    return mapExpenseRow(data);
   },
 
   async update(
@@ -154,23 +139,7 @@ export const expenseService = {
       throw error;
     }
 
-    return {
-      id: data.id,
-      groupId: data.group_id || undefined,
-      description: data.description,
-      amount: data.amount,
-      currency: data.currency,
-      paidBy: data.paid_by,
-      createdBy: data.created_by || undefined,
-      category: data.category || undefined,
-      date: new Date(data.date).getTime(),
-      imageUrl: data.image_url || undefined,
-      notes: data.notes || undefined,
-      createdAt: new Date(data.created_at).getTime(),
-      updatedAt: new Date(data.updated_at).getTime(),
-      deletedAt: data.deleted_at ? new Date(data.deleted_at).getTime() : undefined,
-      deletedBy: data.deleted_by || undefined,
-    };
+    return mapExpenseRow(data);
   },
 
   async getByGroup(groupId: string): Promise<Expense[]> {
@@ -183,21 +152,7 @@ export const expenseService = {
 
     if (error) throw error;
 
-    return (data || []).map(r => ({
-      id: r.id,
-      groupId: r.group_id || undefined,
-      description: r.description,
-      amount: r.amount,
-      currency: r.currency,
-      paidBy: r.paid_by,
-      createdBy: r.created_by || undefined,
-      category: r.category || undefined,
-      date: new Date(r.date).getTime(),
-      imageUrl: r.image_url || undefined,
-      notes: r.notes || undefined,
-      createdAt: new Date(r.created_at).getTime(),
-      updatedAt: new Date(r.updated_at).getTime(),
-    }));
+    return (data || []).map(mapExpenseRow);
   },
 
   async getByGroups(groupIds: string[]): Promise<Expense[]> {
@@ -213,21 +168,7 @@ export const expenseService = {
 
     if (error) throw error;
 
-    return (data || []).map(r => ({
-      id: r.id,
-      groupId: r.group_id || undefined,
-      description: r.description,
-      amount: r.amount,
-      currency: r.currency,
-      paidBy: r.paid_by,
-      createdBy: r.created_by || undefined,
-      category: r.category || undefined,
-      date: new Date(r.date).getTime(),
-      imageUrl: r.image_url || undefined,
-      notes: r.notes || undefined,
-      createdAt: new Date(r.created_at).getTime(),
-      updatedAt: new Date(r.updated_at).getTime(),
-    }));
+    return (data || []).map(mapExpenseRow);
   },
 
   async getSplits(expenseId: string): Promise<ExpenseSplit[]> {
@@ -238,14 +179,7 @@ export const expenseService = {
 
     if (error) throw error;
 
-    return (data || []).map(r => ({
-      id: r.id,
-      expenseId: r.expense_id,
-      userId: r.user_id,
-      amount: r.amount,
-      splitType: r.split_type as 'equal' | 'exact' | 'percentage',
-      percentage: r.percentage || undefined,
-    }));
+    return (data || []).map(mapExpenseSplitRow);
   },
 
   async getSplitsForExpenses(expenseIds: string[]): Promise<ExpenseSplit[]> {
@@ -258,14 +192,7 @@ export const expenseService = {
 
     if (error) throw error;
 
-    return (data || []).map(r => ({
-      id: r.id,
-      expenseId: r.expense_id,
-      userId: r.user_id,
-      amount: r.amount,
-      splitType: r.split_type as 'equal' | 'exact' | 'percentage',
-      percentage: r.percentage || undefined,
-    }));
+    return (data || []).map(mapExpenseSplitRow);
   },
 
   async getUserExpenses(userId: string): Promise<Expense[]> {
@@ -303,21 +230,7 @@ export const expenseService = {
 
     if (error) throw error;
 
-    return (data || []).map(r => ({
-      id: r.id,
-      groupId: r.group_id || undefined,
-      description: r.description,
-      amount: r.amount,
-      currency: r.currency,
-      paidBy: r.paid_by,
-      createdBy: r.created_by || undefined,
-      category: r.category || undefined,
-      date: new Date(r.date).getTime(),
-      imageUrl: r.image_url || undefined,
-      notes: r.notes || undefined,
-      createdAt: new Date(r.created_at).getTime(),
-      updatedAt: new Date(r.updated_at).getTime(),
-    }));
+    return (data || []).map(mapExpenseRow);
   },
 
   async delete(id: string, userId: string, userName: string): Promise<void> {

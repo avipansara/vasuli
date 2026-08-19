@@ -10,6 +10,7 @@ import {
 } from './group-detail-read-model';
 import { queryKeys } from './query-keys';
 import { getFriendRelationshipInvalidationKeys } from './friend-relationship-invalidation';
+import { mapSettlementRow } from './database-row-mappers';
 
 export type CombinedSettlementErrorCode =
   | 'invalid_input'
@@ -597,18 +598,7 @@ export const settlementService = {
 
     if (error) throw error;
 
-    return {
-      id: data.id,
-      operationId: data.operation_id || undefined,
-      groupId: data.group_id,
-      fromUserId: data.from_user_id,
-      toUserId: data.to_user_id,
-      amount: data.amount,
-      currency: data.currency,
-      date: new Date(data.date).getTime(),
-      notes: data.notes || undefined,
-      createdAt: new Date(data.created_at).getTime(),
-    };
+    return mapSettlementRow(data, { preserveNullGroupId: true });
   },
 
   async getUserSettlements(userId: string): Promise<Settlement[]> {
@@ -620,18 +610,7 @@ export const settlementService = {
 
     if (error) throw error;
 
-    return (data || []).map(r => ({
-      id: r.id,
-      operationId: r.operation_id || undefined,
-      groupId: r.group_id || undefined,
-      fromUserId: r.from_user_id,
-      toUserId: r.to_user_id,
-      amount: r.amount,
-      currency: r.currency,
-      date: new Date(r.date).getTime(),
-      notes: r.notes || undefined,
-      createdAt: new Date(r.created_at).getTime(),
-    }));
+    return (data || []).map(row => mapSettlementRow(row));
   },
 
   async getByGroup(groupId: string): Promise<Settlement[]> {
@@ -643,18 +622,7 @@ export const settlementService = {
 
     if (error) throw error;
 
-    return (data || []).map(r => ({
-      id: r.id,
-      operationId: r.operation_id || undefined,
-      groupId: r.group_id,
-      fromUserId: r.from_user_id,
-      toUserId: r.to_user_id,
-      amount: r.amount,
-      currency: r.currency,
-      date: new Date(r.date).getTime(),
-      notes: r.notes || undefined,
-      createdAt: new Date(r.created_at).getTime(),
-    }));
+    return (data || []).map(r => mapSettlementRow(r, { preserveNullGroupId: true }));
   },
 
   async getByGroups(groupIds: string[]): Promise<Settlement[]> {
@@ -669,18 +637,7 @@ export const settlementService = {
 
     if (error) throw error;
 
-    return (data || []).map(r => ({
-      id: r.id,
-      operationId: r.operation_id || undefined,
-      groupId: r.group_id || undefined,
-      fromUserId: r.from_user_id,
-      toUserId: r.to_user_id,
-      amount: r.amount,
-      currency: r.currency,
-      date: new Date(r.date).getTime(),
-      notes: r.notes || undefined,
-      createdAt: new Date(r.created_at).getTime(),
-    }));
+    return (data || []).map(row => mapSettlementRow(row));
   },
 
   async delete(id: string): Promise<void> {

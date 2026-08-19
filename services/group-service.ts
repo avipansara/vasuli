@@ -5,6 +5,7 @@ import { expenseService } from './expense-service';
 import { settlementService } from './settlement-service';
 import { scopeTransferService } from './scope-transfer-service';
 import { logGroupDetailDiagnostic } from '@/lib/group-detail-diagnostics';
+import { mapGroupMemberRow, mapGroupRow } from './database-row-mappers';
 
 type GroupHomeRow = {
   id: string;
@@ -67,16 +68,7 @@ export const groupService = {
 
     if (error) throw error;
 
-    return {
-      id: data.id,
-      name: data.name,
-      description: data.description || undefined,
-      imageUrl: data.image_url || undefined,
-      createdAt: new Date(data.created_at).getTime(),
-      updatedAt: new Date(data.updated_at).getTime(),
-      deletedAt: data.deleted_at ? new Date(data.deleted_at).getTime() : undefined,
-      deletedBy: data.deleted_by || undefined,
-    };
+    return mapGroupRow(data);
   },
 
   async getById(id: string, traceId?: string): Promise<Group | null> {
@@ -110,16 +102,7 @@ export const groupService = {
       throw error;
     }
 
-    return {
-      id: data.id,
-      name: data.name,
-      description: data.description || undefined,
-      imageUrl: data.image_url || undefined,
-      createdAt: new Date(data.created_at).getTime(),
-      updatedAt: new Date(data.updated_at).getTime(),
-      deletedAt: data.deleted_at ? new Date(data.deleted_at).getTime() : undefined,
-      deletedBy: data.deleted_by || undefined,
-    };
+    return mapGroupRow(data);
   },
 
   async getUserGroups(userId: string): Promise<Group[]> {
@@ -144,16 +127,7 @@ export const groupService = {
 
     if (error) throw error;
 
-    return (data || []).map(r => ({
-      id: r.id,
-      name: r.name,
-      description: r.description || undefined,
-      imageUrl: r.image_url || undefined,
-      createdAt: new Date(r.created_at).getTime(),
-      updatedAt: new Date(r.updated_at).getTime(),
-      deletedAt: r.deleted_at ? new Date(r.deleted_at).getTime() : undefined,
-      deletedBy: r.deleted_by || undefined,
-    }));
+    return (data || []).map(mapGroupRow);
   },
 
   async getDeletedGroups(userId: string): Promise<Group[]> {
@@ -172,16 +146,7 @@ export const groupService = {
       .not('deleted_at', 'is', null)
       .order('deleted_at', { ascending: false });
     if (error) throw error;
-    return (data ?? []).map(row => ({
-      id: row.id,
-      name: row.name,
-      description: row.description || undefined,
-      imageUrl: row.image_url || undefined,
-      createdAt: new Date(row.created_at).getTime(),
-      updatedAt: new Date(row.updated_at).getTime(),
-      deletedAt: row.deleted_at ? new Date(row.deleted_at).getTime() : undefined,
-      deletedBy: row.deleted_by || undefined,
-    }));
+    return (data ?? []).map(mapGroupRow);
   },
 
   async update(id: string, updates: Partial<Omit<Group, 'id' | 'createdAt' | 'updatedAt'>>): Promise<void> {
@@ -247,13 +212,7 @@ export const groupService = {
 
     if (error) throw error;
 
-    return {
-      id: data.id,
-      groupId: data.group_id,
-      userId: data.user_id,
-      role: data.role as 'admin' | 'member',
-      joinedAt: new Date(data.joined_at).getTime(),
-    };
+    return mapGroupMemberRow(data);
   },
 
   async getMembers(groupId: string): Promise<GroupMember[]> {
@@ -264,13 +223,7 @@ export const groupService = {
 
     if (error) throw error;
 
-    return (data || []).map(r => ({
-      id: r.id,
-      groupId: r.group_id,
-      userId: r.user_id,
-      role: r.role as 'admin' | 'member',
-      joinedAt: new Date(r.joined_at).getTime(),
-    }));
+    return (data || []).map(mapGroupMemberRow);
   },
 
   async removeMember(groupId: string, userId: string): Promise<void> {

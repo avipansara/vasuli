@@ -4,6 +4,7 @@ import { userService } from '@/services/user-service';
 import type { Invitation, User } from '@/types/database';
 import { normalizeEmail } from '@/utils/validation';
 import type { Friendship } from '@/services/friendship-service';
+import { mapInvitationRow } from './database-row-mappers';
 
 export type FriendRequestOrInvitation =
   | { type: 'friend_request'; friendship: Friendship; friend: User }
@@ -138,16 +139,7 @@ export const invitationService = {
       );
     }
 
-    return {
-      id: data.id,
-      inviterId: data.inviter_id,
-      inviteeEmail: data.invitee_email,
-      inviteePhone: data.invitee_phone || undefined,
-      inviteeName: data.invitee_name?.trim() || undefined,
-      status: data.status,
-      createdAt: new Date(data.created_at).getTime(),
-      expiresAt: new Date(data.expires_at).getTime(),
-    };
+    return mapInvitationRow(data);
   },
 
   async getByInviter(inviterId: string): Promise<Invitation[]> {
@@ -159,16 +151,7 @@ export const invitationService = {
 
     if (error) throw error;
 
-    return data.map(inv => ({
-      id: inv.id,
-      inviterId: inv.inviter_id,
-      inviteeEmail: inv.invitee_email,
-      inviteePhone: inv.invitee_phone || undefined,
-      inviteeName: inv.invitee_name?.trim() || undefined,
-      status: inv.status,
-      createdAt: new Date(inv.created_at).getTime(),
-      expiresAt: new Date(inv.expires_at).getTime(),
-    }));
+    return data.map(mapInvitationRow);
   },
 
   async getByEmail(email: string): Promise<Invitation[]> {
@@ -183,16 +166,7 @@ export const invitationService = {
 
     if (error) throw error;
 
-    return data.map(inv => ({
-      id: inv.id,
-      inviterId: inv.inviter_id,
-      inviteeEmail: inv.invitee_email,
-      inviteePhone: inv.invitee_phone || undefined,
-      inviteeName: inv.invitee_name?.trim() || undefined,
-      status: inv.status,
-      createdAt: new Date(inv.created_at).getTime(),
-      expiresAt: new Date(inv.expires_at).getTime(),
-    }));
+    return data.map(mapInvitationRow);
   },
 
   async updateStatus(id: string, status: 'accepted' | 'declined'): Promise<void> {
@@ -328,14 +302,7 @@ export const invitationService = {
     }
 
     return visibleData.map((inv) => ({
-      id: inv.id,
-      inviterId: inv.inviter_id,
-      inviteeEmail: inv.invitee_email,
-      inviteePhone: inv.invitee_phone || undefined,
-      inviteeName: inv.invitee_name?.trim() || undefined,
-      status: inv.status,
-      createdAt: new Date(inv.created_at).getTime(),
-      expiresAt: new Date(inv.expires_at).getTime(),
+      ...mapInvitationRow(inv),
       inviterName: inviterNames.get(inv.inviter_id) || 'A friend',
     }));
   },
