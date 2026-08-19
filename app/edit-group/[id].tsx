@@ -2,6 +2,7 @@ import { ThemedText } from '@/components/themed-text';
 import { AsyncErrorState } from '@/components/ui/async-error-state';
 import { KeyboardAwareScroll } from '@/components/ui/keyboard-aware-scroll';
 import { NavigationHeader } from '@/components/ui/screen-header';
+import { Skeleton } from '@/components/ui/skeleton';
 import { ThemedInput } from '@/components/ui/themed-input';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
@@ -101,8 +102,19 @@ export default function EditGroupScreen() {
     return (
       <View style={styles.container}>
         <LinearGradient colors={gradients.screenBackground} style={StyleSheet.absoluteFill} />
-        <View style={styles.loadingContainer}>
-          <ThemedText>Loading...</ThemedText>
+        <NavigationHeader
+          title="Edit Group"
+          onBack={() => router.back()}
+        />
+        <View style={styles.scrollContent}>
+          <View style={[styles.inputSection, { marginTop: 24 }]}>
+            <Skeleton width={100} height={16} style={{ marginBottom: 8 }} />
+            <Skeleton height={50} borderRadius={12} />
+          </View>
+          <View style={[styles.inputSection, { marginTop: 24 }]}>
+            <Skeleton width={150} height={16} style={{ marginBottom: 8 }} />
+            <Skeleton height={80} borderRadius={12} />
+          </View>
         </View>
       </View>
     );

@@ -1,10 +1,10 @@
 import { ACCENT_TEAL, BG_ICON_DARK, BG_ICON_LIGHT } from '@/constants/theme';
 import { useThemeColors } from '@/hooks/use-theme-colors';
-import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
-import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { ThemedText } from '../themed-text';
 import { IconSymbol, IconSymbolName } from './icon-symbol';
+import { ThemedButton } from './themed-button';
 
 interface EmptyStateProps {
   icon: IconSymbolName;
@@ -21,7 +21,7 @@ export function EmptyState({
   buttonLabel,
   onButtonPress,
 }: EmptyStateProps) {
-  const { colors, gradients, isDark } = useThemeColors();
+  const { colors, isDark } = useThemeColors();
 
   return (
     <View style={styles.container}>
@@ -39,16 +39,12 @@ export function EmptyState({
         {subtitle}
       </ThemedText>
       {buttonLabel && onButtonPress && (
-        <TouchableOpacity activeOpacity={0.8} onPress={onButtonPress}>
-          <LinearGradient
-            colors={gradients.buttonPrimary}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.button}>
-            <IconSymbol size={20} name="plus.circle.fill" color="#0A0A0F" />
-            <ThemedText style={styles.buttonText}>{buttonLabel}</ThemedText>
-          </LinearGradient>
-        </TouchableOpacity>
+        <ThemedButton
+          label={buttonLabel}
+          onPress={onButtonPress}
+          icon="plus.circle.fill"
+          style={styles.button}
+        />
       )}
     </View>
   );
@@ -82,16 +78,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   button: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    alignSelf: 'center',
     paddingHorizontal: 24,
-    paddingVertical: 14,
-    borderRadius: 14,
-    gap: 8,
-  },
-  buttonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#0A0A0F',
   },
 });

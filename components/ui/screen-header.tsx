@@ -7,7 +7,7 @@ import {
 } from '@/constants/theme';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import React from 'react';
-import { Platform, StyleSheet, TouchableOpacity, View, ViewStyle } from 'react-native';
+import { ActivityIndicator, Platform, StyleSheet, TouchableOpacity, View, ViewStyle } from 'react-native';
 import { ThemedText } from '../themed-text';
 import { IconSymbol, IconSymbolName } from './icon-symbol';
 
@@ -183,4 +183,56 @@ const styles = StyleSheet.create({
   placeholder: {
     width: 40,
   },
+  headerActionButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 12,
+    minWidth: 60,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerActionButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
 });
+
+interface HeaderActionButtonProps {
+  label: string;
+  onPress: () => void;
+  disabled?: boolean;
+  loading?: boolean;
+}
+
+export function HeaderActionButton({ label, onPress, disabled = false, loading = false }: HeaderActionButtonProps) {
+  const { colors, isDark } = useThemeColors();
+  const primaryBtnColor = isDark ? '#0D9488' : '#0F4C3A';
+
+  const isDisabled = disabled || loading;
+
+  const bg = isDisabled
+    ? (isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)')
+    : primaryBtnColor;
+
+  const textColor = isDisabled
+    ? colors.textSecondary
+    : '#ffffff';
+
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      disabled={isDisabled}
+      style={[
+        styles.headerActionButton,
+        { backgroundColor: bg },
+      ]}>
+      {loading ? (
+        <ActivityIndicator size="small" color="#ffffff" />
+      ) : (
+        <ThemedText style={[styles.headerActionButtonText, { color: textColor }]}>
+          {label}
+        </ThemedText>
+      )}
+    </TouchableOpacity>
+  );
+}

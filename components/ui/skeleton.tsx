@@ -64,7 +64,7 @@ export function FriendsListSkeleton() {
           key={itemIndex}
           style={[
             styles.card,
-            { backgroundColor: isDark ? '#0f172a' : friendsTheme.cardSurface, borderColor: isDark ? 'transparent' : friendsTheme.cardBorder, borderWidth: isDark ? 0 : 1 },
+            { backgroundColor: isDark ? '#000000' : friendsTheme.cardSurface, borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : friendsTheme.cardBorder, borderWidth: 1 },
           ]}>
           <View style={styles.topSection}>
             <Skeleton width={44} height={44} borderRadius={14} style={{ marginRight: 12 }} />
@@ -90,7 +90,7 @@ export function FriendsListSkeleton() {
  */
 export function GroupsListSkeleton() {
   const { colors, isDark } = useThemeColors();
-  const cardBorderColor = isDark ? 'transparent' : colors.border;
+  const cardBorderColor = isDark ? 'rgba(255, 255, 255, 0.08)' : colors.border;
 
   return (
     <View style={styles.container}>
@@ -100,9 +100,9 @@ export function GroupsListSkeleton() {
           style={[
             styles.card,
             {
-              backgroundColor: isDark ? '#0f172a' : colors.card,
+              backgroundColor: colors.card,
               borderColor: cardBorderColor,
-              borderWidth: isDark ? 0 : 1,
+              borderWidth: 1,
               paddingVertical: 16,
             },
           ]}>
@@ -176,7 +176,7 @@ export function ActivityListSkeleton() {
  */
 export function FriendDetailSkeleton() {
   const { isDark } = useThemeColors();
-  const cardBg = isDark ? '#0d1321' : '#ffffff';
+  const cardBg = isDark ? '#000000' : '#ffffff';
 
   return (
     <View style={styles.container}>
@@ -186,11 +186,13 @@ export function FriendDetailSkeleton() {
           styles.centeredSummaryCardSkeleton,
           {
             backgroundColor: cardBg,
-            shadowColor: isDark ? '#000000' : '#64748B',
+            borderWidth: isDark ? 1 : 0,
+            borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'transparent',
+            shadowColor: isDark ? 'transparent' : '#64748B',
             shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: isDark ? 0.35 : 0.08,
+            shadowOpacity: isDark ? 0 : 0.08,
             shadowRadius: 12,
-            elevation: 4,
+            elevation: isDark ? 0 : 4,
           },
         ]}>
         <Skeleton width={90} height={12} style={{ alignSelf: 'center', marginBottom: 8 }} />
@@ -243,7 +245,7 @@ export function FriendDetailSkeleton() {
  */
 export function GroupDetailSkeleton() {
   const { isDark } = useThemeColors();
-  const cardBg = isDark ? '#0d1321' : '#ffffff';
+  const cardBg = isDark ? '#000000' : '#ffffff';
 
   return (
     <View style={styles.container}>
@@ -253,11 +255,13 @@ export function GroupDetailSkeleton() {
           styles.centeredSummaryCardSkeleton,
           {
             backgroundColor: cardBg,
-            shadowColor: isDark ? '#000000' : '#64748B',
+            borderWidth: isDark ? 1 : 0,
+            borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'transparent',
+            shadowColor: isDark ? 'transparent' : '#64748B',
             shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: isDark ? 0.35 : 0.08,
+            shadowOpacity: isDark ? 0 : 0.08,
             shadowRadius: 12,
-            elevation: 4,
+            elevation: isDark ? 0 : 4,
           },
         ]}>
         <Skeleton width={100} height={12} style={{ alignSelf: 'center', marginBottom: 8 }} />

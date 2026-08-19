@@ -1,11 +1,11 @@
 import { ThemedText } from '@/components/themed-text';
+import { IconSymbol } from '@/components/ui/icon-symbol';
 import { SharedModal } from '@/components/ui/shared-modal';
 import { ThemedInput } from '@/components/ui/themed-input';
-import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { filterUsers } from '@/lib/filter-users';
 import type { User } from '@/types/database';
-import React, { useDeferredValue, useMemo, useState } from 'react';
+import { useDeferredValue, useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, View } from 'react-native';
 
 interface AddMemberModalProps {
@@ -25,7 +25,7 @@ export function AddMemberModal({
   setSelectedUserIds,
   onSubmit,
 }: AddMemberModalProps) {
-  const { colors, isDark } = useThemeColors();
+  const { colors, settle, isDark } = useThemeColors();
   const [search, setSearch] = useState('');
   const deferredSearch = useDeferredValue(search);
   const filteredUsers = useMemo(
@@ -66,28 +66,22 @@ export function AddMemberModal({
         style={({ pressed }) => [
           styles.userRow,
           {
-            backgroundColor: selected
-              ? (isDark ? 'rgba(13, 148, 136, 0.16)' : 'rgba(15, 76, 58, 0.08)')
-              : (isDark ? 'rgba(20, 35, 38, 0.95)' : '#ffffff'),
-            borderWidth: selected ? 1 : 0,
-            borderColor: selected
-              ? (isDark ? '#0D9488' : '#0F4C3A')
-              : 'transparent',
-            shadowColor: isDark ? '#000000' : '#475569',
-            shadowOffset: { width: 0, height: 3 },
-            shadowOpacity: isDark ? 0.35 : 0.09,
-            shadowRadius: 10,
-            elevation: 3,
+            backgroundColor: 'transparent',
+            borderWidth: 0,
             opacity: pressed ? 0.72 : 1,
           },
         ]}>
-        <View style={[styles.avatar, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(15, 76, 58, 0.1)' }]}>
-          <ThemedText style={[styles.avatarText, { color: isDark ? '#2DD4BF' : '#0F4C3A' }]}>
+        <View style={[styles.avatar, {
+          backgroundColor: selected
+            ? settle.avatarSelectedBackground
+            : settle.avatarUnselectedBackground,
+        }]}>
+          <ThemedText type='subtitle' style={[styles.avatarText, { color: selected ? settle.avatarText : colors.text }]}>
             {initials || '?'}
           </ThemedText>
         </View>
         <View style={styles.userDetails}>
-          <ThemedText type="defaultSemiBold" numberOfLines={1} style={{ color: colors.text }}>
+          <ThemedText type="defaultSemiBold" numberOfLines={1} style={{ color: selected ? settle.accentText : colors.text, fontSize: 16 }}>
             {item.name}
           </ThemedText>
           {!!item.email && (
@@ -96,7 +90,11 @@ export function AddMemberModal({
             </ThemedText>
           )}
         </View>
-        <View style={[styles.checkbox, selected && { backgroundColor: isDark ? '#0D9488' : '#0F4C3A', borderColor: isDark ? '#0D9488' : '#0F4C3A' }]}>
+        <View style={[
+          styles.checkbox,
+          { borderColor: selected ? (isDark ? '#10b981' : colors.tint) : (isDark ? '#3c4a42' : '#bfc9c3') },
+          selected && { backgroundColor: isDark ? '#10b981' : colors.tint }
+        ]}>
           {selected && <IconSymbol name="checkmark" size={14} color="#ffffff" />}
         </View>
       </Pressable>
@@ -113,10 +111,9 @@ export function AddMemberModal({
         autoCapitalize="none"
         autoCorrect={false}
         accessibilityLabel="Search friends"
-        style={styles.searchInput}
       />
       <View style={styles.selectionSummary}>
-        <ThemedText style={[styles.selectionText, { color: colors.textSecondary }]}>
+        <ThemedText style={[styles.selectionText, { color: colors.textSecondary, textTransform: 'uppercase', fontWeight: '600', letterSpacing: 0.5 }]}>
           {selectedUserIds.length === 0
             ? 'Select the friends to add'
             : selectedUserIds.length + ' ' + (selectedUserIds.length === 1 ? 'friend' : 'friends') + ' selected'}
@@ -126,7 +123,7 @@ export function AddMemberModal({
             onPress={() => setSelectedUserIds([])}
             accessibilityRole="button"
             accessibilityLabel="Clear selected friends">
-            <ThemedText style={[styles.clearText, { color: isDark ? '#2DD4BF' : colors.tint }]}>
+            <ThemedText type='subtitle' style={[styles.clearText, { color: isDark ? '#10b981' : colors.tint }]}>
               Clear
             </ThemedText>
           </Pressable>
@@ -169,10 +166,14 @@ export function AddMemberModal({
       subtitle="Choose one or more friends to add"
       icon="person.badge.plus"
       bodyContent={bodyContent}
-      submitLabel={selectedUserIds.length > 0 ? 'Add ' + selectedUserIds.length + (selectedUserIds.length === 1 ? ' Member' : ' Members') : 'Add Members'}
+      submitLabel="Add Members"
       submitIcon="person.badge.plus"
       submitDisabled={isDisabled || availableUsers.length === 0}
-      onSubmit={onSubmit}>
+      onSubmit={onSubmit}
+      headerStyle="centered"
+      submitBadge={selectedUserIds.length > 0 ? selectedUserIds.length : undefined}
+      submitGradientColors={isDark ? ['#4edea3', '#4edea3'] : ['#003527', '#003527']}
+      submitTextColor={isDark ? '#003824' : '#ffffff'}>
     </SharedModal>
   );
 }
@@ -181,15 +182,12 @@ const styles = StyleSheet.create({
   listContent: {
     paddingBottom: 12,
   },
-  searchInput: {
-    marginBottom: 12,
-  },
   selectionSummary: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     minHeight: 28,
-    marginBottom: 4,
+    marginVertical: 10,
   },
   selectionText: {
     fontSize: 13,
@@ -203,7 +201,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    paddingHorizontal: 12,
     borderRadius: 12,
     borderWidth: 1,
     marginBottom: 8,
@@ -216,8 +213,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   avatarText: {
-    fontSize: 13,
-    fontWeight: '700',
+    fontSize: 16,
   },
   userDetails: {
     flex: 1,

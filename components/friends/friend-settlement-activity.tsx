@@ -42,13 +42,14 @@ export function FriendSettlementActivity({
       style={[
         styles.expenseCard,
         {
-          backgroundColor: isDark ? '#0d1321' : '#ffffff',
-          borderWidth: 0,
-          shadowColor: isDark ? '#000000' : '#475569',
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: isDark ? 0.4 : 0.09,
-          shadowRadius: 12,
-          elevation: 4,
+          backgroundColor: colors.card,
+          borderWidth: isDark ? 1 : 0,
+          borderColor: colors.border,
+          shadowColor: isDark ? 'transparent' : '#475569',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: isDark ? 0 : 0.09,
+          shadowRadius: 0,
+          elevation: isDark ? 0 : 4,
         },
       ]}>
       <View style={[styles.expenseIcon, {
@@ -101,10 +102,10 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 0,
     shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.06,
-    shadowRadius: 10,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.09,
+    shadowRadius: 0,
+    elevation: 4,
   },
   expenseIcon: {
     width: 38,

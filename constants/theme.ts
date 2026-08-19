@@ -21,10 +21,10 @@ export const SUCCESS_LIGHT = '#005E44'; // #22C55E
 export const ERROR_COLOR = '#990000';
 
 // Dark mode backgrounds
-export const BG_DARK = '#0A0A0F';
-export const BG_CARD_DARK = '#12121A';
-export const BG_GLASS_DARK = 'rgba(26, 26, 36, 0.8)';
-export const BG_ICON_DARK = 'rgba(45, 212, 191, 0.15)';
+export const BG_DARK = '#05080e';
+export const BG_CARD_DARK = '#000000';
+export const BG_GLASS_DARK = 'rgba(5, 8, 14, 0.8)';
+export const BG_ICON_DARK = 'rgba(255, 255, 255, 0.08)';
 export const BG_ICON_SUCCESS_DARK = 'rgba(16, 185, 129, 0.15)';
 
 // Light mode backgrounds
@@ -33,9 +33,9 @@ export const BG_CARD_LIGHT = '#FFFFFF';
 export const BG_ICON_LIGHT = 'rgba(34, 197, 94, 0.1)';
 
 // Borders
-export const BORDER_DARK = 'rgba(45, 212, 191, 0.2)';
+export const BORDER_DARK = 'rgba(255, 255, 255, 0.08)';
 export const BORDER_LIGHT = '#E5E5E5';
-export const BORDER_ACCENT_DARK = 'rgba(45, 212, 191, 0.3)';
+export const BORDER_ACCENT_DARK = 'rgba(255, 255, 255, 0.12)';
 export const BORDER_ACCENT_LIGHT = 'rgba(34, 197, 94, 0.3)';
 
 // Text colors
@@ -77,7 +77,7 @@ export const Colors = {
   dark: {
     text: '#f8fafc',
     textSecondary: '#9ba6b8',
-    background: '#040914',
+    background: '#05080e',
     tint: '#10b981',
     icon: '#64748b',
     tabIconDefault: '#64748b',
@@ -85,17 +85,17 @@ export const Colors = {
     // Extended palette
     accent: '#10b981',
     accentSecondary: '#4edea3',
-    card: '#0f172a',
-    cardGlass: 'rgba(30, 41, 59, 0.4)',
-    border: '#2a3441',
+    card: '#000000',
+    cardGlass: 'rgba(15, 23, 42, 0.6)',
+    border: 'rgba(255, 255, 255, 0.08)',
     success: '#10b981',
     error: '#ffb4ab',
     // Additional dark mode colors
-    inputBackground: '#0b1120',
-    inputBorder: '#2a3441',
-    modalBackground: '#040914',
-    headerBackground: '#040914',
-    infoSurface: '#0f172a',
+    inputBackground: '#000000',
+    inputBorder: 'rgba(255, 255, 255, 0.08)',
+    modalBackground: '#05080e',
+    headerBackground: '#05080e',
+    infoSurface: '#000000',
   },
 };
 
@@ -124,24 +124,24 @@ export const ExpenseDetailTheme = {
   dark: {
     accent: '#10b981',
     onAccent: '#003827',
-    surface: '#0b1120',
-    surfaceBorder: 'rgba(42, 52, 65, 0.5)',
-    mutedSurface: '#0f172a',
-    mutedSurfaceBorder: 'rgba(42, 52, 65, 0.5)',
+    surface: '#000000',
+    surfaceBorder: 'rgba(255, 255, 255, 0.08)',
+    mutedSurface: '#000000',
+    mutedSurfaceBorder: 'rgba(255, 255, 255, 0.08)',
     accentSurface: 'rgba(16, 185, 129, 0.15)',
     accentSurfaceBorder: 'rgba(16, 185, 129, 0.3)',
-    selectedSurface: '#0f172a',
+    selectedSurface: '#000000',
     avatarSurface: '#162032',
     danger: '#ffb4ab',
     dangerSurface: '#93000a',
     dangerBorder: 'rgba(239, 68, 68, 0.3)',
     warning: '#F59E0B',
     neutralPillSurface: 'rgba(155, 166, 184, 0.12)',
-    divider: '#2a3441',
+    divider: 'rgba(255, 255, 255, 0.08)',
     backgroundAccentTop: 'rgba(16, 185, 129, 0.1)',
     backgroundAccentMiddle: 'rgba(167, 139, 250, 0.06)',
     backgroundAccentBottom: 'rgba(16, 185, 129, 0.05)',
-    background: '#060b18',
+    background: '#05080e',
     textPrimary: '#f8fafc',
     textSecondary: '#9ba6b8',
   },
@@ -165,16 +165,16 @@ export const FriendsTheme = {
     onDanger: BG_CARD_LIGHT,
   },
   dark: {
-    actionSurface: '#0f172a',
-    actionBorder: '#2a3441',
+    actionSurface: '#000000',
+    actionBorder: 'rgba(255, 255, 255, 0.08)',
     actionIcon: '#10b981',
     primaryButtonText: '#003827',
     emptyIconSurface: '#064e3b',
-    settledSurface: '#162032',
-    cardSurface: '#0f172a',
-    cardBorder: 'transparent',
-    cardShadow: '#000000',
-    cardShadowOpacity: 0.35,
+    settledSurface: '#000000',
+    cardSurface: '#000000',
+    cardBorder: 'rgba(255, 255, 255, 0.08)',
+    cardShadow: 'transparent',
+    cardShadowOpacity: 0,
     avatarSurface: '#064e3b',
     branch: '#10b981',
     dangerSurface: '#93000a',
@@ -211,8 +211,8 @@ export const FriendDetailTheme = {
     backgroundAccentBottom: 'rgba(45, 212, 191, 0.05)',
   },
   dark: {
-    actionSurface: 'rgba(13, 19, 33, 0.6)',
-    actionBorder: 'rgba(255, 255, 255, 0.05)',
+    actionSurface: 'rgba(0, 0, 0, 0.6)',
+    actionBorder: 'rgba(255, 255, 255, 0.08)',
     actionIcon: '#10b981',
     warningSurface: 'rgba(245, 158, 11, 0.15)',
     warningBorder: 'rgba(245, 158, 11, 0.3)',
@@ -220,9 +220,9 @@ export const FriendDetailTheme = {
     dangerSurface: 'rgba(136, 29, 36, 0.2)',
     dangerBorder: 'rgba(239, 68, 68, 0.3)',
     danger: '#ffb3b0',
-    surface: '#0d1321',
-    surfaceBorder: 'rgba(255, 255, 255, 0.05)',
-    mutedSurface: '#131b2e',
+    surface: '#000000',
+    surfaceBorder: 'rgba(255, 255, 255, 0.08)',
+    mutedSurface: '#000000',
     avatarSurface: '#2d3449',
     avatarBorder: 'rgba(255, 255, 255, 0.08)',
     positive: '#45dfa4',
@@ -230,17 +230,17 @@ export const FriendDetailTheme = {
     positiveBorder: 'rgba(69, 223, 164, 0.26)',
     negative: '#ffb3b0',
     negativeSurface: 'rgba(136, 29, 36, 0.2)',
-    settledSurface: '#1e293b',
+    settledSurface: '#000000',
     onPrimary: '#ffffff',
     onDanger: '#050914',
     backgroundAccentTop: 'rgba(136, 29, 36, 0.2)',
     backgroundAccentMiddle: 'rgba(167, 139, 250, 0.06)',
     backgroundAccentBottom: 'rgba(0, 185, 130, 0.1)',
-    heroBackground: '#0d1321',
-    heroBorder: 'rgba(255, 255, 255, 0.05)',
+    heroBackground: '#000000',
+    heroBorder: 'rgba(255, 255, 255, 0.08)',
     buttonBackground: '#10b981',
     buttonText: '#ffffff',
-    background: '#050914',
+    background: '#05080e',
     textPrimary: '#F8FAFC',
     textSecondary: '#94A3B8',
   },
@@ -264,20 +264,20 @@ export const SettleTheme = {
     negativeText: '#A83639',
   },
   dark: {
-    heroBackground: '#131b2e',
-    heroBorder: 'rgba(60, 74, 66, 0.3)',
-    pillBackground: '#222a3d',
+    heroBackground: '#000000',
+    heroBorder: 'rgba(255, 255, 255, 0.08)',
+    pillBackground: 'rgba(255, 255, 255, 0.15))',
     buttonBackground: '#4edea3',
     buttonText: '#003824',
     accentText: '#10b981',
-    cardBackground: '#0F172A',
-    cardBorder: '#2A3441',
+    cardBackground: '#000000',
+    cardBorder: 'rgba(255, 255, 255, 0.08)',
     selectedCardBackground: '#123C3A',
     selectedCardBorder: 'rgba(78, 222, 163, 0.5)',
     avatarSelectedBackground: '#4edea3',
-    avatarUnselectedBackground: '#131B2E',
+    avatarUnselectedBackground: '#000000',
     avatarText: '#005236',
-    background: '#0b1326',
+    background: '#05080e',
     textPrimary: '#dae2fd',
     textSecondary: '#bbcabf',
     positiveText: '#2DD4BF',
@@ -288,14 +288,14 @@ export const SettleTheme = {
 // Gradient presets for liquid glass effects - Dark mode
 export const Gradients = {
   dark: {
-    screenBackground: ['#0D1B1E', '#0A1214', '#080E10'] as [string, string, string],
-    cardPrimary: ['#1A2428', '#141C1E'] as [string, string],
-    cardAccent: ['rgba(45, 212, 191, 0.15)', 'rgba(139, 92, 246, 0.1)'] as [string, string],
-    hero: ['#0D1B1E', '#0A1214'] as [string, string],
+    screenBackground: ['#05080e', '#03050a', '#000000'] as [string, string, string],
+    cardPrimary: ['#000000', '#000000'] as [string, string],
+    cardAccent: ['rgba(255, 255, 255, 0.03)', 'rgba(255, 255, 255, 0.01)'] as [string, string],
+    hero: ['#05080e', '#000000'] as [string, string],
     buttonPrimary: ['#2DD4BF', '#14B8A6'] as [string, string],
     purpleAccent: ['#A78BFA', '#8B5CF6'] as [string, string],
-    glassOverlay: ['rgba(26, 26, 36, 0.9)', 'rgba(18, 18, 26, 0.95)'] as [string, string],
-    cardGlass: ['rgba(20, 35, 38, 0.9)', 'rgba(15, 25, 28, 0.95)'] as [string, string],
+    glassOverlay: ['rgba(5, 8, 14, 0.9)', 'rgba(0, 0, 0, 0.95)'] as [string, string],
+    cardGlass: ['rgba(0, 0, 0, 0.9)', 'rgba(0, 0, 0, 0.95)'] as [string, string],
   },
   light: {
     screenBackground: ['#F5F5F5', '#F5F5F5', '#F5F5F5'] as [string, string, string],
@@ -326,11 +326,11 @@ export const Glows = {
     elevation: 6,
   },
   card: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.4,
-    shadowRadius: 16,
-    elevation: 10,
+    shadowColor: 'transparent',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0,
+    shadowRadius: 0,
+    elevation: 0,
   },
 };
 
