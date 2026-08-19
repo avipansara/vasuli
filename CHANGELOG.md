@@ -1,4 +1,6 @@
 ## 2026-08-18
+- Made settlement reversal validation scope-aware by including cross-scope
+  transfer deltas in the server-side stale-balance check.
 
 - Hardened settlement RPC boundaries in Dev by removing the legacy callable
   settlement overload, protecting payment-intent replays from changed payloads,
