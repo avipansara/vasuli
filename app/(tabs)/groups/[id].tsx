@@ -9,8 +9,8 @@ import { useRefetchOnFocus } from '@/hooks/use-refetch-on-focus';
 import { useRealtime } from '@/hooks/use-realtime';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
-import { CombinedSettlementError } from '@/services/combined-settlement-errors';
 import { activityService } from '@/services/activity-service';
+import { CombinedSettlementError, settlementModule } from '@/services/settlement-service';
 import { expenseService } from '@/services/expense-service';
 import { friendshipService } from '@/services/friendship-service';
 import { areGroupBalancesSettled } from '@/services/group-balance';
@@ -19,7 +19,6 @@ import { removeExpenseFromGroupReadModel, removeExpenseFromHomeFriends } from '@
 import { groupDetailService } from '@/services/group-detail-service';
 import { groupService } from '@/services/group-service';
 import { friendDetailModule } from '@/services/friend-detail-module';
-import { reverseSettlementOperation } from '@/services/settlement-reversal';
 import {
   createExpenseDeletedNotification,
   createMemberAddedNotification,
@@ -29,7 +28,7 @@ import type { QueryCacheSnapshot } from '@/services/query-cache-adapter';
 import { createReactQueryCacheAdapter } from '@/services/query-cache-adapter';
 import { queryKeys } from '@/services/query-keys';
 import { userService } from '@/services/user-service';
-import type { Expense, GroupMember, User } from '@/types/database';
+import type { Expense, GroupMember, Settlement, User } from '@/types/database';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -47,6 +46,7 @@ const CATEGORY_MAP: Record<string, { icon: any, lightBg: string, darkBg: string,
 
 const MIN_TOUCH_HIT_SLOP = { top: 8, right: 8, bottom: 8, left: 8 };
 const EMPTY_EXPENSES: GroupExpenseView[] = [];
+const EMPTY_SETTLEMENTS: Settlement[] = [];
 
 type SectionTab = 'all' | 'expenses';
 
@@ -131,6 +131,7 @@ export default function GroupDetailScreen() {
   });
   const group = groupDetail?.group ?? null;
   const expenses = groupDetail?.expenses ?? EMPTY_EXPENSES;
+  const settlements = groupDetail?.settlements ?? EMPTY_SETTLEMENTS;
   const members = groupDetail?.members ?? [];
   const balances = groupDetail?.balances ?? new Map<string, number>();
   const scopeTransfers = groupDetail?.scopeTransfers ?? [];
@@ -148,6 +149,15 @@ export default function GroupDetailScreen() {
       expense.paidByUser?.name.toLocaleLowerCase().includes(search)
     ));
   }, [expenseSearch, expenses]);
+  const timelineItems = useMemo(() => [
+    ...filteredExpenses.map(expense => ({ type: 'expense' as const, date: expense.date, expense })),
+    ...settlements.map(settlement => ({ type: 'settlement' as const, date: settlement.date, settlement })),
+  ].sort((a, b) => b.date - a.date), [filteredExpenses, settlements]);
+  const expenseItems = useMemo(
+    () => filteredExpenses.map(expense => ({ type: 'expense' as const, date: expense.date, expense })),
+    [filteredExpenses],
+  );
+  const displayItems = sectionTab === 'all' ? timelineItems : expenseItems;
 
   const loadGroupData = useCallback(async () => {
     await refetch();
@@ -174,15 +184,16 @@ export default function GroupDetailScreen() {
           onPress: async () => {
             try {
               const otherUserId = transfer.fromUserId === currentUserId ? transfer.toUserId : transfer.fromUserId;
-              await reverseSettlementOperation({
+              const friendDetail = await friendDetailModule.getDetail(currentUserId, otherUserId);
+              const expectedBalance = friendDetail?.relationship.totalsByCurrency.find(total => total.currency === transfer.currency)?.amount;
+              await settlementModule.reverse({
                 operationId: transfer.operationId,
-                getExpectedBalance: async () => {
-                  const friendDetail = await friendDetailModule.getDetail(currentUserId, otherUserId);
-                  return friendDetail?.relationship.totalsByCurrency.find(total => total.currency === transfer.currency)?.amount;
-                },
-                refresh: refetch,
-                invalidateHome: () => queryClient.invalidateQueries({ queryKey: friendsHomeQueryKey }),
+                expectedBalance: expectedBalance ?? 0,
+                currentUserId,
+                friendId: otherUserId,
+                queryClient,
               });
+              await refetch();
               Alert.alert('Settlement reversed', 'The affected balances were restored.');
             } catch (error) {
               Alert.alert(
@@ -194,7 +205,7 @@ export default function GroupDetailScreen() {
         },
       ],
     );
-  }, [currentUserId, friendsHomeQueryKey, queryClient, refetch]);
+  }, [currentUserId, queryClient, refetch]);
 
   useEffect(() => {
     if (groupDetail === null) {
@@ -562,6 +573,27 @@ export default function GroupDetailScreen() {
           </View>
         </TouchableOpacity>
       </Swipeable>
+    );
+  }
+
+  function renderSettlement({ item }: { item: Settlement }) {
+    const fromUser = members.find(member => member.userId === item.fromUserId)?.user?.name || 'Someone';
+    const toUser = members.find(member => member.userId === item.toUserId)?.user?.name || 'Someone';
+    const dateStr = new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+    return (
+      <View style={[styles.transferRow, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <View style={[styles.expenseIcon, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.15)' : '#D1FAE5' }]}>
+          <IconSymbol size={20} name="banknote" color={isDark ? '#6EE7B7' : '#047857'} />
+        </View>
+        <View style={styles.transferCopy}>
+          <ThemedText type="defaultSemiBold" style={{ color: colors.text }}>Settlement</ThemedText>
+          <ThemedText style={{ color: colors.textSecondary }}>{fromUser} paid {toUser}{'\n'}{dateStr}</ThemedText>
+        </View>
+        <ThemedText type="defaultSemiBold" style={{ color: isDark ? '#6EE7B7' : '#047857' }}>
+          {item.currency} {item.amount.toFixed(2)}
+        </ThemedText>
+      </View>
     );
   }
 
@@ -1104,16 +1136,19 @@ export default function GroupDetailScreen() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <ThemedText type="subtitle" style={[styles.sectionTitle, { color: isDark ? '#F8FAFC' : colors.text }]}>
-              Expenses
+              {sectionTab === 'all' ? 'Activity' : 'Expenses'}
             </ThemedText>
             <ThemedText style={[styles.expenseCount, { color: isDark ? '#94A3B8' : colors.textSecondary }]}>
-              {expenseSearch.trim() ? `${filteredExpenses.length} of ${expenses.length}` : `${expenses.length} ${expenses.length === 1 ? 'expense' : 'expenses'}`}
+              {sectionTab === 'all'
+                ? `${timelineItems.length} ${timelineItems.length === 1 ? 'item' : 'items'}`
+                : expenseSearch.trim() ? `${filteredExpenses.length} of ${expenses.length}` : `${expenses.length} ${expenses.length === 1 ? 'expense' : 'expenses'}`}
             </ThemedText>
           </View>
-          <View style={[styles.searchContainer, {
+          {sectionTab === 'expenses' && <View style={[styles.searchContainer, {
             backgroundColor: colors.card,
             borderColor: colors.border,
-          }]}>
+          }]}
+          >
             <IconSymbol
               name="magnifyingglass"
               size={17}
@@ -1138,8 +1173,8 @@ export default function GroupDetailScreen() {
                 <IconSymbol name="xmark.circle.fill" size={18} color={isDark ? '#94A3B8' : colors.textSecondary} />
               </TouchableOpacity>
             )}
-          </View>
-          {expenses.length === 0 ? (
+          </View>}
+          {(sectionTab === 'all' ? timelineItems.length === 0 : expenses.length === 0) ? (
             <View style={styles.emptySection}>
               <View style={[styles.emptyIconWrapper, { backgroundColor: friendDetailTheme.avatarSurface }]}>
                 <IconSymbol size={28} name="dollarsign.circle" color={friendDetailTheme.actionIcon} />
@@ -1149,7 +1184,7 @@ export default function GroupDetailScreen() {
                 Add an expense to start splitting costs
               </ThemedText>
             </View>
-          ) : filteredExpenses.length === 0 ? (
+          ) : sectionTab === 'expenses' && filteredExpenses.length === 0 ? (
             <View style={styles.emptySection}>
               <View style={[styles.emptyIconWrapper, { backgroundColor: friendDetailTheme.avatarSurface }]}>
                 <IconSymbol size={28} name="magnifyingglass" color={friendDetailTheme.actionIcon} />
@@ -1160,14 +1195,16 @@ export default function GroupDetailScreen() {
               </ThemedText>
             </View>
           ) : (
-            filteredExpenses.map((expense, index) => (
+            displayItems.map((item, index) => (
               <Animated.View
-                key={expense.id}
+                key={item.type === 'expense' ? item.expense.id : item.settlement.id}
                 style={{
                   opacity: fadeAnim,
                   transform: [{ translateY: Animated.multiply(slideAnim, new Animated.Value((index + 1) * 0.1)) }],
                 }}>
-                {renderExpense({ item: expense })}
+                {item.type === 'expense'
+                  ? renderExpense({ item: item.expense })
+                  : renderSettlement({ item: item.settlement })}
               </Animated.View>
             ))
           )}

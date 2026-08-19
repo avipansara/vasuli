@@ -10,14 +10,13 @@ import { useAuth } from '@/contexts/auth-context-otp';
 import { useFriendDetailController } from '@/hooks/use-friend-detail-controller';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
-import { CombinedSettlementError } from '@/services/combined-settlement-errors';
 import {
   filterFriendActivity,
   friendDetailModule,
   groupFriendActivityByMonth,
   type FriendActivityFilter,
 } from '@/services/friend-detail-module';
-import { reverseSettlementOperation } from '@/services/settlement-reversal';
+import { settlementModule, CombinedSettlementError } from '@/services/settlement-service';
 import { projectFriendRelationship, type FriendDetailData } from '@/services/friend-detail-service';
 import type { GroupDetailReadModel } from '@/services/group-detail-read-model';
 import { applySettlementToGroupReadModel } from '@/services/group-detail-read-model';
@@ -301,12 +300,24 @@ export default function FriendDetailScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              await reverseSettlementOperation({
+              if (__DEV__) {
+                console.log('[Settlement][reverse][friend-screen]', {
+                  operationId,
+                  currency,
+                  relationshipTotals: relationship?.totalsByCurrency ?? [],
+                  directBalance: relationship?.directBalance ?? null,
+                  groupBalances: relationship?.groupBalances ?? [],
+                });
+              }
+              const expectedBalance = relationship?.totalsByCurrency.find(total => total.currency === currency)?.amount;
+              await settlementModule.reverse({
                 operationId,
-                getExpectedBalance: () => relationship?.totalsByCurrency.find(total => total.currency === currency)?.amount,
-                refresh: refetch,
-                invalidateHome: () => queryClient.invalidateQueries({ queryKey: friendsHomeQueryKey }),
+                expectedBalance: expectedBalance ?? 0,
+                currentUserId,
+                friendId: id,
+                queryClient,
               });
+              await refetch();
               Alert.alert('Settlement reversed', 'The affected balances were restored.');
             } catch (error) {
               if (error instanceof CombinedSettlementError && error.code === 'stale_balance') {
@@ -323,7 +334,7 @@ export default function FriendDetailScreen() {
         },
       ],
     );
-  }, [friendsHomeQueryKey, queryClient, refetch, relationship?.totalsByCurrency]);
+  }, [currentUserId, id, queryClient, refetch, relationship?.totalsByCurrency]);
 
   const handleReverseScopeTransfer = useCallback((item: Extract<FriendDetailData['activity'][number], { type: 'scope_transfer' }>) => {
     handleReverseOperation(item.operationId, item.currency);

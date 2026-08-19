@@ -1,7 +1,28 @@
 ## 2026-08-18
+
+- Collapsed the settlement pipeline into one deep `settlementModule`
+  (`commit`/`reverse`/`preview`) in `services/settlement-service.ts`, absorbing
+  `combined-settlement-service`, `friend-settlement-allocation`,
+  `settlement-reversal`, `combined-settlement-receipt-effects`, and
+  `combined-settlement-errors`; low-level CRUD stays available as
+  `settlementService`.
 - Made settlement reversal validation scope-aware by including cross-scope
   transfer deltas in the server-side stale-balance check.
-
+- Removed the unused legacy Friend settlement path and its per-group allocator;
+  Friend settlement now has one operation-based commit path.
+- Centralized settlement reversal execution and refresh invalidation across
+  Friend and Group detail screens.
+- Fixed stale balance projections by invalidating Friend surfaces and refreshing
+  Group Home/detail data when settlement scope-transfer rows change.
+- Aligned Friend settle-up with the authoritative transfer-adjusted Home
+  relationship projection so partial payments follow the current net direction;
+  added Dev diagnostics and regression coverage for positive Group balances.
+- Fixed server-side Group allocation validation to include existing scope
+  offsets from earlier all-balance settlements.
+- Fixed Direct allocation validation for full settlements that reclassify a
+  Group balance after earlier scope offsets already exist.
+- Corrected scope-transfer integrity validation to apply existing offsets from
+  the settlement actor's perspective.
 - Hardened settlement RPC boundaries in Dev by removing the legacy callable
   settlement overload, protecting payment-intent replays from changed payloads,
   and validating cross-scope transfer offsets against server-calculated group

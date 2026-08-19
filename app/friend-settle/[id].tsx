@@ -5,13 +5,9 @@ import { NavigationHeader } from '@/components/ui/screen-header';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
-import { combinedSettlementService, createPaymentIntentId } from '@/services/combined-settlement-service';
-import { CombinedSettlementError } from '@/services/combined-settlement-errors';
-import { applyCombinedSettlementReceiptEffects } from '@/services/combined-settlement-receipt-effects';
 import { friendDetailModule } from '@/services/friend-detail-module';
-import { buildCombinedSettlementPlan } from '@/services/friend-settlement-allocation';
+import { settlementModule, createPaymentIntentId, CombinedSettlementError } from '@/services/settlement-service';
 import type { FriendRelationshipProjection } from '@/services/friend-detail-service';
-import { queryKeys } from '@/services/query-keys';
 import type { User } from '@/types/database';
 import { normalizeCurrencyInput } from '@/utils/validation';
 import { useQueryClient } from '@tanstack/react-query';
@@ -64,6 +60,19 @@ export default function FriendSettleScreen() {
       setFriend(data.friend);
       const nextRelationship = data.relationship ?? null;
       setRelationship(nextRelationship);
+      if (__DEV__ && nextRelationship) {
+        console.log('[Settlement][screen-load]', {
+          friendId: id,
+          directBalance: nextRelationship.directBalance,
+          settleableTotal: nextRelationship.settleableTotal,
+          groupBalances: nextRelationship.groupBalances.map(group => ({
+            groupId: group.groupId,
+            amount: group.amount,
+            currency: group.currency,
+            direction: group.direction,
+          })),
+        });
+      }
       const settleableTotal = nextRelationship?.settleableTotal;
       setAmount(settleableTotal ? Math.abs(settleableTotal.amount).toFixed(2) : nextRelationship?.zeroNetCurrency ? '0.00' : '');
     } catch (error) {
@@ -110,7 +119,6 @@ export default function FriendSettleScreen() {
       return;
     }
 
-    const friendsHomeQueryKey = queryKeys.friends.home(currentUserId);
     const paymentIntentId = paymentIntentIdRef.current ?? createPaymentIntentId();
     paymentIntentIdRef.current = paymentIntentId;
 
@@ -118,7 +126,7 @@ export default function FriendSettleScreen() {
       try {
         setSettling(true);
 
-        const receipt = await combinedSettlementService.commit({
+        const receipt = await settlementModule.commit({
           currentUserId,
           friendId: id,
           paymentIntentId,
@@ -128,6 +136,9 @@ export default function FriendSettleScreen() {
           directBalance: relationship.directBalance,
           groupBalances: relationship.groupBalances,
           date: Date.now(),
+          friend,
+          currentUser: user!,
+          queryClient,
         });
         const settlements = receipt.settlements;
 
@@ -135,14 +146,6 @@ export default function FriendSettleScreen() {
           Alert.alert('Choose a scope', 'There is no outstanding balance to settle.');
           return;
         }
-
-        await applyCombinedSettlementReceiptEffects({
-          receipt,
-          currentUserId,
-          currentUser: user!,
-          friend,
-          queryClient,
-        });
 
         Alert.alert('Success', `Recorded settlement of ${receipt.currency} ${receipt.totalAmount.toFixed(2)} with ${friend.name}`);
         paymentIntentIdRef.current = null;
@@ -171,7 +174,6 @@ export default function FriendSettleScreen() {
         Alert.alert('Error', 'Failed to settle up');
       } finally {
         setSettling(false);
-        queryClient.invalidateQueries({ queryKey: friendsHomeQueryKey });
       }
     };
 
@@ -243,10 +245,10 @@ export default function FriendSettleScreen() {
   const maxAmount = Math.abs(combinedBalance);
   const amountNum = parseFloat(amount) || 0;
   const settlementCurrency = settleableTotal?.currency ?? zeroNetCurrency;
-  let allocationPreview: ReturnType<typeof buildCombinedSettlementPlan> | null = null;
+  let allocationPreview: ReturnType<typeof settlementModule.preview> | null = null;
   if (relationship && settlementCurrency && Number.isFinite(amountNum)) {
     try {
-      allocationPreview = buildCombinedSettlementPlan({
+      allocationPreview = settlementModule.preview({
         currentUserId,
         friendId: id,
         currency: settlementCurrency,
