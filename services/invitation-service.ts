@@ -16,6 +16,14 @@ function isDeliverableEmail(email: string): boolean {
   return !n.endsWith('@phone.placeholder');
 }
 
+function getInvitationName(name?: string, email?: string, phone?: string): string {
+  const trimmedName = name?.trim();
+  if (trimmedName) return trimmedName;
+
+  const emailName = normalizeEmail(email)?.split('@')[0]?.trim();
+  return emailName || phone?.trim() || 'A friend';
+}
+
 async function assertSendInvitationEmail(params: {
   inviteeEmail: string;
   inviteeName: string;
@@ -102,8 +110,8 @@ export const invitationService = {
 
     if (error) throw error;
 
-    const inviterName = invitation.inviterName || 'A friend';
-    const inviteeName = invitation.inviteeName || inviteeEmail.split('@')[0];
+    const inviterName = getInvitationName(invitation.inviterName);
+    const inviteeName = getInvitationName(invitation.inviteeName, inviteeEmail, invitation.inviteePhone);
 
     if (isDeliverableEmail(inviteeEmail)) {
       try {
@@ -135,7 +143,7 @@ export const invitationService = {
       inviterId: data.inviter_id,
       inviteeEmail: data.invitee_email,
       inviteePhone: data.invitee_phone || undefined,
-      inviteeName: data.invitee_name || undefined,
+      inviteeName: data.invitee_name?.trim() || undefined,
       status: data.status,
       createdAt: new Date(data.created_at).getTime(),
       expiresAt: new Date(data.expires_at).getTime(),
@@ -156,7 +164,7 @@ export const invitationService = {
       inviterId: inv.inviter_id,
       inviteeEmail: inv.invitee_email,
       inviteePhone: inv.invitee_phone || undefined,
-      inviteeName: inv.invitee_name || undefined,
+      inviteeName: inv.invitee_name?.trim() || undefined,
       status: inv.status,
       createdAt: new Date(inv.created_at).getTime(),
       expiresAt: new Date(inv.expires_at).getTime(),
@@ -180,7 +188,7 @@ export const invitationService = {
       inviterId: inv.inviter_id,
       inviteeEmail: inv.invitee_email,
       inviteePhone: inv.invitee_phone || undefined,
-      inviteeName: inv.invitee_name || undefined,
+      inviteeName: inv.invitee_name?.trim() || undefined,
       status: inv.status,
       createdAt: new Date(inv.created_at).getTime(),
       expiresAt: new Date(inv.expires_at).getTime(),
@@ -231,8 +239,8 @@ export const invitationService = {
 
     await assertSendInvitationEmail({
       inviteeEmail,
-      inviteeName: inv.invitee_name || inviteeEmail.split('@')[0],
-      inviterName: inviterName || 'A friend',
+      inviteeName: getInvitationName(inv.invitee_name, inviteeEmail, inv.invitee_phone),
+      inviterName: getInvitationName(inviterName),
       inviterId: inv.inviter_id,
       invitationId: id,
     });
@@ -316,7 +324,7 @@ export const invitationService = {
     const inviterNames = new Map<string, string>();
     const inviters = await userService.getByIds(inviterIds);
     for (const inviter of inviters) {
-      if (inviter.name) inviterNames.set(inviter.id, inviter.name);
+      inviterNames.set(inviter.id, getInvitationName(inviter.name, inviter.email, inviter.phone));
     }
 
     return visibleData.map((inv) => ({
@@ -324,11 +332,11 @@ export const invitationService = {
       inviterId: inv.inviter_id,
       inviteeEmail: inv.invitee_email,
       inviteePhone: inv.invitee_phone || undefined,
-      inviteeName: inv.invitee_name || undefined,
+      inviteeName: inv.invitee_name?.trim() || undefined,
       status: inv.status,
       createdAt: new Date(inv.created_at).getTime(),
       expiresAt: new Date(inv.expires_at).getTime(),
-      inviterName: inviterNames.get(inv.inviter_id),
+      inviterName: inviterNames.get(inv.inviter_id) || 'A friend',
     }));
   },
 

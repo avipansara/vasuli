@@ -3,6 +3,12 @@
 - Fixed Group Detail balances flickering through incorrect intermediate values
   after adding an expense by atomically replacing the optimistic cache entry
   and waiting for persistence before returning to the Group.
+- Fixed account deletion errors so outstanding balances show the settlement
+  requirement while unexpected failures use a readable generic message.
+- Fixed received invitations so inviter names are trimmed and always display a
+  useful identity instead of a blank label.
+- Fixed group expense percentage, share, equal, and unequal splits so generated
+  rows always add up to the expense total at database cent precision.
 
 ## 2026-08-18
 

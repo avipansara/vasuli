@@ -12,7 +12,7 @@ const inviteRow = {
 }
 
 const mocks = vi.hoisted(() => {
-  const invoke = vi.fn(() =>
+  const invoke = vi.fn<() => Promise<any>>(() =>
     Promise.resolve({ data: { success: true }, error: null })
   )
   const insertSelectSingle = vi.fn(() =>
@@ -20,8 +20,10 @@ const mocks = vi.hoisted(() => {
   )
   const deleteEq = vi.fn(() => Promise.resolve({ error: null }))
   const from = vi.fn()
-  const getByEmail = vi.fn(() => Promise.resolve(null))
+  const getByEmail = vi.fn<() => Promise<any>>(() => Promise.resolve(null))
+  const getByIds = vi.fn<() => Promise<any[]>>(() => Promise.resolve([]))
   const getFriends = vi.fn(() => Promise.resolve([]))
+  const receivedOrder = vi.fn<() => Promise<{ data: any[]; error: any }>>(() => Promise.resolve({ data: [], error: null }))
   const createFriendship = vi.fn(() => Promise.resolve({
     id: 'friendship-1',
     userId: 'inviter-uuid',
@@ -30,7 +32,7 @@ const mocks = vi.hoisted(() => {
     createdAt: Date.now(),
   }))
   const areFriends = vi.fn(() => Promise.resolve(false))
-  return { invoke, insertSelectSingle, deleteEq, from, getByEmail, getFriends, createFriendship, areFriends }
+  return { invoke, insertSelectSingle, deleteEq, from, getByEmail, getByIds, getFriends, receivedOrder, createFriendship, areFriends }
 })
 
 vi.mock('@/lib/supabase', () => ({
@@ -41,7 +43,7 @@ vi.mock('@/lib/supabase', () => ({
 }))
 
 vi.mock('@/services/user-service', () => ({
-  userService: { getByEmail: mocks.getByEmail },
+  userService: { getByEmail: mocks.getByEmail, getByIds: mocks.getByIds },
 }))
 
 vi.mock('@/services/friendship-service', () => ({
@@ -68,7 +70,9 @@ describe('invitationService.create', () => {
     mocks.insertSelectSingle.mockResolvedValue({ data: inviteRow, error: null })
     mocks.deleteEq.mockResolvedValue({ error: null })
     mocks.getByEmail.mockResolvedValue(null)
+    mocks.getByIds.mockResolvedValue([])
     mocks.getFriends.mockResolvedValue([])
+    mocks.receivedOrder.mockResolvedValue({ data: [], error: null })
     mocks.areFriends.mockResolvedValue(false)
     mocks.from.mockImplementation((table: string) => {
       if (table !== 'invitations') {
@@ -82,6 +86,13 @@ describe('invitationService.create', () => {
         }),
         delete: () => ({
           eq: mocks.deleteEq,
+        }),
+        select: () => ({
+          eq: () => ({
+            eq: () => ({
+              order: mocks.receivedOrder,
+            }),
+          }),
         }),
       }
     })
@@ -173,5 +184,44 @@ describe('invitationService.create', () => {
     ).rejects.toThrow()
 
     expect(mocks.deleteEq).toHaveBeenCalledWith('id', 'inv-row-id')
+  })
+
+  it('returns a visible inviter name when the stored profile name is blank', async () => {
+    mocks.receivedOrder.mockResolvedValueOnce({ data: [inviteRow], error: null })
+    mocks.getByEmail.mockResolvedValueOnce({ id: 'invitee-uuid' })
+    mocks.getByIds.mockResolvedValueOnce([{
+      id: 'inviter-uuid',
+      name: '   ',
+      email: 'alex@example.com',
+    }])
+
+    const invitations = await invitationService.getReceivedInvitations('friend@example.com')
+
+    expect(invitations[0].inviterName).toBe('alex')
+  })
+
+  it('never returns an empty inviter label when the profile cannot be resolved', async () => {
+    mocks.receivedOrder.mockResolvedValueOnce({ data: [inviteRow], error: null })
+    mocks.getByEmail.mockResolvedValueOnce({ id: 'invitee-uuid' })
+    mocks.getByIds.mockResolvedValueOnce([])
+
+    const invitations = await invitationService.getReceivedInvitations('friend@example.com')
+
+    expect(invitations[0].inviterName).toBe('A friend')
+  })
+
+  it('trims inviter names before sending invitation emails', async () => {
+    await invitationService.create({
+      inviterId: 'inviter-uuid',
+      inviteeEmail: 'friend@example.com',
+      inviterName: '  Alex  ',
+    })
+
+    expect(mocks.invoke).toHaveBeenCalledWith(
+      'send-invitation',
+      expect.objectContaining({
+        body: expect.objectContaining({ inviterName: 'Alex' }),
+      })
+    )
   })
 })

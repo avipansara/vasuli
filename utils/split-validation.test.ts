@@ -22,6 +22,13 @@ describe('split validation', () => {
     expect(getEvenSplitValues(['you', 'friend'], 'shares')).toEqual({ you: '1', friend: '1' });
   });
 
+  it('makes one-tap percentages total exactly 100 for three-person groups', () => {
+    const values = getEvenSplitValues(['you', 'friend', 'other'], 'percentage');
+
+    expect(values).toEqual({ you: '33.34', friend: '33.33', other: '33.33' });
+    expect(getSplitProgress(['you', 'friend', 'other'], 100, 'percentage', values).isBalanced).toBe(true);
+  });
+
   it('calculates unequal splits with the same values used by validation', () => {
     expect(calculateExpenseSplits(
       ['you', 'friend'],
@@ -54,6 +61,43 @@ describe('split validation', () => {
         { userId: 'friend', amount: 40, splitType: 'exact' },
       ],
     });
+  });
+
+  it.each([
+    ['equal', {}],
+    ['percentage', { you: '33.34', friend: '33.33', other: '33.33' }],
+    ['shares', { you: '1', friend: '1', other: '1' }],
+  ] as const)('allocates %s splits to exact cents', (method, values) => {
+    const result = calculateExpenseSplits(['you', 'friend', 'other'], 10, method, values);
+
+    expect(result.splits?.map(split => split.amount)).toEqual([3.34, 3.33, 3.33]);
+    expect(result.splits?.reduce((sum, split) => sum + split.amount, 0)).toBe(10);
+  });
+
+  it('keeps the entered percentage on percentage split rows', () => {
+    const result = calculateExpenseSplits(
+      ['you', 'friend'],
+      80,
+      'percentage',
+      { you: '25', friend: '75' },
+    );
+
+    expect(result.splits).toEqual([
+      { userId: 'you', amount: 20, splitType: 'percentage', percentage: 25 },
+      { userId: 'friend', amount: 60, splitType: 'percentage', percentage: 75 },
+    ]);
+  });
+
+  it('validates unequal splits using the cents that will be stored', () => {
+    const result = calculateExpenseSplits(
+      ['you', 'friend'],
+      30,
+      'unequal',
+      { you: '10.005', friend: '19.995' },
+    );
+
+    expect(result.splits).toBeNull();
+    expect(result.error).toContain('Current total: $30.01');
   });
 
   it('rejects negative values consistently for progress and save', () => {

@@ -11,6 +11,7 @@ export type ExpenseSplitInput = {
   userId: string;
   amount: number;
   splitType: 'equal' | 'exact' | 'percentage';
+  percentage?: number;
 };
 
 export type ExpenseIntakeCacheKey = QueryCacheKey;

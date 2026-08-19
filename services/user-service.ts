@@ -2,6 +2,45 @@ import { supabase } from '@/lib/supabase';
 import type { User } from '@/types/database';
 import { normalizeEmail } from '@/utils/validation';
 
+const OUTSTANDING_BALANCES_CODE = 'ACCOUNT_HAS_OUTSTANDING_BALANCES';
+const OUTSTANDING_BALANCES_MESSAGE = 'Please settle all outstanding balances before deleting your account.';
+const DELETE_ACCOUNT_FALLBACK_MESSAGE = 'We couldn\'t delete your account. Please try again or contact support.';
+
+type JsonResponseLike = {
+  clone?: () => JsonResponseLike;
+  json?: () => Promise<unknown>;
+};
+
+async function readErrorPayload(response: unknown): Promise<Record<string, unknown> | null> {
+  if (!response || typeof response !== 'object') return null;
+
+  const responseLike = response as JsonResponseLike;
+  const readable = typeof responseLike.clone === 'function' ? responseLike.clone() : responseLike;
+  if (typeof readable.json !== 'function') return null;
+
+  try {
+    const payload = await readable.json();
+    return payload && typeof payload === 'object' ? payload as Record<string, unknown> : null;
+  } catch {
+    return null;
+  }
+}
+
+async function getDeleteAccountErrorMessage(error: unknown, response?: unknown): Promise<string> {
+  const context = error && typeof error === 'object' && 'context' in error
+    ? (error as { context?: unknown }).context
+    : undefined;
+  const payload = await readErrorPayload(response) ?? await readErrorPayload(context);
+
+  if (payload?.error === OUTSTANDING_BALANCES_CODE) {
+    return typeof payload.message === 'string' && payload.message.trim()
+      ? payload.message.trim()
+      : OUTSTANDING_BALANCES_MESSAGE;
+  }
+
+  return DELETE_ACCOUNT_FALLBACK_MESSAGE;
+}
+
 export const userService = {
   async create(user: Omit<User, 'id' | 'createdAt'> & { id?: string }): Promise<User> {
     const createdAt = new Date().toISOString();
@@ -194,25 +233,20 @@ export const userService = {
   },
 
   async deleteAccount(): Promise<void> {
-    const { data, error } = await supabase.functions.invoke('delete-account', {
+    const { data, error, response } = await supabase.functions.invoke('delete-account', {
       body: {},
     });
 
     if (error) {
-      let parsedData: { message?: string; error?: string } | null = null;
-
-      if (error.context instanceof Response) {
-        try {
-          parsedData = await error.context.clone().json() as { message?: string; error?: string };
-        } catch {
-          parsedData = null;
-        }
-      }
-
-      throw new Error(parsedData?.message || error.message || 'Failed to delete account');
+      throw new Error(await getDeleteAccountErrorMessage(error, response));
     }
     if (data && typeof data === 'object' && 'error' in data && data.error) {
-      throw new Error('message' in data && data.message ? String(data.message) : String(data.error));
+      if (data.error === OUTSTANDING_BALANCES_CODE) {
+        throw new Error('message' in data && typeof data.message === 'string' && data.message.trim()
+          ? data.message.trim()
+          : OUTSTANDING_BALANCES_MESSAGE);
+      }
+      throw new Error(DELETE_ACCOUNT_FALLBACK_MESSAGE);
     }
   },
 
