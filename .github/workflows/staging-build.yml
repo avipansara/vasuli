@@ -56,10 +56,14 @@ jobs:
       - name: Create Google Services Key File
         run: echo '${{ secrets.GOOGLE_SERVICES_KEY }}' > ./google-services-key.json
 
+      - name: Create google-services.json File
+        run: echo '${{ secrets.EXPO_PUBLIC_GOOGLE_SERVICES_DEV }}' > ./google-services.json
+
       - name: Build Android
         run: eas build --platform android --profile preview --non-interactive --no-wait --auto-submit
         env:
           APP_ENV: preview
+          EAS_BUILD_ENVIRONMENT: development
           EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL_DEV }}
           EXPO_PUBLIC_SUPABASE_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_KEY_DEV }}
 
@@ -89,5 +93,7 @@ jobs:
       - name: Build iOS
         run: eas build --platform ios --profile preview --non-interactive --no-wait --auto-submit
         env:
+          APP_ENV: preview
+          EAS_BUILD_ENVIRONMENT: development
           EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL_DEV }}
           EXPO_PUBLIC_SUPABASE_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_KEY_DEV }}
