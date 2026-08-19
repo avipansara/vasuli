@@ -1,5 +1,7 @@
 ## 2026-08-19
 
+- Fixed pasted and autofilled OTP codes so the newly entered six-digit value is
+  verified reliably while consolidating sign-in and sign-up into one shared flow.
 - Fixed Group Detail balances flickering through incorrect intermediate values
   after adding an expense by atomically replacing the optimistic cache entry
   and waiting for persistence before returning to the Group.
