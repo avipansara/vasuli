@@ -1,3 +1,7 @@
+## 2026-08-19
+
+- Updated the iOS `preview` submit configuration with the newly registered App Store Connect App ID to resolve TestFlight submission errors.
+
 ## 2026-08-17
 
 - Switched expense deletion to soft deletion, preserving split history and
