@@ -1,4 +1,4 @@
-import { ExpoConfig, ConfigContext } from 'expo/config';
+import { ConfigContext, ExpoConfig } from 'expo/config';
 import fs from 'fs';
 import path from 'path';
 
@@ -9,12 +9,12 @@ export default ({ config }: ConfigContext): ExpoConfig => {
 
   // Dynamic values based on APP_ENV
   const name = isDev ? 'Vasuli Dev' : isPreview ? 'Vasuli Preview' : 'Vasuli';
-  
+
   const bundleIdentifier = isDev
     ? 'com.avipansara.vasuli.dev'
     : isPreview
-    ? 'com.avipansara.vasuli.preview'
-    : 'com.avipansara.vasuli';
+      ? 'com.avipansara.vasuli.preview'
+      : 'com.avipansara.vasuli';
 
   const package_ = bundleIdentifier;
 
