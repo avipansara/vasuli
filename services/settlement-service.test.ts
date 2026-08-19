@@ -237,6 +237,32 @@ describe('settlementModule.preview', () => {
     });
   });
 
+  it('allocates the verified partial mixed-scope fixture in the net direction', () => {
+    expect(settlementModule.preview({
+      currentUserId: 'current-user',
+      friendId: 'friend-a',
+      currency: 'USD',
+      amount: 5,
+      directBalance: -30,
+      groupBalances: [{
+        groupId: 'group-1',
+        groupName: 'Trip',
+        currency: 'USD',
+        amount: 20,
+        direction: 'you_are_owed',
+      }],
+    })).toEqual({
+      transfers: [],
+      allocations: [{
+        groupId: undefined,
+        fromUserId: 'current-user',
+        toUserId: 'friend-a',
+        amount: 5,
+        currency: 'USD',
+      }],
+    });
+  });
+
   it('offsets opposing scopes only when the full net payment settles every scope', () => {
     expect(settlementModule.preview({
       currentUserId: 'current-user',

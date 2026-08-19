@@ -68,6 +68,13 @@ export interface Settlement {
   createdAt: number;
 }
 
+/**
+ * A non-cash reclassification between the Group and direct ledgers.
+ *
+ * `signedGroupBalanceDelta` is always the change to the current user's Group
+ * balance. The direct-ledger projection applies the inverse change so the
+ * relationship total remains unchanged.
+ */
 export interface SettlementScopeTransfer {
   id: string;
   operationId: string;

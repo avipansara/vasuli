@@ -217,6 +217,88 @@ describe('friend detail builders', () => {
     expect(detail.expenses).toMatchObject([{ yourShare: 0, friendShare: 100 }]);
   });
 
+  it('applies a scope transfer to Group and direct balances with inverse effects', () => {
+    const relationship = projectFriendRelationship({
+      friend: { ...friend, balance: -30 },
+      expenses: [],
+      activity: [{
+        id: 'direct-settlement-context',
+        type: 'settlement',
+        date: 1,
+        settlementId: 'settlement-context',
+        amount: 0,
+        currency: 'USD',
+        direction: 'you_paid_friend',
+      }],
+      groupBalances: [{
+        groupId: 'group-1',
+        groupName: 'Trip',
+        currency: 'USD',
+        amount: 20,
+        direction: 'you_are_owed',
+      }],
+      scopeTransfers: [{
+        id: 'transfer-1',
+        operationId: 'operation-1',
+        groupId: 'group-1',
+        fromUserId: friendId,
+        toUserId: currentUserId,
+        currency: 'USD',
+        signedGroupBalanceDelta: -20,
+        createdAt: 1,
+      }],
+    });
+
+    expect(relationship.directBalance).toBe(-10);
+    expect(relationship.groupBalances).toMatchObject([{ amount: 0, direction: 'settled' }]);
+    expect(relationship.totalsByCurrency).toEqual([{
+      currency: 'USD',
+      amount: -10,
+      direction: 'you_owe',
+    }]);
+  });
+
+  it('preserves the inverse contract when the counterpart initiates the transfer', () => {
+    const relationship = projectFriendRelationship({
+      friend: { ...friend, balance: 10 },
+      expenses: [],
+      activity: [{
+        id: 'direct-settlement-context',
+        type: 'settlement',
+        date: 1,
+        settlementId: 'settlement-context',
+        amount: 0,
+        currency: 'USD',
+        direction: 'you_paid_friend',
+      }],
+      groupBalances: [{
+        groupId: 'group-1',
+        groupName: 'Trip',
+        currency: 'USD',
+        amount: -20,
+        direction: 'you_owe',
+      }],
+      scopeTransfers: [{
+        id: 'transfer-2',
+        operationId: 'operation-2',
+        groupId: 'group-1',
+        fromUserId: currentUserId,
+        toUserId: friendId,
+        currency: 'USD',
+        signedGroupBalanceDelta: 20,
+        createdAt: 1,
+      }],
+    });
+
+    expect(relationship.directBalance).toBe(-10);
+    expect(relationship.groupBalances).toMatchObject([{ amount: 0, direction: 'settled' }]);
+    expect(relationship.totalsByCurrency).toEqual([{
+      currency: 'USD',
+      amount: -10,
+      direction: 'you_owe',
+    }]);
+  });
+
   it('keeps group expenses paid by a third party out of individual friend detail', () => {
     const groupExpense = { ...expense('group-dinner', 'isha-user', 300, 2), groupId: 'group-1' };
     const splits = [

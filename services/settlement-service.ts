@@ -90,6 +90,7 @@ export type CombinedSettlementScopeTransfer = {
   fromUserId: string;
   toUserId: string;
   currency: string;
+  /** Change to the current user's Group balance; direct balance applies -delta. */
   signedGroupBalanceDelta: number;
   note?: string;
   isReversal?: boolean;
