@@ -56,7 +56,6 @@ jobs:
       - name: Build Android
         run: eas build --platform android --profile preview --non-interactive --no-wait --auto-submit
         env:
-          APP_ENV: development
           EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL_DEV }}
           EXPO_PUBLIC_SUPABASE_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_KEY_DEV }}
 
@@ -86,6 +85,5 @@ jobs:
       - name: Build iOS
         run: eas build --platform ios --profile preview --non-interactive --no-wait --auto-submit
         env:
-          APP_ENV: development
           EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL_DEV }}
           EXPO_PUBLIC_SUPABASE_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_KEY_DEV }}
