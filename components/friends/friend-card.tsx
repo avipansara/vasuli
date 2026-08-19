@@ -5,8 +5,10 @@ import type { FriendRelationshipProjection } from '@/services/friend-detail-serv
 import type { User } from '@/types/database';
 import { getDisplayName } from '@/utils/validation';
 import { memo, useMemo } from 'react';
-import { Animated, StyleSheet, TouchableOpacity, View } from 'react-native';
-import Swipeable from 'react-native-gesture-handler/Swipeable';
+import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
+import type { SharedValue } from 'react-native-reanimated';
+import Reanimated, { useAnimatedStyle } from 'react-native-reanimated';
 
 interface UserWithBalance extends User {
   balance: number;
@@ -28,6 +30,31 @@ function normalizeDisplayBalance(balance: number) {
 
 function formatBreakdownAmount(currency: string, amount: number) {
   return currency === 'USD' ? `$${amount.toFixed(2)}` : `${currency} ${amount.toFixed(2)}`;
+}
+
+function FriendDeleteAction({
+  translation,
+  backgroundColor,
+  iconColor,
+  onDelete,
+}: {
+  translation: SharedValue<number>;
+  backgroundColor: string;
+  iconColor: string;
+  onDelete: () => void;
+}) {
+  const actionStyle = useAnimatedStyle(() => ({
+    opacity: Math.min(1, Math.max(0, -translation.get() / 80)),
+  }));
+
+  return (
+    <Reanimated.View style={[styles.swipeActionRight, { backgroundColor }, actionStyle]}>
+      <TouchableOpacity onPress={onDelete} style={styles.swipeActionButton}>
+        <IconSymbol name="trash" size={20} color={iconColor} />
+        <ThemedText style={[styles.swipeActionText, { color: iconColor }]}>Delete</ThemedText>
+      </TouchableOpacity>
+    </Reanimated.View>
+  );
 }
 
 function areFriendCardPropsEqual(prev: FriendCardProps, next: FriendCardProps): boolean {
@@ -136,30 +163,19 @@ function FriendCardInner({ friend, onPress, onDelete }: FriendCardProps) {
     [isDark]
   );
 
-  const renderRightActions = (progress: Animated.AnimatedInterpolation<number>, dragX: Animated.AnimatedInterpolation<number>) => {
-    const opacity = dragX.interpolate({
-      inputRange: [-80, 0],
-      outputRange: [1, 0],
-      extrapolate: 'clamp',
-    });
-
-    return (
-      <Animated.View style={[styles.swipeActionRight, { backgroundColor: friendsTheme.dangerSurface, opacity }]}>
-        <TouchableOpacity
-          onPress={() => onDelete?.(friend)}
-          style={styles.swipeActionButton}>
-          <IconSymbol name="trash" size={20} color={friendsTheme.onDanger} />
-          <ThemedText style={[styles.swipeActionText, { color: friendsTheme.onDanger }]}>Delete</ThemedText>
-        </TouchableOpacity>
-      </Animated.View>
-    );
-  };
-
   return (
-    <Swipeable
-      renderRightActions={onDelete ? renderRightActions : undefined}
+    <ReanimatedSwipeable
+      renderRightActions={onDelete ? (_progress, translation) => (
+        <FriendDeleteAction
+          translation={translation}
+          backgroundColor={friendsTheme.dangerSurface}
+          iconColor={friendsTheme.onDanger}
+          onDelete={() => onDelete(friend)}
+        />
+      ) : undefined}
       overshootRight={false}
-      friction={2}>
+      friction={2}
+      enableTrackpadTwoFingerGesture>
       <TouchableOpacity
         style={[styles.card, cardStyle]}
         onPress={() => onPress?.(friend)}
@@ -259,7 +275,7 @@ function FriendCardInner({ friend, onPress, onDelete }: FriendCardProps) {
           </View>
         </View>
       </TouchableOpacity>
-    </Swipeable>
+    </ReanimatedSwipeable>
   );
 }
 

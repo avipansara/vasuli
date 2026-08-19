@@ -98,8 +98,8 @@ export default function GroupsScreen() {
   }, [loadGroups]);
 
   const renderGroupItem = useCallback(
-    ({ item, index }: { item: GroupWithMembers; index: number }) => (
-      <GroupCard group={item} index={index} onRefresh={loadGroups} />
+    ({ item }: { item: GroupWithMembers }) => (
+      <GroupCard group={item} onRefresh={loadGroups} />
     ),
     [loadGroups]
   );

@@ -23,7 +23,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Animated, Platform, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
-import Swipeable from 'react-native-gesture-handler/Swipeable';
+import ReanimatedSwipeable, { type SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable';
+import type { SharedValue } from 'react-native-reanimated';
+import Reanimated, { useAnimatedStyle } from 'react-native-reanimated';
 
 const CATEGORY_MAP: Record<string, { icon: any, lightBg: string, darkBg: string, lightColor: string, darkColor: string }> = {
   'Food': { icon: 'fork.knife', lightBg: '#FCE7F3', darkBg: 'rgba(236, 72, 153, 0.15)', lightColor: '#BE185D', darkColor: '#F472B6' },
@@ -36,6 +38,37 @@ const CATEGORY_MAP: Record<string, { icon: any, lightBg: string, darkBg: string,
 const MIN_TOUCH_HIT_SLOP = { top: 8, right: 8, bottom: 8, left: 8 };
 const EMPTY_EXPENSES: GroupExpenseView[] = [];
 const EMPTY_SETTLEMENTS: Settlement[] = [];
+
+function GroupDetailSwipeAction({
+  translation,
+  side,
+  backgroundColor,
+  iconColor,
+  icon,
+  label,
+  onPress,
+}: {
+  translation: SharedValue<number>;
+  side: 'left' | 'right';
+  backgroundColor: string;
+  iconColor: string;
+  icon: 'pencil' | 'trash';
+  label: string;
+  onPress: () => void;
+}) {
+  const actionStyle = useAnimatedStyle(() => ({
+    opacity: Math.min(1, Math.max(0, (side === 'left' ? translation.get() : -translation.get()) / 80)),
+  }));
+
+  return (
+    <Reanimated.View style={[side === 'left' ? styles.swipeActionLeft : styles.swipeActionRight, { backgroundColor }, actionStyle]}>
+      <TouchableOpacity onPress={onPress} style={styles.swipeActionButton}>
+        <IconSymbol name={icon} size={20} color={iconColor} />
+        <ThemedText style={[styles.swipeActionText, { color: iconColor }]}>{label}</ThemedText>
+      </TouchableOpacity>
+    </Reanimated.View>
+  );
+}
 
 type SectionTab = 'all' | 'expenses';
 
@@ -58,8 +91,8 @@ export default function GroupDetailScreen() {
   const [removingMemberId, setRemovingMemberId] = useState<string | null>(null);
   const [sectionTab, setSectionTab] = useState<SectionTab>('all');
 
-  const expenseSwipeableRefs = useRef<Map<string, Swipeable>>(new Map());
-  const memberSwipeableRefs = useRef<Map<string, Swipeable>>(new Map());
+  const expenseSwipeableRefs = useRef<Map<string, SwipeableMethods>>(new Map());
+  const memberSwipeableRefs = useRef<Map<string, SwipeableMethods>>(new Map());
 
   // Scroll-driven collapsing header
   const scrollY = useRef(new Animated.Value(0)).current;
@@ -400,47 +433,31 @@ export default function GroupDetailScreen() {
     );
   }
 
-  function renderLeftActions(progress: any, dragX: any, expenseId: string) {
-    const trans = dragX.interpolate({
-      inputRange: [0, 80],
-      outputRange: [0, 1],
-      extrapolate: 'clamp',
-    });
-
+  function renderLeftActions(_progress: SharedValue<number>, translation: SharedValue<number>, expenseId: string) {
     return (
-      <Animated.View style={[styles.swipeActionLeft, {
-        backgroundColor: friendDetailTheme.actionSurface,
-        opacity: trans,
-      }]}>
-        <TouchableOpacity
-          onPress={() => handleEditExpense(expenseId)}
-          style={styles.swipeActionButton}>
-          <IconSymbol name="pencil" size={20} color={friendDetailTheme.actionIcon} />
-          <ThemedText style={[styles.swipeActionText, { color: friendDetailTheme.actionIcon }]}>Edit</ThemedText>
-        </TouchableOpacity>
-      </Animated.View>
+      <GroupDetailSwipeAction
+        translation={translation}
+        side="left"
+        backgroundColor={friendDetailTheme.actionSurface}
+        iconColor={friendDetailTheme.actionIcon}
+        icon="pencil"
+        label="Edit"
+        onPress={() => handleEditExpense(expenseId)}
+      />
     );
   }
 
-  function renderRightActions(progress: any, dragX: any, expenseId: string) {
-    const trans = dragX.interpolate({
-      inputRange: [-80, 0],
-      outputRange: [1, 0],
-      extrapolate: 'clamp',
-    });
-
+  function renderRightActions(_progress: SharedValue<number>, translation: SharedValue<number>, expenseId: string) {
     return (
-      <Animated.View style={[styles.swipeActionRight, {
-        backgroundColor: friendDetailTheme.dangerSurface,
-        opacity: trans,
-      }]}>
-        <TouchableOpacity
-          onPress={() => handleDeleteExpense(expenseId)}
-          style={styles.swipeActionButton}>
-          <IconSymbol name="trash" size={20} color={friendDetailTheme.danger} />
-          <ThemedText style={[styles.swipeActionText, { color: friendDetailTheme.danger }]}>Delete</ThemedText>
-        </TouchableOpacity>
-      </Animated.View>
+      <GroupDetailSwipeAction
+        translation={translation}
+        side="right"
+        backgroundColor={friendDetailTheme.dangerSurface}
+        iconColor={friendDetailTheme.danger}
+        icon="trash"
+        label="Delete"
+        onPress={() => handleDeleteExpense(expenseId)}
+      />
     );
   }
 
@@ -453,7 +470,7 @@ export default function GroupDetailScreen() {
     const paidByYou = item.paidBy === currentUserId;
 
     return (
-      <Swipeable
+      <ReanimatedSwipeable
         ref={(ref) => {
           if (ref) {
             expenseSwipeableRefs.current.set(item.id, ref);
@@ -462,9 +479,9 @@ export default function GroupDetailScreen() {
           }
         }}
         renderLeftActions={item.createdBy === currentUserId || item.paidBy === currentUserId
-          ? (progress, dragX) => renderLeftActions(progress, dragX, item.id)
+          ? (progress, translation) => renderLeftActions(progress, translation, item.id)
           : undefined}
-        renderRightActions={(item.createdBy === currentUserId || item.paidBy === currentUserId) ? (progress, dragX) => renderRightActions(progress, dragX, item.id) : undefined}
+        renderRightActions={(item.createdBy === currentUserId || item.paidBy === currentUserId) ? (progress, translation) => renderRightActions(progress, translation, item.id) : undefined}
         overshootLeft={false}
         overshootRight={false}
         friction={2}
@@ -518,7 +535,7 @@ export default function GroupDetailScreen() {
             </View>
           </View>
         </TouchableOpacity>
-      </Swipeable>
+      </ReanimatedSwipeable>
     );
   }
 
@@ -601,30 +618,22 @@ export default function GroupDetailScreen() {
     );
   }
 
-  function renderMemberRightActions(progress: any, dragX: any, member: GroupMember & { user?: User }) {
+  function renderMemberRightActions(_progress: SharedValue<number>, translation: SharedValue<number>, member: GroupMember & { user?: User }) {
     const currentMember = members.find(m => m.userId === currentUserId);
     const canRemove = currentMember?.role === 'admin' && member.userId !== currentUserId;
 
     if (!canRemove) return null;
 
-    const trans = dragX.interpolate({
-      inputRange: [-80, 0],
-      outputRange: [1, 0],
-      extrapolate: 'clamp',
-    });
-
     return (
-      <Animated.View style={[styles.swipeActionRight, {
-        backgroundColor: friendDetailTheme.dangerSurface,
-        opacity: trans,
-      }]}>
-        <TouchableOpacity
-          onPress={() => handleRemoveMember(member)}
-          style={styles.swipeActionButton}>
-          <IconSymbol name="trash" size={20} color={friendDetailTheme.danger} />
-          <ThemedText style={[styles.swipeActionText, { color: friendDetailTheme.danger }]}>Remove</ThemedText>
-        </TouchableOpacity>
-      </Animated.View>
+      <GroupDetailSwipeAction
+        translation={translation}
+        side="right"
+        backgroundColor={friendDetailTheme.dangerSurface}
+        iconColor={friendDetailTheme.danger}
+        icon="trash"
+        label="Remove"
+        onPress={() => handleRemoveMember(member)}
+      />
     );
   }
 
@@ -639,7 +648,7 @@ export default function GroupDetailScreen() {
     const canRemove = currentMember?.role === 'admin' && item.userId !== currentUserId;
 
     return (
-      <Swipeable
+      <ReanimatedSwipeable
         ref={(ref) => {
           if (ref) {
             memberSwipeableRefs.current.set(item.userId, ref);
@@ -647,7 +656,7 @@ export default function GroupDetailScreen() {
             memberSwipeableRefs.current.delete(item.userId);
           }
         }}
-        renderRightActions={canRemove ? (progress, dragX) => renderMemberRightActions(progress, dragX, item) : undefined}
+        renderRightActions={canRemove ? (progress, translation) => renderMemberRightActions(progress, translation, item) : undefined}
         overshootLeft={false}
         overshootRight={false}
         friction={2}
@@ -734,7 +743,7 @@ export default function GroupDetailScreen() {
             )}
           </View>
         </TouchableOpacity>
-      </Swipeable>
+      </ReanimatedSwipeable>
     );
   }
 

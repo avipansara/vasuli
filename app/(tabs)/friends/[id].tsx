@@ -26,7 +26,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Animated, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
-import Swipeable from 'react-native-gesture-handler/Swipeable';
+import type { SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable';
 import Reanimated, {
   Easing as ReanimatedEasing,
   useAnimatedStyle,
@@ -61,7 +61,7 @@ export default function FriendDetailScreen() {
   const [deletingExpenseId, setDeletingExpenseId] = useState<string | null>(null);
   const { user } = useAuth();
   const currentUserId = user?.id || '';
-  const swipeableRefs = useRef<Map<string, Swipeable>>(new Map());
+  const swipeableRefs = useRef<Map<string, SwipeableMethods>>(new Map());
 
   // Animations
   const insets = useSafeAreaInsets();

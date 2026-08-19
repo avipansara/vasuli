@@ -1,5 +1,7 @@
 ## 2026-08-19
 
+- Moved swipe-to-reveal actions to ReanimatedSwipeable so finger-driven motion and action opacity stay on the UI runtime, and removed per-row Group entrance animation that could replay during list virtualization.
+
 - Fixed pasted and autofilled OTP codes so the newly entered six-digit value is
   verified reliably while consolidating sign-in and sign-up into one shared flow.
 - Fixed Group Detail balances flickering through incorrect intermediate values

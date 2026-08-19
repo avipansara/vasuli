@@ -48,10 +48,19 @@ vi.mock('react-native', async () => {
   return { ...rn, default: rn };
 });
 
-vi.mock('react-native-gesture-handler/Swipeable', async () => {
+vi.mock('react-native-gesture-handler/ReanimatedSwipeable', async () => {
   const React = await import('react');
   return {
     default: ({ children }: { children?: React.ReactNode }) => React.createElement('div', null, children),
+  };
+});
+
+vi.mock('react-native-reanimated', async () => {
+  const React = await import('react');
+  return {
+    __esModule: true,
+    default: { View: ({ children }: { children?: React.ReactNode }) => React.createElement('div', null, children) },
+    useAnimatedStyle: () => ({}),
   };
 });
 

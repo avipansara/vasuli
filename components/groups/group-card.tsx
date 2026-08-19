@@ -7,18 +7,18 @@ import { groupService } from '@/services/group-service';
 import type { GroupWithMembers } from '@/types/database';
 import { router } from 'expo-router';
 import { memo, useRef } from 'react';
-import { Alert, Animated as RNAnimated, StyleSheet, TouchableOpacity, View } from 'react-native';
-import Swipeable from 'react-native-gesture-handler/Swipeable';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import { Alert, StyleSheet, TouchableOpacity, View } from 'react-native';
+import ReanimatedSwipeable, { type SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable';
+import type { SharedValue } from 'react-native-reanimated';
+import Reanimated, { useAnimatedStyle } from 'react-native-reanimated';
 
 interface GroupCardProps {
   group: GroupWithMembers;
-  index: number;
   onRefresh?: () => void;
 }
 
 function areGroupCardPropsEqual(prev: GroupCardProps, next: GroupCardProps): boolean {
-  if (prev.onRefresh !== next.onRefresh || prev.index !== next.index) {
+  if (prev.onRefresh !== next.onRefresh) {
     return false;
   }
   const a = prev.group;
@@ -31,10 +31,10 @@ function areGroupCardPropsEqual(prev: GroupCardProps, next: GroupCardProps): boo
   );
 }
 
-function GroupCardInner({ group, index, onRefresh }: GroupCardProps) {
+function GroupCardInner({ group, onRefresh }: GroupCardProps) {
   const { colors, isDark } = useThemeColors();
   const { user } = useAuth();
-  const swipeableRef = useRef<Swipeable>(null);
+  const swipeableRef = useRef<SwipeableMethods>(null);
   const balance = group.yourBalance || 0;
   const isPositive = balance > 0;
   const isSettled = balance === 0;
@@ -84,56 +84,26 @@ function GroupCardInner({ group, index, onRefresh }: GroupCardProps) {
     );
   }
 
-  function renderLeftActions(progress: any, dragX: any) {
-    const trans = dragX.interpolate({
-      inputRange: [0, 80],
-      outputRange: [0, 1],
-      extrapolate: 'clamp',
-    });
-
-    return (
-      <RNAnimated.View style={[styles.swipeActionLeft, { opacity: trans }]}>
-        <TouchableOpacity
-          onPress={handleEditGroup}
-          style={styles.swipeActionButton}
-          accessibilityRole="button"
-          accessibilityLabel={`Edit ${group.name}`}>
-          <IconSymbol name="pencil" size={20} color="#fff" />
-          <ThemedText style={styles.swipeActionText}>Edit</ThemedText>
-        </TouchableOpacity>
-      </RNAnimated.View>
-    );
-  }
-
-  function renderRightActions(progress: any, dragX: any) {
-    const trans = dragX.interpolate({
-      inputRange: [-80, 0],
-      outputRange: [1, 0],
-      extrapolate: 'clamp',
-    });
-
-    return (
-      <RNAnimated.View style={[styles.swipeActionRight, { opacity: trans }]}>
-        <TouchableOpacity
-          onPress={handleDeleteGroup}
-          style={styles.swipeActionButton}
-          accessibilityRole="button"
-          accessibilityLabel={`Delete ${group.name}`}>
-          <IconSymbol name="trash" size={20} color="#fff" />
-          <ThemedText style={styles.swipeActionText}>Delete</ThemedText>
-        </TouchableOpacity>
-      </RNAnimated.View>
-    );
-  }
-
   return (
-    <Animated.View
-      entering={FadeInDown.delay(index * 100).springify()}
-      style={styles.wrapper}>
-      <Swipeable
+    <View style={styles.wrapper}>
+      <ReanimatedSwipeable
         ref={swipeableRef}
-        renderLeftActions={renderLeftActions}
-        renderRightActions={renderRightActions}
+        renderLeftActions={(_progress, translation) => (
+          <GroupSwipeAction
+            translation={translation}
+            side="left"
+            onPress={handleEditGroup}
+            accessibilityLabel={`Edit ${group.name}`}
+          />
+        )}
+        renderRightActions={(_progress, translation) => (
+          <GroupSwipeAction
+            translation={translation}
+            side="right"
+            onPress={handleDeleteGroup}
+            accessibilityLabel={`Delete ${group.name}`}
+          />
+        )}
         overshootLeft={false}
         overshootRight={false}
         friction={2}
@@ -215,8 +185,37 @@ function GroupCardInner({ group, index, onRefresh }: GroupCardProps) {
             </View>
           </TouchableOpacity>
         </View>
-      </Swipeable>
-    </Animated.View>
+      </ReanimatedSwipeable>
+    </View>
+  );
+}
+
+function GroupSwipeAction({
+  translation,
+  side,
+  onPress,
+  accessibilityLabel,
+}: {
+  translation: SharedValue<number>;
+  side: 'left' | 'right';
+  onPress: () => void;
+  accessibilityLabel: string;
+}) {
+  const actionStyle = useAnimatedStyle(() => ({
+    opacity: Math.min(1, Math.max(0, (side === 'left' ? translation.get() : -translation.get()) / 80)),
+  }));
+
+  return (
+    <Reanimated.View style={[side === 'left' ? styles.swipeActionLeft : styles.swipeActionRight, actionStyle]}>
+      <TouchableOpacity
+        onPress={onPress}
+        style={styles.swipeActionButton}
+        accessibilityRole="button"
+        accessibilityLabel={accessibilityLabel}>
+        <IconSymbol name={side === 'left' ? 'pencil' : 'trash'} size={20} color="#fff" />
+        <ThemedText style={styles.swipeActionText}>{side === 'left' ? 'Edit' : 'Delete'}</ThemedText>
+      </TouchableOpacity>
+    </Reanimated.View>
   );
 }
 
