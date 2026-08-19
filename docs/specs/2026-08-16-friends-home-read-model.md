@@ -1,5 +1,12 @@
 # Deepen the Friends home read model
 
+## Status update — 2026-08-19
+
+Implemented in the current application. Friends Home now consumes
+the authenticated `get_friend_home_relationships` RPC behind its stable service
+and React Query boundary, with response-mapping and projection tests. Remaining
+work is production-scale performance observation and regression monitoring.
+
 ## Problem Statement
 
 The Friends home screen is still slow after the existing splash and startup prefetch work. Runtime measurements show that the app profile is ready in under one second and the Friends prefetch begins while the splash is visible, but the Friends data itself takes about 13.6 seconds to finish.
@@ -140,4 +147,4 @@ The safest implementation sequence is:
 ## Tracker
 
 - Project Hub project: `1786897413442`
-- Label: `ready-for-agent`
+- Status: complete

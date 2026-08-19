@@ -1,5 +1,13 @@
 # Shorten the startup gate
 
+## Status update — 2026-08-19
+
+Implemented in the current application. The root layout uses the
+post-splash startup service to deduplicate and prefetch the initial home query
+while preserving the existing splash experience. Focused tests cover successful,
+deduplicated, and failed prefetch behavior; device-level startup measurement
+remains an operational verification task.
+
 ## Problem Statement
 
 When a returning user opens Vasuli, the intended splash screen takes about three seconds and should remain. The problem starts after the splash disappears: it can take another approximately five seconds before Friends or Groups data appears.
@@ -155,6 +163,5 @@ The next likely performance task is to deepen the Friends and Groups home read m
 ## Tracker
 
 - Project Hub task: `7041e604-40ac-4790-a425-64b106863cb5`
-- Status: Todo
+- Status: complete
 - Priority: High
-- Label: `ready-for-agent`

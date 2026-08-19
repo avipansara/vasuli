@@ -1,5 +1,18 @@
 # Relationship balance projection
 
+## Status update — 2026-08-18
+
+The authoritative relationship projection, Home parity, settle-up projection
+consumption, and cross-surface freshness work described here are implemented
+behind the Friend detail/projection seams. The `$1,449.12` versus `$981.62`
+values below are retained as a historical regression fixture documenting the
+original failure mode; they are not a current production discrepancy claim.
+
+Remaining verification is runtime/database characterization plus mounted route
+and light/dark visual checks. Do not reopen the accounting decision from this
+fixture alone; first reproduce a current discrepancy against the projection
+contract and its currency/scope invariants.
+
 ## Problem Statement
 
 Users need one trustworthy view of what they owe or are owed by a Friend, but

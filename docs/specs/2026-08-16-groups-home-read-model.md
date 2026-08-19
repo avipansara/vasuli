@@ -1,5 +1,12 @@
 # Deepen the Groups home read model
 
+## Status update — 2026-08-19
+
+Implemented in the current application. Groups Home consumes the
+authenticated `get_groups_home_summaries` RPC through `groupService`, and its
+mapping and query behavior have focused tests. Remaining work is production
+performance observation rather than implementation of the read-model seam.
+
 ## Problem Statement
 
 The Groups home screen still performs a client-side query waterfall after the
@@ -182,7 +189,4 @@ The safest implementation sequence is:
 
 ## Tracker
 
-- Project Hub task: pending creation
-- Status: ready-for-agent
-- Priority: High
-- Label: `ready-for-agent`
+- Status: complete

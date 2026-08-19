@@ -9,7 +9,8 @@ settlement records and auditable full-net cross-scope offsets.
 
 ## Implementation status
 
-The current `group-settlement` branch provides the following foundation:
+The current application implements the settlement model defined
+by this specification:
 
 - Direct and Group balances are calculated separately.
 - Combined settlement allocation exists and prioritizes Direct balance for
@@ -18,19 +19,15 @@ The current `group-settlement` branch provides the following foundation:
 - Currency validation and stale-balance protection are implemented.
 - Settlement operations, idempotency, realtime refresh, and focused tests exist.
 - Group-only settlement flows exist.
+- Cross-scope transfers are reserved for full-net and zero-net settlement
+  operations and remain explicit, auditable records.
+- Cash allocations persist as separate Direct or Group settlement rows.
+- Friend detail and settle-up show the Direct, per-Group, and combined
+  projections and preview the allocation before confirmation.
 
-The following work remains to align the implementation with this specification:
-
-- Restrict cross-scope transfers to full-net settlements. Partial payments must
-  not trigger transfers of opposing Group balances.
-- Persist each cash-payment allocation as a separate `public.settlements` row
-  and keep any full-net cross-scope offset explicit and auditable.
-- Update the settlement UI to provide one “Settle Up” action, show Direct and
-  per-Group balances, and preview the allocation before confirmation.
-- Ensure the clarified net-versus-scope behavior is covered by tests, including
-  the case where a $20 Direct payment leaves a $5 Group credit and an $8 Group
-  debt unchanged.
-- Run the full validation suite after the migration, service, and UI changes.
+Remaining work is live database rollout verification plus mounted light/dark and
+error-state UI checks. These checks should not reopen the accounting rules below
+without a reproduced projection or settlement-contract failure.
 
 ## Ledgers
 
