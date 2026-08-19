@@ -53,7 +53,10 @@ describe('applyCombinedSettlementReceiptEffects', () => {
 
     expect(activityService.logSettlementCreated).toHaveBeenCalledTimes(1);
     expect(client.setQueryData).toHaveBeenCalledTimes(1);
-    expect(client.invalidateQueries).toHaveBeenCalledTimes(4);
+    expect(client.invalidateQueries).toHaveBeenCalledTimes(5);
+    expect(client.invalidateQueries).toHaveBeenCalledWith({
+      queryKey: ['friends', 'home', 'current-user'],
+    });
   });
 
   it('does not duplicate activity for a reused receipt', async () => {
@@ -69,7 +72,10 @@ describe('applyCombinedSettlementReceiptEffects', () => {
 
     expect(activityService.logSettlementCreated).not.toHaveBeenCalled();
     expect(client.setQueryData).toHaveBeenCalledTimes(1);
-    expect(client.invalidateQueries).toHaveBeenCalledTimes(4);
+    expect(client.invalidateQueries).toHaveBeenCalledTimes(5);
+    expect(client.invalidateQueries).toHaveBeenCalledWith({
+      queryKey: ['friends', 'home', 'current-user'],
+    });
   });
 
   it('does not fail a committed receipt when activity logging fails', async () => {

@@ -118,6 +118,13 @@ export function useGroupExpensesRealtime(
     onChange: onExpenseChange,
     enabled: enabled && !!groupId,
   });
+
+  useRealtime({
+    table: 'settlement_scope_transfers',
+    filter: groupId ? `group_id=eq.${groupId}` : undefined,
+    onChange: onExpenseChange,
+    enabled: enabled && !!groupId,
+  });
 }
 
 export function useGroupsHomeRealtime(
@@ -155,6 +162,12 @@ export function useGroupsHomeRealtime(
 
   useRealtime({
     table: 'settlements',
+    onChange: onGroupChange,
+    enabled: isEnabled,
+  });
+
+  useRealtime({
+    table: 'settlement_scope_transfers',
     onChange: onGroupChange,
     enabled: isEnabled,
   });

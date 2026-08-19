@@ -1,4 +1,5 @@
 import { useDebouncedQueryInvalidation } from '@/hooks/use-debounced-query-invalidation';
+import { useRefetchOnFocus } from '@/hooks/use-refetch-on-focus';
 import { useRealtime } from '@/hooks/use-realtime';
 import { friendDetailModule } from '@/services/friend-detail-module';
 import { queryKeys } from '@/services/query-keys';
@@ -27,6 +28,13 @@ export function useFriendDetailController({
     queryKey: friendDetailQueryKey,
     enabled: !!currentUserId && !!friendId,
     queryFn: () => friendDetailModule.getDetail(currentUserId, friendId),
+  });
+
+  useRefetchOnFocus({
+    enabled: !!currentUserId && !!friendId,
+    isFetching: query.isFetching,
+    isStale: query.isStale,
+    refetch: query.refetch,
   });
 
   useRealtime({

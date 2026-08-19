@@ -5,7 +5,6 @@ import type { Expense, ExpenseSplit, Settlement, User } from '@/types/database';
 export interface FriendSummary extends User {
   balance: number;
   recentExpenses?: Expense[];
-  relationship?: FriendRelationshipProjection;
 }
 
 export interface FriendHomeSummary extends FriendSummary {
@@ -61,6 +60,11 @@ function mapFriendHomeExpense(row: FriendHomeExpenseRow): Expense {
 }
 
 function mapFriendHomeRow(row: FriendHomeRow): FriendHomeSummary {
+  const outstandingTotals = row.relationship.totalsByCurrency.filter(total => total.amount !== 0);
+  const displayBalance = outstandingTotals.length === 1
+    ? outstandingTotals[0].amount
+    : row.balance;
+
   return {
     id: row.id,
     name: row.name,
@@ -70,7 +74,7 @@ function mapFriendHomeRow(row: FriendHomeRow): FriendHomeSummary {
     pushToken: row.push_token || undefined,
     isActive: row.is_active,
     createdAt: new Date(row.created_at).getTime(),
-    balance: row.balance,
+    balance: displayBalance,
     relationship: row.relationship,
     recentExpenses: (row.recent_expenses || []).map(mapFriendHomeExpense),
   };
@@ -184,5 +188,11 @@ export const friendSummaryService = {
 
     if (error) throw error;
     return ((data || []) as FriendHomeRow[]).map(mapFriendHomeRow);
+  },
+
+  async getRelationship(currentUserId: string, friendId: string): Promise<FriendRelationshipProjection> {
+    const summary = (await this.getHomeSummaries(currentUserId)).find(friend => friend.id === friendId);
+    if (!summary) throw new Error('Friend relationship projection was not found.');
+    return summary.relationship;
   },
 };

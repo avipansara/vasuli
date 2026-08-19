@@ -10,6 +10,7 @@ import { friendGroupBalanceService } from '@/services/friend-group-balance-servi
 import { activityService } from '@/services/activity-service';
 import { expenseService } from '@/services/expense-service';
 import { friendshipService } from '@/services/friendship-service';
+import { friendSummaryService } from '@/services/friend-summary-service';
 import type { PushNotificationData } from '@/services/notification-service';
 import type { SettlementScopeTransfer } from '@/types/database';
 import { scopeTransferService } from './scope-transfer-service';
@@ -163,49 +164,6 @@ export function createFriendDetailModule(
         relationship,
       };
     },
-    async settleUp({
-      currentUserId,
-      friendId,
-      amount,
-      balance,
-      currency,
-      date,
-      currentUserName = 'You',
-      friendName = 'Friend',
-    }) {
-      if (amount <= 0 || amount > Math.abs(balance)) {
-        throw new Error('Settlement amount cannot exceed the outstanding balance.');
-      }
-
-      const settlements = await settlementAdapter.createPairSettlements({
-        currentUserId,
-        friendId,
-        amount: Math.abs(amount),
-        currency,
-        date,
-      });
-
-      if (settlements.some(settlement => settlement.groupId)) {
-        throw new Error('Group settlements must be recorded from the Group detail flow, not the direct Friend balance.');
-      }
-
-      for (const settlement of settlements) {
-        try {
-          await activityAdapter.logSettlementCreated({
-            settlementId: settlement.id,
-            fromUserId: settlement.fromUserId,
-            fromUserName: settlement.fromUserId === currentUserId ? currentUserName : friendName,
-            toUserName: settlement.fromUserId === currentUserId ? friendName : currentUserName,
-            amount: settlement.amount,
-            groupId: settlement.groupId,
-          });
-        } catch {
-          // Activity logging must not turn a completed settlement into a failure.
-        }
-      }
-
-      return settlements;
-    },
     async deleteExpense({
       expenseId,
       currentUserId,
@@ -247,4 +205,9 @@ export function createFriendDetailModule(
 export const friendDetailModule = createFriendDetailModule({
   groupBalanceAdapter: friendGroupBalanceService,
   scopeTransferAdapter: scopeTransferService,
+  // Settlement must use the same transfer-adjusted relationship projection as
+  // Friends Home. The raw detail RPC intentionally excludes Group balances
+  // from the direct ledger, so projecting from that payload alone can produce
+  // an allocation direction that disagrees with the expected net balance.
+  relationshipAdapter: friendSummaryService,
 });

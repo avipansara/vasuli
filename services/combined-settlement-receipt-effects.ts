@@ -3,6 +3,7 @@ import type { CombinedSettlementReceipt } from './combined-settlement-service';
 import { shouldLogSettlementActivity } from './combined-settlement-service';
 import { applyScopeTransferToGroupReadModel, applySettlementToGroupReadModel, type GroupDetailReadModel } from './group-detail-read-model';
 import { queryKeys } from './query-keys';
+import { getFriendRelationshipInvalidationKeys } from './friend-relationship-invalidation';
 import type { User } from '@/types/database';
 
 type ReceiptEffectsQueryClient = {
@@ -35,7 +36,7 @@ export async function applyCombinedSettlementReceiptEffects({
   ])];
 
   await invalidateSafely(queryClient, [
-    queryKeys.friends.detail(currentUserId, friend.id),
+    ...getFriendRelationshipInvalidationKeys(currentUserId, friend.id),
     queryKeys.groups.list(currentUserId),
   ]);
 

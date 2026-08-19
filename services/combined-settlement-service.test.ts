@@ -179,4 +179,45 @@ describe('combined settlement service', () => {
       }],
     }));
   });
+
+  it('allocates a partial payment from the friend when the combined balance is positive', async () => {
+    const commit = vi.fn(async request => ({
+      paymentIntentId: request.paymentIntentId,
+      reused: false,
+      committedAt: 1,
+      totalAmount: request.amount,
+      currency: request.currency,
+      direction: 'friend_paid_you' as const,
+      settlements: [],
+    }));
+    const service = createCombinedSettlementService({ commit });
+
+    await service.commit({
+      currentUserId: 'current-user',
+      friendId: 'friend-a',
+      paymentIntentId: 'intent-positive-group',
+      amount: 2,
+      currency: 'USD',
+      date: 100,
+      expectedBalance: 5,
+      directBalance: 0,
+      groupBalances: [{
+        groupId: 'group-1',
+        groupName: 'Lunch',
+        currency: 'USD',
+        amount: 5,
+        direction: 'you_are_owed',
+      }],
+    });
+
+    expect(commit).toHaveBeenCalledWith(expect.objectContaining({
+      allocations: [{
+        groupId: 'group-1',
+        fromUserId: 'friend-a',
+        toUserId: 'current-user',
+        amount: 2,
+        currency: 'USD',
+      }],
+    }));
+  });
 });
