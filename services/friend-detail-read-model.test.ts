@@ -168,6 +168,45 @@ describe('friend detail read model', () => {
     });
   });
 
+  it('exposes each pair-relevant group settlement once as activity without changing direct balance inputs', async () => {
+    const readModel = createFriendDetailReadModel({
+      rpc: async () => ({
+        data: {
+          friend: {
+            id: 'friend-a', name: 'Asha', isActive: true,
+            createdAt: '2026-08-16T10:00:00.000Z', balance: 15,
+          },
+          expenses: [],
+          settlements: [],
+          groupSettlements: [{
+            id: 'group-settlement-1', operationId: 'operation-1',
+            groupId: 'group-alaska', groupName: 'Alaska 2026',
+            amount: 35, currency: 'USD', date: '2026-08-19T10:00:00.000Z',
+            createdAt: '2026-08-19T10:00:00.000Z',
+            direction: 'friend_paid_you', notes: 'Group payment',
+          }],
+          activities: [],
+        },
+        error: null,
+      }),
+    });
+
+    const detail = await readModel.getDetail('current-user', 'friend-a');
+    expect(detail).toMatchObject({
+      friend: { balance: 15 },
+      expenses: [],
+      activity: [{
+        id: 'group-settlement:group-settlement-1',
+        type: 'settlement',
+        groupId: 'group-alaska',
+        groupName: 'Alaska 2026',
+        operationId: 'operation-1',
+        amount: 35,
+      }],
+    });
+    expect(detail?.activity.filter(item => item.type === 'settlement')).toHaveLength(1);
+  });
+
   it('surfaces a read-model failure to the existing error state', async () => {
     const readModel = createFriendDetailReadModel({
       rpc: async () => ({ data: null, error: { message: 'Read model unavailable' } }),

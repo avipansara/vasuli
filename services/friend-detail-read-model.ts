@@ -43,7 +43,20 @@ type FriendDetailReadModelRow = {
   groupExpenses?: FriendDetailReadModelRow['expenses'];
   settlements: {
     id: string;
+    operationId?: string;
     groupId?: string;
+    amount: number;
+    currency: string;
+    date: string | number;
+    notes?: string;
+    createdAt: string | number;
+    direction: 'you_paid_friend' | 'friend_paid_you';
+  }[];
+  groupSettlements?: {
+    id: string;
+    operationId?: string;
+    groupId: string;
+    groupName?: string;
     amount: number;
     currency: string;
     date: string | number;
@@ -104,6 +117,7 @@ function buildActivity(
   expenses: FriendDetailData['expenses'],
   groupExpenses: FriendDetailData['expenses'],
   settlements: FriendDetailReadModelRow['settlements'],
+  groupSettlements: NonNullable<FriendDetailReadModelRow['groupSettlements']>,
   activities: FriendDetailReadModelRow['activities']
 ): FriendActivityItem[] {
   return [
@@ -124,10 +138,24 @@ function buildActivity(
       type: 'settlement',
       date: toTimestamp(settlement.date),
       settlementId: settlement.id,
+      operationId: settlement.operationId,
       amount: settlement.amount,
       currency: settlement.currency,
       direction: settlement.direction,
       groupId: settlement.groupId,
+      notes: settlement.notes,
+    })),
+    ...groupSettlements.map((settlement): FriendActivityItem => ({
+      id: `group-settlement:${settlement.id}`,
+      type: 'settlement',
+      date: toTimestamp(settlement.date),
+      settlementId: settlement.id,
+      operationId: settlement.operationId,
+      amount: settlement.amount,
+      currency: settlement.currency,
+      direction: settlement.direction,
+      groupId: settlement.groupId,
+      groupName: settlement.groupName,
       notes: settlement.notes,
     })),
     ...activities.map((activity): FriendActivityItem => ({
@@ -196,6 +224,7 @@ export function createFriendDetailReadModel(rpcClient: FriendDetailRpcClient = d
         ...mappedGroupExpenses,
       ];
       const settlements = row.settlements.filter(settlement => !settlement.groupId);
+      const groupSettlements = row.groupSettlements ?? [];
       const activities = row.activities.filter(activity => !activity.groupId);
 
       if (process.env.NODE_ENV === 'development') {
@@ -204,13 +233,14 @@ export function createFriendDetailReadModel(rpcClient: FriendDetailRpcClient = d
           expenseCount: expenses.length,
           activityCount: activities.length,
           settlementCount: settlements.length,
+          groupSettlementCount: groupSettlements.length,
         });
       }
 
       const detail: Omit<FriendDetailData, 'relationship'> = {
         friend,
         expenses,
-        activity: buildActivity(expenses, groupExpenses, settlements, activities),
+        activity: buildActivity(expenses, groupExpenses, settlements, groupSettlements, activities),
       };
 
       return {

@@ -7,6 +7,24 @@ const readMigration = (name: string) => readFileSync(
 );
 
 describe('settlement RPC migration contracts', () => {
+  it('keeps group settlements activity-only in the Friend detail read model', () => {
+    const migration = readMigration('20260819060000_fix_friend_detail_group_settlement_activity.sql');
+
+    expect(migration).toContain('CREATE OR REPLACE FUNCTION public.get_friend_detail_read_model(p_friend_id uuid)');
+    expect(migration).toContain('SECURITY DEFINER');
+    expect(migration).toContain('SET search_path = public, private, pg_temp');
+    expect(migration).toContain('pair_settlements AS (');
+    expect(migration).toContain('WHERE s.group_id IS NULL');
+    expect(migration).toContain('group_settlements AS (');
+    expect(migration).toContain('WHERE s.group_id IS NOT NULL');
+    expect(migration).toContain("'groupSettlements', gsp.value");
+    expect(migration).toContain("'operationId', s.operation_id");
+
+    const pairSettlements = migration.match(/pair_settlements AS \(([\s\S]*?)\n    \),\n    group_settlements AS/)?.[1] ?? '';
+    expect(pairSettlements).toContain('WHERE s.group_id IS NULL');
+    expect(pairSettlements).not.toContain('s.group_id IS NOT NULL');
+  });
+
   it('uses the physical request_fingerprint column for positive operation inserts', () => {
     const migration = readMigration('20260819050000_fix_positive_settlement_fingerprint_column.sql');
     const insert = migration.match(/INSERT INTO public\.settlement_operations \([\s\S]*?\) VALUES \(/)?.[0] ?? '';

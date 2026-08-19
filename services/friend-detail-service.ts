@@ -46,6 +46,7 @@ export type FriendActivityItem =
     currency: string;
     direction: FriendSettlementDirection;
     groupId?: string;
+    groupName?: string;
     notes?: string;
   }
   | {

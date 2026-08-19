@@ -19,6 +19,8 @@
   valid payments to fail with `42703` before creating a settlement operation.
 - Fixed sign-out retaining cached Friend relationship data that could otherwise
   remain visible when a different account signs in on the same device.
+- Fixed Friend activity so pair-relevant Group settlements appear once with
+  their Group context without changing the direct Friend balance.
 
 ## 2026-08-18
 
