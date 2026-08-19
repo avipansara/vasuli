@@ -1,6 +1,7 @@
 ## 2026-08-19
 
 - Updated the iOS `preview` submit configuration with the newly registered App Store Connect App ID to resolve TestFlight submission errors.
+- Cleaned up CI/CD workflows by offloading Google Services JSON keys, Supabase URLs, and keys directly to native EAS Environment Variables and Credentials.
 
 ## 2026-08-17
 

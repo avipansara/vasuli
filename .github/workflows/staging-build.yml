@@ -53,45 +53,11 @@ jobs:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
 
-      - name: Create Google Services Key File
-        env:
-          GOOGLE_SERVICES_KEY: ${{ secrets.GOOGLE_SERVICES_KEY }}
-        run: |
-          if [ -z "$GOOGLE_SERVICES_KEY" ]; then
-            echo "::error::GitHub secret GOOGLE_SERVICES_KEY is empty or missing! Please add it to your GitHub Repository Secrets."
-            exit 1
-          fi
-          if printf "%s\n" "$GOOGLE_SERVICES_KEY" | grep -q '{'; then
-            echo "Writing raw GOOGLE_SERVICES_KEY JSON..."
-            printf "%s\n" "$GOOGLE_SERVICES_KEY" > ./google-services-key.json
-          else
-            echo "Decoding base64 GOOGLE_SERVICES_KEY..."
-            printf "%s\n" "$GOOGLE_SERVICES_KEY" | base64 --decode > ./google-services-key.json
-          fi
-
-      - name: Create google-services.json File
-        env:
-          GOOGLE_SERVICES_DEV: ${{ secrets.EXPO_PUBLIC_GOOGLE_SERVICES_DEV }}
-        run: |
-          if [ -z "$GOOGLE_SERVICES_DEV" ]; then
-            echo "::error::GitHub secret EXPO_PUBLIC_GOOGLE_SERVICES_DEV is empty or missing! Please add it to your GitHub Repository Secrets."
-            exit 1
-          fi
-          if printf "%s\n" "$GOOGLE_SERVICES_DEV" | grep -q '{'; then
-            echo "Writing raw EXPO_PUBLIC_GOOGLE_SERVICES_DEV JSON..."
-            printf "%s\n" "$GOOGLE_SERVICES_DEV" > ./google-services.json
-          else
-            echo "Decoding base64 EXPO_PUBLIC_GOOGLE_SERVICES_DEV..."
-            printf "%s\n" "$GOOGLE_SERVICES_DEV" | base64 --decode > ./google-services.json
-          fi
-
       - name: Build Android
         run: eas build --platform android --profile preview --non-interactive --no-wait --auto-submit
         env:
           APP_ENV: preview
           EAS_BUILD_ENVIRONMENT: development
-          EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL_DEV }}
-          EXPO_PUBLIC_SUPABASE_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_KEY_DEV }}
 
   build-ios:
     name: Build iOS Staging
@@ -121,5 +87,3 @@ jobs:
         env:
           APP_ENV: preview
           EAS_BUILD_ENVIRONMENT: development
-          EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL_DEV }}
-          EXPO_PUBLIC_SUPABASE_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_KEY_DEV }}

@@ -54,44 +54,10 @@ jobs:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
 
-      - name: Create Google Services Key File
-        env:
-          GOOGLE_SERVICES_KEY: ${{ secrets.GOOGLE_SERVICES_KEY }}
-        run: |
-          if [ -z "$GOOGLE_SERVICES_KEY" ]; then
-            echo "::error::GitHub secret GOOGLE_SERVICES_KEY is empty or missing! Please add it to your GitHub Repository Secrets."
-            exit 1
-          fi
-          if printf "%s\n" "$GOOGLE_SERVICES_KEY" | grep -q '{'; then
-            echo "Writing raw GOOGLE_SERVICES_KEY JSON..."
-            printf "%s\n" "$GOOGLE_SERVICES_KEY" > ./google-services-key.json
-          else
-            echo "Decoding base64 GOOGLE_SERVICES_KEY..."
-            printf "%s\n" "$GOOGLE_SERVICES_KEY" | base64 --decode > ./google-services-key.json
-          fi
-
-      - name: Create google-services.json File
-        env:
-          GOOGLE_SERVICES_PROD: ${{ secrets.EXPO_PUBLIC_GOOGLE_SERVICES_PROD }}
-        run: |
-          if [ -z "$GOOGLE_SERVICES_PROD" ]; then
-            echo "::error::GitHub secret EXPO_PUBLIC_GOOGLE_SERVICES_PROD is empty or missing! Please add it to your GitHub Repository Secrets."
-            exit 1
-          fi
-          if printf "%s\n" "$GOOGLE_SERVICES_PROD" | grep -q '{'; then
-            echo "Writing raw EXPO_PUBLIC_GOOGLE_SERVICES_PROD JSON..."
-            printf "%s\n" "$GOOGLE_SERVICES_PROD" > ./google-services.json
-          else
-            echo "Decoding base64 EXPO_PUBLIC_GOOGLE_SERVICES_PROD..."
-            printf "%s\n" "$GOOGLE_SERVICES_PROD" | base64 --decode > ./google-services.json
-          fi
-
       - name: Build and Submit Android
         run: eas build --platform android --profile production --non-interactive --auto-submit --no-wait
         env:
           APP_ENV: production
-          EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL_PROD }}
-          EXPO_PUBLIC_SUPABASE_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_KEY_PROD }}
 
   build-ios:
     name: Build & Submit iOS Production
@@ -120,5 +86,3 @@ jobs:
         run: eas build --platform ios --profile production --non-interactive --auto-submit --no-wait
         env:
           APP_ENV: production
-          EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL_PROD }}
-          EXPO_PUBLIC_SUPABASE_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_KEY_PROD }}
