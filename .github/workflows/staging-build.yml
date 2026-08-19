@@ -54,16 +54,36 @@ jobs:
           token: ${{ secrets.EXPO_TOKEN }}
 
       - name: Create Google Services Key File
+        env:
+          GOOGLE_SERVICES_KEY: ${{ secrets.GOOGLE_SERVICES_KEY }}
         run: |
-          cat << 'EOF' > ./google-services-key.json
-          ${{ secrets.GOOGLE_SERVICES_KEY }}
-          EOF
+          if [ -z "$GOOGLE_SERVICES_KEY" ]; then
+            echo "::error::GitHub secret GOOGLE_SERVICES_KEY is empty or missing! Please add it to your GitHub Repository Secrets."
+            exit 1
+          fi
+          if printf "%s\n" "$GOOGLE_SERVICES_KEY" | grep -q '{'; then
+            echo "Writing raw GOOGLE_SERVICES_KEY JSON..."
+            printf "%s\n" "$GOOGLE_SERVICES_KEY" > ./google-services-key.json
+          else
+            echo "Decoding base64 GOOGLE_SERVICES_KEY..."
+            printf "%s\n" "$GOOGLE_SERVICES_KEY" | base64 --decode > ./google-services-key.json
+          fi
 
       - name: Create google-services.json File
+        env:
+          GOOGLE_SERVICES_DEV: ${{ secrets.EXPO_PUBLIC_GOOGLE_SERVICES_DEV }}
         run: |
-          cat << 'EOF' > ./google-services.json
-          ${{ secrets.EXPO_PUBLIC_GOOGLE_SERVICES_DEV }}
-          EOF
+          if [ -z "$GOOGLE_SERVICES_DEV" ]; then
+            echo "::error::GitHub secret EXPO_PUBLIC_GOOGLE_SERVICES_DEV is empty or missing! Please add it to your GitHub Repository Secrets."
+            exit 1
+          fi
+          if printf "%s\n" "$GOOGLE_SERVICES_DEV" | grep -q '{'; then
+            echo "Writing raw EXPO_PUBLIC_GOOGLE_SERVICES_DEV JSON..."
+            printf "%s\n" "$GOOGLE_SERVICES_DEV" > ./google-services.json
+          else
+            echo "Decoding base64 EXPO_PUBLIC_GOOGLE_SERVICES_DEV..."
+            printf "%s\n" "$GOOGLE_SERVICES_DEV" | base64 --decode > ./google-services.json
+          fi
 
       - name: Build Android
         run: eas build --platform android --profile preview --non-interactive --no-wait --auto-submit
