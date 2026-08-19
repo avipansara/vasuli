@@ -2,6 +2,7 @@ import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { useAuth } from '@/contexts/auth-context-otp';
+import { createGroupDetailTraceId, logGroupDetailDiagnostic } from '@/lib/group-detail-diagnostics';
 import { groupService } from '@/services/group-service';
 import type { GroupWithMembers } from '@/types/database';
 import { router } from 'expo-router';
@@ -41,6 +42,19 @@ function GroupCardInner({ group, index, onRefresh }: GroupCardProps) {
   function handleEditGroup() {
     swipeableRef.current?.close();
     router.push(`/edit-group/${group.id}` as any);
+  }
+
+  function handleOpenGroup() {
+    const traceId = createGroupDetailTraceId();
+    logGroupDetailDiagnostic('navigate', {
+      traceId,
+      groupId: group.id,
+      source: 'group-card',
+    });
+    router.push({
+      pathname: '/groups/[id]',
+      params: { id: group.id, groupDetailTraceId: traceId },
+    } as any);
   }
 
   async function handleDeleteGroup() {
@@ -143,7 +157,7 @@ function GroupCardInner({ group, index, onRefresh }: GroupCardProps) {
           <TouchableOpacity
             activeOpacity={0.7}
             style={styles.content}
-            onPress={() => router.push(`/groups/${group.id}` as any)}
+            onPress={handleOpenGroup}
             accessibilityRole="button"
             accessibilityLabel={`${group.name}, ${isSettled ? 'all settled up' : `${isPositive ? 'you are owed' : 'you owe'} $${Math.abs(balance).toFixed(2)}`}`}
             accessibilityHint="Opens this group">

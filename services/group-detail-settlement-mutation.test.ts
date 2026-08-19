@@ -31,9 +31,10 @@ describe('Group detail SettlementScopeTransfer mutation', () => {
       reversedAt: 1,
       reused: false,
     }));
-    const getFriendDetail = vi.fn<GroupDetailSettlementMutationDependencies['getFriendDetail']>(async () => ({
+    const getFriendDetail = vi.fn<GroupDetailSettlementMutationDependencies['getFriendDetail']>();
+    getFriendDetail.mockResolvedValue({
       relationship: { totalsByCurrency: [{ currency: 'USD', amount: 15 }] },
-    }));
+    } as unknown as Awaited<ReturnType<GroupDetailSettlementMutationDependencies['getFriendDetail']>>);
     const mutation = createGroupDetailSettlementMutation({ reverse, getFriendDetail });
 
     const result = await mutation.reverseTransfer({
@@ -94,9 +95,10 @@ describe('Group detail SettlementScopeTransfer mutation', () => {
     const reverse = vi.fn<GroupDetailSettlementMutationDependencies['reverse']>(async () => {
       throw staleError;
     });
-    const getFriendDetail = vi.fn<GroupDetailSettlementMutationDependencies['getFriendDetail']>(async () => ({
+    const getFriendDetail = vi.fn<GroupDetailSettlementMutationDependencies['getFriendDetail']>();
+    getFriendDetail.mockResolvedValue({
       relationship: { totalsByCurrency: [{ currency: 'USD', amount: 15 }] },
-    }));
+    } as unknown as Awaited<ReturnType<GroupDetailSettlementMutationDependencies['getFriendDetail']>>);
     const mutation = createGroupDetailSettlementMutation({ reverse, getFriendDetail });
 
     await expect(mutation.reverseTransfer({

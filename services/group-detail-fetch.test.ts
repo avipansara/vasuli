@@ -56,6 +56,7 @@ describe('groupDetailService', () => {
     vi.mocked(groupService.getById).mockResolvedValue(null);
 
     await expect(groupDetailService.getDetail('user-a', 'missing')).resolves.toBeNull();
+    expect(groupService.getById).toHaveBeenCalledTimes(2);
     expect(expenseService.getByGroup).not.toHaveBeenCalled();
   });
 });

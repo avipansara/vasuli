@@ -46,9 +46,20 @@ export function createGroupDetailMemberMutation(
       context: MemberMutationContext & {
         memberIds: string[];
         users: User[];
+        groupDetailKey: QueryCacheKey;
+        cache: Pick<QueryCacheAdapter, 'invalidate'>;
       },
     ): Promise<void> {
-      await Promise.all(context.memberIds.map(memberId => dependencies.addMember(context.groupId, memberId)));
+      const addedMemberIds: string[] = [];
+      try {
+        for (const memberId of context.memberIds) {
+          await dependencies.addMember(context.groupId, memberId);
+          addedMemberIds.push(memberId);
+        }
+      } catch (error) {
+        await rollbackAddedMembers(context.groupId, addedMemberIds, dependencies);
+        throw error;
+      }
 
       await Promise.all(context.memberIds.map(async memberId => {
         const member = context.users.find(user => user.id === memberId);
@@ -65,10 +76,15 @@ export function createGroupDetailMemberMutation(
       }));
 
       await safelyNotifyAddedMembers(context, dependencies);
+      await safelyInvalidate(context.cache, context.groupDetailKey);
     },
 
     async removeMember(
-      context: MemberMutationContext & { member: GroupMember & { user?: User } },
+      context: MemberMutationContext & {
+        member: GroupMember & { user?: User };
+        groupDetailKey: QueryCacheKey;
+        cache: Pick<QueryCacheAdapter, 'invalidate'>;
+      },
     ): Promise<void> {
       await dependencies.removeMember(context.groupId, context.member.userId);
       await safelyRunSideEffect(
@@ -81,6 +97,7 @@ export function createGroupDetailMemberMutation(
         }),
         'Group member Activity logging failed after membership removal:',
       );
+      await safelyInvalidate(context.cache, context.groupDetailKey);
     },
 
     async sendFriendRequest(params: {
@@ -124,6 +141,20 @@ async function safelyNotifyAddedMembers(
   }
 }
 
+async function rollbackAddedMembers(
+  groupId: string,
+  memberIds: string[],
+  dependencies: GroupDetailMemberMutationDependencies,
+): Promise<void> {
+  for (const memberId of [...memberIds].reverse()) {
+    try {
+      await dependencies.removeMember(groupId, memberId);
+    } catch (rollbackError) {
+      console.error('Group member rollback failed after partial membership add:', rollbackError);
+    }
+  }
+}
+
 async function safelyRunSideEffect(
   effect: () => Promise<unknown>,
   message: string,
@@ -132,6 +163,17 @@ async function safelyRunSideEffect(
     await effect();
   } catch (error) {
     console.error(message, error);
+  }
+}
+
+async function safelyInvalidate(
+  cache: Pick<QueryCacheAdapter, 'invalidate'>,
+  key: QueryCacheKey,
+): Promise<void> {
+  try {
+    await cache.invalidate(key);
+  } catch (error) {
+    console.warn('Group detail cache invalidation failed after member mutation:', error);
   }
 }
 

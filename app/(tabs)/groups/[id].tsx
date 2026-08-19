@@ -9,25 +9,14 @@ import { useRefetchOnFocus } from '@/hooks/use-refetch-on-focus';
 import { useRealtime } from '@/hooks/use-realtime';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
-import { activityService } from '@/services/activity-service';
-import { CombinedSettlementError, settlementModule } from '@/services/settlement-service';
-import { expenseService } from '@/services/expense-service';
-import { friendshipService } from '@/services/friendship-service';
+import { createGroupDetailTraceId, logGroupDetailDiagnostic } from '@/lib/group-detail-diagnostics';
+import { CombinedSettlementError } from '@/services/settlement-service';
 import { areGroupBalancesSettled } from '@/services/group-balance';
 import type { GroupDetailReadModel, GroupExpenseView } from '@/services/group-detail-read-model';
-import { removeExpenseFromGroupReadModel, removeExpenseFromHomeFriends } from '@/services/group-detail-read-model';
 import { groupDetailService } from '@/services/group-detail-service';
-import { groupService } from '@/services/group-service';
-import { friendDetailModule } from '@/services/friend-detail-module';
-import {
-  createExpenseDeletedNotification,
-  createMemberAddedNotification,
-  notificationService,
-} from '@/services/notification-service';
-import type { QueryCacheSnapshot } from '@/services/query-cache-adapter';
+import { groupDetailMutationController } from '@/services/group-detail-mutation-controller';
 import { createReactQueryCacheAdapter } from '@/services/query-cache-adapter';
 import { queryKeys } from '@/services/query-keys';
-import { userService } from '@/services/user-service';
 import type { Expense, GroupMember, Settlement, User } from '@/types/database';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -57,7 +46,12 @@ const SECTION_TABS: { id: SectionTab; label: string }[] = [
 
 export default function GroupDetailScreen() {
   const { gradients, colors, friendDetail: friendDetailTheme, settle, isDark } = useThemeColors();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, groupDetailTraceId } = useLocalSearchParams<{
+    id: string;
+    groupDetailTraceId?: string;
+  }>();
+  const [fallbackTraceId] = useState(createGroupDetailTraceId);
+  const traceId = groupDetailTraceId || fallbackTraceId;
   const [isAddingMember, setIsAddingMember] = useState(false);
   const [deletingExpenseId, setDeletingExpenseId] = useState<string | null>(null);
   const [isDeletingGroup, setIsDeletingGroup] = useState(false);
@@ -127,7 +121,7 @@ export default function GroupDetailScreen() {
     queryKey: groupDetailQueryKey,
     enabled: !!currentUserId && !!id,
     staleTime: 0,
-    queryFn: () => groupDetailService.getDetail(currentUserId, id),
+    queryFn: () => groupDetailService.getDetail(currentUserId, id, traceId),
   });
   const group = groupDetail?.group ?? null;
   const expenses = groupDetail?.expenses ?? EMPTY_EXPENSES;
@@ -170,8 +164,17 @@ export default function GroupDetailScreen() {
     refetch,
   });
 
+  useEffect(() => {
+    logGroupDetailDiagnostic('route', {
+      traceId,
+      groupId: id,
+      currentUserId,
+      hasNavigationTrace: !!groupDetailTraceId,
+    });
+  }, [currentUserId, groupDetailTraceId, id, traceId]);
+
   const handleReverseTransfer = useCallback((transfer: NonNullable<GroupDetailReadModel['scopeTransfers']>[number]) => {
-    if (transfer.isReversal || (transfer.fromUserId !== currentUserId && transfer.toUserId !== currentUserId)) return;
+    if (!groupDetailMutationController.canReverseTransfer(transfer, currentUserId)) return;
 
     Alert.alert(
       'Reverse settlement?',
@@ -183,17 +186,14 @@ export default function GroupDetailScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              const otherUserId = transfer.fromUserId === currentUserId ? transfer.toUserId : transfer.fromUserId;
-              const friendDetail = await friendDetailModule.getDetail(currentUserId, otherUserId);
-              const expectedBalance = friendDetail?.relationship.totalsByCurrency.find(total => total.currency === transfer.currency)?.amount;
-              await settlementModule.reverse({
-                operationId: transfer.operationId,
-                expectedBalance: expectedBalance ?? 0,
+              const result = await groupDetailMutationController.reverseTransfer({
+                transfer,
                 currentUserId,
-                friendId: otherUserId,
+                groupDetailKey: groupDetailQueryKey,
+                cache: queryCache,
                 queryClient,
               });
-              await refetch();
+              if (result.status === 'ignored') return;
               Alert.alert('Settlement reversed', 'The affected balances were restored.');
             } catch (error) {
               Alert.alert(
@@ -205,7 +205,7 @@ export default function GroupDetailScreen() {
         },
       ],
     );
-  }, [currentUserId, queryClient, refetch]);
+  }, [currentUserId, groupDetailQueryKey, queryCache, queryClient]);
 
   useEffect(() => {
     if (groupDetail === null) {
@@ -255,47 +255,19 @@ export default function GroupDetailScreen() {
 
     try {
       setIsAddingMember(true);
-      await Promise.all(selectedUserIds.map(userId => groupService.addMember(id, userId)));
-
-      if (group && user) {
-        await Promise.all(selectedUserIds.map(async userId => {
-          const newMember = availableUsers.find(u => u.id === userId);
-          return activityService.logMemberAdded({
-            groupId: id,
-            userId: currentUserId,
-            userName: user.name,
-            memberName: newMember?.name || 'Someone',
-            groupName: group.name,
-          });
-        }));
-
-        // Notify each newly added member individually so the message can use
-        // their name. Push failures must not turn a successful membership add
-        // into a failed group operation.
-        try {
-          const usersToNotify = await userService.getByIds(selectedUserIds);
-
-          await Promise.all(
-            usersToNotify
-              .filter((newMember): newMember is User => !!newMember.pushToken)
-              .map(newMember => notificationService.sendPushNotification(
-                newMember.pushToken!,
-                createMemberAddedNotification(
-                  group.name,
-                  user.name,
-                  newMember.name,
-                  id,
-                ),
-              ))
-          );
-        } catch (notificationError) {
-          console.error('Error sending group member notifications:', notificationError);
-        }
-      }
+      if (!group || !user) throw new Error('Group context is unavailable');
+      await groupDetailMutationController.addMembers({
+        groupId: id,
+        groupName: group.name,
+        currentUser: { id: currentUserId, name: user.name },
+        memberIds: selectedUserIds,
+        users: availableUsers,
+        groupDetailKey: groupDetailQueryKey,
+        cache: queryCache,
+      });
 
       setSelectedUserIds([]);
       setMemberModalVisible(false);
-      loadGroupData();
     } catch (error) {
       console.error('Error adding member:', error);
       Alert.alert('Error', 'Failed to add member');
@@ -306,13 +278,11 @@ export default function GroupDetailScreen() {
 
   async function handleAddFriend(memberUserId: string) {
     try {
-      await friendshipService.create(currentUserId, memberUserId);
-
-      queryClient.setQueryData<GroupDetailReadModel | null>(groupDetailQueryKey, current => {
-        if (!current) return null;
-        const friendshipStatus = new Map(current.friendshipStatus);
-        friendshipStatus.set(memberUserId, 'pending_sent');
-        return { ...current, friendshipStatus };
+      await groupDetailMutationController.sendFriendRequest({
+        currentUserId,
+        friendId: memberUserId,
+        groupDetailKey: groupDetailQueryKey,
+        cache: queryCache,
       });
 
       Alert.alert('Success', 'Friend request sent');
@@ -329,7 +299,7 @@ export default function GroupDetailScreen() {
   function handleDeleteGroup() {
     if (isDeletingGroup || !group) return;
 
-    if (!areGroupBalancesSettled(balances)) {
+    if (!groupDetailMutationController.canDeleteGroup(balances)) {
       Alert.alert(
         'Settle Group First',
         'This group still has outstanding balances. Settle all expenses before deleting it.'
@@ -351,11 +321,21 @@ export default function GroupDetailScreen() {
           onPress: async () => {
             try {
               setIsDeletingGroup(true);
-              await groupService.delete(id, currentUserId);
-              await queryClient.invalidateQueries({
-                queryKey: queryKeys.groups.list(currentUserId),
-                refetchType: 'all',
+              const result = await groupDetailMutationController.deleteGroup({
+                groupId: id,
+                currentUserId,
+                balances,
+                groupDetailKey: groupDetailQueryKey,
+                groupListKey: queryKeys.groups.list(currentUserId),
+                cache: queryCache,
               });
+              if (result.status === 'blocked') {
+                Alert.alert(
+                  'Settle Group First',
+                  'This group still has outstanding balances. Settle all expenses before deleting it.',
+                );
+                return;
+              }
               router.replace('/groups' as any);
             } catch (error) {
               console.error('Error deleting group:', error);
@@ -390,7 +370,6 @@ export default function GroupDetailScreen() {
           style: 'destructive',
           onPress: async () => {
             const expenseToDelete = expenses.find(expense => expense.id === expenseId);
-            let cacheSnapshot: QueryCacheSnapshot | undefined;
             try {
               setDeletingExpenseId(expenseId);
               expenseSwipeableRefs.current.get(expenseId)?.close();
@@ -398,55 +377,21 @@ export default function GroupDetailScreen() {
               const deletedExpenseSplits = expenseToDelete
                 ? expenseSplits.filter(split => split.expenseId === expenseId)
                 : [];
-              const currentUserSplit = deletedExpenseSplits.find(split => split.userId === currentUserId);
-              cacheSnapshot = await queryCache.capture([
-                groupDetailQueryKey,
-                ...(currentUserSplit ? [friendsHomeQueryKey] : []),
-              ]);
-
-              queryClient.setQueryData<GroupDetailReadModel | null>(groupDetailQueryKey, current => current
-                ? removeExpenseFromGroupReadModel(current, expenseId)
-                : null);
-
-              if (currentUserSplit && expenseToDelete) {
-                queryClient.setQueryData<(User & { balance: number; recentExpenses?: Expense[] })[]>(
-                  friendsHomeQueryKey,
-                  current => removeExpenseFromHomeFriends(current, expenseToDelete, deletedExpenseSplits, currentUserId)
-                );
-              }
-
-              await expenseService.delete(expenseId, currentUserId, user?.name || 'Unknown');
-              if (expenseToDelete) {
-                const usersToNotify = await userService.getByIds(
-                  deletedExpenseSplits
-                    .map(split => split.userId)
-                    .filter(userId => userId !== currentUserId)
-                );
-                const pushTokens = usersToNotify
-                  .filter((u) => u && u.pushToken)
-                  .map((u) => u!.pushToken!);
-                if (pushTokens.length > 0) {
-                  const notification = createExpenseDeletedNotification(
-                    expenseToDelete.id,
-                    expenseToDelete.description,
-                    expenseToDelete.amount,
-                    user?.name || 'Someone',
-                    group?.name,
-                    id
-                  );
-                  await notificationService.sendNotificationToUsers(pushTokens, notification);
-                }
-              }
-              queryClient.invalidateQueries({ queryKey: groupDetailQueryKey });
+              await groupDetailMutationController.deleteExpense({
+                expenseId,
+                expense: expenseToDelete,
+                splits: deletedExpenseSplits,
+                currentUser: { id: currentUserId, name: user?.name || 'Unknown' },
+                groupName: group?.name,
+                groupDetailKey: groupDetailQueryKey,
+                friendsHomeKey: friendsHomeQueryKey,
+                cache: queryCache,
+              });
             } catch (error) {
-              if (cacheSnapshot) {
-                await queryCache.restore(cacheSnapshot);
-              }
               console.error('Error deleting expense:', error);
               Alert.alert('Error', 'Failed to delete expense');
             } finally {
               setDeletingExpenseId(null);
-              queryClient.invalidateQueries({ queryKey: friendsHomeQueryKey });
             }
           },
         },
@@ -634,20 +579,15 @@ export default function GroupDetailScreen() {
           onPress: async () => {
             try {
               setRemovingMemberId(member.userId);
-              await groupService.removeMember(id, member.userId);
-
-              // Log activity
-              if (group && user) {
-                await activityService.logMemberRemoved({
-                  groupId: id,
-                  userId: currentUserId,
-                  userName: user.name,
-                  memberName: member.user?.name || 'Someone',
-                  groupName: group.name,
-                });
-              }
-
-              loadGroupData();
+              if (!group || !user) throw new Error('Group context is unavailable');
+              await groupDetailMutationController.removeMember({
+                groupId: id,
+                groupName: group.name,
+                currentUser: { id: currentUserId, name: user.name },
+                member,
+                groupDetailKey: groupDetailQueryKey,
+                cache: queryCache,
+              });
             } catch (error) {
               console.error('Error removing member:', error);
               Alert.alert('Error', 'Failed to remove member');
@@ -1123,7 +1063,7 @@ export default function GroupDetailScreen() {
                   </View>
                   {!transfer.isReversal && (transfer.fromUserId === currentUserId || transfer.toUserId === currentUserId) ? (
                     <TouchableOpacity accessibilityRole="button" accessibilityLabel="Reverse settlement" hitSlop={8} onPress={() => handleReverseTransfer(transfer)}>
-                      <ThemedText style={{ color: colors.danger, fontSize: 12, fontWeight: '700' }}>Reverse</ThemedText>
+                      <ThemedText style={{ color: friendDetailTheme.danger, fontSize: 12, fontWeight: '700' }}>Reverse</ThemedText>
                     </TouchableOpacity>
                   ) : null}
                 </View>
@@ -1218,6 +1158,7 @@ export default function GroupDetailScreen() {
         selectedUserIds={selectedUserIds}
         setSelectedUserIds={setSelectedUserIds}
         onSubmit={addMember}
+        submitting={isAddingMember}
       />
 
     </View>

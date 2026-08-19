@@ -32,8 +32,10 @@ interface SharedModalProps {
   footerContent?: React.ReactNode;
   submitLabel?: string;
   submitIcon?: IconSymbolName;
+  onSubmit?: () => void;
   submitDisabled?: boolean;
   submitLoading?: boolean;
+  submitGradientColors?: string[];
   submitTextColor?: string;
   headerStyle?: 'default' | 'centered';
   submitBadge?: string | number;

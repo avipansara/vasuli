@@ -171,6 +171,7 @@ export function AddMemberModal({
       submitLabel="Add Members"
       submitIcon="person.badge.plus"
       submitDisabled={submitting || isDisabled || availableUsers.length === 0}
+      submitLoading={submitting}
       onSubmit={onSubmit}
       headerStyle="centered"
       submitBadge={selectedUserIds.length > 0 ? selectedUserIds.length : undefined}

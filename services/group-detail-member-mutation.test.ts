@@ -26,34 +26,72 @@ function createDependencies(): GroupDetailMemberMutationDependencies {
     getUsersByIds: vi.fn(async () => [member]),
     sendMemberAddedNotification: vi.fn(async () => undefined),
     createMemberAddedNotification: vi.fn(() => ({ type: 'member_added' as const, title: 'Added', body: 'Added' })),
-  } as GroupDetailMemberMutationDependencies;
+  } as unknown as GroupDetailMemberMutationDependencies;
 }
 
 describe('Group detail member mutation', () => {
   it('adds members and isolates Activity and notification failures', async () => {
     const dependencies = createDependencies();
-    dependencies.logMemberAdded.mockRejectedValueOnce(new Error('activity failed'));
-    dependencies.sendMemberAddedNotification.mockRejectedValueOnce(new Error('push failed'));
+    (dependencies.logMemberAdded as unknown as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error('activity failed'));
+    (dependencies.sendMemberAddedNotification as unknown as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error('push failed'));
     const mutation = createGroupDetailMemberMutation(dependencies);
 
     await expect(mutation.addMembers({
       groupId: 'group-1', groupName: 'Trip', currentUser: actor, memberIds: [member.id], users: [member],
+      groupDetailKey: ['group'], cache: { invalidate: vi.fn(async () => undefined) },
     })).resolves.toBeUndefined();
 
     expect(dependencies.addMember).toHaveBeenCalledWith('group-1', member.id);
     expect(dependencies.getUsersByIds).toHaveBeenCalledWith([member.id]);
+    expect(dependencies.logMemberAdded).toHaveBeenCalledWith(expect.objectContaining({
+      groupId: 'group-1',
+      memberName: member.name,
+    }));
+    expect(dependencies.sendMemberAddedNotification).toHaveBeenCalledWith(member.pushToken, expect.anything());
   });
 
-  it('does not log removal until persistence succeeds', async () => {
+  it('removes a member after the persistence guard accepts a settled balance', async () => {
     const dependencies = createDependencies();
-    dependencies.removeMember.mockRejectedValueOnce(new Error('outstanding balance'));
     const mutation = createGroupDetailMemberMutation(dependencies);
 
     await expect(mutation.removeMember({
       groupId: 'group-1', groupName: 'Trip', currentUser: actor, member: groupMember,
+      groupDetailKey: ['group'], cache: { invalidate: vi.fn(async () => undefined) },
+    })).resolves.toBeUndefined();
+
+    expect(dependencies.removeMember).toHaveBeenCalledWith('group-1', member.id);
+    expect(dependencies.logMemberRemoved).toHaveBeenCalledWith(expect.objectContaining({ memberName: member.name }));
+  });
+
+  it('does not log removal until persistence succeeds', async () => {
+    const dependencies = createDependencies();
+    (dependencies.removeMember as unknown as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error('outstanding balance'));
+    const mutation = createGroupDetailMemberMutation(dependencies);
+
+    await expect(mutation.removeMember({
+      groupId: 'group-1', groupName: 'Trip', currentUser: actor, member: groupMember,
+      groupDetailKey: ['group'], cache: { invalidate: vi.fn(async () => undefined) },
     })).rejects.toThrow('outstanding balance');
 
     expect(dependencies.logMemberRemoved).not.toHaveBeenCalled();
+  });
+
+  it('compensates members already added when a later member insert fails', async () => {
+    const dependencies = createDependencies();
+    const addMember = dependencies.addMember as unknown as ReturnType<typeof vi.fn>;
+    addMember
+      .mockResolvedValueOnce(groupMember)
+      .mockRejectedValueOnce(new Error('second insert failed'));
+    const mutation = createGroupDetailMemberMutation(dependencies);
+
+    await expect(mutation.addMembers({
+      groupId: 'group-1', groupName: 'Trip', currentUser: actor,
+      memberIds: ['user-b', 'user-c'], users: [member],
+      groupDetailKey: ['group'], cache: { invalidate: vi.fn(async () => undefined) },
+    })).rejects.toThrow('second insert failed');
+
+    expect(dependencies.removeMember).toHaveBeenCalledWith('group-1', 'user-b');
+    expect(dependencies.logMemberAdded).not.toHaveBeenCalled();
   });
 
   it('updates Friendship state only after request persistence succeeds', async () => {
@@ -71,5 +109,22 @@ describe('Group detail member mutation', () => {
 
     expect(dependencies.createFriendship).toHaveBeenCalledWith(actor.id, member.id);
     expect((values.get('group') as typeof current).friendshipStatus.get(member.id)).toBe('pending_sent');
+  });
+
+  it('does not update Friendship state when request persistence fails', async () => {
+    const dependencies = createDependencies();
+    (dependencies.createFriendship as unknown as ReturnType<typeof vi.fn>)
+      .mockRejectedValueOnce(new Error('friend request rejected'));
+    const set = vi.fn();
+    const mutation = createGroupDetailMemberMutation(dependencies);
+
+    await expect(mutation.sendFriendRequest({
+      currentUserId: actor.id,
+      friendId: member.id,
+      groupDetailKey: ['group'],
+      cache: { set } as never,
+    })).rejects.toThrow('friend request rejected');
+
+    expect(set).not.toHaveBeenCalled();
   });
 });

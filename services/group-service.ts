@@ -4,6 +4,7 @@ import { calculateGroupBalances, isGroupSettled, SETTLED_BALANCE_THRESHOLD } fro
 import { expenseService } from './expense-service';
 import { settlementService } from './settlement-service';
 import { scopeTransferService } from './scope-transfer-service';
+import { logGroupDetailDiagnostic } from '@/lib/group-detail-diagnostics';
 
 type GroupHomeRow = {
   id: string;
@@ -78,7 +79,7 @@ export const groupService = {
     };
   },
 
-  async getById(id: string): Promise<Group | null> {
+  async getById(id: string, traceId?: string): Promise<Group | null> {
     const { data, error } = await supabase
       .from('groups')
       .select('*')
@@ -87,7 +88,25 @@ export const groupService = {
       .single();
 
     if (error) {
-      if (error.code === 'PGRST116') return null;
+      if (error.code === 'PGRST116') {
+        logGroupDetailDiagnostic('supabase-no-row', {
+          traceId,
+          groupId: id,
+          errorCode: error.code,
+          errorMessage: error.message,
+          errorDetails: error.details,
+          errorHint: error.hint,
+        }, 'warn');
+        return null;
+      }
+      logGroupDetailDiagnostic('supabase-error', {
+        traceId,
+        groupId: id,
+        errorCode: error.code,
+        errorMessage: error.message,
+        errorDetails: error.details,
+        errorHint: error.hint,
+      }, 'error');
       throw error;
     }
 
