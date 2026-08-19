@@ -15,6 +15,8 @@
   keeping it aligned with Group Detail and Home after cross-scope settlements.
 - Fixed the deployed positive settlement RPC fingerprint column typo that caused
   valid payments to fail with `42703` before creating a settlement operation.
+- Fixed sign-out retaining cached Friend relationship data that could otherwise
+  remain visible when a different account signs in on the same device.
 
 ## 2026-08-18
 
