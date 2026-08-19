@@ -54,14 +54,16 @@ jobs:
           token: ${{ secrets.EXPO_TOKEN }}
 
       - name: Create Google Services Key File
-        env:
-          GOOGLE_SERVICES_KEY: ${{ secrets.GOOGLE_SERVICES_KEY }}
-        run: echo "$GOOGLE_SERVICES_KEY" > ./google-services-key.json
+        run: |
+          cat << 'EOF' > ./google-services-key.json
+          ${{ secrets.GOOGLE_SERVICES_KEY }}
+          EOF
 
       - name: Create google-services.json File
-        env:
-          GOOGLE_SERVICES_JSON: ${{ secrets.EXPO_PUBLIC_GOOGLE_SERVICES_DEV }}
-        run: echo "$GOOGLE_SERVICES_JSON" > ./google-services.json
+        run: |
+          cat << 'EOF' > ./google-services.json
+          ${{ secrets.EXPO_PUBLIC_GOOGLE_SERVICES_DEV }}
+          EOF
 
       - name: Build Android
         run: eas build --platform android --profile preview --non-interactive --no-wait --auto-submit
