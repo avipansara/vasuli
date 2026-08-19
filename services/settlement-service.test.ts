@@ -702,6 +702,7 @@ describe('settlementModule.commit', () => {
 
     expect(logSettlementCreated).toHaveBeenCalledTimes(1);
     expect(setDataSpy).toHaveBeenCalledTimes(1);
+    expect(queryClient.getQueryData(queryKeys.groups.detail(currentUser.id, 'group-1'))).toBeUndefined();
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: queryKeys.friends.home(currentUser.id) });
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: queryKeys.friends.detail(currentUser.id, 'friend-a') });
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: queryKeys.groups.list(currentUser.id) });

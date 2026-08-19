@@ -9,7 +9,7 @@ import { friendDetailModule } from '@/services/friend-detail-module';
 import { settlementModule, createPaymentIntentId, CombinedSettlementError } from '@/services/settlement-service';
 import type { FriendRelationshipProjection } from '@/services/friend-detail-service';
 import type { User } from '@/types/database';
-import { normalizeCurrencyInput } from '@/utils/validation';
+import { formatCurrencyInput, normalizeCurrencyInput } from '@/utils/validation';
 import { useQueryClient } from '@tanstack/react-query';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -203,6 +203,10 @@ export default function FriendSettleScreen() {
     setAmount(normalizeCurrencyInput(text));
   };
 
+  const handleAmountBlur = () => {
+    setAmount(current => formatCurrencyInput(current));
+  };
+
   const handleQuickPercent = (percent: number) => {
     if (!friend) return;
     const value = Math.abs(relationship?.settleableTotal?.amount ?? 0) * percent;
@@ -318,15 +322,18 @@ export default function FriendSettleScreen() {
               borderColor: settle.heroBorder,
             }]}>
               <View style={styles.inputInnerRow}>
-              <Text style={[styles.currency, { color: settle.accentText }]}>{settleableTotal?.currency ?? zeroNetCurrency ?? '$'}</Text>
+                <Text style={[styles.currency, { color: settle.accentText }]}>{settlementCurrency ?? '$'}</Text>
                 <TextInput
                   style={[styles.input, { color: settle.accentText }]}
                   value={amount}
                   onChangeText={handleAmountChange}
+                  onBlur={handleAmountBlur}
                   keyboardType="decimal-pad"
                   placeholder="0.00"
                   placeholderTextColor={isDark ? 'rgba(16, 185, 129, 0.4)' : 'rgba(6, 78, 59, 0.3)'}
                   selectTextOnFocus
+                  accessibilityLabel={`Settlement amount in ${settlementCurrency ?? 'the selected currency'}`}
+                  accessibilityHint={settleableTotal ? `Enter up to ${settlementCurrency} ${maxAmount.toFixed(2)}` : undefined}
                   maxFontSizeMultiplier={1.4}
                 />
               </View>
@@ -516,19 +523,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 10,
     width: '100%',
     height: '100%',
   },
   currency: {
-    fontSize: 44,
-    fontWeight: '800',
-    marginRight: 2,
+    fontSize: 22,
+    fontWeight: '700',
+    letterSpacing: 0.5,
     textAlignVertical: 'center',
   },
   input: {
-    fontSize: 44,
+    fontSize: 48,
     fontWeight: '800',
-    minWidth: 60,
+    fontVariant: ['tabular-nums'],
+    width: 160,
     padding: 0,
     margin: 0,
     textAlignVertical: 'center',

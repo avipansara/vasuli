@@ -7,6 +7,10 @@
   and waiting for persistence before returning to the Group.
 - Fixed Group Detail occasionally showing a false not-found state by confirming
   a transient missing response before replacing the screen.
+- Fixed Group Detail showing a false “Group not found” alert on the first open
+  after a settlement populated an empty detail cache entry.
+- Fixed Friend settlement amount entry so currency codes remain clearly
+  separated and completed values display two decimal places without clipping.
 - Fixed account deletion errors so outstanding balances show the settlement
   requirement while unexpected failures use a readable generic message.
 - Fixed received invitations so inviter names are trimmed and always display a

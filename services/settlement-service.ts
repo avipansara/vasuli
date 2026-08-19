@@ -475,7 +475,7 @@ async function applyReceiptEffects({
         current => {
           const withSettlements = groupSettlements.reduce(
             (model, settlement) => model ? applySettlementToGroupReadModel(model, settlement) : model,
-            current ?? null,
+            current,
           );
           return (receipt.transfers ?? [])
             .filter(transfer => transfer.groupId === groupId)

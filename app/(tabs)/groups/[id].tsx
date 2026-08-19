@@ -132,7 +132,8 @@ export default function GroupDetailScreen() {
   const expenseSplits = useMemo(() => expenses.flatMap(expense => expense.splits), [expenses]);
   const availableUsers = groupDetail?.availableUsers ?? [];
   const friendshipStatus = groupDetail?.friendshipStatus ?? new Map();
-  const loading = isLoading && !group;
+  const isRefreshingCachedMissingGroup = groupDetail === null && isFetching;
+  const loading = (isLoading || isRefreshingCachedMissingGroup) && !group;
   const loadError = error ? getFetchErrorMessage(error) : null;
   const filteredExpenses = useMemo(() => {
     const search = expenseSearch.trim().toLocaleLowerCase();
@@ -208,11 +209,11 @@ export default function GroupDetailScreen() {
   }, [currentUserId, groupDetailQueryKey, queryCache, queryClient]);
 
   useEffect(() => {
-    if (groupDetail === null) {
+    if (groupDetail === null && !isFetching && !error) {
       Alert.alert('Error', 'Group not found');
       router.back();
     }
-  }, [groupDetail]);
+  }, [error, groupDetail, isFetching]);
 
   useRealtime({
     table: 'groups',

@@ -52,4 +52,34 @@ describe('group detail query lifecycle', () => {
       unsubscribe();
     }
   });
+
+  it('marks cached null as fetching while it refreshes to a valid group', async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false, staleTime: 0 } },
+    });
+    const queryKey = ['groups', 'detail', 'user-1', 'group-1'] as const;
+    const group = { id: 'group-1', name: 'Trip', createdAt: 1, updatedAt: 1 };
+    let resolveFetch: ((value: { group: typeof group }) => void) | undefined;
+    const queryFn = vi.fn(() => new Promise<{ group: typeof group }>(resolve => {
+      resolveFetch = resolve;
+    }));
+
+    queryClient.setQueryData(queryKey, null);
+    const observer = new QueryObserver(queryClient, { queryKey, queryFn });
+    const states: { data: unknown; isFetching: boolean }[] = [];
+    const unsubscribe = observer.subscribe(result => {
+      states.push({ data: result.data, isFetching: result.isFetching });
+    });
+
+    try {
+      expect(states).toContainEqual({ data: null, isFetching: true });
+
+      resolveFetch?.({ group });
+      await vi.waitFor(() => {
+        expect(observer.getCurrentResult().data).toEqual({ group });
+      });
+    } finally {
+      unsubscribe();
+    }
+  });
 });

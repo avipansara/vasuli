@@ -143,3 +143,12 @@ export function normalizeCurrencyInput(value: string): string {
 
   return `${whole}.${fractional.slice(0, 2)}`;
 }
+
+/** Formats a completed currency entry while permissive typing stays in normalizeCurrencyInput. */
+export function formatCurrencyInput(value: string): string {
+  const normalized = normalizeCurrencyInput(value);
+  if (!normalized || normalized === '.') return '';
+
+  const amount = Number(normalized);
+  return Number.isFinite(amount) ? amount.toFixed(2) : '';
+}
