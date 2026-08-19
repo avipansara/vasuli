@@ -2,7 +2,9 @@ name: Create draft
 
 on:
   push:
-    branches: ['*']
+    branches:
+      - '**'
+      - '!master'
 
 jobs:
   publish_preview_update:
