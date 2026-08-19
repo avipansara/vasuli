@@ -17,7 +17,7 @@ import {
   groupFriendActivityByMonth,
   type FriendActivityFilter,
 } from '@/services/friend-detail-module';
-import { settlementService } from '@/services/settlement-service';
+import { reverseSettlementOperation } from '@/services/settlement-reversal';
 import { projectFriendRelationship, type FriendDetailData } from '@/services/friend-detail-service';
 import type { GroupDetailReadModel } from '@/services/group-detail-read-model';
 import { applySettlementToGroupReadModel } from '@/services/group-detail-read-model';
@@ -291,12 +291,6 @@ export default function FriendDetailScreen() {
   }
 
   const handleReverseOperation = useCallback((operationId: string, currency: string) => {
-    const expectedBalance = relationship?.totalsByCurrency.find(total => total.currency === currency)?.amount;
-    if (expectedBalance === undefined) {
-      Alert.alert('Unable to reverse', 'Refresh the Friend details and try again.');
-      return;
-    }
-
     Alert.alert(
       'Reverse settlement?',
       'This restores the balances affected by the settlement operation. The original history remains visible.',
@@ -307,11 +301,12 @@ export default function FriendDetailScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              await settlementService.reverse(operationId, expectedBalance);
-              await Promise.all([
-                refetch(),
-                queryClient.invalidateQueries({ queryKey: friendsHomeQueryKey }),
-              ]);
+              await reverseSettlementOperation({
+                operationId,
+                getExpectedBalance: () => relationship?.totalsByCurrency.find(total => total.currency === currency)?.amount,
+                refresh: refetch,
+                invalidateHome: () => queryClient.invalidateQueries({ queryKey: friendsHomeQueryKey }),
+              });
               Alert.alert('Settlement reversed', 'The affected balances were restored.');
             } catch (error) {
               if (error instanceof CombinedSettlementError && error.code === 'stale_balance') {

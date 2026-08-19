@@ -19,7 +19,7 @@ import { removeExpenseFromGroupReadModel, removeExpenseFromHomeFriends } from '@
 import { groupDetailService } from '@/services/group-detail-service';
 import { groupService } from '@/services/group-service';
 import { friendDetailModule } from '@/services/friend-detail-module';
-import { settlementService } from '@/services/settlement-service';
+import { reverseSettlementOperation } from '@/services/settlement-reversal';
 import {
   createExpenseDeletedNotification,
   createMemberAddedNotification,
@@ -168,11 +168,15 @@ export default function GroupDetailScreen() {
           onPress: async () => {
             try {
               const otherUserId = transfer.fromUserId === currentUserId ? transfer.toUserId : transfer.fromUserId;
-              const friendDetail = await friendDetailModule.getDetail(currentUserId, otherUserId);
-              const expectedBalance = friendDetail?.relationship.totalsByCurrency.find(total => total.currency === transfer.currency)?.amount;
-              if (expectedBalance === undefined) throw new Error('Refresh the Friend details and try again.');
-              await settlementService.reverse(transfer.operationId, expectedBalance);
-              await Promise.all([refetch(), queryClient.invalidateQueries({ queryKey: friendsHomeQueryKey })]);
+              await reverseSettlementOperation({
+                operationId: transfer.operationId,
+                getExpectedBalance: async () => {
+                  const friendDetail = await friendDetailModule.getDetail(currentUserId, otherUserId);
+                  return friendDetail?.relationship.totalsByCurrency.find(total => total.currency === transfer.currency)?.amount;
+                },
+                refresh: refetch,
+                invalidateHome: () => queryClient.invalidateQueries({ queryKey: friendsHomeQueryKey }),
+              });
               Alert.alert('Settlement reversed', 'The affected balances were restored.');
             } catch (error) {
               Alert.alert(
