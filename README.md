@@ -98,6 +98,77 @@ npm run test:watch
 
 **Optional later:** component tests with [Expo unit testing](https://docs.expo.dev/develop/unit-testing/) (jest-expo / React Native Testing Library) for focused UI coverage. Full user-flow E2E coverage is provided by the Detox setup described above.
 
+### iOS E2E testing with Detox
+
+Detox runs the native user-flow tests on the configured **iPhone 17 Pro** iOS
+simulator. The current scenarios cover sign-in, Friends, Groups, creating a
+group, adding an expense, and settlement flows.
+
+#### Prerequisites
+
+- macOS with Xcode and an available iOS simulator matching the configured
+  device. Check available devices with `xcrun simctl list devices available`.
+- Node dependencies installed with `npm install`.
+- The iOS native project generated and its Pods installed. If needed, run
+  `npx expo prebuild --clean` and `npx pod-install` before building.
+- A development Supabase project. E2E cleanup refuses to run against a
+  non-development Supabase host.
+
+#### Configure local E2E credentials
+
+Create or update `.env.development.local` in the repository root. This file is
+ignored by Git and must not be committed:
+
+```dotenv
+EXPO_PUBLIC_SUPABASE_URL=https://your-development-project.supabase.co
+EXPO_PUBLIC_SUPABASE_KEY=your-development-anon-key
+EXPO_PUBLIC_TEST_ACCOUNT_EMAIL=your-development-e2e-account@example.test
+EXPO_PUBLIC_TEST_ACCOUNT_OTP=your-development-e2e-password-or-otp
+```
+
+The E2E account must already exist as a Supabase Auth password user and have a
+matching row in `public.users`. Do not use production credentials or a
+`service_role` key.
+
+#### Prepare the development database
+
+Before the settlement scenarios, open
+[`supabase/fixtures/e2e-development-friend.sql`](./supabase/fixtures/e2e-development-friend.sql),
+replace its two placeholders with the development reviewer and E2E-friend
+emails, and run the resulting SQL in the **development** Supabase SQL Editor.
+Keep the populated SQL out of Git. The fixture creates an accepted friendship
+and is safe to rerun.
+
+#### Build and run
+
+From the repository root:
+
+```bash
+npm run e2e:build:ios
+npm run e2e:ios
+```
+
+`e2e:build:ios` builds the Detox release app. `e2e:ios` removes only groups
+whose names begin with `Detox Group ` before and after the run, then executes
+the tests serially. The scripts load Supabase and test-account values from
+`.env.development.local`.
+
+To preview cleanup without deleting anything:
+
+```bash
+npm run e2e:cleanup
+```
+
+To apply cleanup manually, use the explicit confirmation guard:
+
+```bash
+E2E_CLEANUP_CONFIRM=delete npm run e2e:cleanup -- --apply
+```
+
+Never run the fixture or cleanup against production. If the simulator is not
+available, inspect the device name in `.detoxrc.js` and update the local Detox
+configuration only; do not commit account credentials.
+
 ## Workflows
 
 This project is configured to use [EAS Workflows](https://docs.expo.dev/eas/workflows/get-started/) to automate some development and release processes. These commands are set up in [`package.json`](./package.json) and can be run using NPM scripts in your terminal.
