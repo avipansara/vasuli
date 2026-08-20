@@ -1,3 +1,26 @@
+## 2026-08-20
+
+- Added a Detox/Jest iOS simulator E2E setup targeting the Vasuli Xcode scheme
+  and iPhone 17 Pro, with launch, email-input, and environment-driven OTP login
+  coverage that bypasses the OTP resend countdown and dismisses notification
+  onboarding during automation.
+- Added an Expo Router native-intent rewrite for the Groups deep link, providing
+  a stable navigation seam for native E2E coverage.
+- Added Detox coverage for native Groups-tab navigation and the create-group →
+  add-expense flow, including keyboard-safe amount entry on iOS simulator.
+- Split Detox coverage into authentication, groups, expenses, and settlement
+  scenario files with shared login and group-flow helpers.
+- Fixed the Detox iOS build wrapper so the simulator bundle uses the development
+  Supabase project consistently with E2E cleanup and test credentials.
+- Added an idempotent development SQL fixture for connecting the reviewer account
+  to the E2E friend account required by settlement coverage.
+- Added guarded development-database cleanup before and after Detox runs for
+  groups created by the E2E account.
+- Removed the obsolete alternative E2E reference; Detox is now the project’s
+  supported mobile E2E runner.
+- Removed real E2E/reviewer account identifiers and OTP fallbacks from tracked
+  source; local environment configuration now supplies those values.
+
 ## 2026-08-19
 
 - Moved swipe-to-reveal actions to ReanimatedSwipeable so finger-driven motion and action opacity stay on the UI runtime, and removed per-row Group entrance animation that could replay during list virtualization.

@@ -202,9 +202,10 @@ interface HeaderActionButtonProps {
   onPress: () => void;
   disabled?: boolean;
   loading?: boolean;
+  testID?: string;
 }
 
-export function HeaderActionButton({ label, onPress, disabled = false, loading = false }: HeaderActionButtonProps) {
+export function HeaderActionButton({ label, onPress, disabled = false, loading = false, testID }: HeaderActionButtonProps) {
   const { colors, isDark } = useThemeColors();
   const primaryBtnColor = isDark ? '#0D9488' : '#0F4C3A';
 
@@ -220,6 +221,7 @@ export function HeaderActionButton({ label, onPress, disabled = false, loading =
 
   return (
     <TouchableOpacity
+      testID={testID}
       onPress={onPress}
       disabled={isDisabled}
       style={[

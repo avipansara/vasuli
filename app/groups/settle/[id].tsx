@@ -379,6 +379,7 @@ export default function GroupSettleScreen() {
                 selectTextOnFocus
                 accessibilityLabel="Group settlement amount in US dollars"
                 accessibilityHint={selectedMember ? `Enter up to $${Math.abs(selectedMember.balance).toFixed(2)}` : undefined}
+                testID="group-settle-amount-input"
                 maxFontSizeMultiplier={1.4}
                 onSubmitEditing={() => Keyboard.dismiss()}
               />
@@ -423,6 +424,7 @@ export default function GroupSettleScreen() {
           <TouchableOpacity
             onPress={handleSettle}
             disabled={!canSubmitSettlement}
+            testID="group-record-settlement-button"
             style={[
               styles.settleButton,
               {

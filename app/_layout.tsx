@@ -228,6 +228,16 @@ function RootLayoutNav() {
       // WebBrowser session, not the invitation deep-link handler.
       if (event.url.startsWith('vasuli://auth/callback')) return;
 
+      const parsedUrl = Linking.parse(event.url);
+      if (
+        parsedUrl.hostname === 'groups' ||
+        parsedUrl.path === 'groups' ||
+        parsedUrl.path === '(tabs)/groups'
+      ) {
+        router.replace('/(tabs)/groups');
+        return;
+      }
+
       console.log('[DeepLink] Received URL:', event.url);
 
       try {

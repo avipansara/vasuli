@@ -7,7 +7,7 @@ import { userService } from '@/services/user-service';
 import type { Expense, ExpenseSplit, Group, User } from '@/types/database';
 import { normalizeEmail } from '@/utils/validation';
 
-const APP_REVIEWER_EMAIL = 'apple.reviewer@vasuli.app';
+const APP_REVIEWER_EMAIL = process.env.EXPO_PUBLIC_APP_REVIEWER_EMAIL || '';
 
 type DemoFriend = {
   name: string;

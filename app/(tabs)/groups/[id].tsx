@@ -976,6 +976,7 @@ export default function GroupDetailScreen() {
                     accessibilityRole="button"
                     accessibilityLabel={`Settle up in ${group.name}`}
                     accessibilityHint="Opens the settlement form"
+                    testID="group-settle-up-button"
                     onPress={handleSettleUp}>
                     <IconSymbol size={18} name="banknote" color="#ffffff" />
                     <ThemedText style={[styles.cardQuickActionText, { color: '#ffffff' }]}>Settle Up</ThemedText>

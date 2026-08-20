@@ -1,9 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+vi.hoisted(() => {
+  process.env.EXPO_PUBLIC_APP_REVIEWER_EMAIL = 'reviewer@example.test'
+  process.env.EXPO_PUBLIC_APP_REVIEWER_OTP = '654321'
+})
+
 const reviewerUser = {
   id: 'apple-reviewer-user-id',
   name: 'Apple Reviewer',
-  email: 'apple.reviewer@vasuli.app',
+  email: 'reviewer@example.test',
   phone: null,
   avatar: null,
   email_verified: true,
@@ -115,7 +120,7 @@ describe('otpService App Review account', () => {
       data: {
         user: {
           id: 'apple-reviewer-auth-id',
-          email: 'apple.reviewer@vasuli.app',
+          email: 'reviewer@example.test',
           user_metadata: { name: 'Apple Reviewer' },
         },
       },
@@ -168,7 +173,7 @@ describe('otpService App Review account', () => {
 
   it('accepts the built-in Apple reviewer email as a test sign-in without sending OTP', async () => {
     const result = await otpService.sendSignInCode({
-      email: ' Apple.Reviewer@Vasuli.App ',
+      email: ' Reviewer@Example.Test ',
     })
 
     expect(result).toEqual({ success: true })
@@ -247,30 +252,30 @@ describe('otpService App Review account', () => {
     mocks.linkAuthUserToProfile.mockResolvedValueOnce({
       id: 'apple-reviewer-user-id',
       name: 'Apple Reviewer',
-      email: 'apple.reviewer@vasuli.app',
+      email: 'reviewer@example.test',
       isActive: true,
       createdAt: 1,
     })
 
     const result = await otpService.verifySignInCode({
-      email: 'apple.reviewer@vasuli.app',
-      code: '123456',
+      email: 'reviewer@example.test',
+      code: '654321',
     })
 
     expect(result.success).toBe(true)
     expect(mocks.signInWithPassword).toHaveBeenCalledWith({
-      email: 'apple.reviewer@vasuli.app',
-      password: '123456',
+      email: 'reviewer@example.test',
+      password: '654321',
     })
     expect(mocks.linkAuthUserToProfile).toHaveBeenCalledWith({
       authUserId: 'apple-reviewer-auth-id',
-      email: 'apple.reviewer@vasuli.app',
+      email: 'reviewer@example.test',
       name: 'Apple Reviewer',
     })
-    expect(result.user?.email).toBe('apple.reviewer@vasuli.app')
+    expect(result.user?.email).toBe('reviewer@example.test')
     expect(mocks.ensureAppReviewDemoData).toHaveBeenCalledWith(expect.objectContaining({
       id: 'apple-reviewer-user-id',
-      email: 'apple.reviewer@vasuli.app',
+      email: 'reviewer@example.test',
     }))
     expect(mocks.setItem).not.toHaveBeenCalledWith('auth_session', expect.anything())
   })
@@ -282,8 +287,8 @@ describe('otpService App Review account', () => {
     })
 
     const result = await otpService.verifySignInCode({
-      email: 'apple.reviewer@vasuli.app',
-      code: '123456',
+      email: 'reviewer@example.test',
+      code: '654321',
     })
 
     expect(result).toEqual({
@@ -295,7 +300,7 @@ describe('otpService App Review account', () => {
 
   it('rejects an incorrect Apple reviewer OTP', async () => {
     const result = await otpService.verifySignInCode({
-      email: 'apple.reviewer@vasuli.app',
+      email: 'reviewer@example.test',
       code: '000000',
     })
 

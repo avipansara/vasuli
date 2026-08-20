@@ -170,7 +170,10 @@ export default function FriendsScreen() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: isDark ? '#05080e' : colors.background }]}>
+    <View
+      testID="friends-screen"
+      style={[styles.container, { backgroundColor: isDark ? '#05080e' : colors.background }]}
+    >
       <View style={styles.header}>
         <View style={{ flexDirection: 'column', gap: 6 }}>
           <ThemedText style={[styles.headerLabel, { color: isDark ? '#9ba6b8' : colors.textSecondary }]}>{balanceLabel}</ThemedText>

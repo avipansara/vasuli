@@ -96,7 +96,7 @@ npm test
 npm run test:watch
 ```
 
-**Optional later:** component tests with [Expo unit testing](https://docs.expo.dev/develop/unit-testing/) (jest-expo / React Native Testing Library) and E2E smoke (e.g. Maestro) for full user flows — not wired in this repo yet.
+**Optional later:** component tests with [Expo unit testing](https://docs.expo.dev/develop/unit-testing/) (jest-expo / React Native Testing Library) for focused UI coverage. Full user-flow E2E coverage is provided by the Detox setup described above.
 
 ## Workflows
 

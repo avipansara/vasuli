@@ -8,14 +8,14 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const USE_MOCK_DATA = process.env.EXPO_PUBLIC_USE_MOCK_DATA === 'true';
 const MOCK_OTP_CODE = '123456';
 const AUTH_EMAIL_REDIRECT_URL = 'vasuli://auth/callback';
-const APP_REVIEWER_EMAIL = 'apple.reviewer@vasuli.app';
-const APP_REVIEWER_OTP = '123456';
+const APP_REVIEWER_EMAIL = process.env.EXPO_PUBLIC_APP_REVIEWER_EMAIL || '';
+const APP_REVIEWER_OTP = process.env.EXPO_PUBLIC_APP_REVIEWER_OTP || '';
 const APP_REVIEWER_NAME = 'Apple Reviewer';
 
 // Apple App Store test accounts (from environment variables)
 const TEST_ACCOUNT_1_EMAIL = process.env.EXPO_PUBLIC_TEST_ACCOUNT_EMAIL || '';
 const TEST_ACCOUNT_2_EMAIL = process.env.EXPO_PUBLIC_TEST_ACCOUNT_2_EMAIL || '';
-const TEST_ACCOUNT_OTP = process.env.EXPO_PUBLIC_TEST_ACCOUNT_OTP || APP_REVIEWER_OTP;
+const TEST_ACCOUNT_OTP = process.env.EXPO_PUBLIC_TEST_ACCOUNT_OTP || '';
 
 // Test accounts list for easy iteration
 const TEST_ACCOUNTS = [

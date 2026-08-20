@@ -372,6 +372,7 @@ export function OTPAuthScreen({ variant }: { variant: OTPAuthVariant }) {
           placeholderTextColor={isDark ? '#64748B' : '#94A3B8'}
           value={value}
           onChangeText={onChangeText}
+          testID={keyboardType ? 'sign-in-email-input' : 'auth-name-input'}
           keyboardType={keyboardType}
           autoCapitalize={keyboardType ? 'none' : 'words'}
           autoCorrect={false}
@@ -440,6 +441,7 @@ export function OTPAuthScreen({ variant }: { variant: OTPAuthVariant }) {
         handleSendCode,
         loading || !isContactValid,
         'arrow.right',
+        isSignUp ? 'send-sign-up-code-button' : 'send-sign-in-code-button',
       )}
       <View style={styles.oauthDivider}>
         <View
@@ -548,6 +550,7 @@ export function OTPAuthScreen({ variant }: { variant: OTPAuthVariant }) {
                   onKeyPress={({ nativeEvent }) =>
                     handleOtpKeyPress(index, nativeEvent.key)
                   }
+                  testID={`sign-in-otp-${index}`}
                   keyboardType="number-pad"
                   maxLength={index === 0 ? 6 : 1}
                   selectTextOnFocus

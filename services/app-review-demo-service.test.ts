@@ -1,9 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+vi.hoisted(() => {
+  process.env.EXPO_PUBLIC_APP_REVIEWER_EMAIL = 'reviewer@example.test'
+})
+
 const reviewer = {
   id: 'reviewer-id',
   name: 'Apple Reviewer',
-  email: 'apple.reviewer@vasuli.app',
+  email: 'reviewer@example.test',
 }
 
 const demoUsersByEmail: Record<string, any> = {
