@@ -1,6 +1,7 @@
 export const queryKeys = {
   friends: {
     home: (userId: string) => ['friends', 'home', userId] as const,
+    detailScope: (userId: string) => ['friends', 'detail', userId] as const,
     detail: (userId: string, friendId: string) => ['friends', 'detail', userId, friendId] as const,
   },
   groups: {

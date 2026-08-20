@@ -1,29 +1,34 @@
-import type { FriendActivityItem, FriendDetailData, FriendGroupBalanceSummary } from '@/services/friend-detail-service';
+import {
+  projectFriendRelationship,
+  type FriendActivityItem,
+  type FriendDetailData,
+  type FriendGroupBalanceSummary,
+  type FriendRelationshipProjection,
+} from '@/services/friend-detail-service';
 import { friendDetailReadModel } from '@/services/friend-detail-read-model';
 import { friendGroupBalanceService } from '@/services/friend-group-balance-service';
 import { activityService } from '@/services/activity-service';
-import { settlementService } from '@/services/settlement-service';
 import { expenseService } from '@/services/expense-service';
 import { friendshipService } from '@/services/friendship-service';
+import { friendSummaryService } from '@/services/friend-summary-service';
 import type { PushNotificationData } from '@/services/notification-service';
-import type { Settlement } from '@/types/database';
+import type { SettlementScopeTransfer } from '@/types/database';
+import { scopeTransferService } from './scope-transfer-service';
 
 export type FriendDetailReadAdapter = {
   getDetail(currentUserId: string, friendId: string): Promise<FriendDetailData | null>;
+};
+
+export type FriendRelationshipAdapter = {
+  getRelationship(currentUserId: string, friendId: string): Promise<FriendRelationshipProjection>;
 };
 
 export type FriendGroupBalanceAdapter = {
   getSharedGroupBalances(currentUserId: string, friendId: string): Promise<FriendGroupBalanceSummary[]>;
 };
 
-export type FriendDetailSettlementAdapter = {
-  createPairSettlements(params: {
-    currentUserId: string;
-    friendId: string;
-    amount: number;
-    currency: string;
-    date: number;
-  }): Promise<Settlement[]>;
+export type FriendScopeTransferAdapter = {
+  getByFriend(friendId: string): Promise<SettlementScopeTransfer[]>;
 };
 
 export type FriendDetailActivityAdapter = {
@@ -51,8 +56,9 @@ export type FriendDetailNotificationAdapter = {
 
 export type FriendDetailModuleDependencies = {
   readAdapter?: FriendDetailReadAdapter;
+  relationshipAdapter?: FriendRelationshipAdapter;
   groupBalanceAdapter?: FriendGroupBalanceAdapter;
-  settlementAdapter?: FriendDetailSettlementAdapter;
+  scopeTransferAdapter?: FriendScopeTransferAdapter;
   activityAdapter?: FriendDetailActivityAdapter;
   expenseAdapter?: FriendDetailExpenseAdapter;
   friendshipAdapter?: FriendDetailFriendshipAdapter;
@@ -61,16 +67,6 @@ export type FriendDetailModuleDependencies = {
 
 export type FriendDetailModule = {
   getDetail(currentUserId: string, friendId: string): Promise<FriendDetailData | null>;
-  settleUp(params: {
-    currentUserId: string;
-    friendId: string;
-    amount: number;
-    balance: number;
-    currency: string;
-    date: number;
-    currentUserName?: string;
-    friendName?: string;
-  }): Promise<Settlement[]>;
   deleteExpense(params: {
     expenseId: string;
     currentUserId: string;
@@ -133,62 +129,40 @@ export function createFriendDetailModule(
 ): FriendDetailModule {
   const readAdapter = dependencies.readAdapter ?? friendDetailReadModel;
   const groupBalanceAdapter = dependencies.groupBalanceAdapter;
-  const settlementAdapter = dependencies.settlementAdapter ?? settlementService;
+  const scopeTransferAdapter = dependencies.scopeTransferAdapter;
   const activityAdapter = dependencies.activityAdapter ?? activityService;
   const expenseAdapter = dependencies.expenseAdapter ?? expenseService;
   const friendshipAdapter = dependencies.friendshipAdapter ?? friendshipService;
 
   return {
     async getDetail(currentUserId, friendId) {
-      const [detail, groupBalances] = await Promise.all([
+      const relationshipAdapter = dependencies.relationshipAdapter;
+      const [detail, groupBalances, scopeTransfers] = await Promise.all([
         readAdapter.getDetail(currentUserId, friendId),
         groupBalanceAdapter?.getSharedGroupBalances(currentUserId, friendId) ?? Promise.resolve([]),
+        scopeTransferAdapter?.getByFriend(friendId) ?? Promise.resolve([]),
       ]);
       if (!detail) return null;
-      return { ...detail, groupBalances };
-    },
-    async settleUp({
-      currentUserId,
-      friendId,
-      amount,
-      balance,
-      currency,
-      date,
-      currentUserName = 'You',
-      friendName = 'Friend',
-    }) {
-      if (amount <= 0 || amount > Math.abs(balance)) {
-        throw new Error('Settlement amount cannot exceed the outstanding balance.');
-      }
-
-      const settlements = await settlementAdapter.createPairSettlements({
-        currentUserId,
-        friendId,
-        amount: Math.abs(amount),
-        currency,
-        date,
-      });
-
-      if (settlements.some(settlement => settlement.groupId)) {
-        throw new Error('Group settlements must be recorded from the Group detail flow, not the direct Friend balance.');
-      }
-
-      for (const settlement of settlements) {
-        try {
-          await activityAdapter.logSettlementCreated({
-            settlementId: settlement.id,
-            fromUserId: settlement.fromUserId,
-            fromUserName: settlement.fromUserId === currentUserId ? currentUserName : friendName,
-            toUserName: settlement.fromUserId === currentUserId ? friendName : currentUserName,
-            amount: settlement.amount,
-            groupId: settlement.groupId,
+      const relationship = relationshipAdapter
+        ? {
+            ...(await relationshipAdapter.getRelationship(currentUserId, friendId)),
+            activity: detail.relationship.activity.length > 0
+              ? detail.relationship.activity
+              : detail.activity,
+          }
+        : projectFriendRelationship({
+            ...detail,
+            groupBalances,
+            scopeTransfers,
           });
-        } catch {
-          // Activity logging must not turn a completed settlement into a failure.
-        }
-      }
-
-      return settlements;
+      return {
+        ...detail,
+        // Return the same transfer-adjusted projection used to calculate the
+        // relationship total so the summary card and group rows cannot drift.
+        groupBalances: relationship.groupBalances,
+        ...(scopeTransferAdapter ? { scopeTransfers } : {}),
+        relationship,
+      };
     },
     async deleteExpense({
       expenseId,
@@ -230,4 +204,10 @@ export function createFriendDetailModule(
 
 export const friendDetailModule = createFriendDetailModule({
   groupBalanceAdapter: friendGroupBalanceService,
+  scopeTransferAdapter: scopeTransferService,
+  // Settlement must use the same transfer-adjusted relationship projection as
+  // Friends Home. The raw detail RPC intentionally excludes Group balances
+  // from the direct ledger, so projecting from that payload alone can produce
+  // an allocation direction that disagrees with the expected net balance.
+  relationshipAdapter: friendSummaryService,
 });

@@ -6,6 +6,7 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { FriendsListSkeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useDebouncedQueryInvalidation } from '@/hooks/use-debounced-query-invalidation';
+import { useRefetchOnFocus } from '@/hooks/use-refetch-on-focus';
 import { useRealtime } from '@/hooks/use-realtime';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
@@ -34,7 +35,9 @@ export default function FriendsScreen() {
   const {
     data: friends = [],
     error,
+    isFetching,
     isLoading,
+    isStale,
     refetch,
   } = useQuery({
     queryKey: friendsQueryKey,
@@ -43,6 +46,13 @@ export default function FriendsScreen() {
   });
   const loading = isLoading && friends.length === 0;
   const loadError = error ? getFetchErrorMessage(error) : null;
+
+  useRefetchOnFocus({
+    enabled: !!currentUserId,
+    isFetching,
+    isStale,
+    refetch,
+  });
 
   const loadFriends = useCallback(async () => {
     await refetch();
@@ -84,6 +94,11 @@ export default function FriendsScreen() {
   useRealtime({
     table: 'settlements',
     filter: currentUserId ? `from_user_id=eq.${currentUserId}` : undefined,
+    onChange: invalidateFriends,
+    enabled: !!currentUserId,
+  });
+  useRealtime({
+    table: 'settlement_scope_transfers',
     onChange: invalidateFriends,
     enabled: !!currentUserId,
   });

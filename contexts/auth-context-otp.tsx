@@ -2,6 +2,7 @@ import { otpService } from '@/services/otp-service';
 import { userService } from '@/services/user-service';
 import type { User } from '@/types/database';
 import { withTimeout } from '@/lib/with-timeout';
+import { queryClient } from '@/lib/query-client';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
 interface AuthContextType {
@@ -64,17 +65,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [user]);
 
   const signOut = useCallback(async () => {
+    const clearFriendQueries = () => {
+      queryClient.removeQueries({ queryKey: ['friends'] });
+    };
+
     try {
       await otpService.signOut();
 
       // Clear user state
       setUser(null);
+      clearFriendQueries();
 
       console.log('[Auth] User signed out');
     } catch (error) {
       console.error('[Auth] Error during sign out:', error);
       // Still clear user state even if there's an error
       setUser(null);
+      clearFriendQueries();
     }
   }, []);
 

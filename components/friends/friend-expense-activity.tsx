@@ -2,8 +2,10 @@ import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import type { FriendActivityItem } from '@/services/friend-detail-service';
 import type { MutableRefObject } from 'react';
-import { Animated, StyleSheet, TouchableOpacity, View } from 'react-native';
-import Swipeable from 'react-native-gesture-handler/Swipeable';
+import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import ReanimatedSwipeable, { type SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable';
+import type { SharedValue } from 'react-native-reanimated';
+import Reanimated, { useAnimatedStyle } from 'react-native-reanimated';
 
 type ExpenseItem = Extract<FriendActivityItem, { type: 'expense' | 'group_expense' }>;
 
@@ -13,7 +15,7 @@ type FriendExpenseActivityProps = {
   colors: Record<string, string>;
   friendDetailTheme: Record<string, string>;
   isDark: boolean;
-  swipeableRefs: MutableRefObject<Map<string, Swipeable>>;
+  swipeableRefs: MutableRefObject<Map<string, SwipeableMethods>>;
   deletingExpenseId: string | null;
   onEditExpense: (expenseId: string) => void;
   onDeleteExpense: (expenseId: string) => void;
@@ -30,6 +32,49 @@ const CATEGORY_MAP: Record<string, { icon: any, lightBg: string, darkBg: string,
   'Groceries': { icon: 'cart.fill', lightBg: '#FEF3C7', darkBg: 'rgba(245, 158, 11, 0.15)', lightColor: '#B45309', darkColor: '#FCD34D' },
   'Utilities': { icon: 'bolt.fill', lightBg: '#DBEAFE', darkBg: 'rgba(59, 130, 246, 0.15)', lightColor: '#1D4ED8', darkColor: '#60A5FA' },
 };
+
+function ExpenseSwipeAction({
+  translation,
+  side,
+  backgroundColor,
+  iconColor,
+  label,
+  onPress,
+  accessibilityLabel,
+  accessibilityHint,
+  accessibilityState,
+  icon,
+}: {
+  translation: SharedValue<number>;
+  side: 'left' | 'right';
+  backgroundColor: string;
+  iconColor: string;
+  label: string;
+  onPress: () => void;
+  accessibilityLabel: string;
+  accessibilityHint: string;
+  accessibilityState?: { busy?: boolean };
+  icon: 'pencil' | 'trash';
+}) {
+  const actionStyle = useAnimatedStyle(() => ({
+    opacity: Math.min(1, Math.max(0, (side === 'left' ? translation.get() : -translation.get()) / 80)),
+  }));
+
+  return (
+    <Reanimated.View style={[side === 'left' ? styles.swipeActionLeft : styles.swipeActionRight, { backgroundColor }, actionStyle]}>
+      <TouchableOpacity
+        onPress={onPress}
+        accessibilityRole="button"
+        accessibilityLabel={accessibilityLabel}
+        accessibilityHint={accessibilityHint}
+        accessibilityState={accessibilityState}
+        style={styles.swipeActionButton}>
+        <IconSymbol name={icon} size={20} color={iconColor} />
+        <ThemedText style={[styles.swipeActionText, { color: iconColor }]}>{label}</ThemedText>
+      </TouchableOpacity>
+    </Reanimated.View>
+  );
+}
 
 export function FriendExpenseActivity({
   item,
@@ -66,44 +111,38 @@ export function FriendExpenseActivity({
 
 
   return (
-    <Swipeable
+    <ReanimatedSwipeable
       key={item.id}
       ref={(ref) => {
         if (ref) swipeableRefs.current.set(expense.id, ref);
         else swipeableRefs.current.delete(expense.id);
       }}
-      renderLeftActions={canEdit ? (_progress, dragX) => (
-        <Animated.View style={[styles.swipeActionLeft, {
-          backgroundColor: friendDetailTheme.actionSurface,
-          opacity: dragX.interpolate({ inputRange: [0, 80], outputRange: [0, 1], extrapolate: 'clamp' }),
-        }]}>
-          <TouchableOpacity
-            onPress={() => onEditExpense(expense.id)}
-            accessibilityRole="button"
-            accessibilityLabel={`Edit ${expense.description}`}
-            accessibilityHint="Opens the edit expense screen"
-            style={styles.swipeActionButton}>
-            <IconSymbol name="pencil" size={20} color={friendDetailTheme.actionIcon} />
-            <ThemedText style={[styles.swipeActionText, { color: friendDetailTheme.actionIcon }]}>Edit</ThemedText>
-          </TouchableOpacity>
-        </Animated.View>
+      renderLeftActions={canEdit ? (_progress, translation) => (
+        <ExpenseSwipeAction
+          translation={translation}
+          side="left"
+          backgroundColor={friendDetailTheme.actionSurface}
+          iconColor={friendDetailTheme.actionIcon}
+          label="Edit"
+          icon="pencil"
+          onPress={() => onEditExpense(expense.id)}
+          accessibilityLabel={`Edit ${expense.description}`}
+          accessibilityHint="Opens the edit expense screen"
+        />
       ) : undefined}
-      renderRightActions={canEdit ? (_progress, dragX) => (
-        <Animated.View style={[styles.swipeActionRight, {
-          backgroundColor: friendDetailTheme.dangerSurface,
-          opacity: dragX.interpolate({ inputRange: [-80, 0], outputRange: [1, 0], extrapolate: 'clamp' }),
-        }]}>
-          <TouchableOpacity
-            onPress={() => onDeleteExpense(expense.id)}
-            accessibilityRole="button"
-            accessibilityLabel={`Delete ${expense.description}`}
-            accessibilityHint="Deletes this expense after confirmation"
-            accessibilityState={{ busy: deletingExpenseId === expense.id }}
-            style={styles.swipeActionButton}>
-            <IconSymbol name="trash" size={20} color={friendDetailTheme.danger} />
-            <ThemedText style={[styles.swipeActionText, { color: friendDetailTheme.danger }]}>Delete</ThemedText>
-          </TouchableOpacity>
-        </Animated.View>
+      renderRightActions={canEdit ? (_progress, translation) => (
+        <ExpenseSwipeAction
+          translation={translation}
+          side="right"
+          backgroundColor={friendDetailTheme.dangerSurface}
+          iconColor={friendDetailTheme.danger}
+          label="Delete"
+          icon="trash"
+          onPress={() => onDeleteExpense(expense.id)}
+          accessibilityLabel={`Delete ${expense.description}`}
+          accessibilityHint="Deletes this expense after confirmation"
+          accessibilityState={{ busy: deletingExpenseId === expense.id }}
+        />
       ) : undefined}
       overshootLeft={false}
       overshootRight={false}
@@ -117,7 +156,7 @@ export function FriendExpenseActivity({
         accessibilityHint="Opens expense details"
         activeOpacity={0.7}
         onPress={() => onOpenExpense(expense.id)}>
-        <Animated.View style={[styles.expenseCard, {
+        <Reanimated.View style={[styles.expenseCard, {
           backgroundColor: colors.card,
           borderWidth: isDark ? 1 : 0,
           borderColor: colors.border,
@@ -171,9 +210,9 @@ export function FriendExpenseActivity({
               </ThemedText>
             </View>
           </View>
-        </Animated.View>
+        </Reanimated.View>
       </TouchableOpacity>
-    </Swipeable>
+    </ReanimatedSwipeable>
   );
 }
 

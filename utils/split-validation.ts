@@ -11,6 +11,7 @@ export interface CalculatedSplit {
   userId: string;
   amount: number;
   splitType: 'equal' | 'exact' | 'percentage';
+  percentage?: number;
 }
 
 export interface SplitCalculationResult {
@@ -31,6 +32,30 @@ const parseSplitValue = (value: string | undefined): ParsedSplitValue => {
     value: Number.isFinite(parsed) && parsed >= 0 ? parsed : 0,
     isValid: Number.isFinite(parsed) && parsed >= 0,
   };
+};
+
+const toCents = (amount: number) => Math.round(amount * 100);
+
+const allocateCentsByWeight = (totalAmount: number, weights: number[]): number[] => {
+  const totalCents = toCents(totalAmount);
+  const totalWeight = weights.reduce((sum, weight) => sum + weight, 0);
+  if (totalCents <= 0 || totalWeight <= 0) return weights.map(() => 0);
+
+  const allocations = weights.map((weight, index) => {
+    const exactCents = totalCents * weight / totalWeight;
+    return { index, cents: Math.floor(exactCents), remainder: exactCents % 1 };
+  });
+  let centsLeft = totalCents - allocations.reduce((sum, allocation) => sum + allocation.cents, 0);
+
+  [...allocations]
+    .sort((left, right) => right.remainder - left.remainder || left.index - right.index)
+    .forEach((allocation) => {
+      if (centsLeft <= 0) return;
+      allocations[allocation.index].cents += 1;
+      centsLeft -= 1;
+    });
+
+  return allocations.map(allocation => allocation.cents / 100);
 };
 
 export function getSplitProgress(
@@ -104,22 +129,28 @@ export function calculateExpenseSplits(
   }
 
   if (method === 'equal') {
-    const splitAmount = total / userIds.length;
+    const amounts = allocateCentsByWeight(total, userIds.map(() => 1));
     return {
-      splits: userIds.map(userId => ({ userId, amount: splitAmount, splitType: 'equal' })),
+      splits: userIds.map((userId, index) => ({ userId, amount: amounts[index], splitType: 'equal' })),
     };
   }
 
   if (method === 'unequal') {
-    const splits = parsedValues.map(item => ({ userId: item.userId, amount: item.value, splitType: 'exact' as const }));
-    const allocated = splits.reduce((sum, split) => sum + split.amount, 0);
-    if (Math.abs(allocated - total) > 0.01) {
+    const allocatedCents = parsedValues.reduce((sum, item) => sum + toCents(item.value), 0);
+    const totalCents = toCents(total);
+    if (allocatedCents !== totalCents) {
       return {
         splits: null,
-        error: `Amounts must add up to $${total.toFixed(2)}. Current total: $${allocated.toFixed(2)}`,
+        error: `Amounts must add up to $${total.toFixed(2)}. Current total: $${(allocatedCents / 100).toFixed(2)}`,
       };
     }
-    return { splits };
+    return {
+      splits: parsedValues.map(item => ({
+        userId: item.userId,
+        amount: toCents(item.value) / 100,
+        splitType: 'exact' as const,
+      })),
+    };
   }
 
   if (method === 'percentage') {
@@ -130,11 +161,13 @@ export function calculateExpenseSplits(
         error: `Percentages must add up to 100%. Current total: ${percentageTotal.toFixed(1)}%`,
       };
     }
+    const amounts = allocateCentsByWeight(total, parsedValues.map(item => item.value));
     return {
-      splits: parsedValues.map(item => ({
+      splits: parsedValues.map((item, index) => ({
         userId: item.userId,
-        amount: (total * item.value) / 100,
+        amount: amounts[index],
         splitType: 'percentage',
+        percentage: Math.round(item.value * 100) / 100,
       })),
     };
   }
@@ -144,12 +177,13 @@ export function calculateExpenseSplits(
     return { splits: null, error: 'Please enter at least one share' };
   }
 
+  const positiveValues = parsedValues.filter(item => item.value > 0);
+  const amounts = allocateCentsByWeight(total, positiveValues.map(item => item.value));
   return {
-    splits: parsedValues
-      .filter(item => item.value > 0)
-      .map(item => ({
+    splits: positiveValues
+      .map((item, index) => ({
         userId: item.userId,
-        amount: (total * item.value) / totalShares,
+        amount: amounts[index],
         splitType: 'exact',
       })),
   };
@@ -157,8 +191,14 @@ export function calculateExpenseSplits(
 
 export function getEvenSplitValues(userIds: string[], method: SplitMethod, totalAmount = 0): Record<string, string> {
   if (method === 'percentage') {
-    const each = userIds.length > 0 ? 100 / userIds.length : 0;
-    return Object.fromEntries(userIds.map(userId => [userId, each.toFixed(2)]));
+    if (userIds.length === 0) return {};
+
+    const baseBasisPoints = Math.floor(10_000 / userIds.length);
+    let remainingBasisPoints = 10_000 - baseBasisPoints * userIds.length;
+    return Object.fromEntries(userIds.map(userId => {
+      const basisPoints = baseBasisPoints + (remainingBasisPoints-- > 0 ? 1 : 0);
+      return [userId, (basisPoints / 100).toFixed(2)];
+    }));
   }
 
   if (method === 'shares') {

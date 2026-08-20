@@ -1,5 +1,13 @@
 # Rewrite the Friend detail module
 
+## Status update — 2026-08-19
+
+Implemented in the current application. Friend detail reads and
+mutations now run through `friendDetailModule` and its controller hook, while
+settlement operations delegate to `settlementModule`. Focused module tests cover
+the mutation and read boundaries. Further route slimming and mounted UI coverage
+are incremental improvements, not unfinished domain-module extraction.
+
 ## Problem Statement
 
 The Friend detail page is difficult to understand and change because one route

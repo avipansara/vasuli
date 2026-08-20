@@ -57,7 +57,7 @@ serve(async (req: Request) => {
     });
 
     if (cleanupError) {
-      if (cleanupError.message === 'ACCOUNT_HAS_OUTSTANDING_BALANCES') {
+      if (cleanupError.message.includes('ACCOUNT_HAS_OUTSTANDING_BALANCES')) {
         return jsonResponse({
           error: 'ACCOUNT_HAS_OUTSTANDING_BALANCES',
           message: 'Please settle all outstanding balances before deleting your account.',

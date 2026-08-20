@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { Expense, ExpenseSplit, Group, GroupMember, Settlement, User } from '@/types/database';
+import type { Expense, ExpenseSplit, Group, GroupMember, Settlement, SettlementScopeTransfer, User } from '@/types/database';
 import {
   addExpenseToGroupReadModel,
   applySettlementToGroupReadModel,
@@ -93,6 +93,34 @@ describe('group detail read model', () => {
     expect(next.settlements).toHaveLength(1);
     expect(next.balances.get(alex.id) || 0).toBe(0);
     expect(next.balances.get(blair.id) || 0).toBe(0);
+  });
+
+  it('applies a scope transfer in the signed direction exactly once', () => {
+    const transfer: SettlementScopeTransfer = {
+      id: 'transfer-1',
+      operationId: 'operation-1',
+      groupId: group.id,
+      fromUserId: blair.id,
+      toUserId: alex.id,
+      currency: 'USD',
+      signedGroupBalanceDelta: 15,
+      createdAt: 1,
+    };
+    const model = buildGroupDetailReadModel({
+      currentUserId: alex.id,
+      group,
+      expenses: [expense()],
+      members,
+      users: [alex, blair],
+      userFriends: [],
+      friendships: [],
+      splits: [split('split-a', 'expense-1', alex.id, 15), split('split-b', 'expense-1', blair.id, 15)],
+      settlements: [],
+      scopeTransfers: [transfer],
+    });
+
+    expect(model.balances.get(alex.id)).toBe(0);
+    expect(model.balances.get(blair.id)).toBe(0);
   });
 
   it('removes an expense and recalculates balances from the remaining nested splits', () => {

@@ -1,7 +1,7 @@
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import type { FriendActivityItem } from '@/services/friend-detail-service';
-import { Animated, StyleSheet, View } from 'react-native';
+import { Animated, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 type SettlementItem = Extract<FriendActivityItem, { type: 'settlement' }>;
 
@@ -12,6 +12,8 @@ type FriendSettlementActivityProps = {
   friendDetailTheme: Record<string, string>;
   isDark: boolean;
   formatDate: (timestamp: number) => string;
+  canReverse: boolean;
+  onReverse: () => void;
 };
 
 export function FriendSettlementActivity({
@@ -21,20 +23,22 @@ export function FriendSettlementActivity({
   friendDetailTheme,
   isDark,
   formatDate,
+  canReverse,
+  onReverse,
 }: FriendSettlementActivityProps) {
   const youPaid = item.direction === 'you_paid_friend';
   const firstName = friendName.split(' ')[0];
   const title = youPaid ? `You paid ${firstName}` : `${firstName} paid you`;
-  const subtitle = item.groupId
-    ? `${formatDate(item.date)} • Group settlement`
-    : `${formatDate(item.date)} • Settlement`;
+  const scopeLabel = item.groupId
+    ? `Group${item.groupName ? ` · ${item.groupName}` : ''}`
+    : 'Direct';
   const amountColor = colors.textSecondary; // Gray color for settled amounts based on mockup
 
   return (
     <Animated.View
       accessible
       accessibilityRole="text"
-      accessibilityLabel={`${title}, ${formatDate(item.date)}, ${youPaid ? 'you paid' : 'you received'} $${item.amount.toFixed(2)}`}
+      accessibilityLabel={`${title}, ${scopeLabel}, ${formatDate(item.date)}, ${youPaid ? 'you paid' : 'you received'} $${item.amount.toFixed(2)}`}
       style={[
         styles.expenseCard,
         {
@@ -58,10 +62,10 @@ export function FriendSettlementActivity({
       </View>
       <View style={styles.expenseInfo}>
         <ThemedText type='subtitle' style={[styles.expenseDescription, { color: isDark ? '#F8FAFC' : colors.text }]} numberOfLines={1}>
-          Settlement
+          {item.groupId ? 'Group settlement' : 'Settlement'}
         </ThemedText>
         <ThemedText style={[styles.expenseDate, { color: isDark ? '#94A3B8' : colors.textSecondary }]} numberOfLines={2}>
-          {youPaid ? `You paid ${firstName}` : `${firstName} paid you`}{'\n'}{formatDate(item.date)}
+          {youPaid ? `You paid ${firstName}` : `${firstName} paid you`}{'\n'}{scopeLabel} · {formatDate(item.date)}
         </ThemedText>
       </View>
       <View style={styles.amountBlock}>
@@ -74,6 +78,16 @@ export function FriendSettlementActivity({
           </ThemedText>
         </View>
       </View>
+      {canReverse ? (
+        <TouchableOpacity
+          accessibilityRole="button"
+          accessibilityLabel="Reverse settlement"
+          hitSlop={8}
+          onPress={onReverse}
+          style={styles.reverseButton}>
+          <ThemedText style={[styles.reverseButtonText, { color: colors.danger }]}>Reverse</ThemedText>
+        </TouchableOpacity>
+      ) : null}
     </Animated.View>
   );
 }
@@ -132,4 +146,6 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '700',
   },
+  reverseButton: { marginLeft: 8, paddingVertical: 8, paddingHorizontal: 4 },
+  reverseButtonText: { fontSize: 12, fontWeight: '700' },
 });

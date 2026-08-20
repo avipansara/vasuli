@@ -2,7 +2,9 @@ import { supabase } from '@/lib/supabase';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { useEffect, useRef } from 'react';
 
-type TableName = 'expenses' | 'expense_splits' | 'settlements' | 'groups' | 'group_members' | 'friendships' | 'invitations' | 'users';
+let nextRealtimeChannelId = 0;
+
+type TableName = 'expenses' | 'expense_splits' | 'settlements' | 'settlement_scope_transfers' | 'groups' | 'group_members' | 'friendships' | 'invitations' | 'users';
 type EventType = 'INSERT' | 'UPDATE' | 'DELETE' | '*';
 
 interface UseRealtimeOptions {
@@ -27,6 +29,10 @@ export function useRealtime({
   enabled = true,
 }: UseRealtimeOptions) {
   const channelRef = useRef<RealtimeChannel | null>(null);
+  const channelIdRef = useRef<number | null>(null);
+  if (channelIdRef.current === null) {
+    channelIdRef.current = ++nextRealtimeChannelId;
+  }
 
   // Use refs for callbacks to prevent re-subscriptions when callback references change
   const onChangeRef = useRef(onChange);
@@ -44,7 +50,10 @@ export function useRealtime({
     if (!enabled) return;
 
     // Use stable channel name based on table, event, and filter
-    const channelName = `${table}-${event}-${filter || 'all'}`;
+    // Multiple screens can subscribe to the same table/filter while tabs stay
+    // mounted. Supabase rejects adding callbacks to an already-subscribed
+    // channel, so each hook instance needs its own topic.
+    const channelName = `${table}-${event}-${filter || 'all'}-${channelIdRef.current}`;
 
     let channel = supabase.channel(channelName);
 
@@ -83,10 +92,8 @@ export function useRealtime({
     channelRef.current = channel;
 
     return () => {
-      if (channelRef.current) {
-        supabase.removeChannel(channelRef.current);
-        channelRef.current = null;
-      }
+      void supabase.removeChannel(channel);
+      if (channelRef.current === channel) channelRef.current = null;
     };
   }, [table, event, filter, enabled]);  // Removed callback dependencies - using refs instead
 
@@ -107,6 +114,13 @@ export function useGroupExpensesRealtime(
 
   useRealtime({
     table: 'settlements',
+    filter: groupId ? `group_id=eq.${groupId}` : undefined,
+    onChange: onExpenseChange,
+    enabled: enabled && !!groupId,
+  });
+
+  useRealtime({
+    table: 'settlement_scope_transfers',
     filter: groupId ? `group_id=eq.${groupId}` : undefined,
     onChange: onExpenseChange,
     enabled: enabled && !!groupId,
@@ -148,6 +162,12 @@ export function useGroupsHomeRealtime(
 
   useRealtime({
     table: 'settlements',
+    onChange: onGroupChange,
+    enabled: isEnabled,
+  });
+
+  useRealtime({
+    table: 'settlement_scope_transfers',
     onChange: onGroupChange,
     enabled: isEnabled,
   });

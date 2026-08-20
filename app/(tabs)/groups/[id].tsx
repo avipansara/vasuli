@@ -5,33 +5,27 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { GroupDetailSkeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useDebouncedQueryInvalidation } from '@/hooks/use-debounced-query-invalidation';
+import { useRefetchOnFocus } from '@/hooks/use-refetch-on-focus';
 import { useRealtime } from '@/hooks/use-realtime';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
-import { activityService } from '@/services/activity-service';
-import { expenseService } from '@/services/expense-service';
-import { friendshipService } from '@/services/friendship-service';
+import { createGroupDetailTraceId, logGroupDetailDiagnostic } from '@/lib/group-detail-diagnostics';
+import { CombinedSettlementError } from '@/services/settlement-service';
 import { areGroupBalancesSettled } from '@/services/group-balance';
 import type { GroupDetailReadModel, GroupExpenseView } from '@/services/group-detail-read-model';
-import { removeExpenseFromGroupReadModel, removeExpenseFromHomeFriends } from '@/services/group-detail-read-model';
 import { groupDetailService } from '@/services/group-detail-service';
-import { groupService } from '@/services/group-service';
-import {
-  createExpenseDeletedNotification,
-  createMemberAddedNotification,
-  notificationService,
-} from '@/services/notification-service';
-import type { QueryCacheSnapshot } from '@/services/query-cache-adapter';
+import { groupDetailMutationController } from '@/services/group-detail-mutation-controller';
 import { createReactQueryCacheAdapter } from '@/services/query-cache-adapter';
 import { queryKeys } from '@/services/query-keys';
-import { userService } from '@/services/user-service';
-import type { Expense, GroupMember, User } from '@/types/database';
+import type { Expense, GroupMember, Settlement, User } from '@/types/database';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Animated, Platform, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
-import Swipeable from 'react-native-gesture-handler/Swipeable';
+import ReanimatedSwipeable, { type SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable';
+import type { SharedValue } from 'react-native-reanimated';
+import Reanimated, { useAnimatedStyle } from 'react-native-reanimated';
 
 const CATEGORY_MAP: Record<string, { icon: any, lightBg: string, darkBg: string, lightColor: string, darkColor: string }> = {
   'Food': { icon: 'fork.knife', lightBg: '#FCE7F3', darkBg: 'rgba(236, 72, 153, 0.15)', lightColor: '#BE185D', darkColor: '#F472B6' },
@@ -43,6 +37,38 @@ const CATEGORY_MAP: Record<string, { icon: any, lightBg: string, darkBg: string,
 
 const MIN_TOUCH_HIT_SLOP = { top: 8, right: 8, bottom: 8, left: 8 };
 const EMPTY_EXPENSES: GroupExpenseView[] = [];
+const EMPTY_SETTLEMENTS: Settlement[] = [];
+
+function GroupDetailSwipeAction({
+  translation,
+  side,
+  backgroundColor,
+  iconColor,
+  icon,
+  label,
+  onPress,
+}: {
+  translation: SharedValue<number>;
+  side: 'left' | 'right';
+  backgroundColor: string;
+  iconColor: string;
+  icon: 'pencil' | 'trash';
+  label: string;
+  onPress: () => void;
+}) {
+  const actionStyle = useAnimatedStyle(() => ({
+    opacity: Math.min(1, Math.max(0, (side === 'left' ? translation.get() : -translation.get()) / 80)),
+  }));
+
+  return (
+    <Reanimated.View style={[side === 'left' ? styles.swipeActionLeft : styles.swipeActionRight, { backgroundColor }, actionStyle]}>
+      <TouchableOpacity onPress={onPress} style={styles.swipeActionButton}>
+        <IconSymbol name={icon} size={20} color={iconColor} />
+        <ThemedText style={[styles.swipeActionText, { color: iconColor }]}>{label}</ThemedText>
+      </TouchableOpacity>
+    </Reanimated.View>
+  );
+}
 
 type SectionTab = 'all' | 'expenses';
 
@@ -53,15 +79,20 @@ const SECTION_TABS: { id: SectionTab; label: string }[] = [
 
 export default function GroupDetailScreen() {
   const { gradients, colors, friendDetail: friendDetailTheme, settle, isDark } = useThemeColors();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, groupDetailTraceId } = useLocalSearchParams<{
+    id: string;
+    groupDetailTraceId?: string;
+  }>();
+  const [fallbackTraceId] = useState(createGroupDetailTraceId);
+  const traceId = groupDetailTraceId || fallbackTraceId;
   const [isAddingMember, setIsAddingMember] = useState(false);
   const [deletingExpenseId, setDeletingExpenseId] = useState<string | null>(null);
   const [isDeletingGroup, setIsDeletingGroup] = useState(false);
   const [removingMemberId, setRemovingMemberId] = useState<string | null>(null);
   const [sectionTab, setSectionTab] = useState<SectionTab>('all');
 
-  const expenseSwipeableRefs = useRef<Map<string, Swipeable>>(new Map());
-  const memberSwipeableRefs = useRef<Map<string, Swipeable>>(new Map());
+  const expenseSwipeableRefs = useRef<Map<string, SwipeableMethods>>(new Map());
+  const memberSwipeableRefs = useRef<Map<string, SwipeableMethods>>(new Map());
 
   // Scroll-driven collapsing header
   const scrollY = useRef(new Animated.Value(0)).current;
@@ -115,21 +146,27 @@ export default function GroupDetailScreen() {
   const {
     data: groupDetail,
     error,
+    isFetching,
     isLoading,
+    isStale,
     refetch,
   } = useQuery({
     queryKey: groupDetailQueryKey,
     enabled: !!currentUserId && !!id,
-    queryFn: () => groupDetailService.getDetail(currentUserId, id),
+    staleTime: 0,
+    queryFn: () => groupDetailService.getDetail(currentUserId, id, traceId),
   });
   const group = groupDetail?.group ?? null;
   const expenses = groupDetail?.expenses ?? EMPTY_EXPENSES;
+  const settlements = groupDetail?.settlements ?? EMPTY_SETTLEMENTS;
   const members = groupDetail?.members ?? [];
   const balances = groupDetail?.balances ?? new Map<string, number>();
+  const scopeTransfers = groupDetail?.scopeTransfers ?? [];
   const expenseSplits = useMemo(() => expenses.flatMap(expense => expense.splits), [expenses]);
   const availableUsers = groupDetail?.availableUsers ?? [];
   const friendshipStatus = groupDetail?.friendshipStatus ?? new Map();
-  const loading = isLoading && !group;
+  const isRefreshingCachedMissingGroup = groupDetail === null && isFetching;
+  const loading = (isLoading || isRefreshingCachedMissingGroup) && !group;
   const loadError = error ? getFetchErrorMessage(error) : null;
   const filteredExpenses = useMemo(() => {
     const search = expenseSearch.trim().toLocaleLowerCase();
@@ -140,17 +177,76 @@ export default function GroupDetailScreen() {
       expense.paidByUser?.name.toLocaleLowerCase().includes(search)
     ));
   }, [expenseSearch, expenses]);
+  const timelineItems = useMemo(() => [
+    ...filteredExpenses.map(expense => ({ type: 'expense' as const, date: expense.date, expense })),
+    ...settlements.map(settlement => ({ type: 'settlement' as const, date: settlement.date, settlement })),
+  ].sort((a, b) => b.date - a.date), [filteredExpenses, settlements]);
+  const expenseItems = useMemo(
+    () => filteredExpenses.map(expense => ({ type: 'expense' as const, date: expense.date, expense })),
+    [filteredExpenses],
+  );
+  const displayItems = sectionTab === 'all' ? timelineItems : expenseItems;
 
   const loadGroupData = useCallback(async () => {
     await refetch();
   }, [refetch]);
 
+  useRefetchOnFocus({
+    enabled: !!currentUserId && !!id,
+    isFetching,
+    isStale,
+    refetch,
+  });
+
   useEffect(() => {
-    if (groupDetail === null) {
+    logGroupDetailDiagnostic('route', {
+      traceId,
+      groupId: id,
+      currentUserId,
+      hasNavigationTrace: !!groupDetailTraceId,
+    });
+  }, [currentUserId, groupDetailTraceId, id, traceId]);
+
+  const handleReverseTransfer = useCallback((transfer: NonNullable<GroupDetailReadModel['scopeTransfers']>[number]) => {
+    if (!groupDetailMutationController.canReverseTransfer(transfer, currentUserId)) return;
+
+    Alert.alert(
+      'Reverse settlement?',
+      'This restores the balances affected by the settlement operation. The original history remains visible.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Reverse',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const result = await groupDetailMutationController.reverseTransfer({
+                transfer,
+                currentUserId,
+                groupDetailKey: groupDetailQueryKey,
+                cache: queryCache,
+                queryClient,
+              });
+              if (result.status === 'ignored') return;
+              Alert.alert('Settlement reversed', 'The affected balances were restored.');
+            } catch (error) {
+              Alert.alert(
+                error instanceof CombinedSettlementError ? 'Unable to reverse' : 'Settlement reversal failed',
+                error instanceof Error ? error.message : 'The settlement could not be reversed.',
+              );
+            }
+          },
+        },
+      ],
+    );
+  }, [currentUserId, groupDetailQueryKey, queryCache, queryClient]);
+
+  useEffect(() => {
+    if (groupDetail === null && !isFetching && !error) {
       Alert.alert('Error', 'Group not found');
       router.back();
     }
-  }, [groupDetail]);
+  }, [error, groupDetail, isFetching]);
 
   useRealtime({
     table: 'groups',
@@ -176,6 +272,12 @@ export default function GroupDetailScreen() {
     onChange: invalidateGroupDetail,
     enabled: !!id,
   });
+  useRealtime({
+    table: 'settlement_scope_transfers',
+    filter: id ? `group_id=eq.${id}` : undefined,
+    onChange: invalidateGroupDetail,
+    enabled: !!id,
+  });
 
   const addMember = async () => {
     if (isAddingMember) return;
@@ -187,47 +289,19 @@ export default function GroupDetailScreen() {
 
     try {
       setIsAddingMember(true);
-      await Promise.all(selectedUserIds.map(userId => groupService.addMember(id, userId)));
-
-      if (group && user) {
-        await Promise.all(selectedUserIds.map(async userId => {
-          const newMember = availableUsers.find(u => u.id === userId);
-          return activityService.logMemberAdded({
-            groupId: id,
-            userId: currentUserId,
-            userName: user.name,
-            memberName: newMember?.name || 'Someone',
-            groupName: group.name,
-          });
-        }));
-
-        // Notify each newly added member individually so the message can use
-        // their name. Push failures must not turn a successful membership add
-        // into a failed group operation.
-        try {
-          const usersToNotify = await userService.getByIds(selectedUserIds);
-
-          await Promise.all(
-            usersToNotify
-              .filter((newMember): newMember is User => !!newMember.pushToken)
-              .map(newMember => notificationService.sendPushNotification(
-                newMember.pushToken!,
-                createMemberAddedNotification(
-                  group.name,
-                  user.name,
-                  newMember.name,
-                  id,
-                ),
-              ))
-          );
-        } catch (notificationError) {
-          console.error('Error sending group member notifications:', notificationError);
-        }
-      }
+      if (!group || !user) throw new Error('Group context is unavailable');
+      await groupDetailMutationController.addMembers({
+        groupId: id,
+        groupName: group.name,
+        currentUser: { id: currentUserId, name: user.name },
+        memberIds: selectedUserIds,
+        users: availableUsers,
+        groupDetailKey: groupDetailQueryKey,
+        cache: queryCache,
+      });
 
       setSelectedUserIds([]);
       setMemberModalVisible(false);
-      loadGroupData();
     } catch (error) {
       console.error('Error adding member:', error);
       Alert.alert('Error', 'Failed to add member');
@@ -238,13 +312,11 @@ export default function GroupDetailScreen() {
 
   async function handleAddFriend(memberUserId: string) {
     try {
-      await friendshipService.create(currentUserId, memberUserId);
-
-      queryClient.setQueryData<GroupDetailReadModel | null>(groupDetailQueryKey, current => {
-        if (!current) return null;
-        const friendshipStatus = new Map(current.friendshipStatus);
-        friendshipStatus.set(memberUserId, 'pending_sent');
-        return { ...current, friendshipStatus };
+      await groupDetailMutationController.sendFriendRequest({
+        currentUserId,
+        friendId: memberUserId,
+        groupDetailKey: groupDetailQueryKey,
+        cache: queryCache,
       });
 
       Alert.alert('Success', 'Friend request sent');
@@ -261,7 +333,7 @@ export default function GroupDetailScreen() {
   function handleDeleteGroup() {
     if (isDeletingGroup || !group) return;
 
-    if (!areGroupBalancesSettled(balances)) {
+    if (!groupDetailMutationController.canDeleteGroup(balances)) {
       Alert.alert(
         'Settle Group First',
         'This group still has outstanding balances. Settle all expenses before deleting it.'
@@ -271,7 +343,7 @@ export default function GroupDetailScreen() {
 
     Alert.alert(
       'Delete Group',
-      `Delete "${group.name}"? This will remove the group and its expenses for everyone.`,
+      `Delete "${group.name}"? The group will be hidden for everyone, but its expenses and payment history will be preserved.`,
       [
         {
           text: 'Cancel',
@@ -283,7 +355,21 @@ export default function GroupDetailScreen() {
           onPress: async () => {
             try {
               setIsDeletingGroup(true);
-              await groupService.delete(id);
+              const result = await groupDetailMutationController.deleteGroup({
+                groupId: id,
+                currentUserId,
+                balances,
+                groupDetailKey: groupDetailQueryKey,
+                groupListKey: queryKeys.groups.list(currentUserId),
+                cache: queryCache,
+              });
+              if (result.status === 'blocked') {
+                Alert.alert(
+                  'Settle Group First',
+                  'This group still has outstanding balances. Settle all expenses before deleting it.',
+                );
+                return;
+              }
               router.replace('/groups' as any);
             } catch (error) {
               console.error('Error deleting group:', error);
@@ -318,7 +404,6 @@ export default function GroupDetailScreen() {
           style: 'destructive',
           onPress: async () => {
             const expenseToDelete = expenses.find(expense => expense.id === expenseId);
-            let cacheSnapshot: QueryCacheSnapshot | undefined;
             try {
               setDeletingExpenseId(expenseId);
               expenseSwipeableRefs.current.get(expenseId)?.close();
@@ -326,55 +411,21 @@ export default function GroupDetailScreen() {
               const deletedExpenseSplits = expenseToDelete
                 ? expenseSplits.filter(split => split.expenseId === expenseId)
                 : [];
-              const currentUserSplit = deletedExpenseSplits.find(split => split.userId === currentUserId);
-              cacheSnapshot = await queryCache.capture([
-                groupDetailQueryKey,
-                ...(currentUserSplit ? [friendsHomeQueryKey] : []),
-              ]);
-
-              queryClient.setQueryData<GroupDetailReadModel | null>(groupDetailQueryKey, current => current
-                ? removeExpenseFromGroupReadModel(current, expenseId)
-                : null);
-
-              if (currentUserSplit && expenseToDelete) {
-                queryClient.setQueryData<(User & { balance: number; recentExpenses?: Expense[] })[]>(
-                  friendsHomeQueryKey,
-                  current => removeExpenseFromHomeFriends(current, expenseToDelete, deletedExpenseSplits, currentUserId)
-                );
-              }
-
-              await expenseService.delete(expenseId, currentUserId, user?.name || 'Unknown');
-              if (expenseToDelete) {
-                const usersToNotify = await userService.getByIds(
-                  deletedExpenseSplits
-                    .map(split => split.userId)
-                    .filter(userId => userId !== currentUserId)
-                );
-                const pushTokens = usersToNotify
-                  .filter((u) => u && u.pushToken)
-                  .map((u) => u!.pushToken!);
-                if (pushTokens.length > 0) {
-                  const notification = createExpenseDeletedNotification(
-                    expenseToDelete.id,
-                    expenseToDelete.description,
-                    expenseToDelete.amount,
-                    user?.name || 'Someone',
-                    group?.name,
-                    id
-                  );
-                  await notificationService.sendNotificationToUsers(pushTokens, notification);
-                }
-              }
-              queryClient.invalidateQueries({ queryKey: groupDetailQueryKey });
+              await groupDetailMutationController.deleteExpense({
+                expenseId,
+                expense: expenseToDelete,
+                splits: deletedExpenseSplits,
+                currentUser: { id: currentUserId, name: user?.name || 'Unknown' },
+                groupName: group?.name,
+                groupDetailKey: groupDetailQueryKey,
+                friendsHomeKey: friendsHomeQueryKey,
+                cache: queryCache,
+              });
             } catch (error) {
-              if (cacheSnapshot) {
-                await queryCache.restore(cacheSnapshot);
-              }
               console.error('Error deleting expense:', error);
               Alert.alert('Error', 'Failed to delete expense');
             } finally {
               setDeletingExpenseId(null);
-              queryClient.invalidateQueries({ queryKey: friendsHomeQueryKey });
             }
           },
         },
@@ -382,47 +433,31 @@ export default function GroupDetailScreen() {
     );
   }
 
-  function renderLeftActions(progress: any, dragX: any, expenseId: string) {
-    const trans = dragX.interpolate({
-      inputRange: [0, 80],
-      outputRange: [0, 1],
-      extrapolate: 'clamp',
-    });
-
+  function renderLeftActions(_progress: SharedValue<number>, translation: SharedValue<number>, expenseId: string) {
     return (
-      <Animated.View style={[styles.swipeActionLeft, {
-        backgroundColor: friendDetailTheme.actionSurface,
-        opacity: trans,
-      }]}>
-        <TouchableOpacity
-          onPress={() => handleEditExpense(expenseId)}
-          style={styles.swipeActionButton}>
-          <IconSymbol name="pencil" size={20} color={friendDetailTheme.actionIcon} />
-          <ThemedText style={[styles.swipeActionText, { color: friendDetailTheme.actionIcon }]}>Edit</ThemedText>
-        </TouchableOpacity>
-      </Animated.View>
+      <GroupDetailSwipeAction
+        translation={translation}
+        side="left"
+        backgroundColor={friendDetailTheme.actionSurface}
+        iconColor={friendDetailTheme.actionIcon}
+        icon="pencil"
+        label="Edit"
+        onPress={() => handleEditExpense(expenseId)}
+      />
     );
   }
 
-  function renderRightActions(progress: any, dragX: any, expenseId: string) {
-    const trans = dragX.interpolate({
-      inputRange: [-80, 0],
-      outputRange: [1, 0],
-      extrapolate: 'clamp',
-    });
-
+  function renderRightActions(_progress: SharedValue<number>, translation: SharedValue<number>, expenseId: string) {
     return (
-      <Animated.View style={[styles.swipeActionRight, {
-        backgroundColor: friendDetailTheme.dangerSurface,
-        opacity: trans,
-      }]}>
-        <TouchableOpacity
-          onPress={() => handleDeleteExpense(expenseId)}
-          style={styles.swipeActionButton}>
-          <IconSymbol name="trash" size={20} color={friendDetailTheme.danger} />
-          <ThemedText style={[styles.swipeActionText, { color: friendDetailTheme.danger }]}>Delete</ThemedText>
-        </TouchableOpacity>
-      </Animated.View>
+      <GroupDetailSwipeAction
+        translation={translation}
+        side="right"
+        backgroundColor={friendDetailTheme.dangerSurface}
+        iconColor={friendDetailTheme.danger}
+        icon="trash"
+        label="Delete"
+        onPress={() => handleDeleteExpense(expenseId)}
+      />
     );
   }
 
@@ -435,7 +470,7 @@ export default function GroupDetailScreen() {
     const paidByYou = item.paidBy === currentUserId;
 
     return (
-      <Swipeable
+      <ReanimatedSwipeable
         ref={(ref) => {
           if (ref) {
             expenseSwipeableRefs.current.set(item.id, ref);
@@ -444,9 +479,9 @@ export default function GroupDetailScreen() {
           }
         }}
         renderLeftActions={item.createdBy === currentUserId || item.paidBy === currentUserId
-          ? (progress, dragX) => renderLeftActions(progress, dragX, item.id)
+          ? (progress, translation) => renderLeftActions(progress, translation, item.id)
           : undefined}
-        renderRightActions={(item.createdBy === currentUserId || item.paidBy === currentUserId) ? (progress, dragX) => renderRightActions(progress, dragX, item.id) : undefined}
+        renderRightActions={(item.createdBy === currentUserId || item.paidBy === currentUserId) ? (progress, translation) => renderRightActions(progress, translation, item.id) : undefined}
         overshootLeft={false}
         overshootRight={false}
         friction={2}
@@ -500,7 +535,28 @@ export default function GroupDetailScreen() {
             </View>
           </View>
         </TouchableOpacity>
-      </Swipeable>
+      </ReanimatedSwipeable>
+    );
+  }
+
+  function renderSettlement({ item }: { item: Settlement }) {
+    const fromUser = members.find(member => member.userId === item.fromUserId)?.user?.name || 'Someone';
+    const toUser = members.find(member => member.userId === item.toUserId)?.user?.name || 'Someone';
+    const dateStr = new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+    return (
+      <View style={[styles.transferRow, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <View style={[styles.expenseIcon, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.15)' : '#D1FAE5' }]}>
+          <IconSymbol size={20} name="banknote" color={isDark ? '#6EE7B7' : '#047857'} />
+        </View>
+        <View style={styles.transferCopy}>
+          <ThemedText type="defaultSemiBold" style={{ color: colors.text }}>Settlement</ThemedText>
+          <ThemedText style={{ color: colors.textSecondary }}>{fromUser} paid {toUser}{'\n'}{dateStr}</ThemedText>
+        </View>
+        <ThemedText type="defaultSemiBold" style={{ color: isDark ? '#6EE7B7' : '#047857' }}>
+          {item.currency} {item.amount.toFixed(2)}
+        </ThemedText>
+      </View>
     );
   }
 
@@ -541,20 +597,15 @@ export default function GroupDetailScreen() {
           onPress: async () => {
             try {
               setRemovingMemberId(member.userId);
-              await groupService.removeMember(id, member.userId);
-
-              // Log activity
-              if (group && user) {
-                await activityService.logMemberRemoved({
-                  groupId: id,
-                  userId: currentUserId,
-                  userName: user.name,
-                  memberName: member.user?.name || 'Someone',
-                  groupName: group.name,
-                });
-              }
-
-              loadGroupData();
+              if (!group || !user) throw new Error('Group context is unavailable');
+              await groupDetailMutationController.removeMember({
+                groupId: id,
+                groupName: group.name,
+                currentUser: { id: currentUserId, name: user.name },
+                member,
+                groupDetailKey: groupDetailQueryKey,
+                cache: queryCache,
+              });
             } catch (error) {
               console.error('Error removing member:', error);
               Alert.alert('Error', 'Failed to remove member');
@@ -567,30 +618,22 @@ export default function GroupDetailScreen() {
     );
   }
 
-  function renderMemberRightActions(progress: any, dragX: any, member: GroupMember & { user?: User }) {
+  function renderMemberRightActions(_progress: SharedValue<number>, translation: SharedValue<number>, member: GroupMember & { user?: User }) {
     const currentMember = members.find(m => m.userId === currentUserId);
     const canRemove = currentMember?.role === 'admin' && member.userId !== currentUserId;
 
     if (!canRemove) return null;
 
-    const trans = dragX.interpolate({
-      inputRange: [-80, 0],
-      outputRange: [1, 0],
-      extrapolate: 'clamp',
-    });
-
     return (
-      <Animated.View style={[styles.swipeActionRight, {
-        backgroundColor: friendDetailTheme.dangerSurface,
-        opacity: trans,
-      }]}>
-        <TouchableOpacity
-          onPress={() => handleRemoveMember(member)}
-          style={styles.swipeActionButton}>
-          <IconSymbol name="trash" size={20} color={friendDetailTheme.danger} />
-          <ThemedText style={[styles.swipeActionText, { color: friendDetailTheme.danger }]}>Remove</ThemedText>
-        </TouchableOpacity>
-      </Animated.View>
+      <GroupDetailSwipeAction
+        translation={translation}
+        side="right"
+        backgroundColor={friendDetailTheme.dangerSurface}
+        iconColor={friendDetailTheme.danger}
+        icon="trash"
+        label="Remove"
+        onPress={() => handleRemoveMember(member)}
+      />
     );
   }
 
@@ -605,7 +648,7 @@ export default function GroupDetailScreen() {
     const canRemove = currentMember?.role === 'admin' && item.userId !== currentUserId;
 
     return (
-      <Swipeable
+      <ReanimatedSwipeable
         ref={(ref) => {
           if (ref) {
             memberSwipeableRefs.current.set(item.userId, ref);
@@ -613,7 +656,7 @@ export default function GroupDetailScreen() {
             memberSwipeableRefs.current.delete(item.userId);
           }
         }}
-        renderRightActions={canRemove ? (progress, dragX) => renderMemberRightActions(progress, dragX, item) : undefined}
+        renderRightActions={canRemove ? (progress, translation) => renderMemberRightActions(progress, translation, item) : undefined}
         overshootLeft={false}
         overshootRight={false}
         friction={2}
@@ -700,7 +743,7 @@ export default function GroupDetailScreen() {
             )}
           </View>
         </TouchableOpacity>
-      </Swipeable>
+      </ReanimatedSwipeable>
     );
   }
 
@@ -1013,19 +1056,49 @@ export default function GroupDetailScreen() {
         )}
 
         {/* Expenses Section */}
+        {scopeTransfers.length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <ThemedText type="subtitle" style={[styles.sectionTitle, { color: isDark ? '#F8FAFC' : colors.text }]}>Balance changes</ThemedText>
+              <ThemedText style={[styles.expenseCount, { color: isDark ? '#94A3B8' : colors.textSecondary }]}>{scopeTransfers.length}</ThemedText>
+            </View>
+            {scopeTransfers.map(transfer => {
+              const movedToFriendship = transfer.fromUserId === currentUserId;
+              return (
+                <View key={transfer.id} style={[styles.transferRow, { backgroundColor: friendDetailTheme.surface, borderColor: friendDetailTheme.surfaceBorder }]}>
+                  <IconSymbol name="arrow.left.arrow.right" size={17} color={friendDetailTheme.actionIcon} />
+                  <View style={styles.transferCopy}>
+                    <ThemedText type="defaultSemiBold" style={{ color: colors.text }}>{transfer.isReversal ? 'Reversed balance offset' : movedToFriendship ? 'Moved to friendship balance' : 'Moved from friendship balance'}</ThemedText>
+                    <ThemedText style={{ color: colors.textSecondary }}>{transfer.currency} {Math.abs(transfer.signedGroupBalanceDelta).toFixed(2)}</ThemedText>
+                  </View>
+                  {!transfer.isReversal && (transfer.fromUserId === currentUserId || transfer.toUserId === currentUserId) ? (
+                    <TouchableOpacity accessibilityRole="button" accessibilityLabel="Reverse settlement" hitSlop={8} onPress={() => handleReverseTransfer(transfer)}>
+                      <ThemedText style={{ color: friendDetailTheme.danger, fontSize: 12, fontWeight: '700' }}>Reverse</ThemedText>
+                    </TouchableOpacity>
+                  ) : null}
+                </View>
+              );
+            })}
+          </View>
+        )}
+
+        {/* Expenses Section */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <ThemedText type="subtitle" style={[styles.sectionTitle, { color: isDark ? '#F8FAFC' : colors.text }]}>
-              Expenses
+              {sectionTab === 'all' ? 'Activity' : 'Expenses'}
             </ThemedText>
             <ThemedText style={[styles.expenseCount, { color: isDark ? '#94A3B8' : colors.textSecondary }]}>
-              {expenseSearch.trim() ? `${filteredExpenses.length} of ${expenses.length}` : `${expenses.length} ${expenses.length === 1 ? 'expense' : 'expenses'}`}
+              {sectionTab === 'all'
+                ? `${timelineItems.length} ${timelineItems.length === 1 ? 'item' : 'items'}`
+                : expenseSearch.trim() ? `${filteredExpenses.length} of ${expenses.length}` : `${expenses.length} ${expenses.length === 1 ? 'expense' : 'expenses'}`}
             </ThemedText>
           </View>
-          <View style={[styles.searchContainer, {
+          {sectionTab === 'expenses' && <View style={[styles.searchContainer, {
             backgroundColor: colors.card,
             borderColor: colors.border,
-          }]}>
+          }]}
+          >
             <IconSymbol
               name="magnifyingglass"
               size={17}
@@ -1050,8 +1123,8 @@ export default function GroupDetailScreen() {
                 <IconSymbol name="xmark.circle.fill" size={18} color={isDark ? '#94A3B8' : colors.textSecondary} />
               </TouchableOpacity>
             )}
-          </View>
-          {expenses.length === 0 ? (
+          </View>}
+          {(sectionTab === 'all' ? timelineItems.length === 0 : expenses.length === 0) ? (
             <View style={styles.emptySection}>
               <View style={[styles.emptyIconWrapper, { backgroundColor: friendDetailTheme.avatarSurface }]}>
                 <IconSymbol size={28} name="dollarsign.circle" color={friendDetailTheme.actionIcon} />
@@ -1061,7 +1134,7 @@ export default function GroupDetailScreen() {
                 Add an expense to start splitting costs
               </ThemedText>
             </View>
-          ) : filteredExpenses.length === 0 ? (
+          ) : sectionTab === 'expenses' && filteredExpenses.length === 0 ? (
             <View style={styles.emptySection}>
               <View style={[styles.emptyIconWrapper, { backgroundColor: friendDetailTheme.avatarSurface }]}>
                 <IconSymbol size={28} name="magnifyingglass" color={friendDetailTheme.actionIcon} />
@@ -1072,14 +1145,16 @@ export default function GroupDetailScreen() {
               </ThemedText>
             </View>
           ) : (
-            filteredExpenses.map((expense, index) => (
+            displayItems.map((item, index) => (
               <Animated.View
-                key={expense.id}
+                key={item.type === 'expense' ? item.expense.id : item.settlement.id}
                 style={{
                   opacity: fadeAnim,
                   transform: [{ translateY: Animated.multiply(slideAnim, new Animated.Value((index + 1) * 0.1)) }],
                 }}>
-                {renderExpense({ item: expense })}
+                {item.type === 'expense'
+                  ? renderExpense({ item: item.expense })
+                  : renderSettlement({ item: item.settlement })}
               </Animated.View>
             ))
           )}
@@ -1093,6 +1168,7 @@ export default function GroupDetailScreen() {
         selectedUserIds={selectedUserIds}
         setSelectedUserIds={setSelectedUserIds}
         onSubmit={addMember}
+        submitting={isAddingMember}
       />
 
     </View>
@@ -1445,6 +1521,20 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.06,
     shadowRadius: 10,
     elevation: 3,
+  },
+  transferRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    marginBottom: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  transferCopy: {
+    flex: 1,
+    gap: 2,
   },
   expenseIcon: {
     width: 38,

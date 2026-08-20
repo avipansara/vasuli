@@ -1,9 +1,135 @@
 ## 2026-08-19
 
+- Moved swipe-to-reveal actions to ReanimatedSwipeable so finger-driven motion and action opacity stay on the UI runtime, and removed per-row Group entrance animation that could replay during list virtualization.
+
+- Fixed pasted and autofilled OTP codes so the newly entered six-digit value is
+  verified reliably while consolidating sign-in and sign-up into one shared flow.
+- Fixed Group Detail balances flickering through incorrect intermediate values
+  after adding an expense by atomically replacing the optimistic cache entry
+  and waiting for persistence before returning to the Group.
+- Fixed Group Detail occasionally showing a false not-found state by confirming
+  a transient missing response before replacing the screen.
+- Fixed Group Detail showing a false “Group not found” alert on the first open
+  after a settlement populated an empty detail cache entry.
+- Fixed Friend and Group settlement amount entry so currency markers remain
+  clearly separated, and completed values display two decimal places without
+  clipping.
+- Fixed account deletion errors so outstanding balances show the settlement
+  requirement while unexpected failures use a readable generic message.
+- Fixed received invitations so inviter names are trimmed and always display a
+  useful identity instead of a blank label.
+- Fixed group expense percentage, share, equal, and unequal splits so generated
+  rows always add up to the expense total at database cent precision.
+- Fixed Friend Group balance projection to apply signed scope-transfer deltas,
+  keeping it aligned with Group Detail and Home after cross-scope settlements.
+- Fixed the deployed positive settlement RPC fingerprint column typo that caused
+  valid payments to fail with `42703` before creating a settlement operation.
+- Fixed sign-out retaining cached Friend relationship data that could otherwise
+  remain visible when a different account signs in on the same device.
+- Fixed Friend activity so pair-relevant Group settlements appear once with
+  their Group context without changing the direct Friend balance.
+
+## 2026-08-18
+
+- Collapsed the settlement pipeline into one deep `settlementModule`
+  (`commit`/`reverse`/`preview`) in `services/settlement-service.ts`, absorbing
+  `combined-settlement-service`, `friend-settlement-allocation`,
+  `settlement-reversal`, `combined-settlement-receipt-effects`, and
+  `combined-settlement-errors`; low-level CRUD stays available as
+  `settlementService`.
+- Made settlement reversal validation scope-aware by including cross-scope
+  transfer deltas in the server-side stale-balance check.
+- Removed the unused legacy Friend settlement path and its per-group allocator;
+  Friend settlement now has one operation-based commit path.
+- Centralized settlement reversal execution and refresh invalidation across
+  Friend and Group detail screens.
+- Fixed stale balance projections by invalidating Friend surfaces and refreshing
+  Group Home/detail data when settlement scope-transfer rows change.
+- Aligned Friend settle-up with the authoritative transfer-adjusted Home
+  relationship projection so partial payments follow the current net direction;
+  added Dev diagnostics and regression coverage for positive Group balances.
+- Fixed server-side Group allocation validation to include existing scope
+  offsets from earlier all-balance settlements.
+- Fixed Direct allocation validation for full settlements that reclassify a
+  Group balance after earlier scope offsets already exist.
+- Corrected scope-transfer integrity validation to apply existing offsets from
+  the settlement actor's perspective.
+- Hardened settlement RPC boundaries in Dev by removing the legacy callable
+  settlement overload, protecting payment-intent replays from changed payloads,
+  and validating cross-scope transfer offsets against server-calculated group
+  balances.
+- Refreshed Group detail balances whenever the screen regains focus so recent
+  settlements cannot remain hidden behind a fresh query cache.
+- Corrected scope-transfer sign handling so Group detail and Group settle-up
+  balances do not double-count cross-scope offsets.
+- Removed the legacy settlement RPC overload and anonymous access to settlement
+  reversal operations.
+- Added the backend foundation for atomic settlement-operation reversal with
+  compensating payment and scope-offset records, authorization for the two
+  involved users, and idempotent reversal responses.
+- Labeled reversal offset entries distinctly in Friend settlement history.
+- Added reversal actions for operation-linked cash settlements in Friend history;
+  legacy settlements without an operation link remain read-only.
+- Updated Friend Settle Up allocation so partial payments stay Direct-first
+  without moving opposing Group balances, while full-net and zero-net flows
+  preview and record explicit cross-scope offsets.
+- Fixed the sign-up verification action so the Create account button fills its
+  control, keeps the confirmation icon aligned, and matches the sign-in button.
+- Refreshed the Groups home query after creating a group so newly created groups
+  appear immediately when returning to the list.
+- Refreshed the Groups home query after deleting a group so removed groups no
+  longer remain visible when returning to the list.
+- Clarified Friend detail balance states so same-currency direct and group
+  balances are not mislabeled as multiple currencies.
+- Condensed the Friend detail split-balance summary so the status stays compact
+  while detailed direct and group amounts remain visible below.
+- Updated Friends home cards to show the one-currency net balance across direct
+  and group scopes, labeled as a net balance when those scopes stay separate.
+- Made the Friends home relationship RPC return that same one-currency net
+  balance while preserving separate-scope settlement safeguards.
+- Restored the simple Friend detail balance wording and Settle Up action; when
+  direct and group balances point in opposite directions, the action settles
+  the direct ledger independently.
+- Clarified the direct-only settlement screen so it no longer labels the direct
+  amount as a combined relationship balance.
+- Changed group deletion to Splitwise-style reversible soft deletion: groups
+  are hidden from active views while expenses, payments, and history remain
+  preserved.
+- Added a shared relationship freshness contract across Home, Friend detail,
+  and settle-up, including Realtime refreshes for ledger and membership inputs,
+  stale-load protection, and sign-out cache isolation.
+- Routed Home Friend summaries through the currency-aware relationship projection,
+  preserving direct-versus-Group scope and avoiding incompatible-currency totals.
+- Added Dev-backed settlement operations and scope-transfer records, including
+  idempotent all-balance/group RPCs, zero-net clearing, transfer-aware Friend and
+  Group refreshes, and reversible group deletion metadata.
+- Fixed group balance calculation in `balance-utils` to include scope transfers,
+  so the Group settle-up screen shows the same reduced balance as the Group
+  detail page after partial or cross-scope settlements.
+
 - Updated the iOS `preview` submit configuration with the newly registered App Store Connect App ID to resolve TestFlight submission errors.
 - Cleaned up CI/CD workflows by offloading Google Services JSON keys, Supabase URLs, and keys directly to native EAS Environment Variables and Credentials.
-
 ## 2026-08-17
+
+- Deepened the Friend relationship read seam so Friend detail and combined
+  settle-up consume one currency-aware Direct and shared Group projection,
+  including multi-currency and opposite-direction safeguards.
+
+- Hardened combined settlement receipts and retries with explicit timestamp and
+  direction fields, supported-currency validation, pair serialization, and
+  retryable transient-error handling.
+- Finalized the combined settlement receipt flow with centralized cache updates,
+  activity deduplication, and regression coverage for direct, Group, and
+  combined payments.
+- Added stale-balance detection, server-derived settlement authorization,
+  exact-cent validation, and recoverable Friend settle-up errors.
+- Routed combined Friend settlement through a dedicated commit service and
+  allocation receipt, preserving direct and shared Group settlement scopes.
+- Added a transactional combined settlement RPC with payment-intent
+  idempotency, scoped authorization, and receipt reuse for safe retries.
+- Added an implementation-ready specification for deepening the combined
+  settlement module with transactional writes, idempotent retries, and scoped
+  allocation receipts.
 
 - Switched expense deletion to soft deletion, preserving split history and
   permanent deletion activity while excluding deleted expenses from active

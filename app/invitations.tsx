@@ -252,7 +252,7 @@ export default function InvitationsScreen() {
             </View>
             <View style={styles.invitationInfo}>
               <ThemedText style={[styles.inviterName, { color: colors.text }]}>
-                {item.inviterName || 'Someone'}
+                {item.inviterName?.trim() || 'A friend'}
               </ThemedText>
               <ThemedText style={[styles.invitationDate, { color: colors.textSecondary }]}>
                 {new Date(item.createdAt).toLocaleDateString()}
@@ -319,7 +319,7 @@ export default function InvitationsScreen() {
             </View>
             <View style={styles.invitationInfo}>
               <ThemedText style={[styles.inviterName, { color: colors.text }]}>
-                {item.inviteeName || item.inviteeEmail}
+                {item.inviteeName?.trim() || item.inviteeEmail}
               </ThemedText>
               <ThemedText style={[styles.invitationDate, { color: colors.textSecondary }]}>
                 {new Date(item.createdAt).toLocaleDateString()}

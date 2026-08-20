@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { Activity, ActivityType } from '@/types/database';
+import { mapActivityRow } from './database-row-mappers';
 
 export const activityService = {
   async create(activity: Omit<Activity, 'id' | 'createdAt'>): Promise<Activity> {
@@ -23,19 +24,7 @@ export const activityService = {
 
     console.log('[Activity] Created:', activity.type, activity.description);
 
-    return {
-      id: data.id,
-      type: data.type as ActivityType,
-      userId: data.user_id,
-      userName: data.user_name || undefined,
-      targetId: data.target_id,
-      groupId: data.group_id || undefined,
-      groupName: data.group_name || undefined,
-      description: data.description,
-      amount: data.amount || undefined,
-      metadata: data.metadata || undefined,
-      createdAt: new Date(data.created_at).getTime(),
-    };
+    return mapActivityRow(data);
   },
 
   async getByUser(userId: string, limit?: number): Promise<Activity[]> {
@@ -53,19 +42,7 @@ export const activityService = {
 
     if (error) throw error;
 
-    return (data || []).map(r => ({
-      id: r.id,
-      type: r.type as ActivityType,
-      userId: r.user_id,
-      userName: r.user_name || undefined,
-      targetId: r.target_id,
-      groupId: r.group_id || undefined,
-      groupName: r.group_name || undefined,
-      description: r.description,
-      amount: r.amount || undefined,
-      metadata: r.metadata || undefined,
-      createdAt: new Date(r.created_at).getTime(),
-    }));
+    return (data || []).map(mapActivityRow);
   },
 
   async getUserActivities(userId: string, limit?: number, offset?: number, search?: string): Promise<Activity[]> {
@@ -114,19 +91,7 @@ export const activityService = {
 
     if (error) throw error;
 
-    return (data || []).map(r => ({
-      id: r.id,
-      type: r.type as ActivityType,
-      userId: r.user_id,
-      userName: r.user_name || undefined,
-      targetId: r.target_id,
-      groupId: r.group_id || undefined,
-      groupName: r.group_name || undefined,
-      description: r.description,
-      amount: r.amount || undefined,
-      metadata: r.metadata || undefined,
-      createdAt: new Date(r.created_at).getTime(),
-    }));
+    return (data || []).map(mapActivityRow);
   },
 
   async getByGroup(groupId: string, limit?: number): Promise<Activity[]> {
@@ -144,19 +109,7 @@ export const activityService = {
 
     if (error) throw error;
 
-    return (data || []).map(r => ({
-      id: r.id,
-      type: r.type as ActivityType,
-      userId: r.user_id,
-      userName: r.user_name || undefined,
-      targetId: r.target_id,
-      groupId: r.group_id || undefined,
-      groupName: r.group_name || undefined,
-      description: r.description,
-      amount: r.amount || undefined,
-      metadata: r.metadata || undefined,
-      createdAt: new Date(r.created_at).getTime(),
-    }));
+    return (data || []).map(mapActivityRow);
   },
 
   async delete(id: string): Promise<void> {
@@ -186,19 +139,7 @@ export const activityService = {
 
     if (error) throw error;
 
-    return (data || []).map(r => ({
-      id: r.id,
-      type: r.type as ActivityType,
-      userId: r.user_id,
-      userName: r.user_name || undefined,
-      targetId: r.target_id,
-      groupId: r.group_id || undefined,
-      groupName: r.group_name || undefined,
-      description: r.description,
-      amount: r.amount || undefined,
-      metadata: r.metadata || undefined,
-      createdAt: new Date(r.created_at).getTime(),
-    }));
+    return (data || []).map(mapActivityRow);
   },
 
   async getByTargets(targetIds: string[]): Promise<Activity[]> {
@@ -212,19 +153,7 @@ export const activityService = {
 
     if (error) throw error;
 
-    return (data || []).map(r => ({
-      id: r.id,
-      type: r.type as ActivityType,
-      userId: r.user_id,
-      userName: r.user_name || undefined,
-      targetId: r.target_id,
-      groupId: r.group_id || undefined,
-      groupName: r.group_name || undefined,
-      description: r.description,
-      amount: r.amount || undefined,
-      metadata: r.metadata || undefined,
-      createdAt: new Date(r.created_at).getTime(),
-    }));
+    return (data || []).map(mapActivityRow);
   },
 
   // Helper to log expense activities

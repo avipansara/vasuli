@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import type { FriendDetailData } from '@/services/friend-detail-service';
+import type { FriendActivityItem, FriendDetailData } from '@/services/friend-detail-service';
+import { ActivityType } from '@/types/database';
 import {
   createFriendDetailModule,
   filterFriendActivity,
   groupFriendActivityByMonth,
 } from '@/services/friend-detail-module';
-import type { FriendActivityItem } from '@/services/friend-detail-service';
-import type { Settlement } from '@/types/database';
+import type { SettlementScopeTransfer } from '@/types/database';
 
 const detail: FriendDetailData = {
   friend: {
@@ -19,6 +19,12 @@ const detail: FriendDetailData = {
   expenses: [],
   activity: [],
   groupBalances: [],
+  relationship: {
+    directBalance: 24,
+    groupBalances: [],
+    activity: [],
+    totalsByCurrency: [],
+  },
 };
 
 describe('Friend detail module', () => {
@@ -27,7 +33,17 @@ describe('Friend detail module', () => {
       readAdapter: { getDetail: async () => detail },
     });
 
-    await expect(module.getDetail('current-user', 'friend-a')).resolves.toEqual(detail);
+    await expect(module.getDetail('current-user', 'friend-a')).resolves.toEqual({
+      ...detail,
+      relationship: {
+        directBalance: 24,
+        directCurrency: undefined,
+        groupBalances: [],
+        activity: [],
+        totalsByCurrency: [],
+        settleableTotal: undefined,
+      },
+    });
   });
 
   it('returns group balance summaries separately from the direct Friend detail', async () => {
@@ -53,61 +69,112 @@ describe('Friend detail module', () => {
         amount: -100,
         direction: 'you_owe',
       }],
+      relationship: {
+        directBalance: 24,
+        directCurrency: undefined,
+        totalsByCurrency: [{ currency: 'USD', amount: -100, direction: 'you_owe' }],
+        activity: [],
+      },
     });
   });
 
-  it('records a valid settlement and returns the resulting pair settlements', async () => {
-    const settlement: Settlement = {
-      id: 'settlement-1',
-      fromUserId: 'friend-a',
-      toUserId: 'current-user',
-      amount: 24,
-      currency: 'USD',
-      date: 10,
-      createdAt: 10,
+  it('uses the injected authoritative relationship adapter for production parity', async () => {
+    const authoritativeRelationship = {
+      directBalance: 120,
+      directCurrency: 'USD',
+      groupBalances: [],
+      activity: [],
+      totalsByCurrency: [{ currency: 'USD', amount: 120, direction: 'you_are_owed' as const }],
+      settleableTotal: { currency: 'USD', amount: 120, direction: 'you_are_owed' as const },
     };
     const module = createFriendDetailModule({
       readAdapter: { getDetail: async () => detail },
-      settlementAdapter: {
-        createPairSettlements: async () => [settlement],
-      },
+      relationshipAdapter: { getRelationship: async () => authoritativeRelationship },
     });
 
-    await expect(module.settleUp({
-      currentUserId: 'current-user',
-      friendId: 'friend-a',
-      amount: 24,
-      balance: 24,
-      currency: 'USD',
-      date: 10,
-    })).resolves.toEqual([settlement]);
+    await expect(module.getDetail('current-user', 'friend-a')).resolves.toMatchObject({
+      relationship: authoritativeRelationship,
+    });
   });
 
-  it('rejects a group-scoped settlement from the direct Friend flow', async () => {
+  it('preserves detail activity while sharing authoritative balance fields', async () => {
+    const detailActivity: FriendActivityItem[] = [{
+      id: 'activity:detail',
+      type: 'expense_activity',
+      date: 2,
+      activityId: 'activity-1',
+      activityType: ActivityType.EXPENSE_UPDATED,
+      targetId: 'expense-1',
+      description: 'Updated expense',
+      userId: 'friend-a',
+      isDeleted: false,
+      isUpdated: true,
+    }];
     const module = createFriendDetailModule({
-      readAdapter: { getDetail: async () => detail },
-      settlementAdapter: {
-        createPairSettlements: async () => [{
-          id: 'group-settlement',
-          groupId: 'group-alaska',
-          fromUserId: 'current-user',
-          toUserId: 'friend-a',
-          amount: 24,
-          currency: 'USD',
-          date: 10,
-          createdAt: 10,
-        }],
+      readAdapter: { getDetail: async () => ({ ...detail, relationship: { ...detail.relationship, activity: detailActivity } }) },
+      relationshipAdapter: {
+        getRelationship: async () => ({
+          directBalance: 120,
+          directCurrency: 'USD',
+          groupBalances: [],
+          activity: [],
+          totalsByCurrency: [{ currency: 'USD', amount: 120, direction: 'you_are_owed' as const }],
+          settleableTotal: { currency: 'USD', amount: 120, direction: 'you_are_owed' as const },
+        }),
       },
     });
 
-    await expect(module.settleUp({
-      currentUserId: 'current-user',
-      friendId: 'friend-a',
-      amount: 24,
-      balance: 24,
+    await expect(module.getDetail('current-user', 'friend-a')).resolves.toMatchObject({
+      relationship: { directBalance: 120, activity: detailActivity },
+    });
+  });
+
+  it('returns transfer-adjusted group rows alongside the relationship projection', async () => {
+    const transfer: SettlementScopeTransfer = {
+      id: 'transfer-1',
+      operationId: 'operation-1',
+      groupId: 'group-alaska',
+      fromUserId: 'friend-a',
+      toUserId: 'current-user',
       currency: 'USD',
-      date: 10,
-    })).rejects.toThrow('direct Friend balance');
+      signedGroupBalanceDelta: -100,
+      createdAt: 30,
+    };
+    const module = createFriendDetailModule({
+      readAdapter: {
+        getDetail: async () => ({
+          ...detail,
+          expenses: [{
+            id: 'direct-expense',
+            description: 'Dinner',
+            amount: 24,
+            currency: 'USD',
+            paidBy: 'current-user',
+            date: 1,
+            createdAt: 1,
+            updatedAt: 1,
+            yourShare: 0,
+            friendShare: 24,
+            paidByName: 'You',
+          }],
+        }),
+      },
+      groupBalanceAdapter: {
+        getSharedGroupBalances: async () => [{
+          groupId: 'group-alaska',
+          groupName: 'Alaska 2026',
+          currency: 'USD',
+          amount: 100,
+          direction: 'you_are_owed',
+        }],
+      },
+      scopeTransferAdapter: { getByFriend: async () => [transfer] },
+    });
+
+    await expect(module.getDetail('current-user', 'friend-a')).resolves.toMatchObject({
+      groupBalances: [{ groupId: 'group-alaska', amount: 0, direction: 'settled' }],
+      relationship: { totalsByCurrency: [{ currency: 'USD', amount: 124, direction: 'you_are_owed' }] },
+    });
   });
 
   it('deletes an expense through the Friend detail action interface', async () => {

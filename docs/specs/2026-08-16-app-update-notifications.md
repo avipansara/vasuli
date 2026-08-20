@@ -1,5 +1,13 @@
 # In-app app updates and release notes
 
+## Status update — 2026-08-19
+
+Implemented in the current application. The root layout consumes
+one release coordinator, optional and mandatory update decisions are separated,
+release notes are rendered in the shared prompt, and the policy, service, and
+coordinator have focused tests. Store metadata and release operations remain
+deployment concerns rather than unfinished application architecture.
+
 ## Problem Statement
 
 Vasuli users currently have no clear in-app indication that a newer store version is available. They may miss important fixes, improvements, or release notes, and the team has no consistent way to distinguish an optional update from a version that is no longer supported.
@@ -145,5 +153,4 @@ The initial implementation can use one active release per platform/channel. Roll
 
 - Project: Vasuli
 - Project Hub task: `86e44a14-2fa3-466a-b4b8-1025e178dfc0`
-- Status: todo
-- Label: `ready-for-agent`
+- Status: complete

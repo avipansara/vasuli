@@ -1,22 +1,24 @@
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useThemeColors } from '@/hooks/use-theme-colors';
+import { useAuth } from '@/contexts/auth-context-otp';
+import { createGroupDetailTraceId, logGroupDetailDiagnostic } from '@/lib/group-detail-diagnostics';
 import { groupService } from '@/services/group-service';
 import type { GroupWithMembers } from '@/types/database';
 import { router } from 'expo-router';
 import { memo, useRef } from 'react';
-import { Alert, Animated as RNAnimated, StyleSheet, TouchableOpacity, View } from 'react-native';
-import Swipeable from 'react-native-gesture-handler/Swipeable';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import { Alert, StyleSheet, TouchableOpacity, View } from 'react-native';
+import ReanimatedSwipeable, { type SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable';
+import type { SharedValue } from 'react-native-reanimated';
+import Reanimated, { useAnimatedStyle } from 'react-native-reanimated';
 
 interface GroupCardProps {
   group: GroupWithMembers;
-  index: number;
   onRefresh?: () => void;
 }
 
 function areGroupCardPropsEqual(prev: GroupCardProps, next: GroupCardProps): boolean {
-  if (prev.onRefresh !== next.onRefresh || prev.index !== next.index) {
+  if (prev.onRefresh !== next.onRefresh) {
     return false;
   }
   const a = prev.group;
@@ -29,9 +31,10 @@ function areGroupCardPropsEqual(prev: GroupCardProps, next: GroupCardProps): boo
   );
 }
 
-function GroupCardInner({ group, index, onRefresh }: GroupCardProps) {
+function GroupCardInner({ group, onRefresh }: GroupCardProps) {
   const { colors, isDark } = useThemeColors();
-  const swipeableRef = useRef<Swipeable>(null);
+  const { user } = useAuth();
+  const swipeableRef = useRef<SwipeableMethods>(null);
   const balance = group.yourBalance || 0;
   const isPositive = balance > 0;
   const isSettled = balance === 0;
@@ -41,10 +44,23 @@ function GroupCardInner({ group, index, onRefresh }: GroupCardProps) {
     router.push(`/edit-group/${group.id}` as any);
   }
 
+  function handleOpenGroup() {
+    const traceId = createGroupDetailTraceId();
+    logGroupDetailDiagnostic('navigate', {
+      traceId,
+      groupId: group.id,
+      source: 'group-card',
+    });
+    router.push({
+      pathname: '/groups/[id]',
+      params: { id: group.id, groupDetailTraceId: traceId },
+    } as any);
+  }
+
   async function handleDeleteGroup() {
     Alert.alert(
       'Delete Group',
-      'Are you sure you want to delete this group? This action cannot be undone.',
+      'Are you sure you want to delete this group? Its history will be preserved and it can be restored later.',
       [
         {
           text: 'Cancel',
@@ -55,7 +71,8 @@ function GroupCardInner({ group, index, onRefresh }: GroupCardProps) {
           style: 'destructive',
           onPress: async () => {
             try {
-              await groupService.delete(group.id);
+              if (!user?.id) throw new Error('You must be signed in to delete a group.');
+              await groupService.delete(group.id, user.id);
               onRefresh?.();
             } catch (error) {
               console.error('Error deleting group:', error);
@@ -67,56 +84,26 @@ function GroupCardInner({ group, index, onRefresh }: GroupCardProps) {
     );
   }
 
-  function renderLeftActions(progress: any, dragX: any) {
-    const trans = dragX.interpolate({
-      inputRange: [0, 80],
-      outputRange: [0, 1],
-      extrapolate: 'clamp',
-    });
-
-    return (
-      <RNAnimated.View style={[styles.swipeActionLeft, { opacity: trans }]}>
-        <TouchableOpacity
-          onPress={handleEditGroup}
-          style={styles.swipeActionButton}
-          accessibilityRole="button"
-          accessibilityLabel={`Edit ${group.name}`}>
-          <IconSymbol name="pencil" size={20} color="#fff" />
-          <ThemedText style={styles.swipeActionText}>Edit</ThemedText>
-        </TouchableOpacity>
-      </RNAnimated.View>
-    );
-  }
-
-  function renderRightActions(progress: any, dragX: any) {
-    const trans = dragX.interpolate({
-      inputRange: [-80, 0],
-      outputRange: [1, 0],
-      extrapolate: 'clamp',
-    });
-
-    return (
-      <RNAnimated.View style={[styles.swipeActionRight, { opacity: trans }]}>
-        <TouchableOpacity
-          onPress={handleDeleteGroup}
-          style={styles.swipeActionButton}
-          accessibilityRole="button"
-          accessibilityLabel={`Delete ${group.name}`}>
-          <IconSymbol name="trash" size={20} color="#fff" />
-          <ThemedText style={styles.swipeActionText}>Delete</ThemedText>
-        </TouchableOpacity>
-      </RNAnimated.View>
-    );
-  }
-
   return (
-    <Animated.View
-      entering={FadeInDown.delay(index * 100).springify()}
-      style={styles.wrapper}>
-      <Swipeable
+    <View style={styles.wrapper}>
+      <ReanimatedSwipeable
         ref={swipeableRef}
-        renderLeftActions={renderLeftActions}
-        renderRightActions={renderRightActions}
+        renderLeftActions={(_progress, translation) => (
+          <GroupSwipeAction
+            translation={translation}
+            side="left"
+            onPress={handleEditGroup}
+            accessibilityLabel={`Edit ${group.name}`}
+          />
+        )}
+        renderRightActions={(_progress, translation) => (
+          <GroupSwipeAction
+            translation={translation}
+            side="right"
+            onPress={handleDeleteGroup}
+            accessibilityLabel={`Delete ${group.name}`}
+          />
+        )}
         overshootLeft={false}
         overshootRight={false}
         friction={2}
@@ -140,7 +127,7 @@ function GroupCardInner({ group, index, onRefresh }: GroupCardProps) {
           <TouchableOpacity
             activeOpacity={0.7}
             style={styles.content}
-            onPress={() => router.push(`/groups/${group.id}` as any)}
+            onPress={handleOpenGroup}
             accessibilityRole="button"
             accessibilityLabel={`${group.name}, ${isSettled ? 'all settled up' : `${isPositive ? 'you are owed' : 'you owe'} $${Math.abs(balance).toFixed(2)}`}`}
             accessibilityHint="Opens this group">
@@ -198,8 +185,37 @@ function GroupCardInner({ group, index, onRefresh }: GroupCardProps) {
             </View>
           </TouchableOpacity>
         </View>
-      </Swipeable>
-    </Animated.View>
+      </ReanimatedSwipeable>
+    </View>
+  );
+}
+
+function GroupSwipeAction({
+  translation,
+  side,
+  onPress,
+  accessibilityLabel,
+}: {
+  translation: SharedValue<number>;
+  side: 'left' | 'right';
+  onPress: () => void;
+  accessibilityLabel: string;
+}) {
+  const actionStyle = useAnimatedStyle(() => ({
+    opacity: Math.min(1, Math.max(0, (side === 'left' ? translation.get() : -translation.get()) / 80)),
+  }));
+
+  return (
+    <Reanimated.View style={[side === 'left' ? styles.swipeActionLeft : styles.swipeActionRight, actionStyle]}>
+      <TouchableOpacity
+        onPress={onPress}
+        style={styles.swipeActionButton}
+        accessibilityRole="button"
+        accessibilityLabel={accessibilityLabel}>
+        <IconSymbol name={side === 'left' ? 'pencil' : 'trash'} size={20} color="#fff" />
+        <ThemedText style={styles.swipeActionText}>{side === 'left' ? 'Edit' : 'Delete'}</ThemedText>
+      </TouchableOpacity>
+    </Reanimated.View>
   );
 }
 

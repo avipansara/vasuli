@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createFriendGroupBalanceService } from '@/services/friend-group-balance-service';
-import type { Expense, ExpenseSplit, Group, Settlement } from '@/types/database';
+import type { Expense, ExpenseSplit, Group, Settlement, SettlementScopeTransfer } from '@/types/database';
 
 const group = (id: string, name: string): Group => ({
   id,
@@ -101,6 +101,58 @@ describe('friend group balance service', () => {
       amount: 0,
       direction: 'settled',
       lastActivityAt: 25,
+    }]);
+  });
+
+  it('applies the signed scope-transfer delta to the projected friend group balance', async () => {
+    const transfer: SettlementScopeTransfer = {
+      id: 'transfer-1',
+      operationId: 'operation-1',
+      groupId: 'alaska',
+      fromUserId: 'avee',
+      toUserId: 'current-user',
+      currency: 'USD',
+      signedGroupBalanceDelta: -100,
+      createdAt: 40,
+    };
+    const service = createFriendGroupBalanceService({
+      getUserGroups: async () => [group('alaska', 'Alaska 2026')],
+      getExpenses: async () => [expense],
+      getSplits: async () => splits,
+      getSettlements: async () => [],
+      getScopeTransfers: async () => [transfer],
+    });
+
+    await expect(service.getSharedGroupBalances('current-user', 'avee')).resolves.toMatchObject([{
+      amount: 200,
+      direction: 'you_are_owed',
+      lastActivityAt: 40,
+    }]);
+  });
+
+  it('applies a negative signed scope-transfer delta to the projected friend group balance', async () => {
+    const transfer: SettlementScopeTransfer = {
+      id: 'transfer-2',
+      operationId: 'operation-2',
+      groupId: 'alaska',
+      fromUserId: 'avee',
+      toUserId: 'current-user',
+      currency: 'USD',
+      signedGroupBalanceDelta: -50,
+      createdAt: 40,
+    };
+    const service = createFriendGroupBalanceService({
+      getUserGroups: async () => [group('alaska', 'Alaska 2026')],
+      getExpenses: async () => [{ ...expense, paidBy: 'avee' }],
+      getSplits: async () => splits,
+      getSettlements: async () => [],
+      getScopeTransfers: async () => [transfer],
+    });
+
+    await expect(service.getSharedGroupBalances('current-user', 'avee')).resolves.toMatchObject([{
+      amount: -150,
+      direction: 'you_owe',
+      lastActivityAt: 40,
     }]);
   });
 });

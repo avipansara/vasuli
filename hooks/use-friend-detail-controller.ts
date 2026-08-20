@@ -1,8 +1,9 @@
 import { useDebouncedQueryInvalidation } from '@/hooks/use-debounced-query-invalidation';
+import { useRefetchOnFocus } from '@/hooks/use-refetch-on-focus';
 import { useRealtime } from '@/hooks/use-realtime';
 import { friendDetailModule } from '@/services/friend-detail-module';
 import { queryKeys } from '@/services/query-keys';
-import type { FriendDetailData } from '@/services/friend-detail-service';
+import type { FriendDetailData, FriendRelationshipProjection } from '@/services/friend-detail-service';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo } from 'react';
 
@@ -27,6 +28,13 @@ export function useFriendDetailController({
     queryKey: friendDetailQueryKey,
     enabled: !!currentUserId && !!friendId,
     queryFn: () => friendDetailModule.getDetail(currentUserId, friendId),
+  });
+
+  useRefetchOnFocus({
+    enabled: !!currentUserId && !!friendId,
+    isFetching: query.isFetching,
+    isStale: query.isStale,
+    refetch: query.refetch,
   });
 
   useRealtime({
@@ -60,6 +68,11 @@ export function useFriendDetailController({
     enabled: !!currentUserId && !!friendId,
   });
   useRealtime({
+    table: 'settlement_scope_transfers',
+    onChange: invalidateFriendDetail,
+    enabled: !!currentUserId && !!friendId,
+  });
+  useRealtime({
     table: 'settlements',
     filter: currentUserId ? `to_user_id=eq.${currentUserId}` : undefined,
     onChange: invalidateFriendDetail,
@@ -84,6 +97,7 @@ export function useFriendDetailController({
     expenses: query.data?.expenses ?? [],
     activity: query.data?.activity ?? [],
     groupBalances: query.data?.groupBalances ?? [],
+    relationship: query.data?.relationship ?? null,
     friendDetailQueryKey,
     friendsHomeQueryKey,
     queryClient,
@@ -94,6 +108,7 @@ export function useFriendDetailController({
     expenses: FriendDetailData['expenses'];
     activity: FriendDetailData['activity'];
     groupBalances: NonNullable<FriendDetailData['groupBalances']>;
+    relationship: FriendRelationshipProjection | null;
     friendDetailQueryKey: typeof friendDetailQueryKey;
     friendsHomeQueryKey: typeof friendsHomeQueryKey;
     queryClient: typeof queryClient;

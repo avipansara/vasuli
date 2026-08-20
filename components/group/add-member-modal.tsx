@@ -15,6 +15,7 @@ interface AddMemberModalProps {
   selectedUserIds: string[];
   setSelectedUserIds: (value: string[]) => void;
   onSubmit: () => void;
+  submitting?: boolean;
 }
 
 export function AddMemberModal({
@@ -24,6 +25,7 @@ export function AddMemberModal({
   selectedUserIds,
   setSelectedUserIds,
   onSubmit,
+  submitting = false,
 }: AddMemberModalProps) {
   const { colors, settle, isDark } = useThemeColors();
   const [search, setSearch] = useState('');
@@ -168,7 +170,8 @@ export function AddMemberModal({
       bodyContent={bodyContent}
       submitLabel="Add Members"
       submitIcon="person.badge.plus"
-      submitDisabled={isDisabled || availableUsers.length === 0}
+      submitDisabled={submitting || isDisabled || availableUsers.length === 0}
+      submitLoading={submitting}
       onSubmit={onSubmit}
       headerStyle="centered"
       submitBadge={selectedUserIds.length > 0 ? selectedUserIds.length : undefined}

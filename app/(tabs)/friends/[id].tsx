@@ -1,6 +1,7 @@
 import { FriendExpenseActivity } from '@/components/friends/friend-expense-activity';
 import { FriendExpenseActivityEvent } from '@/components/friends/friend-expense-activity-event';
 import { FriendSettlementActivity } from '@/components/friends/friend-settlement-activity';
+import { FriendScopeTransferActivity } from '@/components/friends/friend-scope-transfer-activity';
 import { ThemedText } from '@/components/themed-text';
 import { AsyncErrorState } from '@/components/ui/async-error-state';
 import { IconSymbol, type IconSymbolName } from '@/components/ui/icon-symbol';
@@ -15,13 +16,17 @@ import {
   groupFriendActivityByMonth,
   type FriendActivityFilter,
 } from '@/services/friend-detail-module';
-import type { FriendDetailData } from '@/services/friend-detail-service';
+import { settlementModule, CombinedSettlementError } from '@/services/settlement-service';
+import { projectFriendRelationship, type FriendDetailData } from '@/services/friend-detail-service';
+import type { GroupDetailReadModel } from '@/services/group-detail-read-model';
+import { applySettlementToGroupReadModel } from '@/services/group-detail-read-model';
+import { queryKeys } from '@/services/query-keys';
 import type { Expense, User } from '@/types/database';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Animated, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
-import Swipeable from 'react-native-gesture-handler/Swipeable';
+import type { SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable';
 import Reanimated, {
   Easing as ReanimatedEasing,
   useAnimatedStyle,
@@ -56,7 +61,7 @@ export default function FriendDetailScreen() {
   const [deletingExpenseId, setDeletingExpenseId] = useState<string | null>(null);
   const { user } = useAuth();
   const currentUserId = user?.id || '';
-  const swipeableRefs = useRef<Map<string, Swipeable>>(new Map());
+  const swipeableRefs = useRef<Map<string, SwipeableMethods>>(new Map());
 
   // Animations
   const insets = useSafeAreaInsets();
@@ -109,6 +114,7 @@ export default function FriendDetailScreen() {
     expenses,
     activity,
     groupBalances,
+    relationship,
     friendDetailQueryKey,
     friendsHomeQueryKey,
     queryClient,
@@ -234,17 +240,24 @@ export default function FriendDetailScreen() {
                   };
                 }));
 
-                queryClient.setQueryData<FriendDetailData | null>(friendDetailQueryKey, current => current ? {
-                  ...current,
-                  friend: {
-                    ...current.friend,
-                    balance: Math.abs(current.friend.balance + balanceDelta) < 0.01 ? 0 : current.friend.balance + balanceDelta,
-                  },
-                  expenses: current.expenses.filter(expense => expense.id !== expenseId),
-                  activity: current.activity.filter(activityItem => (
-                    activityItem.type !== 'expense' || activityItem.expense.id !== expenseId
-                  )),
-                } : current);
+                queryClient.setQueryData<FriendDetailData | null>(friendDetailQueryKey, current => {
+                  if (!current) return current;
+                  const nextDetail = {
+                    ...current,
+                    friend: {
+                      ...current.friend,
+                      balance: Math.abs(current.friend.balance + balanceDelta) < 0.01 ? 0 : current.friend.balance + balanceDelta,
+                    },
+                    expenses: current.expenses.filter(expense => expense.id !== expenseId),
+                    activity: current.activity.filter(activityItem => (
+                      activityItem.type !== 'expense' || activityItem.expense.id !== expenseId
+                    )),
+                  };
+                  return {
+                    ...nextDetail,
+                    relationship: projectFriendRelationship(nextDetail),
+                  };
+                });
               }
 
               await friendDetailModule.deleteExpense({
@@ -275,6 +288,62 @@ export default function FriendDetailScreen() {
       ]
     );
   }
+
+  const handleReverseOperation = useCallback((operationId: string, currency: string) => {
+    Alert.alert(
+      'Reverse settlement?',
+      'This restores the balances affected by the settlement operation. The original history remains visible.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Reverse',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              if (__DEV__) {
+                console.log('[Settlement][reverse][friend-screen]', {
+                  operationId,
+                  currency,
+                  relationshipTotals: relationship?.totalsByCurrency ?? [],
+                  directBalance: relationship?.directBalance ?? null,
+                  groupBalances: relationship?.groupBalances ?? [],
+                });
+              }
+              const expectedBalance = relationship?.totalsByCurrency.find(total => total.currency === currency)?.amount;
+              await settlementModule.reverse({
+                operationId,
+                expectedBalance: expectedBalance ?? 0,
+                currentUserId,
+                friendId: id,
+                queryClient,
+              });
+              await refetch();
+              Alert.alert('Settlement reversed', 'The affected balances were restored.');
+            } catch (error) {
+              if (error instanceof CombinedSettlementError && error.code === 'stale_balance') {
+                Alert.alert('Balance changed', 'Refresh the Friend details before reversing this settlement.');
+                return;
+              }
+              if (error instanceof CombinedSettlementError) {
+                Alert.alert('Unable to reverse', error.message);
+                return;
+              }
+              Alert.alert('Unable to reverse', 'The settlement could not be reversed.');
+            }
+          },
+        },
+      ],
+    );
+  }, [currentUserId, id, queryClient, refetch, relationship?.totalsByCurrency]);
+
+  const handleReverseScopeTransfer = useCallback((item: Extract<FriendDetailData['activity'][number], { type: 'scope_transfer' }>) => {
+    handleReverseOperation(item.operationId, item.currency);
+  }, [handleReverseOperation]);
+
+  const handleReverseSettlement = useCallback((item: Extract<FriendDetailData['activity'][number], { type: 'settlement' }>) => {
+    if (!item.operationId) return;
+    handleReverseOperation(item.operationId, item.currency);
+  }, [handleReverseOperation]);
 
   const handleRemoveFriend = () => {
     if (isRemovingFriend) return;
@@ -381,9 +450,22 @@ export default function FriendDetailScreen() {
     return null;
   }
 
-  const directBalance = friend.balance;
-  const combinedBalance = directBalance + groupBalances.reduce((total, summary) => total + summary.amount, 0);
+  if (!relationship) {
+    return null;
+  }
+
+  const directBalance = relationship.directBalance;
+  const combinedBalance = relationship.settleableTotal?.amount
+    ?? (relationship.totalsByCurrency.length === 0 ? directBalance : 0);
+  const hasCurrencyAmbiguity = Boolean(
+    !relationship.settleableTotal
+    && (
+      relationship.directBalance !== 0
+      || relationship.totalsByCurrency.filter(total => total.amount !== 0).length > 1
+    )
+  );
   const balance = combinedBalance;
+  const canClearZeroNet = Boolean(relationship.zeroNetCurrency);
   const groupBalanceCount = groupBalances.filter(summary => summary.direction !== 'settled').length;
   const isOwed = balance > 0;
   const isOwing = balance < 0;
@@ -392,17 +474,28 @@ export default function FriendDetailScreen() {
     : isOwing
       ? friendDetailTheme.negative
       : friendDetailTheme.actionIcon;
-  const balanceCopy = isOwed
+  const balanceSurface = isOwed
+    ? friendDetailTheme.positiveSurface
+    : isOwing
+      ? friendDetailTheme.negativeSurface
+      : friendDetailTheme.settledSurface;
+  const balanceCopy = hasCurrencyAmbiguity
+    ? 'Multiple currencies'
+    : isOwed
     ? `${friend.name.split(' ')[0]} owes you`
     : isOwing
       ? `You owe ${friend.name.split(' ')[0]}`
       : 'All settled up';
-  const balanceCardTitle = isOwed
+  const balanceCardTitle = hasCurrencyAmbiguity
+    ? 'MULTIPLE CURRENCIES'
+    : isOwed
     ? `${friend.name.split(' ')[0].toUpperCase()} OWES YOU`
     : isOwing
       ? `YOU OWE ${friend.name.split(' ')[0].toUpperCase()}`
       : 'ALL SETTLED UP';
-  const balanceAccessibilityValue = `${balanceCopy}, $${Math.abs(balance).toFixed(2)}`;
+  const balanceAccessibilityValue = hasCurrencyAmbiguity
+    ? `${balanceCopy}, choose a currency to settle`
+    : `${balanceCopy}, ${relationship.settleableTotal?.currency ?? relationship.directCurrency ?? ''} ${Math.abs(balance).toFixed(2)}`;
 
 
   return (
@@ -526,7 +619,9 @@ export default function FriendDetailScreen() {
               </ThemedText>
 
               <ThemedText type='subtitle' style={[styles.summaryCardAmount, { color: isDark ? (isOwing ? '#ffb3b0' : isOwed ? '#4edea3' : '#94A3B8') : balanceColor }]}>
-                {isOwing ? '-' : isOwed ? '+' : ''}${Math.abs(balance).toFixed(2)}
+                {hasCurrencyAmbiguity
+                  ? 'Multiple currencies'
+                  : `${isOwing ? '-' : isOwed ? '+' : ''}${relationship.settleableTotal?.currency ?? relationship.directCurrency ?? ''} ${Math.abs(balance).toFixed(2)}`}
               </ThemedText>
 
               <ThemedText style={[styles.summaryCardSubtitle, { color: isDark ? '#94A3B8' : colors.textSecondary }]}>
@@ -535,7 +630,11 @@ export default function FriendDetailScreen() {
                   : `Across ${sharedExpensesCount} direct expenses`}
               </ThemedText>
 
-              {balance !== 0 && (
+              <ThemedText style={[styles.summaryCardSubtitle, { color: isDark ? '#94A3B8' : colors.textSecondary }] }>
+                Direct ledger: {relationship.directCurrency ?? 'multiple currencies'} {relationship.directBalance >= 0 ? '+' : '-'}{Math.abs(relationship.directBalance).toFixed(2)}
+              </ThemedText>
+
+              {((balance !== 0 && !hasCurrencyAmbiguity) || canClearZeroNet) && (
                 <View style={styles.cardQuickActions}>
                   <TouchableOpacity
                     style={[styles.cardQuickActionButton, {
@@ -567,7 +666,7 @@ export default function FriendDetailScreen() {
               </ThemedText>
             </View>
             <ThemedText style={[styles.groupBalancesHint, { color: isDark ? '#94A3B8' : colors.textSecondary }]}>
-              Group balances are settled from the group, not directly with {friend.name.split(' ')[0]}.
+              Settle Up can apply payments and balance offsets across your shared ledgers.
             </ThemedText>
             {outstandingGroupBalances.map(summary => {
               const isOwedInGroup = summary.direction === 'you_are_owed';
@@ -710,8 +809,20 @@ export default function FriendDetailScreen() {
                             friendDetailTheme={friendDetailTheme as Record<string, string>}
                             isDark={isDark}
                             formatDate={formatDate}
+                            canReverse={Boolean(item.operationId) && !item.notes?.startsWith('Reversal of settlement operation')}
+                            onReverse={() => handleReverseSettlement(item)}
                           />
-                          : <FriendExpenseActivityEvent
+                          : item.type === 'scope_transfer'
+                            ? <FriendScopeTransferActivity
+                              item={item}
+                              friendName={friend.name}
+                              colors={colors as Record<string, string>}
+                              isDark={isDark}
+                              formatDate={formatDate}
+                              canReverse={item.fromUserId === currentUserId || item.toUserId === currentUserId}
+                              onReverse={() => handleReverseScopeTransfer(item)}
+                            />
+                            : <FriendExpenseActivityEvent
                             item={item}
                             currentUserId={currentUserId}
                             friendName={friend.name}

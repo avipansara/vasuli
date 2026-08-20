@@ -16,6 +16,8 @@ export interface Group {
   imageUrl?: string;
   createdAt: number;
   updatedAt: number;
+  deletedAt?: number;
+  deletedBy?: string;
 }
 
 export interface GroupMember {
@@ -55,6 +57,7 @@ export interface ExpenseSplit {
 
 export interface Settlement {
   id: string;
+  operationId?: string;
   groupId?: string;
   fromUserId: string;
   toUserId: string;
@@ -62,6 +65,26 @@ export interface Settlement {
   currency: string;
   date: number;
   notes?: string;
+  createdAt: number;
+}
+
+/**
+ * A non-cash reclassification between the Group and direct ledgers.
+ *
+ * `signedGroupBalanceDelta` is always the change to the current user's Group
+ * balance. The direct-ledger projection applies the inverse change so the
+ * relationship total remains unchanged.
+ */
+export interface SettlementScopeTransfer {
+  id: string;
+  operationId: string;
+  groupId: string;
+  fromUserId: string;
+  toUserId: string;
+  currency: string;
+  signedGroupBalanceDelta: number;
+  note?: string;
+  isReversal?: boolean;
   createdAt: number;
 }
 

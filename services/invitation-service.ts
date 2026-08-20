@@ -4,6 +4,7 @@ import { userService } from '@/services/user-service';
 import type { Invitation, User } from '@/types/database';
 import { normalizeEmail } from '@/utils/validation';
 import type { Friendship } from '@/services/friendship-service';
+import { mapInvitationRow } from './database-row-mappers';
 
 export type FriendRequestOrInvitation =
   | { type: 'friend_request'; friendship: Friendship; friend: User }
@@ -14,6 +15,14 @@ function isDeliverableEmail(email: string): boolean {
   const n = normalizeEmail(email);
   if (!n) return true;
   return !n.endsWith('@phone.placeholder');
+}
+
+function getInvitationName(name?: string, email?: string, phone?: string): string {
+  const trimmedName = name?.trim();
+  if (trimmedName) return trimmedName;
+
+  const emailName = normalizeEmail(email)?.split('@')[0]?.trim();
+  return emailName || phone?.trim() || 'A friend';
 }
 
 async function assertSendInvitationEmail(params: {
@@ -102,8 +111,8 @@ export const invitationService = {
 
     if (error) throw error;
 
-    const inviterName = invitation.inviterName || 'A friend';
-    const inviteeName = invitation.inviteeName || inviteeEmail.split('@')[0];
+    const inviterName = getInvitationName(invitation.inviterName);
+    const inviteeName = getInvitationName(invitation.inviteeName, inviteeEmail, invitation.inviteePhone);
 
     if (isDeliverableEmail(inviteeEmail)) {
       try {
@@ -130,16 +139,7 @@ export const invitationService = {
       );
     }
 
-    return {
-      id: data.id,
-      inviterId: data.inviter_id,
-      inviteeEmail: data.invitee_email,
-      inviteePhone: data.invitee_phone || undefined,
-      inviteeName: data.invitee_name || undefined,
-      status: data.status,
-      createdAt: new Date(data.created_at).getTime(),
-      expiresAt: new Date(data.expires_at).getTime(),
-    };
+    return mapInvitationRow(data);
   },
 
   async getByInviter(inviterId: string): Promise<Invitation[]> {
@@ -151,16 +151,7 @@ export const invitationService = {
 
     if (error) throw error;
 
-    return data.map(inv => ({
-      id: inv.id,
-      inviterId: inv.inviter_id,
-      inviteeEmail: inv.invitee_email,
-      inviteePhone: inv.invitee_phone || undefined,
-      inviteeName: inv.invitee_name || undefined,
-      status: inv.status,
-      createdAt: new Date(inv.created_at).getTime(),
-      expiresAt: new Date(inv.expires_at).getTime(),
-    }));
+    return data.map(mapInvitationRow);
   },
 
   async getByEmail(email: string): Promise<Invitation[]> {
@@ -175,16 +166,7 @@ export const invitationService = {
 
     if (error) throw error;
 
-    return data.map(inv => ({
-      id: inv.id,
-      inviterId: inv.inviter_id,
-      inviteeEmail: inv.invitee_email,
-      inviteePhone: inv.invitee_phone || undefined,
-      inviteeName: inv.invitee_name || undefined,
-      status: inv.status,
-      createdAt: new Date(inv.created_at).getTime(),
-      expiresAt: new Date(inv.expires_at).getTime(),
-    }));
+    return data.map(mapInvitationRow);
   },
 
   async updateStatus(id: string, status: 'accepted' | 'declined'): Promise<void> {
@@ -231,8 +213,8 @@ export const invitationService = {
 
     await assertSendInvitationEmail({
       inviteeEmail,
-      inviteeName: inv.invitee_name || inviteeEmail.split('@')[0],
-      inviterName: inviterName || 'A friend',
+      inviteeName: getInvitationName(inv.invitee_name, inviteeEmail, inv.invitee_phone),
+      inviterName: getInvitationName(inviterName),
       inviterId: inv.inviter_id,
       invitationId: id,
     });
@@ -316,19 +298,12 @@ export const invitationService = {
     const inviterNames = new Map<string, string>();
     const inviters = await userService.getByIds(inviterIds);
     for (const inviter of inviters) {
-      if (inviter.name) inviterNames.set(inviter.id, inviter.name);
+      inviterNames.set(inviter.id, getInvitationName(inviter.name, inviter.email, inviter.phone));
     }
 
     return visibleData.map((inv) => ({
-      id: inv.id,
-      inviterId: inv.inviter_id,
-      inviteeEmail: inv.invitee_email,
-      inviteePhone: inv.invitee_phone || undefined,
-      inviteeName: inv.invitee_name || undefined,
-      status: inv.status,
-      createdAt: new Date(inv.created_at).getTime(),
-      expiresAt: new Date(inv.expires_at).getTime(),
-      inviterName: inviterNames.get(inv.inviter_id),
+      ...mapInvitationRow(inv),
+      inviterName: inviterNames.get(inv.inviter_id) || 'A friend',
     }));
   },
 

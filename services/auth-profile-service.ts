@@ -1,25 +1,13 @@
 import { supabase } from '@/lib/supabase';
 import type { User } from '@/types/database';
 import { getDisplayName, normalizeEmail } from '@/utils/validation';
+import { mapUserRow } from './database-row-mappers';
 
 type LinkAuthUserParams = {
   authUserId: string;
   email?: string;
   name?: string;
 };
-
-function mapUserRow(row: any): User {
-  return {
-    id: row.id,
-    name: row.name,
-    email: row.email || undefined,
-    phone: row.phone || undefined,
-    avatar: row.avatar || undefined,
-    pushToken: row.push_token || undefined,
-    isActive: row.is_active ?? true,
-    createdAt: new Date(row.created_at).getTime(),
-  };
-}
 
 function isMissingRow(error: any): boolean {
   return error?.code === 'PGRST116';

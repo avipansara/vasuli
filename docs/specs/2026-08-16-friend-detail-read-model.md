@@ -1,5 +1,13 @@
 # Deepen the Friend detail read model
 
+## Status update — 2026-08-19
+
+Implemented in the current application through the secured
+`get_friend_detail_read_model` RPC and the existing Friend detail service seam.
+Subsequent migrations preserve payer, participant, activity, deletion, and
+ledger-scope behavior. Remaining work is runtime performance characterization,
+not implementation of the read-model boundary.
+
 ## Problem Statement
 
 The Friend detail page takes several seconds to become usable on a cold load.
@@ -156,4 +164,4 @@ data came from client-side assembly or a database-backed read model.
 ## Tracker
 
 - Project Hub project: `1786897413442`
-- Label: `ready-for-agent`
+- Status: complete

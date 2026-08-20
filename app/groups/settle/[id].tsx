@@ -22,7 +22,7 @@ import {
   getGroupSettleAmount,
   isSettleableGroupBalance,
 } from '@/utils/group-settle-selection';
-import { normalizeCurrencyInput } from '@/utils/validation';
+import { formatCurrencyInput, normalizeCurrencyInput } from '@/utils/validation';
 import { useQueryClient } from '@tanstack/react-query';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { memo, useCallback, useEffect, useState } from 'react';
@@ -224,6 +224,14 @@ export default function GroupSettleScreen() {
     setAmount(getGroupSettleAmount(member.balance));
   }, []);
 
+  const handleAmountChange = useCallback((text: string) => {
+    setAmount(normalizeCurrencyInput(text));
+  }, []);
+
+  const handleAmountBlur = useCallback(() => {
+    setAmount(current => formatCurrencyInput(current));
+  }, []);
+
   const handleSettle = async () => {
     if (!selectedMember) {
       Alert.alert('Error', 'Please select a member to settle with');
@@ -362,11 +370,15 @@ export default function GroupSettleScreen() {
               <TextInput
                 style={[styles.amountInput, { color: settle.accentText }]}
                 value={amount}
-                onChangeText={(text) => setAmount(normalizeCurrencyInput(text))}
+                onChangeText={handleAmountChange}
+                onBlur={handleAmountBlur}
                 placeholder="0.00"
                 placeholderTextColor={isDark ? 'rgba(16, 185, 129, 0.4)' : 'rgba(6, 78, 59, 0.3)'}
                 keyboardType="decimal-pad"
                 returnKeyType="done"
+                selectTextOnFocus
+                accessibilityLabel="Group settlement amount in US dollars"
+                accessibilityHint={selectedMember ? `Enter up to $${Math.abs(selectedMember.balance).toFixed(2)}` : undefined}
                 maxFontSizeMultiplier={1.4}
                 onSubmitEditing={() => Keyboard.dismiss()}
               />
@@ -483,22 +495,23 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 8,
     width: '100%',
     height: '100%',
   },
   currencySymbol: {
     fontSize: 24,
     fontWeight: '600',
-    marginRight: 4,
   },
   amountInput: {
     fontSize: 36,
     fontWeight: '800',
-    minWidth: 60,
+    fontVariant: ['tabular-nums'],
+    width: 120,
     padding: 0,
     margin: 0,
     textAlignVertical: 'center',
-    textAlign: 'center',
+    textAlign: 'left',
   },
   membersSection: {
     marginTop: 4,

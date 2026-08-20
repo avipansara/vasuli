@@ -121,6 +121,37 @@ describe('userService.deleteAccount', () => {
     )
   })
 
+  it('reads the safeguard from a React Native response-like error context', async () => {
+    const json = vi.fn().mockResolvedValue({
+      error: 'ACCOUNT_HAS_OUTSTANDING_BALANCES',
+      message: 'Please settle all outstanding balances before deleting your account.',
+    })
+    mocks.invoke.mockResolvedValue({
+      data: null,
+      response: undefined,
+      error: {
+        message: 'Edge Function returned a non-2xx status code',
+        context: { clone: () => ({ json }) },
+      },
+    })
+
+    await expect(userService.deleteAccount()).rejects.toThrow(
+      'Please settle all outstanding balances before deleting your account.'
+    )
+    expect(json).toHaveBeenCalledOnce()
+  })
+
+  it('does not expose technical Edge Function errors to the user', async () => {
+    mocks.invoke.mockResolvedValue({
+      data: null,
+      error: { message: 'Edge Function returned a non-2xx status code' },
+    })
+
+    await expect(userService.deleteAccount()).rejects.toThrow(
+      'We couldn\'t delete your account. Please try again or contact support.'
+    )
+  })
+
   it('completes successfully when the server confirms deletion', async () => {
     mocks.invoke.mockResolvedValue({ data: { success: true }, error: null })
 

@@ -13,7 +13,7 @@ import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { groupService } from '@/services/group-service';
 import { userService } from '@/services/user-service';
 import { queryKeys } from '@/services/query-keys';
-import type { GroupWithMembers } from '@/types/database';
+import type { Group, GroupWithMembers } from '@/types/database';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
@@ -49,12 +49,17 @@ export default function GroupsScreen() {
       return groupService.getHomeSummaries(currentUserId);
     },
   });
+  const { data: deletedGroups = [], refetch: refetchDeletedGroups } = useQuery({
+    queryKey: [...groupsQueryKey, 'deleted'],
+    enabled: !!currentUserId,
+    queryFn: () => groupService.getDeletedGroups(currentUserId),
+  });
   const loading = isLoading && groups.length === 0;
   const loadError = error ? getFetchErrorMessage(error) : null;
 
   const loadGroups = useCallback(async () => {
-    await refetch();
-  }, [refetch]);
+    await Promise.all([refetch(), refetchDeletedGroups()]);
+  }, [refetch, refetchDeletedGroups]);
 
   useRefetchOnFocus({
     enabled: !!currentUserId,
@@ -82,9 +87,19 @@ export default function GroupsScreen() {
 
   useGroupsHomeRealtime(currentUserId, invalidateGroups);
 
+  const restoreGroup = useCallback(async (group: Group) => {
+    try {
+      await groupService.restore(group.id);
+      await loadGroups();
+    } catch (error) {
+      console.error('Error restoring group:', error);
+      Alert.alert('Error', 'Failed to restore group');
+    }
+  }, [loadGroups]);
+
   const renderGroupItem = useCallback(
-    ({ item, index }: { item: GroupWithMembers; index: number }) => (
-      <GroupCard group={item} index={index} onRefresh={loadGroups} />
+    ({ item }: { item: GroupWithMembers }) => (
+      <GroupCard group={item} onRefresh={loadGroups} />
     ),
     [loadGroups]
   );
@@ -173,6 +188,20 @@ export default function GroupsScreen() {
         </TouchableOpacity>
       </View>
 
+      {deletedGroups.length > 0 && (
+        <View style={styles.deletedSection}>
+          <ThemedText type="subtitle" style={{ color: colors.text }}>Recently deleted</ThemedText>
+          {deletedGroups.map(group => (
+            <View key={group.id} style={[styles.deletedRow, { backgroundColor: isDark ? '#0d1321' : '#f8fafc' }]}>
+              <ThemedText style={{ color: colors.text, flex: 1 }}>{group.name}</ThemedText>
+              <TouchableOpacity onPress={() => restoreGroup(group)} accessibilityRole="button" accessibilityLabel={`Restore ${group.name}`}>
+                <ThemedText type="defaultSemiBold" style={{ color: colors.tint }}>Restore</ThemedText>
+              </TouchableOpacity>
+            </View>
+          ))}
+        </View>
+      )}
+
       {loading ? (
         <GroupsListSkeleton />
       ) : loadError ? (
@@ -249,6 +278,19 @@ const styles = StyleSheet.create({
   listContent: {
     padding: 16,
     paddingBottom: 120,
+  },
+  deletedSection: {
+    paddingHorizontal: 16,
+    gap: 8,
+    marginBottom: 4,
+  },
+  deletedRow: {
+    minHeight: 44,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
   },
   emptyContainer: {
     flex: 1,

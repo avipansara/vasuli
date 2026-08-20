@@ -3,6 +3,9 @@ import type { Group, GroupMember, GroupWithMembers } from '@/types/database';
 import { calculateGroupBalances, isGroupSettled, SETTLED_BALANCE_THRESHOLD } from './group-balance';
 import { expenseService } from './expense-service';
 import { settlementService } from './settlement-service';
+import { scopeTransferService } from './scope-transfer-service';
+import { logGroupDetailDiagnostic } from '@/lib/group-detail-diagnostics';
+import { mapGroupMemberRow, mapGroupRow } from './database-row-mappers';
 
 type GroupHomeRow = {
   id: string;
@@ -22,6 +25,7 @@ function mapGroupHomeRow(row: GroupHomeRow): GroupWithMembers {
     imageUrl: row.image_url || undefined,
     createdAt: new Date(row.created_at).getTime(),
     updatedAt: new Date(row.updated_at).getTime(),
+    deletedAt: undefined,
     yourBalance: row.your_balance,
   };
 }
@@ -31,6 +35,13 @@ export const groupService = {
     const { data, error } = await supabase.rpc('get_groups_home_summaries');
 
     if (error) throw error;
+    if (__DEV__) {
+      console.log('[GroupsHome] loaded summaries', {
+        project: (process.env.EXPO_PUBLIC_SUPABASE_URL ?? '').replace(/^https:\/\//, '').replace(/\.supabase\.co\/?$/, ''),
+        count: data?.length ?? 0,
+        balances: ((data ?? []) as GroupHomeRow[]).map(row => ({ groupId: row.id, balance: row.your_balance })),
+      });
+    }
     return ((data || []) as GroupHomeRow[]).map(mapGroupHomeRow);
   },
 
@@ -57,36 +68,41 @@ export const groupService = {
 
     if (error) throw error;
 
-    return {
-      id: data.id,
-      name: data.name,
-      description: data.description || undefined,
-      imageUrl: data.image_url || undefined,
-      createdAt: new Date(data.created_at).getTime(),
-      updatedAt: new Date(data.updated_at).getTime(),
-    };
+    return mapGroupRow(data);
   },
 
-  async getById(id: string): Promise<Group | null> {
+  async getById(id: string, traceId?: string): Promise<Group | null> {
     const { data, error } = await supabase
       .from('groups')
       .select('*')
       .eq('id', id)
+      .is('deleted_at', null)
       .single();
 
     if (error) {
-      if (error.code === 'PGRST116') return null;
+      if (error.code === 'PGRST116') {
+        logGroupDetailDiagnostic('supabase-no-row', {
+          traceId,
+          groupId: id,
+          errorCode: error.code,
+          errorMessage: error.message,
+          errorDetails: error.details,
+          errorHint: error.hint,
+        }, 'warn');
+        return null;
+      }
+      logGroupDetailDiagnostic('supabase-error', {
+        traceId,
+        groupId: id,
+        errorCode: error.code,
+        errorMessage: error.message,
+        errorDetails: error.details,
+        errorHint: error.hint,
+      }, 'error');
       throw error;
     }
 
-    return {
-      id: data.id,
-      name: data.name,
-      description: data.description || undefined,
-      imageUrl: data.image_url || undefined,
-      createdAt: new Date(data.created_at).getTime(),
-      updatedAt: new Date(data.updated_at).getTime(),
-    };
+    return mapGroupRow(data);
   },
 
   async getUserGroups(userId: string): Promise<Group[]> {
@@ -106,18 +122,31 @@ export const groupService = {
       .from('groups')
       .select('*')
       .in('id', groupIds)
+      .is('deleted_at', null)
       .order('updated_at', { ascending: false });
 
     if (error) throw error;
 
-    return (data || []).map(r => ({
-      id: r.id,
-      name: r.name,
-      description: r.description || undefined,
-      imageUrl: r.image_url || undefined,
-      createdAt: new Date(r.created_at).getTime(),
-      updatedAt: new Date(r.updated_at).getTime(),
-    }));
+    return (data || []).map(mapGroupRow);
+  },
+
+  async getDeletedGroups(userId: string): Promise<Group[]> {
+    const { data: memberData, error: memberError } = await supabase
+      .from('group_members')
+      .select('group_id')
+      .eq('user_id', userId);
+    if (memberError) throw memberError;
+    const groupIds = (memberData ?? []).map(member => member.group_id);
+    if (groupIds.length === 0) return [];
+
+    const { data, error } = await supabase
+      .from('groups')
+      .select('*')
+      .in('id', groupIds)
+      .not('deleted_at', 'is', null)
+      .order('deleted_at', { ascending: false });
+    if (error) throw error;
+    return (data ?? []).map(mapGroupRow);
   },
 
   async update(id: string, updates: Partial<Omit<Group, 'id' | 'createdAt' | 'updatedAt'>>): Promise<void> {
@@ -137,20 +166,31 @@ export const groupService = {
     if (error) throw error;
   },
 
-  async delete(id: string): Promise<void> {
+  async delete(id: string, currentUserId: string): Promise<void> {
     const expenses = await expenseService.getByGroup(id);
     const [splits, settlements] = await Promise.all([
       expenseService.getSplitsForExpenses(expenses.map(expense => expense.id)),
       settlementService.getByGroup(id),
     ]);
+    const scopeTransfers = await scopeTransferService.getByGroup(id);
 
-    if (!isGroupSettled(expenses, splits, settlements)) {
+    if (!isGroupSettled(expenses, splits, settlements, scopeTransfers)) {
       throw new Error('Group cannot be deleted until all balances are settled.');
     }
 
     const { error } = await supabase
       .from('groups')
-      .delete()
+      .update({ deleted_at: new Date().toISOString(), deleted_by: currentUserId })
+      .eq('id', id)
+      .is('deleted_at', null);
+
+    if (error) throw error;
+  },
+
+  async restore(id: string): Promise<void> {
+    const { error } = await supabase
+      .from('groups')
+      .update({ deleted_at: null, deleted_by: null, updated_at: new Date().toISOString() })
       .eq('id', id);
 
     if (error) throw error;
@@ -172,13 +212,7 @@ export const groupService = {
 
     if (error) throw error;
 
-    return {
-      id: data.id,
-      groupId: data.group_id,
-      userId: data.user_id,
-      role: data.role as 'admin' | 'member',
-      joinedAt: new Date(data.joined_at).getTime(),
-    };
+    return mapGroupMemberRow(data);
   },
 
   async getMembers(groupId: string): Promise<GroupMember[]> {
@@ -189,13 +223,7 @@ export const groupService = {
 
     if (error) throw error;
 
-    return (data || []).map(r => ({
-      id: r.id,
-      groupId: r.group_id,
-      userId: r.user_id,
-      role: r.role as 'admin' | 'member',
-      joinedAt: new Date(r.joined_at).getTime(),
-    }));
+    return (data || []).map(mapGroupMemberRow);
   },
 
   async removeMember(groupId: string, userId: string): Promise<void> {

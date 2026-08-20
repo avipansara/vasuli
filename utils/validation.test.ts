@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  formatCurrencyInput,
   getEmailErrorMessage,
   getDisplayName,
   getPersonNameErrorMessage,
@@ -118,5 +119,18 @@ describe('normalizeCurrencyInput', () => {
     expect(normalizeCurrencyInput('')).toBe('')
     expect(normalizeCurrencyInput('.')).toBe('.')
     expect(normalizeCurrencyInput('12.')).toBe('12.')
+  })
+})
+
+describe('formatCurrencyInput', () => {
+  it('formats completed entries with two decimal places', () => {
+    expect(formatCurrencyInput('2')).toBe('2.00')
+    expect(formatCurrencyInput('2.5')).toBe('2.50')
+    expect(formatCurrencyInput('.5')).toBe('0.50')
+  })
+
+  it('clears incomplete empty entries', () => {
+    expect(formatCurrencyInput('')).toBe('')
+    expect(formatCurrencyInput('.')).toBe('')
   })
 })
