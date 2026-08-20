@@ -5,6 +5,8 @@ ALTER TABLE public.settlement_scope_transfers
   ADD CONSTRAINT settlement_scope_transfers_operation_group_key
   UNIQUE (operation_id, group_id);
 
+DROP FUNCTION IF EXISTS public.commit_settlement_operation(UUID, UUID, UUID, TEXT, NUMERIC, TEXT, TIMESTAMPTZ, NUMERIC, JSONB, JSONB);
+
 CREATE OR REPLACE FUNCTION public.commit_settlement_operation(
   p_payment_intent_id UUID,
   p_friend_id UUID,

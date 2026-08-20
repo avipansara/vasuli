@@ -1,6 +1,8 @@
 -- Qualify the operation variable in the transfer-aware RPC. PostgreSQL
 -- otherwise treats operation_id as ambiguous inside the INSERT statement.
 
+DROP FUNCTION IF EXISTS public.commit_settlement_operation(UUID, UUID, UUID, TEXT, NUMERIC, TEXT, TIMESTAMPTZ, NUMERIC, JSONB, JSONB);
+
 CREATE OR REPLACE FUNCTION public.commit_settlement_operation(
   p_payment_intent_id UUID,
   p_friend_id UUID,
