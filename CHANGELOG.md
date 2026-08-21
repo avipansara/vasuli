@@ -1,5 +1,8 @@
 ## 2026-08-20
 
+- Fixed edited expenses taking tens of seconds to show updated amounts:
+  cache invalidations now run immediately after the expense update
+  persists instead of waiting on activity logging and push notifications.
 - Fixed group renames not appearing in the Groups list after saving: the edit
   screen now invalidates the groups list cache like group creation does.
 - Clearing the Activity search now also dismisses the keyboard.

@@ -18,11 +18,9 @@ describe('Expense lifecycle', () => {
 
     await openExpenseDetail(description);
     await editExpenseAmount('24.50');
-    // Cache invalidations wait on slow push-notification side effects, so
-    // give the refreshed detail screen extra time.
     await waitFor(element(by.text('$24.50')).atIndex(0))
       .toBeVisible()
-      .withTimeout(45000);
+      .withTimeout(15000);
 
     await deleteExpenseFromDetail(description);
   });

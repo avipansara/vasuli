@@ -329,6 +329,31 @@ export default function EditExpenseScreen() {
         groupId: splitType === SplitType.GROUP ? selectedGroupId : undefined,
       }, splits);
 
+      const affectedFriendIds = Array.from(new Set([
+        ...originalSplits.map(split => split.userId),
+        ...splits.map(split => split.userId),
+      ].filter(userId => userId !== currentUserId)));
+      const affectedGroupIds = Array.from(new Set([
+        originalExpense.groupId,
+        updatedExpense.groupId,
+      ].filter((groupId): groupId is string => !!groupId)));
+
+      // Refresh visible surfaces before the slow side effects below so
+      // updated balances and amounts appear without waiting on push
+      // notifications.
+      await Promise.allSettled([
+        queryClient.invalidateQueries({ queryKey: friendsHomeQueryKey }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.expenses.detail(id) }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.expenses.list(currentUserId) }),
+        ...affectedFriendIds.flatMap(friendId => [
+          queryClient.invalidateQueries({ queryKey: queryKeys.friends.detail(currentUserId, friendId) }),
+        ]),
+        ...affectedGroupIds.flatMap(groupId => [
+          queryClient.invalidateQueries({ queryKey: queryKeys.groups.detail(currentUserId, groupId) }),
+        ]),
+        queryClient.invalidateQueries({ queryKey: queryKeys.groups.list(currentUserId) }),
+      ]);
+
       try {
         const group = splitType === SplitType.GROUP ? groups.find(g => g.id === selectedGroupId) : undefined;
         const participantIds = Array.from(new Set([
@@ -345,6 +370,7 @@ export default function EditExpenseScreen() {
           groupName: group?.name,
           participantIds,
         });
+        queryClient.invalidateQueries({ queryKey: queryKeys.activity.list(currentUserId) });
 
         const usersToNotify = await userService.getByIds(
           participantIds.filter(userId => userId !== currentUserId)
@@ -366,29 +392,6 @@ export default function EditExpenseScreen() {
       } catch (sideEffectError) {
         console.warn('Expense updated, but follow-up work failed:', sideEffectError);
       }
-
-      const affectedFriendIds = Array.from(new Set([
-        ...originalSplits.map(split => split.userId),
-        ...splits.map(split => split.userId),
-      ].filter(userId => userId !== currentUserId)));
-      const affectedGroupIds = Array.from(new Set([
-        originalExpense.groupId,
-        updatedExpense.groupId,
-      ].filter((groupId): groupId is string => !!groupId)));
-
-      await Promise.allSettled([
-        queryClient.invalidateQueries({ queryKey: friendsHomeQueryKey }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.expenses.detail(id) }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.expenses.list(currentUserId) }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.activity.list(currentUserId) }),
-        ...affectedFriendIds.flatMap(friendId => [
-          queryClient.invalidateQueries({ queryKey: queryKeys.friends.detail(currentUserId, friendId) }),
-        ]),
-        ...affectedGroupIds.flatMap(groupId => [
-          queryClient.invalidateQueries({ queryKey: queryKeys.groups.detail(currentUserId, groupId) }),
-        ]),
-        queryClient.invalidateQueries({ queryKey: queryKeys.groups.list(currentUserId) }),
-      ]);
     } catch (error) {
       if (previousHomeFriends) {
         queryClient.setQueryData(friendsHomeQueryKey, previousHomeFriends);
