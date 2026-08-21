@@ -98,6 +98,9 @@ export function NavigationHeader({ title, onBack, rightAction, style }: Navigati
     <View style={[styles.navigationHeader, style]}>
       <TouchableOpacity
         onPress={onBack}
+        accessibilityRole="button"
+        accessibilityLabel="Go back"
+        accessibilityHint="Returns to the previous screen"
         style={[
           styles.navBackButton,
           {

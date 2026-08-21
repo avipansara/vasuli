@@ -475,6 +475,7 @@ export default function EditExpenseScreen() {
           <TouchableOpacity
             onPress={handleSubmit}
             disabled={!isValid || loading}
+            testID="edit-expense-save-button"
             style={[
               styles.headerButton,
               {
@@ -512,6 +513,7 @@ export default function EditExpenseScreen() {
                 returnKeyType="next"
                 onSubmitEditing={() => descriptionInputRef.current?.focus()}
                 blurOnSubmit={false}
+                testID="edit-expense-amount-input"
               />
             </View>
           </View>
@@ -535,6 +537,7 @@ export default function EditExpenseScreen() {
                 placeholderTextColor={isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'}
                 returnKeyType="done"
                 onSubmitEditing={() => Keyboard.dismiss()}
+                testID="edit-expense-description-input"
               />
             </View>
           </View>

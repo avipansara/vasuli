@@ -77,11 +77,18 @@ async function main() {
     return;
   }
 
-  for (const group of groups) {
-    const { error } = await supabase.from('groups').delete().eq('id', group.id);
-    if (error) throw error;
-    console.log(`[e2e-cleanup] Deleted ${group.name}`);
+  // Group deletion goes through the development-only purge_e2e_groups fixture
+  // because settlement scope transfers and settlement operations restrict
+  // direct group deletes.
+  const { data: deletedCount, error: purgeError } = await supabase.rpc('purge_e2e_groups', {
+    group_prefix: GROUP_PREFIX,
+  });
+  if (purgeError) {
+    throw new Error(
+      `${purgeError.message} (Apply supabase/fixtures/e2e-purge-groups.sql in the development Supabase SQL editor first.)`,
+    );
   }
+  console.log(`[e2e-cleanup] Purged ${deletedCount} prefixed E2E group(s).`);
 }
 
 main().catch((error) => {

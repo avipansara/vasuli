@@ -15,7 +15,7 @@ import type { Activity } from '@/types/database';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Animated, Platform, RefreshControl, SectionList, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { Animated, Keyboard, Platform, RefreshControl, SectionList, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 
 function getTimePeriod(timestamp: number): string {
   const now = new Date();
@@ -175,6 +175,7 @@ export default function ActivityScreen() {
             color={isDark ? '#10b981' : friendDetailTheme.actionIcon}
           />
           <TextInput
+            testID="activity-search-input"
             accessibilityLabel="Search activities"
             autoCapitalize="none"
             autoCorrect={false}
@@ -189,7 +190,10 @@ export default function ActivityScreen() {
             <TouchableOpacity
               accessibilityLabel="Clear activity search"
               hitSlop={8}
-              onPress={() => setSearchQuery('')}
+              onPress={() => {
+                setSearchQuery('');
+                Keyboard.dismiss();
+              }}
               style={styles.clearSearchButton}>
               <IconSymbol
                 name="xmark.circle.fill"

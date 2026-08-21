@@ -1,5 +1,20 @@
 ## 2026-08-20
 
+- Fixed group renames not appearing in the Groups list after saving: the edit
+  screen now invalidates the groups list cache like group creation does.
+- Clearing the Activity search now also dismisses the keyboard.
+- Expanded Detox E2E coverage with four new scenario files: friend-level
+  settlement from the Friend detail screen, the expense edit → delete lifecycle
+  via Expense Detail, group rename (list swipe action) and deletion, and an
+  Activity-feed search plus group-balance settlement verification.
+- Added stable testIDs to the friend settle form, edit-expense form, expense
+  detail actions, edit-group form, activity search, and the Friend detail
+  Settle Up button; NavigationHeader back buttons now expose a "Go back"
+  accessibility label.
+- Added a development-only purge_e2e_groups fixture so E2E cleanup can delete
+  Detox groups whose combined settlements create restricting settlement scope
+  transfers and operations; cleanup now runs through it instead of direct
+  group deletes.
 - Added a Detox/Jest iOS simulator E2E setup targeting the Vasuli Xcode scheme
   and iPhone 17 Pro, with launch, email-input, and environment-driven OTP login
   coverage that bypasses the OTP resend countdown and dismisses notification

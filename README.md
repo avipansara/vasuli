@@ -102,7 +102,9 @@ npm run test:watch
 
 Detox runs the native user-flow tests on the configured **iPhone 17 Pro** iOS
 simulator. The current scenarios cover sign-in, Friends, Groups, creating a
-group, adding an expense, and settlement flows.
+group, adding an expense, settlement flows (group and friend level), the
+expense edit/delete lifecycle via Expense Detail, group rename and deletion,
+and the Activity feed with balance verification.
 
 #### Prerequisites
 
@@ -138,6 +140,13 @@ replace its two placeholders with the development reviewer and E2E-friend
 emails, and run the resulting SQL in the **development** Supabase SQL Editor.
 Keep the populated SQL out of Git. The fixture creates an accepted friendship
 and is safe to rerun.
+
+Also run
+[`supabase/fixtures/e2e-purge-groups.sql`](./supabase/fixtures/e2e-purge-groups.sql)
+once in the **development** SQL Editor. It installs a guarded
+`purge_e2e_groups` function that `e2e:cleanup` uses to delete Detox groups
+whose settlement history would otherwise block deletion. The fixture contains
+no secrets and is safe to rerun.
 
 #### Build and run
 

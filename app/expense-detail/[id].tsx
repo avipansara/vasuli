@@ -233,7 +233,8 @@ export default function ExpenseDetailScreen() {
                   borderColor: expenseDetail.accentSurfaceBorder,
                   opacity: isDeleting ? 0.5 : 1,
                 }]}
-                accessibilityLabel="Edit expense">
+                accessibilityLabel="Edit expense"
+                testID="expense-detail-edit-button">
                 <IconSymbol name="pencil" size={18} color={expenseDetail.accent} />
               </TouchableOpacity>
             )}
@@ -246,7 +247,8 @@ export default function ExpenseDetailScreen() {
                   borderColor: expenseDetail.dangerBorder,
                   opacity: isDeleting ? 0.5 : 1,
                 }]}
-                accessibilityLabel="Delete expense">
+                accessibilityLabel="Delete expense"
+                testID="expense-detail-delete-button">
                 {isDeleting ? (
                   <IconSymbol name="clock" size={18} color={expenseDetail.danger} />
                 ) : (

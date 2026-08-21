@@ -332,6 +332,7 @@ export default function FriendSettleScreen() {
                   placeholder="0.00"
                   placeholderTextColor={isDark ? 'rgba(16, 185, 129, 0.4)' : 'rgba(6, 78, 59, 0.3)'}
                   selectTextOnFocus
+                  testID="friend-settle-amount-input"
                   accessibilityLabel={`Settlement amount in ${settlementCurrency ?? 'the selected currency'}`}
                   accessibilityHint={settleableTotal ? `Enter up to ${settlementCurrency} ${maxAmount.toFixed(2)}` : undefined}
                   maxFontSizeMultiplier={1.4}
@@ -413,6 +414,7 @@ export default function FriendSettleScreen() {
           <TouchableOpacity
             disabled={!isValidAmount || settling}
             onPress={handleSettle}
+            testID="friend-record-settlement-button"
             style={[
               styles.submitButton,
               { backgroundColor: settle.buttonBackground },

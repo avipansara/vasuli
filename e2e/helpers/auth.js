@@ -54,4 +54,24 @@ async function openGroups() {
   await expect(element(by.label('Create group'))).toBeVisible();
 }
 
-module.exports = { loginToFriends, openGroups };
+async function openFriends() {
+  // Same NativeTabs workaround as openGroups; Friends is the first tab.
+  await device.tap({ x: 50, y: 822 });
+  await waitFor(element(by.id('friends-screen')))
+    .toBeVisible()
+    .withTimeout(10000);
+}
+
+async function openActivity() {
+  // Same NativeTabs workaround as openGroups; Activity is the third tab.
+  await device.tap({ x: 251, y: 822 });
+  await waitFor(element(by.id('activity-search-input')))
+    .toBeVisible()
+    .withTimeout(10000);
+}
+
+async function goBack() {
+  await element(by.label('Go back')).atIndex(0).tap();
+}
+
+module.exports = { goBack, loginToFriends, openActivity, openFriends, openGroups };

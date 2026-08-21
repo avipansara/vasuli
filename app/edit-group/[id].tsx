@@ -4,10 +4,13 @@ import { KeyboardAwareScroll } from '@/components/ui/keyboard-aware-scroll';
 import { NavigationHeader } from '@/components/ui/screen-header';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ThemedInput } from '@/components/ui/themed-input';
+import { useAuth } from '@/contexts/auth-context-otp';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { groupService } from '@/services/group-service';
+import { queryKeys } from '@/services/query-keys';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState, useRef } from 'react';
 import {
@@ -26,6 +29,9 @@ import {
 export default function EditGroupScreen() {
   const { gradients, colors, isDark } = useThemeColors();
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { user } = useAuth();
+  const currentUserId = user?.id || '';
+  const queryClient = useQueryClient();
   const [groupName, setGroupName] = useState('');
   const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(false);
@@ -89,6 +95,9 @@ export default function EditGroupScreen() {
         description: description.trim() || undefined,
       });
 
+      // The groups list does not reliably refocus-refetch after this
+      // full-screen modal closes, so refresh it explicitly like create does.
+      queryClient.invalidateQueries({ queryKey: queryKeys.groups.list(currentUserId) });
       router.back();
     } catch (error) {
       console.error('Error updating group:', error);
@@ -148,6 +157,7 @@ export default function EditGroupScreen() {
           <TouchableOpacity
             onPress={handleSubmit}
             disabled={!isValid || loading}
+            testID="edit-group-save-button"
             style={[
               styles.headerButton,
               {
@@ -181,6 +191,7 @@ export default function EditGroupScreen() {
               returnKeyType="next"
               onSubmitEditing={() => descriptionInputRef.current?.focus()}
               autoCapitalize="words"
+              testID="edit-group-name-input"
             />
           </View>
 

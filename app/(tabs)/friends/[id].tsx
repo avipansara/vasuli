@@ -645,6 +645,7 @@ export default function FriendDetailScreen() {
                     accessibilityLabel={`Settle up with ${friend.name}`}
                     accessibilityHint="Opens the settlement form for this balance"
                     accessibilityState={{ disabled: isSettlingUp, busy: isSettlingUp }}
+                    testID="friend-settle-up-button"
                     onPress={() => router.push(`/friend-settle/${id}`)}>
                     <IconSymbol size={18} name="banknote" color="#ffffff" />
                     <ThemedText style={[styles.cardQuickActionText, { color: '#ffffff' }]}>Settle Up</ThemedText>
