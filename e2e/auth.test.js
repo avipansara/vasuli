@@ -2,7 +2,12 @@ const { loginToFriends } = require('./helpers/auth');
 
 describe('Authentication', () => {
   beforeAll(async () => {
-    await device.launchApp();
+    // Clean install so the sign-in screen is guaranteed regardless of the
+    // session left behind by previously-run test files.
+    await device.launchApp({
+      delete: true,
+      permissions: { notifications: 'NO' },
+    });
   });
 
   it('shows the sign-in screen', async () => {

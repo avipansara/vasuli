@@ -1,4 +1,27 @@
+const LAUNCH_PERMISSIONS = { notifications: 'NO' };
+
+async function launchSignedIn() {
+  // Fast path: the Supabase session persists in AsyncStorage across relaunches
+  // (requires behavior.init.reinstallApp=false in .detoxrc.js, otherwise
+  // Detox wipes app data at every test-file boundary).
+  await device.launchApp({
+    newInstance: true,
+    permissions: LAUNCH_PERMISSIONS,
+  });
+  await waitFor(element(by.id('friends-screen')))
+    .toBeVisible()
+    .withTimeout(5000);
+}
+
 async function loginToFriends() {
+  try {
+    await launchSignedIn();
+    return;
+  } catch {
+    // No usable session (fresh install, signed out, or slow restore) — fall
+    // through to the full OTP sign-in below.
+  }
+
   const email = process.env.EXPO_PUBLIC_TEST_ACCOUNT_EMAIL;
   const otp = process.env.EXPO_PUBLIC_TEST_ACCOUNT_OTP;
 
@@ -8,7 +31,11 @@ async function loginToFriends() {
     );
   }
 
-  await device.launchApp({ delete: true, newInstance: true });
+  await device.launchApp({
+    delete: true,
+    newInstance: true,
+    permissions: LAUNCH_PERMISSIONS,
+  });
   await element(by.id('sign-in-email-input')).typeText(email);
   await device.disableSynchronization();
   try {

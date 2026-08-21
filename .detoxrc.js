@@ -1,5 +1,12 @@
 /** @type {Detox.DetoxConfig} */
 module.exports = {
+  behavior: {
+    init: {
+      // Keep the app (and its AsyncStorage Supabase session) installed across
+      // test files so e2e/helpers/auth.js can reuse one sign-in per run.
+      reinstallApp: false,
+    },
+  },
   testRunner: {
     args: {
       '$0': 'jest',
