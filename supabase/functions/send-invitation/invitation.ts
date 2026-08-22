@@ -1,4 +1,4 @@
-import { normalizeEmail } from "../../../utils/validation";
+import { normalizeEmail } from "../../../utils/validation.ts";
 
 export interface InvitationRequest {
   inviteeEmail: string;

@@ -288,7 +288,6 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     marginBottom: 12,
     borderRadius: 16,
-    // borderWidth: 1,
   },
   topSection: {
     flexDirection: 'row',

@@ -4,7 +4,7 @@ import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getActivityHref } from '@/lib/activity-link';
 import type { Activity as DbActivity } from '@/types/database';
 import { router } from 'expo-router';
-import { memo } from 'react';
+import { memo, useMemo } from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 
 interface ActivityItem {
@@ -190,31 +190,32 @@ function ActivityCardInner({ activity, currentUserId, deletedExpenseTargetIds }:
               {amountLabel}
             </ThemedText>
           )}
-          {href && (
-            <IconSymbol
-              size={14}
-              name="chevron.right"
-              color={isDark ? '#64748b' : colors.textSecondary}
-            />
-          )}
         </View>
       )}
     </>
   );
 
-  const cardStyle = [
-    styles.card,
-    {
-      backgroundColor: colors.card,
-      borderWidth: isDark ? 1 : 0,
-      borderColor: colors.border,
-      shadowColor: isDark ? 'transparent' : '#64748B',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: isDark ? 0 : 0.09,
+  const cardStyle = useMemo(
+    () => (isDark ? {
+      backgroundColor: '#000000',
+      borderWidth: 1,
+      borderColor: 'rgba(255, 255, 255, 0.08)',
+      shadowColor: 'transparent',
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: 0,
       shadowRadius: 0,
-      elevation: isDark ? 0 : 4,
-    },
-  ];
+      elevation: 0,
+    } : {
+      backgroundColor: '#ffffff',
+      borderWidth: 0,
+      shadowColor: '#475569',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.09,
+      shadowRadius: 0,
+      elevation: 4,
+    }),
+    [isDark]
+  );
 
   if (href) {
     return (
@@ -224,14 +225,14 @@ function ActivityCardInner({ activity, currentUserId, deletedExpenseTargetIds }:
         accessibilityLabel={accessibilityLabel}
         accessibilityHint="Opens the related activity details"
         onPress={() => router.push(href)}
-        style={cardStyle}>
+        style={[styles.card, cardStyle]}>
         {content}
       </TouchableOpacity>
     );
   }
 
   return (
-    <View style={cardStyle}>
+    <View style={[styles.card, cardStyle]}>
       {content}
     </View>
   );

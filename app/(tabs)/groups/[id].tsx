@@ -5,18 +5,18 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { GroupDetailSkeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useDebouncedQueryInvalidation } from '@/hooks/use-debounced-query-invalidation';
-import { useRefetchOnFocus } from '@/hooks/use-refetch-on-focus';
 import { useRealtime } from '@/hooks/use-realtime';
+import { useRefetchOnFocus } from '@/hooks/use-refetch-on-focus';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { createGroupDetailTraceId, logGroupDetailDiagnostic } from '@/lib/group-detail-diagnostics';
-import { CombinedSettlementError } from '@/services/settlement-service';
 import { areGroupBalancesSettled } from '@/services/group-balance';
+import { groupDetailMutationController } from '@/services/group-detail-mutation-controller';
 import type { GroupDetailReadModel, GroupExpenseView } from '@/services/group-detail-read-model';
 import { groupDetailService } from '@/services/group-detail-service';
-import { groupDetailMutationController } from '@/services/group-detail-mutation-controller';
 import { createReactQueryCacheAdapter } from '@/services/query-cache-adapter';
 import { queryKeys } from '@/services/query-keys';
+import { CombinedSettlementError } from '@/services/settlement-service';
 import type { Expense, GroupMember, Settlement, User } from '@/types/database';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -136,6 +136,28 @@ export default function GroupDetailScreen() {
   const groupDetailQueryKey = useMemo(() => queryKeys.groups.detail(currentUserId, id), [currentUserId, id]);
   const invalidateGroupDetail = useDebouncedQueryInvalidation(groupDetailQueryKey, 500);
   const queryCache = useMemo(() => createReactQueryCacheAdapter(queryClient), [queryClient]);
+
+  const cardStyle = useMemo(
+    () => (isDark ? {
+      backgroundColor: '#000000',
+      borderWidth: 1,
+      borderColor: 'rgba(255, 255, 255, 0.08)',
+      shadowColor: 'transparent',
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: 0,
+      shadowRadius: 0,
+      elevation: 0,
+    } : {
+      backgroundColor: '#ffffff',
+      borderWidth: 0,
+      shadowColor: '#475569',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.09,
+      shadowRadius: 0,
+      elevation: 4,
+    }),
+    [isDark]
+  );
 
   const tabItems = useMemo(() => [
     { type: 'tab' as const, id: 'all' as SectionTab, label: 'All', icon: 'person.3.fill' as const },
@@ -545,7 +567,7 @@ export default function GroupDetailScreen() {
     const dateStr = new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
     return (
-      <View style={[styles.transferRow, { backgroundColor: colors.card, borderColor: colors.border }]}>
+      <View style={[styles.transferRow, cardStyle]}>
         <View style={[styles.expenseIcon, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.15)' : '#D1FAE5' }]}>
           <IconSymbol size={20} name="banknote" color={isDark ? '#6EE7B7' : '#047857'} />
         </View>
@@ -949,8 +971,6 @@ export default function GroupDetailScreen() {
                 paddingHorizontal: 16,
                 borderRadius: 24,
               }]}>
-
-
               <ThemedText type='defaultSemiBold' style={[styles.summaryCardTitle, { color: isDark ? (currentUserBalance < 0 ? '#ffb3b0' : currentUserBalance > 0 ? '#45dfa4' : '#94A3B8') : balanceColor }]}>
                 {currentUserBalance > 0
                   ? 'YOU ARE OWED'
@@ -1065,7 +1085,7 @@ export default function GroupDetailScreen() {
             {scopeTransfers.map(transfer => {
               const movedToFriendship = transfer.fromUserId === currentUserId;
               return (
-                <View key={transfer.id} style={[styles.transferRow, { backgroundColor: friendDetailTheme.surface, borderColor: friendDetailTheme.surfaceBorder }]}>
+                <View key={transfer.id} style={[styles.transferRow, cardStyle]}>
                   <IconSymbol name="arrow.left.arrow.right" size={17} color={friendDetailTheme.actionIcon} />
                   <View style={styles.transferCopy}>
                     <ThemedText type="defaultSemiBold" style={{ color: colors.text }}>{transfer.isReversal ? 'Reversed balance offset' : movedToFriendship ? 'Moved to friendship balance' : 'Moved from friendship balance'}</ThemedText>
@@ -1384,7 +1404,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.09,
     shadowRadius: 0,
     elevation: 4,
-    borderWidth: 1,
     borderColor: 'transparent',
     paddingHorizontal: 16,
   },
@@ -1530,7 +1549,6 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     marginBottom: 8,
     borderRadius: 12,
-    borderWidth: 1,
   },
   transferCopy: {
     flex: 1,
