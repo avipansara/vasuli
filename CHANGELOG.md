@@ -1,3 +1,10 @@
+## 2026-08-22
+
+- Removed animated wrappers from Friend and Group Detail cards and Add Friend lookup results so card surfaces stay visually stable while scrolling and loading.
+- Restored dark-mode card depth with a visible cool-gray shadow and Android elevation across detail, activity, profile, settlement, and loading-card states.
+- Restored the same dark-mode depth for Home Friend, Group, and Activity cards, which had separately disabled their shadows and elevation, without changing card surfaces.
+- Standardized dark-mode card surfaces to the shared black, borderless, slate-shadow elevation style while preserving existing light-mode card styling.
+
 ## 2026-08-19
 
 - Moved swipe-to-reveal actions to ReanimatedSwipeable so finger-driven motion and action opacity stay on the UI runtime, and removed per-row Group entrance animation that could replay during list virtualization.

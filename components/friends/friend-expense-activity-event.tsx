@@ -1,7 +1,7 @@
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol, type IconSymbolName } from '@/components/ui/icon-symbol';
 import type { FriendActivityItem } from '@/services/friend-detail-service';
-import { Animated, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, TouchableOpacity, View } from 'react-native';
 
 type ExpenseActivityEvent = Extract<FriendActivityItem, { type: 'expense_activity' }>;
 
@@ -38,15 +38,15 @@ export function FriendExpenseActivityEvent({
   const sourceLabel = item.groupName || (isGroupExpense ? 'Group' : 'Direct expense');
 
   const content = (
-    <Animated.View style={[styles.updateCard, {
+    <View style={[styles.updateCard, {
       backgroundColor: colors.card,
       borderWidth: isDark ? 1 : 0,
       borderColor: colors.border,
-      shadowColor: isDark ? 'transparent' : '#475569',
+      shadowColor: isDark ? '#000000' : '#475569',
       shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: isDark ? 0 : 0.09,
+      shadowOpacity: isDark ? 0.32 : 0.09,
       shadowRadius: 0,
-      elevation: isDark ? 0 : 4,
+      elevation: 4,
     }]}>
       <View style={[styles.updateIcon, { backgroundColor: iconSurface }]}>
         <IconSymbol size={20} name={iconName} color={statusColor} />
@@ -101,7 +101,7 @@ export function FriendExpenseActivityEvent({
           <IconSymbol size={17} name="chevron.right" color={statusColor} />
         </View>
       )}
-    </Animated.View>
+    </View>
   );
 
   return (

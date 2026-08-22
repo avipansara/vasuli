@@ -274,13 +274,13 @@ export default function ProfileScreen() {
 
   const cardStyle = {
     backgroundColor: colors.card,
-    borderWidth: isDark ? 1 : 0,
+    borderWidth: 0,
     borderColor: colors.border,
-    shadowColor: isDark ? 'transparent' : '#475569',
+    shadowColor: isDark ? '#64748b' : '#475569',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: isDark ? 0 : 0.09,
-    shadowRadius: 12,
-    elevation: isDark ? 0 : 4,
+    shadowOpacity: isDark ? 0.15 : 0.09,
+    shadowRadius: isDark ? 4 : 12,
+    elevation: 4,
   };
 
   return (

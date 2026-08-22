@@ -87,13 +87,13 @@ function GroupCardInner({ group, onRefresh }: GroupCardProps) {
   const cardStyle = useMemo(
     () => (isDark ? {
       backgroundColor: '#000000',
-      borderWidth: 1,
+      borderWidth: 0,
       borderColor: 'rgba(255, 255, 255, 0.08)',
-      shadowColor: 'transparent',
-      shadowOffset: { width: 0, height: 0 },
-      shadowOpacity: 0,
-      shadowRadius: 0,
-      elevation: 0,
+      shadowColor: '#64748b',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.15,
+      shadowRadius: 4,
+      elevation: 4,
     } : {
       backgroundColor: '#ffffff',
       borderWidth: 0,

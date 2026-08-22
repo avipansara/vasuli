@@ -188,11 +188,11 @@ export function FriendDetailSkeleton() {
             backgroundColor: cardBg,
             borderWidth: isDark ? 1 : 0,
             borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'transparent',
-            shadowColor: isDark ? 'transparent' : '#64748B',
+            shadowColor: isDark ? '#000000' : '#64748B',
             shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: isDark ? 0 : 0.08,
+            shadowOpacity: isDark ? 0.32 : 0.08,
             shadowRadius: 12,
-            elevation: isDark ? 0 : 4,
+            elevation: 4,
           },
         ]}>
         <Skeleton width={90} height={12} style={{ alignSelf: 'center', marginBottom: 8 }} />
@@ -257,11 +257,11 @@ export function GroupDetailSkeleton() {
             backgroundColor: cardBg,
             borderWidth: isDark ? 1 : 0,
             borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'transparent',
-            shadowColor: isDark ? 'transparent' : '#64748B',
+            shadowColor: isDark ? '#000000' : '#64748B',
             shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: isDark ? 0 : 0.08,
+            shadowOpacity: isDark ? 0.32 : 0.08,
             shadowRadius: 12,
-            elevation: isDark ? 0 : 4,
+            elevation: 4,
           },
         ]}>
         <Skeleton width={100} height={12} style={{ alignSelf: 'center', marginBottom: 8 }} />

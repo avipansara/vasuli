@@ -1,7 +1,7 @@
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import type { FriendActivityItem } from '@/services/friend-detail-service';
-import { Animated, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, TouchableOpacity, View } from 'react-native';
 
 type SettlementItem = Extract<FriendActivityItem, { type: 'settlement' }>;
 
@@ -35,7 +35,7 @@ export function FriendSettlementActivity({
   const amountColor = colors.textSecondary; // Gray color for settled amounts based on mockup
 
   return (
-    <Animated.View
+    <View
       accessible
       accessibilityRole="text"
       accessibilityLabel={`${title}, ${scopeLabel}, ${formatDate(item.date)}, ${youPaid ? 'you paid' : 'you received'} $${item.amount.toFixed(2)}`}
@@ -45,11 +45,11 @@ export function FriendSettlementActivity({
           backgroundColor: colors.card,
           borderWidth: isDark ? 1 : 0,
           borderColor: colors.border,
-          shadowColor: isDark ? 'transparent' : '#475569',
+          shadowColor: isDark ? '#000000' : '#475569',
           shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: isDark ? 0 : 0.09,
+          shadowOpacity: isDark ? 0.32 : 0.09,
           shadowRadius: 0,
-          elevation: isDark ? 0 : 4,
+          elevation: 4,
         },
       ]}>
       <View style={[styles.expenseIcon, {
@@ -88,7 +88,7 @@ export function FriendSettlementActivity({
           <ThemedText style={[styles.reverseButtonText, { color: colors.danger }]}>Reverse</ThemedText>
         </TouchableOpacity>
       ) : null}
-    </Animated.View>
+    </View>
   );
 }
 

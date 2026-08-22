@@ -1,7 +1,7 @@
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import type { FriendActivityItem } from '@/services/friend-detail-service';
-import { Animated, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, TouchableOpacity, View } from 'react-native';
 
 type ScopeTransferItem = Extract<FriendActivityItem, { type: 'scope_transfer' }>;
 
@@ -31,7 +31,7 @@ export function FriendScopeTransferActivity({
     : movedByYou ? 'Moved to friendship balance' : 'Moved from friendship balance';
 
   return (
-    <Animated.View
+    <View
       accessible
       accessibilityRole="text"
       accessibilityLabel={`${title}, ${groupName}, ${item.currency} ${item.amount.toFixed(2)}, ${formatDate(item.date)}`}
@@ -60,7 +60,7 @@ export function FriendScopeTransferActivity({
           <ThemedText style={[styles.reverseButtonText, { color: colors.danger }]}>Reverse</ThemedText>
         </TouchableOpacity>
       ) : null}
-    </Animated.View>
+    </View>
   );
 }
 

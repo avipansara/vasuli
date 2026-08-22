@@ -163,11 +163,11 @@ export default function ActivityScreen() {
           backgroundColor: colors.card,
           borderWidth: isDark ? 1 : 0,
           borderColor: colors.border,
-          shadowColor: isDark ? 'transparent' : '#64748B',
+          shadowColor: isDark ? '#000000' : '#64748B',
           shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: isDark ? 0 : 0.04,
+          shadowOpacity: isDark ? 0.24 : 0.04,
           shadowRadius: 6,
-          elevation: isDark ? 0 : 2,
+          elevation: 2,
         }]}>
           <IconSymbol
             name="magnifyingglass"

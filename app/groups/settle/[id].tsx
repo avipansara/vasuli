@@ -361,9 +361,9 @@ export default function GroupSettleScreen() {
             backgroundColor: settle.heroBackground,
             borderColor: settle.heroBorder,
             borderWidth: isDark ? 1 : 0,
-            shadowColor: isDark ? 'transparent' : '#000000',
-            shadowOpacity: isDark ? 0 : 0.12,
-            elevation: isDark ? 0 : 5,
+            shadowColor: '#000000',
+            shadowOpacity: isDark ? 0.32 : 0.12,
+            elevation: 5,
           }]}>
             <View style={styles.amountInputRow}>
               <Text style={[styles.currencySymbol, { color: settle.accentText }]}>$</Text>

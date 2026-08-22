@@ -282,9 +282,9 @@ export default function FriendSettleScreen() {
             backgroundColor: settle.cardBackground,
             borderColor: settle.cardBorder,
             borderWidth: isDark ? 1 : 0,
-            shadowColor: isDark ? 'transparent' : '#000000',
-            shadowOpacity: isDark ? 0 : 0.12,
-            elevation: isDark ? 0 : 5,
+            shadowColor: '#000000',
+            shadowOpacity: isDark ? 0.32 : 0.12,
+            elevation: 5,
           }]}>
             <View style={styles.profileRow}>
               <View style={[styles.avatar, { backgroundColor: settle.avatarSelectedBackground }]}>

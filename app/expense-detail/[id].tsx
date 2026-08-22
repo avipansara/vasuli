@@ -206,12 +206,12 @@ export default function ExpenseDetailScreen() {
   const payerName = isPayer ? 'You' : payer?.name || 'Unknown';
 
   const cardStyle = {
-    backgroundColor: isDark ? '#0b1120' : '#ffffff',
+    backgroundColor: isDark ? '#000000' : '#ffffff',
     borderWidth: 0,
-    shadowColor: isDark ? '#000000' : '#475569',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: isDark ? 0.35 : 0.09,
-    shadowRadius: 10,
+    shadowColor: isDark ? '#64748b' : '#475569',
+    shadowOffset: { width: 0, height: isDark ? 4 : 3 },
+    shadowOpacity: isDark ? 0.15 : 0.09,
+    shadowRadius: isDark ? 4 : 10,
     elevation: 3,
   };
 

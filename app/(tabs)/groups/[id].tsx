@@ -106,26 +106,7 @@ export default function GroupDetailScreen() {
     outputRange: [10, 0],
     extrapolate: 'clamp',
   });
-  const summaryOpacity = scrollY.interpolate({
-    inputRange: [0, 80],
-    outputRange: [1, 0],
-    extrapolate: 'clamp',
-  });
-  const summaryScale = scrollY.interpolate({
-    inputRange: [0, 80],
-    outputRange: [1, 0.95],
-    extrapolate: 'clamp',
-  });
-  const summaryTranslateY = scrollY.interpolate({
-    inputRange: [0, 80],
-    outputRange: [0, -10],
-    extrapolate: 'clamp',
-  });
 
-  // Animations
-  const [fadeAnim] = useState(() => new Animated.Value(0));
-  const [slideAnim] = useState(() => new Animated.Value(30));
-  const [scaleAnim] = useState(() => new Animated.Value(0.95));
   const [memberModalVisible, setMemberModalVisible] = useState(false);
   const [expenseSearch, setExpenseSearch] = useState('');
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
@@ -140,13 +121,13 @@ export default function GroupDetailScreen() {
   const cardStyle = useMemo(
     () => (isDark ? {
       backgroundColor: '#000000',
-      borderWidth: 1,
+      borderWidth: 0,
       borderColor: 'rgba(255, 255, 255, 0.08)',
-      shadowColor: 'transparent',
-      shadowOffset: { width: 0, height: 0 },
-      shadowOpacity: 0,
-      shadowRadius: 0,
-      elevation: 0,
+      shadowColor: '#64748b',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.15,
+      shadowRadius: 4,
+      elevation: 4,
     } : {
       backgroundColor: '#ffffff',
       borderWidth: 0,
@@ -520,11 +501,11 @@ export default function GroupDetailScreen() {
             backgroundColor: colors.card,
             borderWidth: isDark ? 1 : 0,
             borderColor: colors.border,
-            shadowColor: isDark ? 'transparent' : '#475569',
+            shadowColor: isDark ? '#000000' : '#475569',
             shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: isDark ? 0 : 0.09,
+            shadowOpacity: isDark ? 0.32 : 0.09,
             shadowRadius: 0,
-            elevation: isDark ? 0 : 4,
+            elevation: 4,
           }]}>
           <View style={[styles.expenseIcon, {
             backgroundColor: isDark ? categoryStyle.darkBg : categoryStyle.lightBg,
@@ -692,11 +673,11 @@ export default function GroupDetailScreen() {
             backgroundColor: colors.card,
             borderWidth: isDark ? 1 : 0,
             borderColor: colors.border,
-            shadowColor: isDark ? 'transparent' : '#475569',
+            shadowColor: isDark ? '#000000' : '#475569',
             shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: isDark ? 0 : 0.09,
+            shadowOpacity: isDark ? 0.32 : 0.09,
             shadowRadius: 0,
-            elevation: isDark ? 0 : 4,
+            elevation: 4,
           }]}>
           <View style={[styles.memberAvatar, {
             backgroundColor: isDark ? '#1e293b' : 'rgba(15, 76, 58, 0.1)',
@@ -768,30 +749,6 @@ export default function GroupDetailScreen() {
       </ReanimatedSwipeable>
     );
   }
-
-  // Start animations when data loads
-  useEffect(() => {
-    if (!loading && group) {
-      Animated.parallel([
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 400,
-          useNativeDriver: true,
-        }),
-        Animated.timing(slideAnim, {
-          toValue: 0,
-          duration: 400,
-          useNativeDriver: true,
-        }),
-        Animated.spring(scaleAnim, {
-          toValue: 1,
-          friction: 8,
-          tension: 40,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    }
-  }, [fadeAnim, group, loading, scaleAnim, slideAnim]);
 
   if (loading) {
     return (
@@ -929,20 +886,7 @@ export default function GroupDetailScreen() {
         )}>
 
         {/* Summary Card */}
-        <Animated.View style={[
-          styles.summarySection,
-          {
-            opacity: fadeAnim,
-            transform: [{ translateY: slideAnim }, { scale: scaleAnim }],
-          }
-        ]}>
-          <Animated.View style={{
-            opacity: summaryOpacity,
-            transform: [
-              { translateY: summaryTranslateY },
-              { scale: summaryScale }
-            ]
-          }}>
+        <View style={styles.summarySection}>
             <LinearGradient
               colors={
                 isDark
@@ -1003,8 +947,7 @@ export default function GroupDetailScreen() {
                 </View>
               )}
             </LinearGradient>
-          </Animated.View>
-        </Animated.View>
+        </View>
 
         {/* Tab / Action Tiles */}
         <View style={styles.tabTilesRow}>
@@ -1062,15 +1005,10 @@ export default function GroupDetailScreen() {
                 <IconSymbol size={16} name="plus" color={friendDetailTheme.actionIcon} />
               </TouchableOpacity>
             </View>
-            {members.map((member, index) => (
-              <Animated.View
-                key={member.id}
-                style={{
-                  opacity: fadeAnim,
-                  transform: [{ translateY: Animated.multiply(slideAnim, new Animated.Value((index + 1) * 0.15)) }],
-                }}>
+            {members.map(member => (
+              <View key={member.id}>
                 {renderMember({ item: member })}
-              </Animated.View>
+              </View>
             ))}
           </View>
         )}
@@ -1165,17 +1103,12 @@ export default function GroupDetailScreen() {
               </ThemedText>
             </View>
           ) : (
-            displayItems.map((item, index) => (
-              <Animated.View
-                key={item.type === 'expense' ? item.expense.id : item.settlement.id}
-                style={{
-                  opacity: fadeAnim,
-                  transform: [{ translateY: Animated.multiply(slideAnim, new Animated.Value((index + 1) * 0.1)) }],
-                }}>
+            displayItems.map(item => (
+              <View key={item.type === 'expense' ? item.expense.id : item.settlement.id}>
                 {item.type === 'expense'
                   ? renderExpense({ item: item.expense })
                   : renderSettlement({ item: item.settlement })}
-              </Animated.View>
+              </View>
             ))
           )}
         </View>

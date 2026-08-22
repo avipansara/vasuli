@@ -67,23 +67,6 @@ export default function FriendDetailScreen() {
   const insets = useSafeAreaInsets();
   const scrollY = useRef(new Animated.Value(0)).current;
 
-  // Collapsible summary card and header animation interpolations
-  const summaryOpacity = scrollY.interpolate({
-    inputRange: [0, 80],
-    outputRange: [1, 0],
-    extrapolate: 'clamp',
-  });
-  const summaryScale = scrollY.interpolate({
-    inputRange: [0, 80],
-    outputRange: [1, 0.95],
-    extrapolate: 'clamp',
-  });
-  const summaryTranslateY = scrollY.interpolate({
-    inputRange: [0, 80],
-    outputRange: [0, -10],
-    extrapolate: 'clamp',
-  });
-
   const headerTitleOpacity = scrollY.interpolate({
     inputRange: [40, 80],
     outputRange: [0, 1],
@@ -95,9 +78,6 @@ export default function FriendDetailScreen() {
     extrapolate: 'clamp',
   });
 
-  const [fadeAnim] = useState(() => new Animated.Value(0));
-  const [slideAnim] = useState(() => new Animated.Value(30));
-  const [scaleAnim] = useState(() => new Animated.Value(0.98));
   const tabIndicatorX = useSharedValue(0);
   const segmentWidth = segmentedWidth > 0
     ? (segmentedWidth - (SEGMENTED_CONTROL_PADDING * 2) - (SEGMENTED_CONTROL_GAP * (ACTIVITY_FILTERS.length - 1))) / ACTIVITY_FILTERS.length
@@ -162,32 +142,6 @@ export default function FriendDetailScreen() {
       easing: ReanimatedEasing.out(ReanimatedEasing.cubic),
     });
   }, [activityFilter, segmentWidth, tabIndicatorX]);
-
-  useEffect(() => {
-    if (!loading && friend) {
-      Animated.parallel([
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 400,
-          useNativeDriver: true,
-        }),
-        Animated.timing(slideAnim, {
-          toValue: 0,
-          duration: 400,
-          useNativeDriver: true,
-        }),
-        Animated.spring(scaleAnim, {
-          toValue: 1,
-          friction: 8,
-          tension: 40,
-          useNativeDriver: true,
-        }),
-      ]).start();
-
-    }
-  }, [fadeAnim, friend, loading, scaleAnim, slideAnim]);
-
-
 
   function handleEditExpense(expenseId: string) {
     swipeableRefs.current.get(expenseId)?.close();
@@ -571,20 +525,7 @@ export default function FriendDetailScreen() {
           { useNativeDriver: true }
         )}>
 
-        <Animated.View style={[
-          styles.summarySection,
-          {
-            opacity: fadeAnim,
-            transform: [{ translateY: slideAnim }, { scale: scaleAnim }],
-          }
-        ]}>
-          <Animated.View style={{
-            opacity: summaryOpacity,
-            transform: [
-              { translateY: summaryTranslateY },
-              { scale: summaryScale }
-            ]
-          }}>
+        <View style={styles.summarySection}>
             <LinearGradient
               colors={
                 isDark
@@ -652,8 +593,7 @@ export default function FriendDetailScreen() {
                 </View>
               )}
             </LinearGradient>
-          </Animated.View>
-        </Animated.View>
+        </View>
 
         {outstandingGroupBalances.length > 0 && (
           <View style={styles.groupBalancesSection}>
