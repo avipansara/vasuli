@@ -11,6 +11,7 @@ import { activityService } from '@/services/activity-service';
 import { expenseService } from '@/services/expense-service';
 import { groupService } from '@/services/group-service';
 import { createExpenseDeletedNotification, notificationService } from '@/services/notification-service';
+import { getExpenseDeletionInvalidationKeys } from '@/services/expense-deletion-invalidation';
 import { queryKeys } from '@/services/query-keys';
 import { userService } from '@/services/user-service';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -121,49 +122,45 @@ export default function ExpenseDetailScreen() {
             try {
               setIsDeleting(true);
               await expenseService.delete(id, currentUserId, user?.name || 'Unknown');
-              if (expense) {
-                const usersToNotify = await userService.getByIds(
-                  splits
-                    .map(split => split.userId)
-                    .filter((userId, index) => splits[index].amount > 0)
-                    .filter(userId => userId !== currentUserId)
-                );
-                const pushTokens = usersToNotify
-                  .filter(u => u.pushToken)
-                  .map(u => u.pushToken!);
-                if (pushTokens.length > 0) {
-                  const notification = createExpenseDeletedNotification(
-                    id,
-                    expense.description,
-                    expense.amount,
-                    user?.name || 'Someone',
-                    group?.name,
-                    group?.id
-                  );
-                  await notificationService.sendNotificationToUsers(pushTokens, notification);
-                }
-              }
-              // The screens behind this one (friend detail for direct
-              // expenses, group details for group expenses) keep serving
-              // their pre-delete cache until invalidated explicitly.
               const otherParticipantIds = splits
                 .map(split => split.userId)
                 .filter((userId, index) => splits[index].amount > 0)
                 .filter(userId => userId !== currentUserId);
-              await Promise.all([
-                queryClient.invalidateQueries({ queryKey: queryKeys.expenses.detail(id) }),
-                queryClient.invalidateQueries({ queryKey: queryKeys.expenses.list(currentUserId) }),
-                queryClient.invalidateQueries({ queryKey: queryKeys.activity.list(currentUserId) }),
-                ...(group
-                  ? [
-                    queryClient.invalidateQueries({ queryKey: queryKeys.groups.detail(currentUserId, group.id) }),
-                    queryClient.invalidateQueries({ queryKey: queryKeys.groups.list(currentUserId) }),
-                  ]
-                  : otherParticipantIds.map(friendId =>
-                    queryClient.invalidateQueries({ queryKey: queryKeys.friends.detail(currentUserId, friendId) })
-                  )),
-              ]);
+              await Promise.allSettled(
+                getExpenseDeletionInvalidationKeys(currentUserId, {
+                  expenseId: id,
+                  groupId: group?.id,
+                  paidBy: expense?.paidBy,
+                  participantIds: otherParticipantIds,
+                }).map(queryKey => Promise.resolve().then(() => queryClient.invalidateQueries({ queryKey }))),
+              );
               router.back();
+              if (expense) {
+                try {
+                  const usersToNotify = await userService.getByIds(
+                    splits
+                      .map(split => split.userId)
+                      .filter((userId, index) => splits[index].amount > 0)
+                      .filter(userId => userId !== currentUserId)
+                  );
+                  const pushTokens = usersToNotify
+                    .filter(u => u.pushToken)
+                    .map(u => u.pushToken!);
+                  if (pushTokens.length > 0) {
+                    const notification = createExpenseDeletedNotification(
+                      id,
+                      expense.description,
+                      expense.amount,
+                      user?.name || 'Someone',
+                      group?.name,
+                      group?.id
+                    );
+                    await notificationService.sendNotificationToUsers(pushTokens, notification);
+                  }
+                } catch (notificationError) {
+                  console.warn('Expense deletion notification failed:', notificationError);
+                }
+              }
             } catch (error) {
               console.error('Error deleting expense:', error);
               Alert.alert('Error', 'Failed to delete expense');
