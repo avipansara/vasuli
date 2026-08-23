@@ -11,6 +11,7 @@ import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { createGroupDetailTraceId, logGroupDetailDiagnostic } from '@/lib/group-detail-diagnostics';
 import { areGroupBalancesSettled } from '@/services/group-balance';
+import { formatCurrency } from '@/utils/currency';
 import { groupDetailMutationController } from '@/services/group-detail-mutation-controller';
 import type { GroupDetailReadModel, GroupExpenseView } from '@/services/group-detail-read-model';
 import { groupDetailService } from '@/services/group-detail-service';
@@ -69,6 +70,8 @@ function GroupDetailSwipeAction({
     </Reanimated.View>
   );
 }
+
+import { getFirstName } from '@/utils/validation';
 
 type SectionTab = 'all' | 'expenses';
 
@@ -524,12 +527,12 @@ export default function GroupDetailScreen() {
               {item.description}
             </ThemedText>
             <ThemedText style={[styles.expenseDate, { color: isDark ? '#94A3B8' : colors.textSecondary }]} numberOfLines={2}>
-              {paidByYou ? 'Paid by you' : `Paid by ${item.paidByUser?.name.split(' ')[0] || 'Someone'}`}{'\n'}{dateStr}
+              {paidByYou ? 'Paid by you' : `Paid by ${getFirstName(item.paidByUser?.name || 'Someone')}`}{'\n'}{dateStr}
             </ThemedText>
           </View>
           <View style={styles.amountBlock}>
             <ThemedText type="title" style={[styles.expenseAmount, { color: isDark ? '#F8FAFC' : colors.text }]}>
-              ${item.amount.toFixed(2)}
+              {formatCurrency(item.amount, item.currency)}
             </ThemedText>
             <View style={[styles.badge, { backgroundColor: paidByYou ? friendDetailTheme.positiveSurface : friendDetailTheme.settledSurface }]}>
               <ThemedText style={[styles.badgeText, { color: paidByYou ? friendDetailTheme.positive : (isDark ? '#94A3B8' : colors.textSecondary) }]}>
@@ -543,8 +546,10 @@ export default function GroupDetailScreen() {
   }
 
   function renderSettlement({ item }: { item: Settlement }) {
-    const fromUser = members.find(member => member.userId === item.fromUserId)?.user?.name || 'Someone';
-    const toUser = members.find(member => member.userId === item.toUserId)?.user?.name || 'Someone';
+    const fromUserName = members.find(member => member.userId === item.fromUserId)?.user?.name || 'Someone';
+    const toUserName = members.find(member => member.userId === item.toUserId)?.user?.name || 'Someone';
+    const fromUser = getFirstName(fromUserName);
+    const toUser = getFirstName(toUserName);
     const dateStr = new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
     return (
@@ -557,7 +562,7 @@ export default function GroupDetailScreen() {
           <ThemedText style={{ color: colors.textSecondary }}>{fromUser} paid {toUser}{'\n'}{dateStr}</ThemedText>
         </View>
         <ThemedText type="defaultSemiBold" style={{ color: isDark ? '#6EE7B7' : '#047857' }}>
-          {item.currency} {item.amount.toFixed(2)}
+          {formatCurrency(item.amount, item.currency)}
         </ThemedText>
       </View>
     );
@@ -734,7 +739,7 @@ export default function GroupDetailScreen() {
             {balance !== 0 && (
               <>
                 <ThemedText type='subtitle' style={[styles.memberBalanceAmount, { color: balanceColor }]}>
-                  ${Math.abs(balance).toFixed(2)}
+                  {formatCurrency(Math.abs(balance))}
                 </ThemedText>
                 <ThemedText style={[styles.balanceLabel, { color: isDark ? '#94A3B8' : colors.textSecondary }]}>
                   {balance > 0 ? 'gets back' : 'owes'}
@@ -828,7 +833,7 @@ export default function GroupDetailScreen() {
       ? friendDetailTheme.negativeSurface
       : friendDetailTheme.settledSurface;
   const balanceCopy = currentUserBalance > 0 ? 'You are owed' : currentUserBalance < 0 ? 'You owe' : 'All settled up';
-  const balanceAccessibilityValue = `${balanceCopy}, $${Math.abs(currentUserBalance).toFixed(2)}`;
+  const balanceAccessibilityValue = `${balanceCopy}, ${formatCurrency(Math.abs(currentUserBalance))}`;
 
   return (
     <View style={[styles.container, { backgroundColor: isDark ? '#050914' : colors.background }]}>
@@ -924,7 +929,7 @@ export default function GroupDetailScreen() {
               </ThemedText>
 
               <ThemedText type='subtitle' style={[styles.summaryCardAmount, { color: isDark ? (currentUserBalance < 0 ? '#ffb3b0' : currentUserBalance > 0 ? '#4edea3' : '#94A3B8') : balanceColor }]}>
-                {currentUserBalance < 0 ? '-' : currentUserBalance > 0 ? '+' : ''}${Math.abs(currentUserBalance).toFixed(2)}
+                {currentUserBalance < 0 ? '-' : currentUserBalance > 0 ? '+' : ''}{formatCurrency(Math.abs(currentUserBalance))}
               </ThemedText>
 
               <ThemedText style={[styles.summaryCardSubtitle, { color: isDark ? '#94A3B8' : colors.textSecondary }]}>
@@ -1027,11 +1032,22 @@ export default function GroupDetailScreen() {
                   <IconSymbol name="arrow.left.arrow.right" size={17} color={friendDetailTheme.actionIcon} />
                   <View style={styles.transferCopy}>
                     <ThemedText type="defaultSemiBold" style={{ color: colors.text }}>{transfer.isReversal ? 'Reversed balance offset' : movedToFriendship ? 'Moved to friendship balance' : 'Moved from friendship balance'}</ThemedText>
-                    <ThemedText style={{ color: colors.textSecondary }}>{transfer.currency} {Math.abs(transfer.signedGroupBalanceDelta).toFixed(2)}</ThemedText>
+                    <ThemedText style={{ color: colors.textSecondary }}>{formatCurrency(Math.abs(transfer.signedGroupBalanceDelta), transfer.currency)}</ThemedText>
                   </View>
                   {!transfer.isReversal && (transfer.fromUserId === currentUserId || transfer.toUserId === currentUserId) ? (
-                    <TouchableOpacity accessibilityRole="button" accessibilityLabel="Reverse settlement" hitSlop={8} onPress={() => handleReverseTransfer(transfer)}>
-                      <ThemedText style={{ color: friendDetailTheme.danger, fontSize: 12, fontWeight: '700' }}>Reverse</ThemedText>
+                    <TouchableOpacity 
+                      accessibilityRole="button" 
+                      accessibilityLabel="Reverse settlement" 
+                      hitSlop={8} 
+                      onPress={() => handleReverseTransfer(transfer)}
+                      style={{
+                        backgroundColor: isDark ? 'rgba(239, 68, 68, 0.15)' : '#FEE2E2',
+                        paddingHorizontal: 8,
+                        paddingVertical: 4,
+                        borderRadius: 6,
+                      }}
+                    >
+                      <ThemedText style={{ color: isDark ? '#fca5a5' : colors.error, fontSize: 12, fontWeight: '700' }}>Reverse</ThemedText>
                     </TouchableOpacity>
                   ) : null}
                 </View>

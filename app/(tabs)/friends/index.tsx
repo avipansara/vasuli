@@ -9,6 +9,7 @@ import { useDebouncedQueryInvalidation } from '@/hooks/use-debounced-query-inval
 import { useRefetchOnFocus } from '@/hooks/use-refetch-on-focus';
 import { useRealtime } from '@/hooks/use-realtime';
 import { useThemeColors } from '@/hooks/use-theme-colors';
+import { formatCurrency } from '@/utils/currency';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { friendSummaryService } from '@/services/friend-summary-service';
 import { friendshipService } from '@/services/friendship-service';
@@ -174,7 +175,7 @@ export default function FriendsScreen() {
       <View style={styles.header}>
         <View style={{ flexDirection: 'column', gap: 6 }}>
           <ThemedText style={[styles.headerLabel, { color: isDark ? '#9ba6b8' : colors.textSecondary }]}>{balanceLabel}</ThemedText>
-          <ThemedText type="header" style={{ color: balanceColor }}>${Math.abs(netBalance).toFixed(2)}</ThemedText>
+          <ThemedText type="header" style={{ color: balanceColor }}>{formatCurrency(Math.abs(netBalance))}</ThemedText>
         </View>
         <View style={styles.headerButtons}>
           <TouchableOpacity

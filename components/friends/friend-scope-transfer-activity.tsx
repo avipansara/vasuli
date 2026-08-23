@@ -1,5 +1,7 @@
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { formatCurrency } from '@/utils/currency';
+import { getFirstName } from '@/utils/validation';
 import type { FriendActivityItem } from '@/services/friend-detail-service';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 
@@ -34,7 +36,7 @@ export function FriendScopeTransferActivity({
     <View
       accessible
       accessibilityRole="text"
-      accessibilityLabel={`${title}, ${groupName}, ${item.currency} ${item.amount.toFixed(2)}, ${formatDate(item.date)}`}
+      accessibilityLabel={`${title}, ${groupName}, ${formatCurrency(item.amount, item.currency)}, ${formatDate(item.date)}`}
       style={[styles.card, isDark ? {
         backgroundColor: '#000000',
         borderWidth: 0,
@@ -53,11 +55,11 @@ export function FriendScopeTransferActivity({
           {title}
         </ThemedText>
         <ThemedText style={[styles.subtitle, { color: isDark ? '#94A3B8' : colors.textSecondary }]} numberOfLines={2}>
-          {groupName} • {formatDate(item.date)}{`\n`}{friendName}{item.isReversal ? ' • Reversal' : ''}
+          {groupName} • {formatDate(item.date)}{`\n`}{getFirstName(friendName)}{item.isReversal ? ' • Reversal' : ''}
         </ThemedText>
       </View>
       <ThemedText type="subtitle" style={[styles.amount, { color: isDark ? '#7DD3FC' : '#0369A1' }]}>
-        {item.currency} {item.amount.toFixed(2)}
+        {formatCurrency(item.amount, item.currency)}
       </ThemedText>
       {canReverse && !item.isReversal ? (
         <TouchableOpacity
@@ -65,8 +67,18 @@ export function FriendScopeTransferActivity({
           accessibilityLabel="Reverse settlement"
           hitSlop={8}
           onPress={onReverse}
-          style={styles.reverseButton}>
-          <ThemedText style={[styles.reverseButtonText, { color: colors.danger }]}>Reverse</ThemedText>
+          style={[
+            styles.reverseButton,
+            {
+              backgroundColor: isDark ? 'rgba(239, 68, 68, 0.15)' : '#FEE2E2',
+              paddingHorizontal: 8,
+              paddingVertical: 4,
+              borderRadius: 6,
+              justifyContent: 'center',
+              alignItems: 'center',
+            }
+          ]}>
+          <ThemedText style={[styles.reverseButtonText, { color: isDark ? '#fca5a5' : colors.error }]}>Reverse</ThemedText>
         </TouchableOpacity>
       ) : null}
     </View>

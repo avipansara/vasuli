@@ -15,6 +15,7 @@ import { createExpenseUpdatedNotification, notificationService } from '@/service
 import { queryKeys } from '@/services/query-keys';
 import type { Expense, ExpenseSplit, User } from '@/types/database';
 import { normalizeCurrencyInput } from '@/utils/validation';
+import { formatCurrency, getCurrencySymbol } from '@/utils/currency';
 import { getGroupExpenseParticipant } from '@/utils/group-expense-participants';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -225,7 +226,7 @@ export default function EditExpenseScreen() {
 
       const total = splits.reduce((sum, s) => sum + s.amount, 0);
       if (Math.abs(total - totalAmount) > 0.01) {
-        Alert.alert('Invalid Split', `Amounts must add up to $${totalAmount.toFixed(2)}. Current total: $${total.toFixed(2)}`);
+        Alert.alert('Invalid Split', `Amounts must add up to ${formatCurrency(totalAmount, editFormQuery.data?.expense?.currency)}. Current total: ${formatCurrency(total, editFormQuery.data?.expense?.currency)}`);
         return null;
       }
 
@@ -500,7 +501,7 @@ export default function EditExpenseScreen() {
               How much?
             </ThemedText>
             <View style={styles.amountInputRow}>
-              <Text style={[styles.currencySymbol, { color: isDark ? '#2DD4BF' : colors.tint }]}>$</Text>
+              <Text style={[styles.currencySymbol, { color: isDark ? '#2DD4BF' : colors.tint }]}>{getCurrencySymbol(editFormQuery.data?.expense?.currency)}</Text>
               <TextInput
                 ref={amountInputRef}
                 style={[styles.amountInput, { color: isDark ? '#fff' : colors.text }]}
@@ -757,7 +758,7 @@ export default function EditExpenseScreen() {
                             ? (isDark ? '#fbbf24' : '#f59e0b')
                             : (isDark ? '#ef4444' : '#dc2626'),
                       }]}>
-                        {isBalanced ? '✓ Balanced' : `${remaining > 0 ? 'Remaining' : 'Over'}: $${Math.abs(remaining).toFixed(2)}`}
+                        {isBalanced ? '✓ Balanced' : `${remaining > 0 ? 'Remaining' : 'Over'}: ${formatCurrency(Math.abs(remaining), editFormQuery.data?.expense?.currency)}`}
                       </ThemedText>
                     </View>
                   )}
@@ -812,7 +813,7 @@ export default function EditExpenseScreen() {
                     }
                     return (
                       <ThemedText style={[styles.calculatedAmount, !isDark && { color: colors.textSecondary }]}>
-                        ${calculatedAmount.toFixed(2)}
+                        {formatCurrency(calculatedAmount, editFormQuery.data?.expense?.currency)}
                       </ThemedText>
                     );
                   })()}
@@ -855,7 +856,7 @@ export default function EditExpenseScreen() {
                         keyboardType="decimal-pad"
                       />
                       <ThemedText style={[styles.customSplitSuffix, !isDark && { color: colors.textSecondary }]}>
-                        {splitMethod === SplitMethod.UNEQUAL ? '$' : splitMethod === SplitMethod.PERCENTAGE ? '%' : 'x'}
+                        {splitMethod === SplitMethod.UNEQUAL ? getCurrencySymbol(editFormQuery.data?.expense?.currency) : splitMethod === SplitMethod.PERCENTAGE ? '%' : 'x'}
                       </ThemedText>
                       {(splitMethod === SplitMethod.PERCENTAGE || splitMethod === SplitMethod.SHARES) && (() => {
                         const totalAmount = parseFloat(amount);
@@ -871,7 +872,7 @@ export default function EditExpenseScreen() {
                         }
                         return (
                           <ThemedText style={[styles.calculatedAmount, !isDark && { color: colors.textSecondary }]}>
-                            ${calculatedAmount.toFixed(2)}
+                            {formatCurrency(calculatedAmount, editFormQuery.data?.expense?.currency)}
                           </ThemedText>
                         );
                       })()}

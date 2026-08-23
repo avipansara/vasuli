@@ -1,5 +1,7 @@
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol, type IconSymbolName } from '@/components/ui/icon-symbol';
+import { formatCurrency } from '@/utils/currency';
+import { getFirstName } from '@/utils/validation';
 import type { FriendActivityItem } from '@/services/friend-detail-service';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 
@@ -29,11 +31,11 @@ export function FriendExpenseActivityEvent({
   const isDeleted = item.isDeleted;
   const statusLabel = isDeleted ? 'Deleted' : 'Updated';
   const title = item.description.replace(/^(Deleted|Updated):\s*/i, '');
-  const actorName = item.userId === currentUserId ? 'You' : item.userName || friendName.split(' ')[0];
+  const actorName = item.userId === currentUserId ? 'You' : getFirstName(item.userName || friendName);
   const statusColor = isDeleted ? friendDetailTheme.danger : friendDetailTheme.warning;
   const iconSurface = isDeleted ? friendDetailTheme.dangerSurface : friendDetailTheme.warningSurface;
   const iconName: IconSymbolName = isDeleted ? 'trash.fill' : 'pencil';
-  const amountLabel = item.amount === undefined ? null : `$${item.amount.toFixed(2)}`;
+  const amountLabel = item.amount === undefined ? null : formatCurrency(item.amount);
   const isGroupExpense = Boolean(item.groupId);
   const sourceLabel = item.groupName || (isGroupExpense ? 'Group' : 'Direct expense');
 

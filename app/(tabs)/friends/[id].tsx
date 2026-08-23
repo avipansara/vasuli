@@ -10,6 +10,7 @@ import { useAuth } from '@/contexts/auth-context-otp';
 import { useFriendDetailController } from '@/hooks/use-friend-detail-controller';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { formatCurrency } from '@/utils/currency';
+import { getFirstName } from '@/utils/validation';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import {
   filterFriendActivity,
@@ -437,20 +438,20 @@ export default function FriendDetailScreen() {
   const balanceCopy = hasCurrencyAmbiguity
     ? 'Multiple currencies'
     : isOwed
-    ? `${friend.name.split(' ')[0]} owes you`
+    ? `${getFirstName(friend.name)} owes you`
     : isOwing
-      ? `You owe ${friend.name.split(' ')[0]}`
+      ? `You owe ${getFirstName(friend.name)}`
       : 'All settled up';
   const balanceCardTitle = hasCurrencyAmbiguity
     ? 'MULTIPLE CURRENCIES'
     : isOwed
-    ? `${friend.name.split(' ')[0].toUpperCase()} OWES YOU`
+    ? `${getFirstName(friend.name).toUpperCase()} OWES YOU`
     : isOwing
-      ? `YOU OWE ${friend.name.split(' ')[0].toUpperCase()}`
+      ? `YOU OWE ${getFirstName(friend.name).toUpperCase()}`
       : 'ALL SETTLED UP';
   const balanceAccessibilityValue = hasCurrencyAmbiguity
     ? `${balanceCopy}, choose a currency to settle`
-    : `${balanceCopy}, ${relationship.settleableTotal?.currency ?? relationship.directCurrency ?? ''} ${Math.abs(balance).toFixed(2)}`;
+    : `${balanceCopy}, ${formatCurrency(Math.abs(balance), relationship.settleableTotal?.currency ?? relationship.directCurrency)}`;
 
 
   return (
@@ -639,8 +640,8 @@ export default function FriendDetailScreen() {
                     </ThemedText>
                     <ThemedText style={{ color: isDark ? '#94A3B8' : colors.textSecondary }}>
                       {isOwedInGroup
-                        ? `${friend.name.split(' ')[0]} owes you in this group`
-                        : `You owe ${friend.name.split(' ')[0]} in this group`}
+                        ? `${getFirstName(friend.name)} owes you in this group`
+                        : `You owe ${getFirstName(friend.name)} in this group`}
                     </ThemedText>
                   </View>
                   <View style={styles.groupBalanceAmount}>
@@ -703,7 +704,7 @@ export default function FriendDetailScreen() {
         <View style={styles.historySection}>
           <View style={styles.sectionHeader}>
             <ThemedText type="subtitle" style={[styles.sectionTitle, { color: isDark ? '#F8FAFC' : colors.text }]}>
-              Activity with {friend.name.split(' ')[0]}
+              Activity with {getFirstName(friend.name)}
             </ThemedText>
             <ThemedText style={[styles.expenseCount, { color: isDark ? '#94A3B8' : colors.textSecondary }]}>
               {activityCountLabel}
@@ -721,8 +722,8 @@ export default function FriendDetailScreen() {
                 </ThemedText>
                 <ThemedText style={[styles.emptyText, { color: colors.textSecondary }]}>
                   {activityFilter === 'updates'
-                    ? `Changes and settlements with ${friend.name.split(' ')[0]} will show here`
-                    : `Add an expense to start tracking with ${friend.name.split(' ')[0]}`}
+                    ? `Changes and settlements with ${getFirstName(friend.name)} will show here`
+                    : `Add an expense to start tracking with ${getFirstName(friend.name)}`}
                 </ThemedText>
               </View>
             ) : (

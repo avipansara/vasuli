@@ -7,6 +7,7 @@ import { useRealtime } from '@/hooks/use-realtime';
 import { useRefetchOnFocus } from '@/hooks/use-refetch-on-focus';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { useCurrency } from '@/contexts/currency-context';
+import { formatCurrency } from '@/utils/currency';
 import { getAppVersionLabel } from '@/lib/app-version';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { calculateFriendSummaryTotals, friendSummaryService } from '@/services/friend-summary-service';
@@ -362,14 +363,14 @@ export default function ProfileScreen() {
             <>
               <View style={styles.statItem}>
                 <ThemedText type='title' style={[styles.statValue, { color: isDark ? '#10b981' : colors.tint }]}>
-                  ${totalOwed.toFixed(2)}
+                  {formatCurrency(totalOwed)}
                 </ThemedText>
                 <ThemedText style={[styles.statLabel, { color: isDark ? '#9ba6b8' : colors.textSecondary }]}>You are owed</ThemedText>
               </View>
               <View style={[styles.statDivider, { backgroundColor: isDark ? '#2a3441' : 'rgba(0, 0, 0, 0.08)' }]} />
               <View style={styles.statItem}>
                 <ThemedText type='title' style={[styles.statValue, { color: isDark ? '#ffb4ab' : '#DC2626' }]}>
-                  ${totalOwing.toFixed(2)}
+                  {formatCurrency(totalOwing)}
                 </ThemedText>
                 <ThemedText style={[styles.statLabel, { color: isDark ? '#9ba6b8' : colors.textSecondary }]}>You owe</ThemedText>
               </View>

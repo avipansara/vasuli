@@ -6,6 +6,7 @@ import { ExpenseDetailSkeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useRefetchOnFocus } from '@/hooks/use-refetch-on-focus';
 import { useThemeColors } from '@/hooks/use-theme-colors';
+import { formatCurrency } from '@/utils/currency';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { activityService } from '@/services/activity-service';
 import { expenseService } from '@/services/expense-service';
@@ -279,7 +280,7 @@ export default function ExpenseDetailScreen() {
                   </ThemedText>
                 </View>
                 <ThemedText type='title' style={[styles.amount, { color: isDark ? '#10b981' : colors.accent }]}>
-                  ${expense.amount.toFixed(2)}
+                  {formatCurrency(expense.amount, expense.currency)}
                 </ThemedText>
               </View>
 
@@ -382,7 +383,7 @@ export default function ExpenseDetailScreen() {
                       <ThemedText type="defaultSemiBold" style={[styles.splitAmount, {
                         color: isCurrentUser ? (isDark ? '#10b981' : colors.accent) : (isDark ? '#f8fafc' : colors.text),
                       }]}>
-                        ${split.amount.toFixed(2)}
+                        {formatCurrency(split.amount, expense.currency)}
                       </ThemedText>
                     </View>
                   );
@@ -466,7 +467,7 @@ export default function ExpenseDetailScreen() {
                     </View>
                     {activity.amount && (
                       <ThemedText type="defaultSemiBold" style={[styles.activityAmount, { color: isDark ? '#f8fafc' : colors.text }]}>
-                        ${activity.amount.toFixed(2)}
+                        {formatCurrency(activity.amount, expense.currency)}
                       </ThemedText>
                     )}
                   </View>

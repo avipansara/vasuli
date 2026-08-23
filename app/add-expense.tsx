@@ -19,6 +19,7 @@ import { filterFriendsForExpenseSearch } from '@/utils/friend-search';
 import { getGroupExpenseParticipant } from '@/utils/group-expense-participants';
 import { calculateExpenseSplits, getEvenSplitValues, getSplitProgress } from '@/utils/split-validation';
 import { normalizeCurrencyInput } from '@/utils/validation';
+import { formatCurrency, getCurrencySymbol } from '@/utils/currency';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -466,7 +467,7 @@ export default function AddExpenseScreen() {
                     </ThemedText>
                   </View>
                   <View style={styles.amountInputRow}>
-                    <Text style={[styles.currencySymbol, { color: settle.accentText }]}>$</Text>
+                    <Text style={[styles.currencySymbol, { color: settle.accentText }]}>{getCurrencySymbol()}</Text>
                     <TextInput
                       ref={amountInputRef}
                       style={[styles.amountInput, { color: settle.accentText }]}
@@ -874,7 +875,7 @@ export default function AddExpenseScreen() {
                             ? (isDark ? '#fbbf24' : '#f59e0b')
                             : (isDark ? '#ef4444' : '#dc2626'),
                       }]}>
-                        {isBalanced ? '✓ Balanced' : `${remaining > 0 ? 'Remaining' : 'Over'}: $${Math.abs(remaining).toFixed(2)}`}
+                        {isBalanced ? '✓ Balanced' : `${remaining > 0 ? 'Remaining' : 'Over'}: ${formatCurrency(Math.abs(remaining))}`}
                       </ThemedText>
                     </View>
                   )}
@@ -886,17 +887,17 @@ export default function AddExpenseScreen() {
                     ? (isDark ? 'rgba(45, 212, 191, 0.32)' : 'rgba(34, 197, 94, 0.28)')
                     : (isDark ? 'rgba(251, 191, 36, 0.32)' : 'rgba(245, 158, 11, 0.28)'),
                 }]}
-                  accessibilityLabel={`Split total $${splitProgress.allocated.toFixed(2)} of $${totalAmount.toFixed(2)}`}>
+                  accessibilityLabel={`Split total ${formatCurrency(splitProgress.allocated)} of ${formatCurrency(totalAmount)}`}>
                   <View style={styles.splitSummaryTopline}>
                     <View>
                       <ThemedText style={[styles.splitSummaryLabel, { color: colors.textSecondary }]}>Live split total</ThemedText>
                       <View style={styles.splitSummaryTotalRow}>
-                        <ThemedText style={[styles.splitSummaryTotal, { color: colors.text }]}>{`$${splitProgress.allocated.toFixed(2)}`}</ThemedText>
-                        <ThemedText style={[styles.splitSummaryTotalContext, { color: colors.textSecondary }]}>{`of $$totalAmount.toFixed(2)}`}</ThemedText>
+                        <ThemedText style={[styles.splitSummaryTotal, { color: colors.text }]}>{formatCurrency(splitProgress.allocated)}</ThemedText>
+                        <ThemedText style={[styles.splitSummaryTotalContext, { color: colors.textSecondary }]}>{`of ${formatCurrency(totalAmount)}`}</ThemedText>
                       </View>
                     </View>
                     <ThemedText style={[styles.splitSummaryStatus, { color: splitProgress.isBalanced ? (isDark ? '#2DD4BF' : '#16A34A') : (isDark ? '#FBBF24' : '#B45309') }]}>
-                      {splitProgress.isBalanced ? 'Ready to add' : `${splitProgress.remaining > 0 ? '$' + splitProgress.remaining.toFixed(2) + ' left' : '$' + Math.abs(splitProgress.remaining).toFixed(2) + ' over'}`}
+                      {splitProgress.isBalanced ? 'Ready to add' : `${splitProgress.remaining > 0 ? formatCurrency(splitProgress.remaining) + ' left' : formatCurrency(Math.abs(splitProgress.remaining)) + ' over'}`}
                     </ThemedText>
                   </View>
                   {splitProgress.people.map(person => {
@@ -908,7 +909,7 @@ export default function AddExpenseScreen() {
                     return (
                       <View key={person.userId} style={styles.splitSummaryRow}>
                         <ThemedText style={[styles.splitSummaryPerson, { color: colors.textSecondary }]}>{personName}</ThemedText>
-                        <ThemedText style={[styles.splitSummaryAmount, { color: colors.text }]}>${person.amount.toFixed(2)}</ThemedText>
+                        <ThemedText style={[styles.splitSummaryAmount, { color: colors.text }]}>{formatCurrency(person.amount)}</ThemedText>
                       </View>
                     );
                   })}
@@ -957,7 +958,7 @@ export default function AddExpenseScreen() {
                     keyboardType="decimal-pad"
                   />
                   <ThemedText style={[styles.customSplitSuffix, { color: colors.textSecondary }]}>
-                    {splitMethod === SplitMethod.UNEQUAL ? '$' : splitMethod === SplitMethod.PERCENTAGE ? '%' : 'x'}
+                    {splitMethod === SplitMethod.UNEQUAL ? getCurrencySymbol() : splitMethod === SplitMethod.PERCENTAGE ? '%' : 'x'}
                   </ThemedText>
                   {(splitMethod === SplitMethod.PERCENTAGE || splitMethod === SplitMethod.SHARES) && (() => {
                     let calculatedAmount = 0;
@@ -971,7 +972,7 @@ export default function AddExpenseScreen() {
                     }
                     return (
                       <ThemedText style={[styles.calculatedAmount, { color: colors.textSecondary }]}>
-                        ${calculatedAmount.toFixed(2)}
+                        {formatCurrency(calculatedAmount)}
                       </ThemedText>
                     );
                   })()}
@@ -1014,7 +1015,7 @@ export default function AddExpenseScreen() {
                         keyboardType="decimal-pad"
                       />
                       <ThemedText style={[styles.customSplitSuffix, { color: colors.textSecondary }]}>
-                        {splitMethod === SplitMethod.UNEQUAL ? '$' : splitMethod === SplitMethod.PERCENTAGE ? '%' : 'x'}
+                        {splitMethod === SplitMethod.UNEQUAL ? getCurrencySymbol() : splitMethod === SplitMethod.PERCENTAGE ? '%' : 'x'}
                       </ThemedText>
                       {(splitMethod === SplitMethod.PERCENTAGE || splitMethod === SplitMethod.SHARES) && (() => {
                         let calculatedAmount = 0;
@@ -1028,7 +1029,7 @@ export default function AddExpenseScreen() {
                         }
                         return (
                           <ThemedText style={[styles.calculatedAmount, { color: colors.textSecondary }]}>
-                            ${calculatedAmount.toFixed(2)}
+                            {formatCurrency(calculatedAmount)}
                           </ThemedText>
                         );
                       })()}
@@ -1073,7 +1074,7 @@ export default function AddExpenseScreen() {
                         keyboardType="decimal-pad"
                       />
                       <ThemedText style={[styles.customSplitSuffix, { color: colors.textSecondary }]}>
-                        {splitMethod === SplitMethod.UNEQUAL ? '$' : splitMethod === SplitMethod.PERCENTAGE ? '%' : 'x'}
+                        {splitMethod === SplitMethod.UNEQUAL ? getCurrencySymbol() : splitMethod === SplitMethod.PERCENTAGE ? '%' : 'x'}
                       </ThemedText>
                       {(splitMethod === SplitMethod.PERCENTAGE || splitMethod === SplitMethod.SHARES) && (() => {
                         let calculatedAmount = 0;
@@ -1087,7 +1088,7 @@ export default function AddExpenseScreen() {
                         }
                         return (
                           <ThemedText style={[styles.calculatedAmount, { color: colors.textSecondary }]}>
-                            ${calculatedAmount.toFixed(2)}
+                            {formatCurrency(calculatedAmount)}
                           </ThemedText>
                         );
                       })()}

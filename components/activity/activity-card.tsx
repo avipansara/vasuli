@@ -3,8 +3,8 @@ import { IconSymbol, IconSymbolName } from '@/components/ui/icon-symbol';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getActivityHref } from '@/lib/activity-link';
 import type { Activity as DbActivity } from '@/types/database';
-import { router } from 'expo-router';
 import { formatCurrency } from '@/utils/currency';
+import { router } from 'expo-router';
 import { memo, useMemo } from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 

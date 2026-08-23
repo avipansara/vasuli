@@ -203,7 +203,7 @@ export const settlementModule = {
           groupId: transfer.groupId,
           fromUserId: transfer.fromUserId,
           toUserId: transfer.toUserId,
-          amount: transfer.amount,
+          amount: Math.abs(transfer.signedGroupBalanceDelta),
           signedGroupBalanceDelta: transfer.signedGroupBalanceDelta,
         })),
       });

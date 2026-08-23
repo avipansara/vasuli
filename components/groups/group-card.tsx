@@ -138,7 +138,7 @@ function GroupCardInner({ group, onRefresh }: GroupCardProps) {
           style={[styles.card, cardStyle]}
           onPress={handleOpenGroup}
           accessibilityRole="button"
-          accessibilityLabel={`${group.name}, ${isSettled ? 'all settled up' : `${isPositive ? 'you are owed' : 'you owe'} $${Math.abs(balance).toFixed(2)}`}`}
+          accessibilityLabel={`${group.name}, ${isSettled ? 'all settled up' : `${isPositive ? 'you are owed' : 'you owe'} ${formatCurrency(Math.abs(balance))}`}`}
           accessibilityHint="Opens this group">
           <View style={styles.row}>
             <View

@@ -10,6 +10,7 @@ import { useRefetchOnFocus } from '@/hooks/use-refetch-on-focus';
 import { useGroupsHomeRealtime } from '@/hooks/use-realtime';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
+import { formatCurrency } from '@/utils/currency';
 import { groupService } from '@/services/group-service';
 import { userService } from '@/services/user-service';
 import { queryKeys } from '@/services/query-keys';
@@ -142,11 +143,11 @@ export default function GroupsScreen() {
   const totalOwe = groups.reduce((sum, g) => sum + Math.max(-(g.yourBalance || 0), 0), 0);
   const hasSeparateBalances = totalOwed > 0 && totalOwe > 0;
   const summaryAccessibilityLabel = hasSeparateBalances
-    ? `You owe $${totalOwe.toFixed(2)} and you are owed $${totalOwed.toFixed(2)}`
+    ? `You owe ${formatCurrency(totalOwe)} and you are owed ${formatCurrency(totalOwed)}`
     : totalOwe > 0
-      ? `You owe $${totalOwe.toFixed(2)}`
+      ? `You owe ${formatCurrency(totalOwe)}`
       : totalOwed > 0
-        ? `You are owed $${totalOwed.toFixed(2)}`
+        ? `You are owed ${formatCurrency(totalOwed)}`
         : 'All settled up';
 
   return (
@@ -157,11 +158,11 @@ export default function GroupsScreen() {
             <View style={styles.balanceSummaryRow}>
               <View>
                 <ThemedText style={[styles.headerLabel, { color: isDark ? '#9ba6b8' : colors.textSecondary }]}>You owe</ThemedText>
-                <ThemedText type="header" style={[styles.headerAmount, { color: isDark ? '#ffb4ab' : colors.error }]}>${totalOwe.toFixed(2)}</ThemedText>
+                <ThemedText type="header" style={[styles.headerAmount, { color: isDark ? '#ffb4ab' : colors.error }]}>{formatCurrency(totalOwe)}</ThemedText>
               </View>
-              <View>
+              <View style={{ marginLeft: 32 }}>
                 <ThemedText style={[styles.headerLabel, { color: isDark ? '#9ba6b8' : colors.textSecondary }]}>You are owed</ThemedText>
-                <ThemedText type="header" style={[styles.headerAmount, { color: isDark ? '#10b981' : colors.success }]}>${totalOwed.toFixed(2)}</ThemedText>
+                <ThemedText type="header" style={[styles.headerAmount, { color: isDark ? '#10b981' : colors.success }]}>{formatCurrency(totalOwed)}</ThemedText>
               </View>
             </View>
           ) : (
@@ -173,7 +174,7 @@ export default function GroupsScreen() {
                 type="header"
                 style={[styles.headerAmount, { color: isDark ? (totalOwe > 0 ? '#ffb4ab' : '#10b981') : (totalOwe > 0 ? colors.error : colors.success) }]}
               >
-                ${Math.abs(totalBalance).toFixed(2)}
+                {formatCurrency(Math.abs(totalBalance))}
               </ThemedText>
             </>
           )}

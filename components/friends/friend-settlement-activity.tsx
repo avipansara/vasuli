@@ -1,6 +1,7 @@
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { formatCurrency } from '@/utils/currency';
+import { getFirstName } from '@/utils/validation';
 import type { FriendActivityItem } from '@/services/friend-detail-service';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 
@@ -28,7 +29,7 @@ export function FriendSettlementActivity({
   onReverse,
 }: FriendSettlementActivityProps) {
   const youPaid = item.direction === 'you_paid_friend';
-  const firstName = friendName.split(' ')[0];
+  const firstName = getFirstName(friendName);
   const title = youPaid ? `You paid ${firstName}` : `${firstName} paid you`;
   const scopeLabel = item.groupId
     ? `Group${item.groupName ? ` · ${item.groupName}` : ''}`
@@ -85,8 +86,18 @@ export function FriendSettlementActivity({
           accessibilityLabel="Reverse settlement"
           hitSlop={8}
           onPress={onReverse}
-          style={styles.reverseButton}>
-          <ThemedText style={[styles.reverseButtonText, { color: colors.danger }]}>Reverse</ThemedText>
+          style={[
+            styles.reverseButton,
+            {
+              backgroundColor: isDark ? 'rgba(239, 68, 68, 0.15)' : '#FEE2E2',
+              paddingHorizontal: 8,
+              paddingVertical: 4,
+              borderRadius: 6,
+              justifyContent: 'center',
+              alignItems: 'center',
+            }
+          ]}>
+          <ThemedText style={[styles.reverseButtonText, { color: isDark ? '#fca5a5' : colors.error }]}>Reverse</ThemedText>
         </TouchableOpacity>
       ) : null}
     </View>

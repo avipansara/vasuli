@@ -1,6 +1,7 @@
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { formatCurrency } from '@/utils/currency';
+import { getFirstName } from '@/utils/validation';
 import type { FriendActivityItem } from '@/services/friend-detail-service';
 import type { MutableRefObject } from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
@@ -98,9 +99,9 @@ export function FriendExpenseActivity({
   const sourceLabel = expense.groupName || (isGroupExpense ? 'Group' : 'Direct expense');
   const groupRelationship = isGroupExpense
     ? expense.paidBy === currentUserId && expense.friendShare > 0
-      ? { amount: expense.friendShare, label: `${friendName.split(' ')[0]} owes you in this group`, color: friendDetailTheme.positive }
+      ? { amount: expense.friendShare, label: `${getFirstName(friendName)} owes you in this group`, color: friendDetailTheme.positive }
       : expense.paidBy !== currentUserId && expense.paidByName === friendName && expense.yourShare > 0
-        ? { amount: expense.yourShare, label: `You owe ${friendName.split(' ')[0]} in this group`, color: friendDetailTheme.danger }
+        ? { amount: expense.yourShare, label: `You owe ${getFirstName(friendName)} in this group`, color: friendDetailTheme.danger }
         : null
     : null;
   const amountColor = isGroupExpense
@@ -207,7 +208,7 @@ export function FriendExpenseActivity({
               <ThemedText style={[styles.badgeText, { color: isGroupExpense ? friendDetailTheme.actionIcon : expense.paidBy === currentUserId ? friendDetailTheme.positive : friendDetailTheme.danger }]}>
                 {isGroupExpense
                   ? groupRelationship?.label ?? 'No balance impact'
-                  : expense.paidBy === currentUserId ? `${friendName.split(' ')[0]} owes` : 'You owe'}
+                  : expense.paidBy === currentUserId ? `${getFirstName(friendName)} owes` : 'You owe'}
               </ThemedText>
             </View>
           </View>
