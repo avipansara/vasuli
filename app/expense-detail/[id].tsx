@@ -143,10 +143,25 @@ export default function ExpenseDetailScreen() {
                   await notificationService.sendNotificationToUsers(pushTokens, notification);
                 }
               }
+              // The screens behind this one (friend detail for direct
+              // expenses, group details for group expenses) keep serving
+              // their pre-delete cache until invalidated explicitly.
+              const otherParticipantIds = splits
+                .map(split => split.userId)
+                .filter((userId, index) => splits[index].amount > 0)
+                .filter(userId => userId !== currentUserId);
               await Promise.all([
                 queryClient.invalidateQueries({ queryKey: queryKeys.expenses.detail(id) }),
                 queryClient.invalidateQueries({ queryKey: queryKeys.expenses.list(currentUserId) }),
                 queryClient.invalidateQueries({ queryKey: queryKeys.activity.list(currentUserId) }),
+                ...(group
+                  ? [
+                    queryClient.invalidateQueries({ queryKey: queryKeys.groups.detail(currentUserId, group.id) }),
+                    queryClient.invalidateQueries({ queryKey: queryKeys.groups.list(currentUserId) }),
+                  ]
+                  : otherParticipantIds.map(friendId =>
+                    queryClient.invalidateQueries({ queryKey: queryKeys.friends.detail(currentUserId, friendId) })
+                  )),
               ]);
               router.back();
             } catch (error) {

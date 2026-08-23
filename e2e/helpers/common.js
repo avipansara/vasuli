@@ -2,11 +2,10 @@ async function tapAlertButton(label) {
   try {
     await element(by.text(label)).atIndex(0).tap();
   } catch {
-    // The label can collide with identical content behind the modal (for
-    // example swipe-action rows); fall back to the native alert action
-    // buttons, where Cancel renders first and the confirm/destructive
-    // action second.
-    await element(by.type('UIAlertControllerActionButton')).atIndex(1).tap();
+    // The text can collide with identical content behind the modal (for
+    // example swipe-action rows). Alert action buttons expose their title as
+    // the accessibility label, so retry by label before giving up.
+    await element(by.label(label)).atIndex(0).tap();
   }
 }
 

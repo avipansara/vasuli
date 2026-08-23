@@ -66,12 +66,11 @@ async function main() {
     .like('name', `${GROUP_PREFIX}%`);
   if (groupError) throw groupError;
 
-  if (!groups?.length) {
-    console.log('[e2e-cleanup] No prefixed E2E groups found.');
-    return;
-  }
-
   if (!process.argv.includes('--apply')) {
+    if (!groups?.length) {
+      console.log('[e2e-cleanup] No prefixed E2E groups found.');
+      return;
+    }
     console.log(`[e2e-cleanup] Would delete ${groups.length} group(s):`);
     groups.forEach(({ name }) => console.log(`  - ${name}`));
     return;
@@ -79,7 +78,9 @@ async function main() {
 
   // Group deletion goes through the development-only purge_e2e_groups fixture
   // because settlement scope transfers and settlement operations restrict
-  // direct group deletes.
+  // direct group deletes. purge_e2e_history then wipes the E2E accounts'
+  // remaining test history (activities, direct Detox expenses, and the
+  // settlements between them) so runs start from a clean baseline.
   const { data: deletedCount, error: purgeError } = await supabase.rpc('purge_e2e_groups', {
     group_prefix: GROUP_PREFIX,
   });
@@ -89,6 +90,25 @@ async function main() {
     );
   }
   console.log(`[e2e-cleanup] Purged ${deletedCount} prefixed E2E group(s).`);
+
+  const { data: userLookup, error: userLookupError } = await supabase
+    .from('users')
+    .select('id')
+    .ilike('email', TEST_EMAIL)
+    .order('created_at', { ascending: true })
+    .limit(1);
+  if (userLookupError) throw userLookupError;
+  if (!userLookup?.length) throw new Error(`No app user found for ${TEST_EMAIL}.`);
+
+  const { data: historyUsers, error: historyError } = await supabase.rpc('purge_e2e_history', {
+    p_user_id: userLookup[0].id,
+  });
+  if (historyError) {
+    throw new Error(
+      `${historyError.message} (Apply supabase/fixtures/e2e-purge-groups.sql in the development Supabase SQL editor first.)`,
+    );
+  }
+  console.log(`[e2e-cleanup] Purged history for ${historyUsers} E2E account(s).`);
 }
 
 main().catch((error) => {

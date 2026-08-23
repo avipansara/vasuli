@@ -88,7 +88,16 @@ async function openFriendDetail(friendName) {
     throw new Error('openFriendDetail requires the name captured by addFirstAvailableFriend.');
   }
   const friendCard = element(by.text(friendName)).atIndex(0);
-  await waitFor(friendCard).toBeVisible().withTimeout(10000);
+  try {
+    await waitFor(friendCard).toBeVisible().withTimeout(3000);
+  } catch {
+    // With a clean baseline the friend has a zero balance and lives in the
+    // collapsed "Settled Up (N)" accordion at the bottom of the Friends tab.
+    const accordion = element(by.text(/^Settled Up \(\d+\)$/));
+    await waitFor(accordion).toBeVisible().withTimeout(5000);
+    await accordion.tap();
+    await waitFor(friendCard).toBeVisible().withTimeout(5000);
+  }
   await friendCard.tap();
   await waitFor(element(by.label('Activity filter')))
     .toBeVisible()

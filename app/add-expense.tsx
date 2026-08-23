@@ -964,6 +964,7 @@ export default function AddExpenseScreen() {
                     placeholder="0"
                     placeholderTextColor={isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)'}
                     keyboardType="decimal-pad"
+                    testID="custom-split-you-input"
                   />
                   <ThemedText style={[styles.customSplitSuffix, { color: colors.textSecondary }]}>
                     {splitMethod === SplitMethod.UNEQUAL ? '$' : splitMethod === SplitMethod.PERCENTAGE ? '%' : 'x'}
@@ -1021,6 +1022,7 @@ export default function AddExpenseScreen() {
                         placeholder="0"
                         placeholderTextColor={isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)'}
                         keyboardType="decimal-pad"
+                        testID="custom-split-participant-input"
                       />
                       <ThemedText style={[styles.customSplitSuffix, { color: colors.textSecondary }]}>
                         {splitMethod === SplitMethod.UNEQUAL ? '$' : splitMethod === SplitMethod.PERCENTAGE ? '%' : 'x'}
@@ -1080,6 +1082,7 @@ export default function AddExpenseScreen() {
                         placeholder="0"
                         placeholderTextColor={isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)'}
                         keyboardType="decimal-pad"
+                        testID="custom-split-participant-input"
                       />
                       <ThemedText style={[styles.customSplitSuffix, { color: colors.textSecondary }]}>
                         {splitMethod === SplitMethod.UNEQUAL ? '$' : splitMethod === SplitMethod.PERCENTAGE ? '%' : 'x'}
