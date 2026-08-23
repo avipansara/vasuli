@@ -13,7 +13,6 @@ import { activityService } from '@/services/activity-service';
 import { queryKeys } from '@/services/query-keys';
 import type { Activity } from '@/types/database';
 import { useInfiniteQuery } from '@tanstack/react-query';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Animated, Platform, RefreshControl, SectionList, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 

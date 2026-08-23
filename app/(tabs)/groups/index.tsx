@@ -2,21 +2,20 @@ import { CreateGroupModal, GroupCard } from '@/components/groups';
 import { ThemedText } from '@/components/themed-text';
 import { AsyncErrorState } from '@/components/ui/async-error-state';
 import { EmptyState } from '@/components/ui/empty-state';
-import { IconSymbol } from '@/components/ui/icon-symbol';
 import { GroupsListSkeleton } from '@/components/ui/skeleton';
+import { ThemedIconButton } from '@/components/ui/themed-icon-button';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useDebouncedQueryInvalidation } from '@/hooks/use-debounced-query-invalidation';
-import { useRefetchOnFocus } from '@/hooks/use-refetch-on-focus';
 import { useGroupsHomeRealtime } from '@/hooks/use-realtime';
+import { useRefetchOnFocus } from '@/hooks/use-refetch-on-focus';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
-import { formatCurrency } from '@/utils/currency';
 import { groupService } from '@/services/group-service';
-import { userService } from '@/services/user-service';
 import { queryKeys } from '@/services/query-keys';
+import { userService } from '@/services/user-service';
 import type { Group, GroupWithMembers } from '@/types/database';
+import { formatCurrency } from '@/utils/currency';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Animated, FlatList, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
@@ -179,14 +178,14 @@ export default function GroupsScreen() {
             </>
           )}
         </View>
-        <TouchableOpacity
-          style={[styles.addButtonRect, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: isDark ? 1 : 0 }]}
+        <ThemedIconButton
+          name="plus"
+          size={20}
+          shape='square'
+          accessibilityLabel='Create Group'
+          accessibilityHint="Opens the form to create a new group"
           onPress={() => router.push('/create-group')}
-          accessibilityRole="button"
-          accessibilityLabel="Create group"
-          accessibilityHint="Opens the form to create a new group">
-          <IconSymbol size={20} name="plus" color={isDark ? '#10b981' : colors.tint} />
-        </TouchableOpacity>
+        />
       </View>
 
       {deletedGroups.length > 0 && (

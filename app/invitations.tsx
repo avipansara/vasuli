@@ -353,7 +353,7 @@ export default function InvitationsScreen() {
                   borderColor: isDark ? 'rgba(239, 68, 68, 0.4)' : 'rgba(239, 68, 68, 0.3)',
                   opacity: isLoading ? 0.5 : 1,
                 }]}>
-                <IconSymbol name="trash" size={18} color={isDark ? '#EF4444' : '#DC2626'} />
+                <IconSymbol name="trash.fill" size={18} color={isDark ? '#EF4444' : '#DC2626'} />
                 <ThemedText style={[styles.actionButtonText, { color: isDark ? '#EF4444' : '#DC2626' }]}>
                   Cancel
                 </ThemedText>

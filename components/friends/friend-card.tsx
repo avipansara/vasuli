@@ -3,8 +3,8 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import type { FriendRelationshipProjection } from '@/services/friend-detail-service';
 import type { User } from '@/types/database';
-import { getDisplayName } from '@/utils/validation';
 import { formatCurrency } from '@/utils/currency';
+import { getDisplayName } from '@/utils/validation';
 import { memo, useMemo } from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
@@ -51,7 +51,7 @@ function FriendDeleteAction({
   return (
     <Reanimated.View style={[styles.swipeActionRight, { backgroundColor }, actionStyle]}>
       <TouchableOpacity onPress={onDelete} style={styles.swipeActionButton}>
-        <IconSymbol name="trash" size={20} color={iconColor} />
+        <IconSymbol name="trash.fill" size={20} color={iconColor} />
         <ThemedText style={[styles.swipeActionText, { color: iconColor }]}>Delete</ThemedText>
       </TouchableOpacity>
     </Reanimated.View>

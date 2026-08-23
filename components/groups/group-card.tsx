@@ -221,7 +221,7 @@ function GroupSwipeAction({
         style={styles.swipeActionButton}
         accessibilityRole="button"
         accessibilityLabel={accessibilityLabel}>
-        <IconSymbol name={side === 'left' ? 'pencil' : 'trash'} size={20} color="#fff" />
+        <IconSymbol name={side === 'left' ? 'pencil' : 'trash.fill'} size={20} color="#fff" />
         <ThemedText style={styles.swipeActionText}>{side === 'left' ? 'Edit' : 'Delete'}</ThemedText>
       </TouchableOpacity>
     </Reanimated.View>

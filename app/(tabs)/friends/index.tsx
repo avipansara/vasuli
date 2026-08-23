@@ -4,17 +4,18 @@ import { AsyncErrorState } from '@/components/ui/async-error-state';
 import { EmptyState } from '@/components/ui/empty-state';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { FriendsListSkeleton } from '@/components/ui/skeleton';
+import { ThemedIconButton } from '@/components/ui/themed-icon-button';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useDebouncedQueryInvalidation } from '@/hooks/use-debounced-query-invalidation';
-import { useRefetchOnFocus } from '@/hooks/use-refetch-on-focus';
 import { useRealtime } from '@/hooks/use-realtime';
+import { useRefetchOnFocus } from '@/hooks/use-refetch-on-focus';
 import { useThemeColors } from '@/hooks/use-theme-colors';
-import { formatCurrency } from '@/utils/currency';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { friendSummaryService } from '@/services/friend-summary-service';
 import { friendshipService } from '@/services/friendship-service';
 import { queryKeys } from '@/services/query-keys';
 import type { Expense, User } from '@/types/database';
+import { formatCurrency } from '@/utils/currency';
 import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
@@ -178,11 +179,13 @@ export default function FriendsScreen() {
           <ThemedText type="header" style={{ color: balanceColor }}>{formatCurrency(Math.abs(netBalance))}</ThemedText>
         </View>
         <View style={styles.headerButtons}>
-          <TouchableOpacity
-            style={[styles.addButtonRect, actionButtonStyle]}
-            onPress={() => router.push('/add-friend')}>
-            <IconSymbol size={20} name="person.badge.plus" color={isDark ? '#10b981' : friendsTheme.actionIcon} />
-          </TouchableOpacity>
+          <ThemedIconButton
+            name="person.badge.plus"
+            size={20}
+            shape='square'
+            accessibilityLabel='Add Friend'
+            onPress={() => router.push('/add-friend')}
+          />
         </View>
       </View>
 

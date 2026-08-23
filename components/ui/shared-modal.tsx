@@ -18,6 +18,7 @@ import {
 import { ThemedText } from '../themed-text';
 import { IconSymbol, IconSymbolName } from './icon-symbol';
 import { ThemedButton } from './themed-button';
+import { ThemedIconButton } from './themed-icon-button';
 
 interface SharedModalProps {
   visible: boolean;
@@ -109,13 +110,14 @@ export function SharedModal({
           style={styles.keyboard}>
           {headerStyle === 'centered' ? (
             <View style={[styles.centeredHeader, { borderBottomColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)' }]}>
-              <TouchableOpacity
+              <ThemedIconButton
+                name="xmark"
                 onPress={onClose}
-                accessibilityRole="button"
+                size={20}
+                variant="ghost"
+                shape="circle"
                 accessibilityLabel="Close modal"
-                style={styles.centeredCloseButton}>
-                <IconSymbol size={20} name="xmark" color={colors.text} />
-              </TouchableOpacity>
+              />
               <ThemedText style={[styles.centeredTitle, { color: colors.text }]}>
                 {title}
               </ThemedText>
@@ -123,11 +125,14 @@ export function SharedModal({
             </View>
           ) : (
             <View style={styles.header}>
-              <TouchableOpacity
+              <ThemedIconButton
+                name="xmark"
                 onPress={onClose}
-                style={styles.closeButton}>
-                <IconSymbol size={20} name="xmark" color={closeIconColor} />
-              </TouchableOpacity>
+                size={20}
+                variant="ghost"
+                shape="circle"
+                accessibilityLabel="Close modal"
+              />
             </View>
           )}
 

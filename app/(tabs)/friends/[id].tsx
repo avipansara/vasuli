@@ -5,6 +5,7 @@ import { FriendScopeTransferActivity } from '@/components/friends/friend-scope-t
 import { ThemedText } from '@/components/themed-text';
 import { AsyncErrorState } from '@/components/ui/async-error-state';
 import { IconSymbol, type IconSymbolName } from '@/components/ui/icon-symbol';
+import { ThemedIconButton } from '@/components/ui/themed-icon-button';
 import { FriendDetailSkeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useFriendDetailController } from '@/hooks/use-friend-detail-controller';
@@ -365,14 +366,18 @@ export default function FriendDetailScreen() {
       <View style={styles.container}>
         <LinearGradient colors={gradients.screenBackground} style={StyleSheet.absoluteFill} />
         <View style={styles.header}>
-          <TouchableOpacity
+          <ThemedIconButton
+            name="chevron.left"
             onPress={() => router.back()}
-            style={[styles.backButtonRect, {
+            size={20}
+            shape="circle"
+            accessibilityLabel="Go back"
+            accessibilityHint="Returns to the previous screen"
+            style={{
               backgroundColor: friendDetailTheme.actionSurface,
               borderColor: friendDetailTheme.actionBorder,
-            }]}>
-            <IconSymbol size={20} name="chevron.left" color={friendDetailTheme.actionIcon} />
-          </TouchableOpacity>
+            }}
+          />
         </View>
         <FriendDetailSkeleton />
       </View>
@@ -384,14 +389,18 @@ export default function FriendDetailScreen() {
       <View style={styles.container}>
         <LinearGradient colors={gradients.screenBackground} style={StyleSheet.absoluteFill} />
         <View style={styles.header}>
-          <TouchableOpacity
+          <ThemedIconButton
+            name="chevron.left"
             onPress={() => router.back()}
-            style={[styles.backButtonRect, {
+            size={20}
+            shape="circle"
+            accessibilityLabel="Go back"
+            accessibilityHint="Returns to the previous screen"
+            style={{
               backgroundColor: friendDetailTheme.actionSurface,
               borderColor: friendDetailTheme.actionBorder,
-            }]}>
-            <IconSymbol size={20} name="chevron.left" color={friendDetailTheme.actionIcon} />
-          </TouchableOpacity>
+            }}
+          />
         </View>
         <AsyncErrorState
           message={loadError}
@@ -458,18 +467,18 @@ export default function FriendDetailScreen() {
     <View style={[styles.container, { backgroundColor: isDark ? '#050914' : colors.background }]}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity
+        <ThemedIconButton
+          name="chevron.left"
           onPress={() => router.back()}
-          accessibilityRole="button"
+          size={20}
+          shape="circle"
           accessibilityLabel="Go back"
           accessibilityHint="Returns to the previous screen"
-          hitSlop={MIN_TOUCH_HIT_SLOP}
-          style={[styles.backButtonRect, {
+          style={{
             backgroundColor: friendDetailTheme.actionSurface,
             borderColor: friendDetailTheme.actionBorder,
-          }]}>
-          <IconSymbol size={20} name="chevron.left" color={friendDetailTheme.actionIcon} />
-        </TouchableOpacity>
+          }}
+        />
 
         {/* Floating Header Title (Friend Name) */}
         <View style={styles.headerTitleContainer} pointerEvents="none">
@@ -484,36 +493,35 @@ export default function FriendDetailScreen() {
         </View>
 
         <View style={styles.headerActions}>
-          <TouchableOpacity
+          <ThemedIconButton
+            name="bell.fill"
             onPress={handleRemind}
             disabled={balance === 0}
-            accessibilityRole="button"
+            size={18}
+            shape="square"
             accessibilityLabel={`Remind ${friend.name}`}
             accessibilityHint="Sends a reminder about this balance"
-            accessibilityState={{ disabled: balance === 0 }}
-            hitSlop={MIN_TOUCH_HIT_SLOP}
-            style={[styles.headerActionButton, {
+            style={{
               backgroundColor: friendDetailTheme.warningSurface,
               borderColor: friendDetailTheme.warningBorder,
               opacity: balance === 0 ? 0.45 : 1,
-            }]}>
-            <IconSymbol size={18} name="bell.fill" color={friendDetailTheme.warning} />
-          </TouchableOpacity>
-          <TouchableOpacity
+            }}
+          />
+          <ThemedIconButton
+            name="trash.fill"
             onPress={handleRemoveFriend}
             disabled={isRemovingFriend}
-            accessibilityRole="button"
+            loading={isRemovingFriend}
+            size={18}
+            shape="square"
+            variant="danger"
             accessibilityLabel={`Remove ${friend.name}`}
             accessibilityHint="Removes this person from your friends"
-            accessibilityState={{ busy: isRemovingFriend, disabled: isRemovingFriend }}
-            hitSlop={MIN_TOUCH_HIT_SLOP}
-            style={[styles.headerActionButton, {
+            style={{
               backgroundColor: friendDetailTheme.dangerSurface,
               borderColor: friendDetailTheme.dangerBorder,
-              opacity: isRemovingFriend ? 0.5 : 1,
-            }]}>
-            <IconSymbol size={18} name="trash" color={friendDetailTheme.danger} />
-          </TouchableOpacity>
+            }}
+          />
         </View>
       </View>
 

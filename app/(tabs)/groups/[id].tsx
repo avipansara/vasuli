@@ -2,6 +2,7 @@ import { AddMemberModal } from '@/components/group';
 import { ThemedText } from '@/components/themed-text';
 import { AsyncErrorState } from '@/components/ui/async-error-state';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { ThemedIconButton } from '@/components/ui/themed-icon-button';
 import { GroupDetailSkeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useDebouncedQueryInvalidation } from '@/hooks/use-debounced-query-invalidation';
@@ -759,18 +760,18 @@ export default function GroupDetailScreen() {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={styles.header}>
-          <TouchableOpacity
+          <ThemedIconButton
+            name="chevron.left"
             onPress={() => router.back()}
-            accessibilityRole="button"
+            size={20}
+            shape="circle"
             accessibilityLabel="Go back"
             accessibilityHint="Returns to the previous screen"
-            hitSlop={MIN_TOUCH_HIT_SLOP}
-            style={[styles.backButtonRect, {
+            style={{
               backgroundColor: friendDetailTheme.actionSurface,
               borderColor: friendDetailTheme.actionBorder,
-            }]}>
-            <IconSymbol size={20} name="chevron.left" color={friendDetailTheme.actionIcon} />
-          </TouchableOpacity>
+            }}
+          />
         </View>
         <GroupDetailSkeleton />
       </View>
@@ -781,18 +782,18 @@ export default function GroupDetailScreen() {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={styles.header}>
-          <TouchableOpacity
+          <ThemedIconButton
+            name="chevron.left"
             onPress={() => router.back()}
-            accessibilityRole="button"
+            size={20}
+            shape="circle"
             accessibilityLabel="Go back"
             accessibilityHint="Returns to the previous screen"
-            hitSlop={MIN_TOUCH_HIT_SLOP}
-            style={[styles.backButtonRect, {
+            style={{
               backgroundColor: friendDetailTheme.actionSurface,
               borderColor: friendDetailTheme.actionBorder,
-            }]}>
-            <IconSymbol size={20} name="chevron.left" color={friendDetailTheme.actionIcon} />
-          </TouchableOpacity>
+            }}
+          />
           <View style={styles.headerSpacer} />
         </View>
         <AsyncErrorState
@@ -840,18 +841,18 @@ export default function GroupDetailScreen() {
 
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity
+        <ThemedIconButton
+          name="chevron.left"
           onPress={() => router.back()}
-          accessibilityRole="button"
+          size={20}
+          shape="circle"
           accessibilityLabel="Go back"
           accessibilityHint="Returns to the previous screen"
-          hitSlop={MIN_TOUCH_HIT_SLOP}
-          style={[styles.backButtonRect, {
+          style={{
             backgroundColor: friendDetailTheme.actionSurface,
             borderColor: friendDetailTheme.actionBorder,
-          }]}>
-          <IconSymbol size={20} name="chevron.left" color={friendDetailTheme.actionIcon} />
-        </TouchableOpacity>
+          }}
+        />
 
         {/* Floating Header Title (Group Name) */}
         <View style={styles.headerTitleContainer} pointerEvents="none">
@@ -861,22 +862,22 @@ export default function GroupDetailScreen() {
         </View>
 
         <View style={styles.headerActions}>
-          <TouchableOpacity
+          <ThemedIconButton
+            name="trash.fill"
             onPress={handleDeleteGroup}
             disabled={isDeletingGroup}
-            accessibilityRole="button"
+            loading={isDeletingGroup}
+            size={18}
+            shape="square"
+            variant="danger"
             accessibilityLabel={`Delete ${group.name}`}
             accessibilityHint={groupIsSettled ? 'Deletes this group after confirmation' : 'Shows why this group needs settlement before deletion'}
-            accessibilityState={{ busy: isDeletingGroup, disabled: isDeletingGroup }}
-            hitSlop={MIN_TOUCH_HIT_SLOP}
             testID="delete-group-button"
-            style={[styles.headerActionButton, {
+            style={{
               backgroundColor: friendDetailTheme.dangerSurface,
               borderColor: friendDetailTheme.dangerBorder,
-              opacity: isDeletingGroup ? 0.5 : 1,
-            }]}>
-            <IconSymbol size={18} name="trash" color={friendDetailTheme.danger} />
-          </TouchableOpacity>
+            }}
+          />
         </View>
       </View>
 
