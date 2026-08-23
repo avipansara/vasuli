@@ -1,5 +1,6 @@
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { formatCurrency } from '@/utils/currency';
 import type { FriendActivityItem } from '@/services/friend-detail-service';
 import type { MutableRefObject } from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
@@ -152,7 +153,7 @@ export function FriendExpenseActivity({
       containerStyle={{ overflow: 'visible' }}>
       <TouchableOpacity
         accessibilityRole="button"
-        accessibilityLabel={`${expense.description}, ${sourceLabel}, ${formatDate(expense.date)}, ${expense.paidByName} paid $${expense.amount.toFixed(2)}, ${isGroupExpense ? groupRelationship ? `${groupRelationship.label}, $${groupRelationship.amount.toFixed(2)}` : 'no balance impact' : expense.paidBy === currentUserId ? `you are owed $${expense.friendShare.toFixed(2)}` : `you owe $${expense.yourShare.toFixed(2)}`}`}
+        accessibilityLabel={`${expense.description}, ${sourceLabel}, ${formatDate(expense.date)}, ${expense.paidByName} paid ${formatCurrency(expense.amount, expense.currency)}, ${isGroupExpense ? groupRelationship ? `${groupRelationship.label}, ${formatCurrency(groupRelationship.amount, expense.currency)}` : 'no balance impact' : expense.paidBy === currentUserId ? `you are owed ${formatCurrency(expense.friendShare, expense.currency)}` : `you owe ${formatCurrency(expense.yourShare, expense.currency)}`}`}
         accessibilityHint="Opens expense details"
         activeOpacity={0.7}
         onPress={() => onOpenExpense(expense.id)}>
@@ -199,8 +200,8 @@ export function FriendExpenseActivity({
           <View style={styles.amountBlock}>
             <ThemedText type="title" style={[styles.expenseAmount, { color: amountColor }]}>
               {isGroupExpense
-                ? groupRelationship ? `$${groupRelationship.amount.toFixed(2)}` : 'No balance impact'
-                : expense.paidBy === currentUserId ? `+$${expense.friendShare.toFixed(2)}` : `-$${expense.yourShare.toFixed(2)}`}
+                ? groupRelationship ? formatCurrency(groupRelationship.amount, expense.currency) : 'No balance impact'
+                : expense.paidBy === currentUserId ? `+${formatCurrency(expense.friendShare, expense.currency)}` : `-${formatCurrency(expense.yourShare, expense.currency)}`}
             </ThemedText>
             <View style={[styles.badge, { backgroundColor: isGroupExpense ? friendDetailTheme.settledSurface : expense.paidBy === currentUserId ? friendDetailTheme.positiveSurface : friendDetailTheme.dangerSurface }]}>
               <ThemedText style={[styles.badgeText, { color: isGroupExpense ? friendDetailTheme.actionIcon : expense.paidBy === currentUserId ? friendDetailTheme.positive : friendDetailTheme.danger }]}>

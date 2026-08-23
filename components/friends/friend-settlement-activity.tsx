@@ -1,5 +1,6 @@
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { formatCurrency } from '@/utils/currency';
 import type { FriendActivityItem } from '@/services/friend-detail-service';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 
@@ -38,7 +39,7 @@ export function FriendSettlementActivity({
     <View
       accessible
       accessibilityRole="text"
-      accessibilityLabel={`${title}, ${scopeLabel}, ${formatDate(item.date)}, ${youPaid ? 'you paid' : 'you received'} $${item.amount.toFixed(2)}`}
+      accessibilityLabel={`${title}, ${scopeLabel}, ${formatDate(item.date)}, ${youPaid ? 'you paid' : 'you received'} ${formatCurrency(item.amount)}`}
       style={[
         styles.expenseCard,
         {
@@ -70,7 +71,7 @@ export function FriendSettlementActivity({
       </View>
       <View style={styles.amountBlock}>
         <ThemedText type='subtitle' style={[styles.expenseAmount, { color: isDark ? '#94A3B8' : amountColor }]}>
-          ${item.amount.toFixed(2)}
+          {formatCurrency(item.amount)}
         </ThemedText>
         <View style={[styles.badge, { backgroundColor: isDark ? 'rgba(30, 41, 59, 0.6)' : '#E5E7EB' }]}>
           <ThemedText style={[styles.badgeText, { color: isDark ? '#94A3B8' : colors.textSecondary }]}>

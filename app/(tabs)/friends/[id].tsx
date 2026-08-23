@@ -9,6 +9,7 @@ import { FriendDetailSkeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useFriendDetailController } from '@/hooks/use-friend-detail-controller';
 import { useThemeColors } from '@/hooks/use-theme-colors';
+import { formatCurrency } from '@/utils/currency';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import {
   filterFriendActivity,
@@ -562,7 +563,7 @@ export default function FriendDetailScreen() {
               <ThemedText type='subtitle' style={[styles.summaryCardAmount, { color: isDark ? (isOwing ? '#ffb3b0' : isOwed ? '#4edea3' : '#94A3B8') : balanceColor }]}>
                 {hasCurrencyAmbiguity
                   ? 'Multiple currencies'
-                  : `${isOwing ? '-' : isOwed ? '+' : ''}${relationship.settleableTotal?.currency ?? relationship.directCurrency ?? ''} ${Math.abs(balance).toFixed(2)}`}
+                  : `${isOwing ? '-' : isOwed ? '+' : ''}${formatCurrency(Math.abs(balance), relationship.settleableTotal?.currency ?? relationship.directCurrency ?? 'USD')}`}
               </ThemedText>
 
               <ThemedText style={[styles.summaryCardSubtitle, { color: isDark ? '#94A3B8' : colors.textSecondary }]}>
@@ -572,7 +573,7 @@ export default function FriendDetailScreen() {
               </ThemedText>
 
               <ThemedText style={[styles.summaryCardSubtitle, { color: isDark ? '#94A3B8' : colors.textSecondary }] }>
-                Direct ledger: {relationship.directCurrency ?? 'multiple currencies'} {relationship.directBalance >= 0 ? '+' : '-'}{Math.abs(relationship.directBalance).toFixed(2)}
+                Direct ledger: {relationship.directBalance >= 0 ? '+' : ''}{formatCurrency(Math.abs(relationship.directBalance), relationship.directCurrency ?? 'USD')}
               </ThemedText>
 
               {((balance !== 0 && !hasCurrencyAmbiguity) || canClearZeroNet) && (
@@ -644,7 +645,7 @@ export default function FriendDetailScreen() {
                   </View>
                   <View style={styles.groupBalanceAmount}>
                     <ThemedText type="defaultSemiBold" style={{ color: isOwedInGroup ? friendDetailTheme.positive : friendDetailTheme.negative }}>
-                      {isOwedInGroup ? '+' : '-'}{summary.currency} {Math.abs(summary.amount).toFixed(2)}
+                      {isOwedInGroup ? '+' : '-'}{formatCurrency(Math.abs(summary.amount), summary.currency)}
                     </ThemedText>
                   </View>
                 </TouchableOpacity>
