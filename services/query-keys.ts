@@ -25,4 +25,7 @@ export const queryKeys = {
     friendRequests: (userId: string) => ['invitations', 'friend-requests', userId] as const,
     pendingCount: (userId: string, email: string) => ['invitations', 'pending-count', userId, email] as const,
   },
+  settlements: {
+    detail: (settlementId: string) => ['settlements', 'detail', settlementId] as const,
+  },
 };

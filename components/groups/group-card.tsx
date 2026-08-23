@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/auth-context-otp';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { createGroupDetailTraceId, logGroupDetailDiagnostic } from '@/lib/group-detail-diagnostics';
 import { groupService } from '@/services/group-service';
+import { formatCurrency } from '@/utils/currency';
 import type { GroupWithMembers } from '@/types/database';
 import { router } from 'expo-router';
 import { memo, useMemo, useRef } from 'react';
@@ -185,7 +186,7 @@ function GroupCardInner({ group, onRefresh }: GroupCardProps) {
                         color: isDark ? (isPositive ? '#10b981' : '#ffb4ab') : (isPositive ? colors.success : colors.error),
                       },
                     ]}>
-                    ${Math.abs(balance).toFixed(2)}
+                    {formatCurrency(Math.abs(balance))}
                   </ThemedText>
                 </>
               )}

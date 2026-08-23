@@ -421,6 +421,56 @@ export function ExpenseDetailSkeleton() {
 }
 
 /**
+ * Skeleton Loader matching settlement-detail/[id].tsx
+ */
+export function SettlementDetailSkeleton() {
+  const { colors, isDark } = useThemeColors();
+  
+  const cardStyle = {
+    backgroundColor: colors.card,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 24,
+    alignItems: 'center' as const,
+    shadowColor: '#64748b',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.09,
+    shadowRadius: 0,
+    elevation: 4,
+  };
+
+  return (
+    <View style={styles.container}>
+      <View style={cardStyle}>
+        {/* Checkmark icon placeholder */}
+        <Skeleton width={64} height={64} borderRadius={32} style={{ marginBottom: 16 }} />
+
+        {/* Amount placeholder */}
+        <Skeleton width={130} height={36} style={{ marginBottom: 12 }} />
+
+        {/* Payer paid Payee placeholder */}
+        <Skeleton width={190} height={18} style={{ marginBottom: 12 }} />
+
+        {/* Date placeholder */}
+        <Skeleton width={110} height={14} style={{ marginBottom: 24 }} />
+
+        {/* Notes placeholder */}
+        <View style={{
+          width: '100%',
+          padding: 16,
+          borderRadius: 12,
+          backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+        }}>
+          <Skeleton width={50} height={11} style={{ marginBottom: 6 }} />
+          <Skeleton width="85%" height={15} />
+        </View>
+      </View>
+    </View>
+  );
+}
+
+/**
  * Generic Fallback List Skeleton (For settle, stats, invitations, etc.)
  */
 export function GenericSkeleton() {

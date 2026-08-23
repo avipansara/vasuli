@@ -4,6 +4,7 @@ import { useThemeColors } from '@/hooks/use-theme-colors';
 import type { FriendRelationshipProjection } from '@/services/friend-detail-service';
 import type { User } from '@/types/database';
 import { getDisplayName } from '@/utils/validation';
+import { formatCurrency } from '@/utils/currency';
 import { memo, useMemo } from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
@@ -29,7 +30,7 @@ function normalizeDisplayBalance(balance: number) {
 }
 
 function formatBreakdownAmount(currency: string, amount: number) {
-  return currency === 'USD' ? `$${amount.toFixed(2)}` : `${currency} ${amount.toFixed(2)}`;
+  return formatCurrency(amount, currency);
 }
 
 function FriendDeleteAction({
@@ -209,7 +210,7 @@ function FriendCardInner({ friend, onPress, onDelete }: FriendCardProps) {
               {balance !== 0 ? (
                 <>
                   <ThemedText type='title' style={[styles.balanceAmount, { color: isDark ? (balance > 0 ? '#10b981' : '#ffb4ab') : balanceColor }]}>
-                    ${Math.abs(balance).toFixed(2)}
+                    {formatCurrency(Math.abs(balance))}
                   </ThemedText>
                   <ThemedText
                     style={[styles.balanceLabel, { color: isDark ? '#64748b' : colors.textSecondary }]}

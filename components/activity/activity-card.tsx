@@ -4,6 +4,7 @@ import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getActivityHref } from '@/lib/activity-link';
 import type { Activity as DbActivity } from '@/types/database';
 import { router } from 'expo-router';
+import { formatCurrency } from '@/utils/currency';
 import { memo, useMemo } from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 
@@ -87,7 +88,7 @@ function ActivityCardInner({ activity, currentUserId, deletedExpenseTargetIds }:
   const title = item.description.replace(/^(Deleted|Updated):\s*/i, '');
   const actorName = activity.userName?.trim() || 'Someone';
   const actorLabel = currentUserId && activity.userId === currentUserId ? 'You' : actorName;
-  const amountLabel = item.amount === undefined ? null : `${item.type === 'settlement' ? '+' : ''}$${item.amount.toFixed(2)}`;
+  const amountLabel = item.amount === undefined ? null : `${item.type === 'settlement' ? '+' : ''}${formatCurrency(item.amount)}`;
   const statusLabel = isDeleted ? 'Deleted' : isUpdated ? 'Updated' : null;
   const accessibilityLabel = [
     statusLabel,

@@ -7,6 +7,7 @@ import {
     SUCCESS_DARK,
 } from '@/constants/theme';
 import { useThemeColors } from '@/hooks/use-theme-colors';
+import { formatCurrency } from '@/utils/currency';
 import type { GroupMember, User } from '@/types/database';
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -53,7 +54,7 @@ export function MemberCard({ member, balance }: MemberCardProps) {
         {balance !== 0 ? (
           <>
             <ThemedText style={[styles.balanceAmount, { color: balanceColor }]}>
-              ${Math.abs(balance).toFixed(2)}
+              {formatCurrency(Math.abs(balance))}
             </ThemedText>
             <ThemedText
               style={[styles.balanceLabel, !isDark && { color: colors.textSecondary }]}>

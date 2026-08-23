@@ -578,6 +578,19 @@ export const settlementService = {
     return mapSettlementOperationReversal(data);
   },
 
+  async getById(id: string): Promise<Settlement | null> {
+    const { data, error } = await supabase
+      .from('settlements')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (error) throw error;
+    if (!data) return null;
+
+    return mapSettlementRow(data, { preserveNullGroupId: true });
+  },
+
   async create(settlement: Omit<Settlement, 'id' | 'createdAt'>): Promise<Settlement> {
     const createdAt = new Date().toISOString();
 
