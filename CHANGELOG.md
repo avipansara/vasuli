@@ -1,3 +1,25 @@
+## 2026-08-23
+
+- Fixed deleted expenses leaving Friends and Group balances stale until a
+  matching Realtime event arrived.
+- Added an implementation-ready specification for reducing Detox E2E runtime
+  through measured baselines, run-scoped fixtures, focused device coverage,
+  deterministic helpers, cheaper cleanup, and safe sharding.
+- Configured the repository's local Markdown issue tracker and published the
+  E2E performance plan as ten dependency-linked, agent-ready tickets.
+- Adapted the specification implementation workflow to use GPT-5.6 Luna
+  workers with primary-agent review, correction loops, and persistent local
+  ticket execution state.
+- Consolidated the Detox release suite to 11 focused journeys, moved removed
+  setup coverage to retained device or Vitest tests, and documented the
+  coverage map. The default full run no longer repeats the smoke journey.
+- Added separate macOS GitHub Actions workflows for PR smoke coverage and
+  scheduled or manually started full-suite verification, with native-input
+  caching and retained timing, logs, and Detox artifacts.
+- Hardened legacy E2E cleanup so it requires the development fixture boundary
+  and allowlisted actor, deletes only that actor's prefixed Groups, and removes
+  the retired broad history-cleanup RPC from existing development installs.
+
 ## 2026-08-20
 
 - Fixed edited expenses taking tens of seconds to show updated amounts:
