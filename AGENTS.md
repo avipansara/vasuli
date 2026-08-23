@@ -155,3 +155,20 @@ official workflow documentation:
 - Update the relevant version metadata when preparing a release, then follow
   the repository’s requested commit, tag, push, and submission process. Do not
   invent release steps or perform them without explicit instruction.
+
+## Agent skills
+
+### Issue tracker
+
+Issues and specs are tracked as Local Markdown under `.scratch/`. See
+`docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+The repository uses the default triage label vocabulary. See
+`docs/agents/triage-labels.md`.
+
+### Domain docs
+
+The repository uses a single-context domain documentation layout. See
+`docs/agents/domain.md`.
