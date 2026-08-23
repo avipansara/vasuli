@@ -18,6 +18,15 @@ async function openGroupExpenseForm(groupName) {
     .withTimeout(10000);
 }
 
+async function fillExpenseDescription(description) {
+  // The amount field autofocuses and the keyboard can clip the description.
+  // Scroll the named form before tapping so focused runs stay deterministic on
+  // the release simulator.
+  await element(by.id('expense-form-scroll')).scroll(300, 'down');
+  await element(by.id('expense-description-input')).tap();
+  await element(by.id('expense-description-input')).typeText(description);
+}
+
 async function selectSplitMethod(label) {
   // The method pills sit below the fold. The keyboard-dismiss-button is
   // unreliable after typing into the description field, so scroll instead —
@@ -52,6 +61,7 @@ async function submitExpense(groupName) {
 
 module.exports = {
   fillCustomSplit,
+  fillExpenseDescription,
   openGroupExpenseForm,
   selectSplitMethod,
   submitExpense,

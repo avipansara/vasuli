@@ -1,10 +1,6 @@
-const { goBack, loginToFriends, openActivity, openFriends, openGroups } = require('./helpers/auth');
-const {
-  addFirstAvailableFriend,
-  createGroup,
-  openFriendDetail,
-  openGroupDetails,
-} = require('./helpers/groups');
+const { goBack, loginToFriends, openActivity } = require('./helpers/auth');
+const { openFriendDetail } = require('./helpers/groups');
+const { purgeFixtureRun, seedFriendship } = require('./helpers/fixtures');
 const {
   deleteOpenExpenseFromDetail,
   expectActivityRowOwed,
@@ -14,27 +10,18 @@ const {
   returnToFriendDetailAfterDeletion,
 } = require('./helpers/friends');
 
+afterEach(async () => {
+  await purgeFixtureRun({ testKey: 'direct-expense-lifecycle' });
+});
+
 describe('Direct expenses', () => {
   it('records a direct expense from the friend FAB and surfaces its deletion on friend and activity feeds', async () => {
     await loginToFriends();
-    await openGroups();
-    const groupName = await createGroup();
-    await openGroupDetails(groupName);
-    const friendName = await addFirstAvailableFriend(groupName);
-    if (!friendName) {
-      throw new Error(
-        'Direct expense E2E requires at least one accepted friend for the configured development test account.',
-      );
-    }
-    await goBack();
-    await waitFor(element(by.label('Create group')))
-      .toBeVisible()
-      .withTimeout(10000);
+    const fixture = await seedFriendship({ testKey: 'direct-expense-lifecycle' });
+    await device.reloadReactNative();
+    await openFriendDetail(fixture.friendName);
 
-    await openFriends();
-    await openFriendDetail(friendName);
-
-    const description = await recordDirectExpense(friendName);
+    const description = await recordDirectExpense(fixture.friendName, '18.00', 'direct-expense-lifecycle');
     await expectActivityRowOwed(description);
 
     await openDirectExpenseDetail(description);

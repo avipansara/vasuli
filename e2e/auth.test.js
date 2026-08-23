@@ -10,13 +10,10 @@ describe('Authentication', () => {
     });
   });
 
-  it('shows the sign-in screen', async () => {
+  it('shows the sign-in contract and accepts email input', async () => {
     await expect(element(by.text('Welcome back'))).toBeVisible();
     await expect(element(by.text('Email'))).toBeVisible();
     await expect(element(by.text('Continue'))).toBeVisible();
-  });
-
-  it('accepts email text input', async () => {
     const emailInput = element(by.id('sign-in-email-input'));
     await emailInput.tap();
     await emailInput.typeText('tester@example.com');

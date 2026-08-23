@@ -1,24 +1,26 @@
 const { loginToFriends, openGroups } = require('./helpers/auth');
-const { addFirstAvailableFriend, createGroup, openGroupDetails, recordExpense } = require('./helpers/groups');
+const { openGroupDetails } = require('./helpers/groups');
 const { dismissSuccessAlert } = require('./helpers/common');
+const { purgeFixtureRun, seedOutstandingGroup } = require('./helpers/fixtures');
 
-async function setupGroupWithOutstandingBalance() {
+afterEach(async () => {
+  await purgeFixtureRun({ testKey: 'deletion-guards' });
+});
+
+async function setupGroupWithOutstandingBalance(testKey) {
   await loginToFriends();
+  const fixture = await seedOutstandingGroup({ testKey });
+  await device.reloadReactNative();
   await openGroups();
-  const groupName = await createGroup();
-  await openGroupDetails(groupName);
-  const friendName = await addFirstAvailableFriend(groupName);
-  if (!friendName) {
-    throw new Error('Deletion-guard E2E requires capturing the added friend display name.');
-  }
-  await recordExpense(groupName);
-  return { groupName, friendName };
+  return fixture;
 }
 
 describe('Deletion guards', () => {
-  it('blocks group deletion while a balance is outstanding', async () => {
-    const { groupName } = await setupGroupWithOutstandingBalance();
+  it('blocks group deletion and member removal while balances are outstanding', async () => {
+    const fixture = await setupGroupWithOutstandingBalance('deletion-guards');
+    const { groupName, friendName } = fixture;
 
+    await openGroupDetails(groupName);
     await element(by.id('delete-group-button')).tap();
     await waitFor(element(by.text('Settle Group First')))
       .toBeVisible()
@@ -34,11 +36,9 @@ describe('Deletion guards', () => {
 
     await dismissSuccessAlert();
     await expect(element(by.text(groupName))).toBeVisible();
-  });
 
-  it('blocks member removal while a balance is outstanding', async () => {
-    const { friendName } = await setupGroupWithOutstandingBalance();
-
+    await openGroups();
+    await openGroupDetails(groupName);
     await element(by.text(friendName)).atIndex(0).swipe('left', 'slow', 0.55);
     await waitFor(element(by.label('Remove')).atIndex(0))
       .toBeVisible()

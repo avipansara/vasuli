@@ -6,6 +6,12 @@ const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const SUPABASE_KEY = process.env.EXPO_PUBLIC_SUPABASE_KEY;
 const GROUP_PREFIX = 'Detox Group ';
 
+function isRunScopedCleanup() {
+  return process.env.E2E_FIXTURE_MODE === '1'
+    && typeof process.env.E2E_RUN_ID === 'string'
+    && process.env.E2E_RUN_ID.length > 0;
+}
+
 function fail(message) {
   console.error(`[e2e-cleanup] ${message}`);
   process.exitCode = 1;
@@ -36,6 +42,68 @@ async function main() {
     password: TEST_OTP,
   });
   if (authError) throw authError;
+
+  if (isRunScopedCleanup()) {
+    const runId = process.env.E2E_RUN_ID;
+    const workerId = process.env.E2E_WORKER_ID || null;
+    const testKey = process.env.E2E_TEST_KEY || null;
+    const staleRunId = process.env.E2E_STALE_RUN_ID || null;
+    const staleBefore = process.env.E2E_STALE_BEFORE || null;
+
+    if (staleRunId || staleBefore) {
+      if (process.argv.includes('--apply') && process.env.E2E_CLEANUP_CONFIRM !== 'delete') {
+        fail('Stale cleanup requires E2E_CLEANUP_CONFIRM=delete.');
+        return;
+      }
+      if (!staleRunId || !staleBefore) {
+        fail('Stale cleanup requires both E2E_STALE_RUN_ID and E2E_STALE_BEFORE.');
+        return;
+      }
+      if (!process.argv.includes('--apply')) {
+        console.log(`[e2e-cleanup] Would purge stale fixture run ${staleRunId} before ${staleBefore}.`);
+        return;
+      }
+      const { data: staleCount, error: staleError } = await supabase.rpc('purge_e2e_stale_fixture_runs', {
+        p_before: staleBefore,
+        p_run_id: staleRunId,
+      });
+      if (staleError) throw new Error(
+        `${staleError.message} (Apply supabase/fixtures/e2e-run-scoped-fixtures.sql in development first.)`,
+      );
+      console.log(`[e2e-cleanup] Purged ${staleCount} stale fixture scenario(s).`);
+      return;
+    }
+
+    if (!process.argv.includes('--apply')) {
+      console.log(`[e2e-cleanup] Run-scoped dry run for ${runId}${workerId ? `/${workerId}` : ''}.`);
+      return;
+    }
+
+    const { data: deletedCount, error: fixtureError } = await supabase.rpc('purge_e2e_fixture_run', {
+      p_run_id: runId,
+      p_worker_id: workerId,
+      p_test_key: testKey,
+    });
+    if (fixtureError) throw new Error(
+      `${fixtureError.message} (Apply supabase/fixtures/e2e-run-scoped-fixtures.sql in development first.)`,
+    );
+    console.log(`[e2e-cleanup] Purged ${deletedCount} fixture scenario(s) for run ${runId}.`);
+
+    // Run-scoped fixtures do not cover the two lifecycle journeys that create
+    // Groups through the UI. Those helpers include this run ID in their names,
+    // so clear only this run's legacy records here. The SQL function enforces
+    // the E2E prefix and the host check above keeps this path away from
+    // production.
+    const legacyGroupPrefix = `${GROUP_PREFIX}${runId}`;
+    const { data: legacyGroupCount, error: legacyGroupError } = await supabase.rpc('purge_e2e_groups', {
+      group_prefix: legacyGroupPrefix,
+    });
+    if (legacyGroupError) throw new Error(
+      `${legacyGroupError.message} (Apply supabase/fixtures/e2e-purge-groups.sql in the development Supabase SQL editor first.)`,
+    );
+    console.log(`[e2e-cleanup] Purged ${legacyGroupCount} legacy UI Group(s) for run ${runId}.`);
+    return;
+  }
 
   const { data: appUsers, error: userError } = await supabase
     .from('users')
@@ -78,9 +146,8 @@ async function main() {
 
   // Group deletion goes through the development-only purge_e2e_groups fixture
   // because settlement scope transfers and settlement operations restrict
-  // direct group deletes. purge_e2e_history then wipes the E2E accounts'
-  // remaining test history (activities, direct Detox expenses, and the
-  // settlements between them) so runs start from a clean baseline.
+  // direct group deletes. The fixture only sees prefixed Groups where the
+  // authenticated, allowlisted E2E actor is a member.
   const { data: deletedCount, error: purgeError } = await supabase.rpc('purge_e2e_groups', {
     group_prefix: GROUP_PREFIX,
   });
@@ -90,25 +157,6 @@ async function main() {
     );
   }
   console.log(`[e2e-cleanup] Purged ${deletedCount} prefixed E2E group(s).`);
-
-  const { data: userLookup, error: userLookupError } = await supabase
-    .from('users')
-    .select('id')
-    .ilike('email', TEST_EMAIL)
-    .order('created_at', { ascending: true })
-    .limit(1);
-  if (userLookupError) throw userLookupError;
-  if (!userLookup?.length) throw new Error(`No app user found for ${TEST_EMAIL}.`);
-
-  const { data: historyUsers, error: historyError } = await supabase.rpc('purge_e2e_history', {
-    p_user_id: userLookup[0].id,
-  });
-  if (historyError) {
-    throw new Error(
-      `${historyError.message} (Apply supabase/fixtures/e2e-purge-groups.sql in the development Supabase SQL editor first.)`,
-    );
-  }
-  console.log(`[e2e-cleanup] Purged history for ${historyUsers} E2E account(s).`);
 }
 
 main().catch((error) => {

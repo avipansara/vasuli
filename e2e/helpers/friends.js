@@ -1,5 +1,6 @@
 const { goBack } = require('./auth');
 const { tapAlertButton } = require('./common');
+const { fillExpenseDescription } = require('./splits');
 
 const SCREEN_WAIT_MS = 10000;
 const BALANCE_WAIT_MS = 15000;
@@ -10,11 +11,11 @@ async function waitForFriendDetail() {
     .withTimeout(SCREEN_WAIT_MS);
 }
 
-async function recordDirectExpense(friendName, amount = '18.00') {
+async function recordDirectExpense(friendName, amount = '18.00', testKey = 'direct-expense') {
   if (!friendName) {
-    throw new Error('recordDirectExpense requires the name captured by addFirstAvailableFriend.');
+    throw new Error('recordDirectExpense requires the name returned by the accepted-friend fixture.');
   }
-  const description = `Detox Direct ${Date.now()}`;
+  const description = `Detox Direct ${process.env.E2E_RUN_ID ?? Date.now()} ${process.env.E2E_WORKER_ID ?? 'worker-0'} ${testKey}`;
 
   await element(by.label('Add expense')).tap();
   // A preselected friend opens the form straight on step 2: no step
@@ -24,7 +25,7 @@ async function recordDirectExpense(friendName, amount = '18.00') {
     .withTimeout(SCREEN_WAIT_MS);
   await expect(element(by.label(/^Step \d of 2$/))).toBeNotVisible();
   await element(by.id('expense-amount-input')).replaceText(amount);
-  await element(by.id('expense-description-input')).typeText(description);
+  await fillExpenseDescription(description);
   await element(by.id('add-expense-submit-button')).tap();
   await waitForFriendDetail();
 

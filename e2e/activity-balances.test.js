@@ -1,38 +1,22 @@
 const { dismissSuccessAlert } = require('./helpers/common');
 const { goBack, loginToFriends, openActivity, openGroups } = require('./helpers/auth');
-const {
-  addFirstAvailableFriend,
-  createGroup,
-  openGroupDetails,
-  recordExpense,
-} = require('./helpers/groups');
+const { openGroupDetails } = require('./helpers/groups');
+const { purgeFixtureRun, seedOutstandingGroup } = require('./helpers/fixtures');
+
+afterEach(async () => {
+  await purgeFixtureRun({ testKey: 'activity-settlement-balance' });
+});
 
 describe('Activity and balances', () => {
-  it('shows recorded activity and reflects settlement in balances', async () => {
+  it('records a seeded Group settlement, finds its Activity, and confirms the balance is settled', async () => {
     await loginToFriends();
-    await openGroups();
-    const groupName = await createGroup();
-    await openGroupDetails(groupName);
-    await addFirstAvailableFriend(groupName);
-    const description = await recordExpense(groupName);
-
-    await goBack();
-    await waitFor(element(by.label('Create group')))
-      .toBeVisible()
-      .withTimeout(10000);
-
-    await openActivity();
-    await element(by.id('activity-search-input')).typeText(description);
-    // The search input echoes the typed text, so match the result card by its
-    // accessibility label ("${description}, by ...") instead of by.text.
-    // Detox evaluates label regexes as full-string matches on iOS.
-    await waitFor(element(by.label(new RegExp(`^${description}, by .*$`))))
-      .toBeVisible()
-      .withTimeout(15000);
-    await element(by.label('Clear activity search')).tap();
+    const fixture = await seedOutstandingGroup({ testKey: 'activity-settlement-balance' });
+    // The fixture is inserted after login, so reload once to invalidate the
+    // Groups query that may have been populated during session restoration.
+    await device.reloadReactNative();
 
     await openGroups();
-    await openGroupDetails(groupName);
+    await openGroupDetails(fixture.groupName);
     await waitFor(element(by.id('group-settle-up-button')))
       .toBeVisible()
       .withTimeout(10000);
@@ -47,7 +31,25 @@ describe('Activity and balances', () => {
     await dismissSuccessAlert();
 
     await goBack();
-    await waitFor(element(by.label(`${groupName}, all settled up`)))
+    await waitFor(element(by.label('Create group')))
+      .toBeVisible()
+      .withTimeout(10000);
+
+    await openActivity();
+    await element(by.id('activity-search-input')).typeText(fixture.groupName);
+    // The seeded Group name is unique to this run and is included in the
+    // activity card label. Match the settlement amount as well so an older
+    // expense or group-join record from another run cannot satisfy the check.
+    const escapedGroupName = fixture.groupName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    await waitFor(element(by.label(new RegExp(`^.*?, by .*, .*?, in ${escapedGroupName}, \\+\\$12\\.00$`))))
+      .toBeVisible()
+      .withTimeout(15000);
+    await element(by.label('Clear activity search')).tap();
+
+    await openGroups();
+    await openGroupDetails(fixture.groupName);
+    const escapedGroupNameForSummary = fixture.groupName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    await waitFor(element(by.label(new RegExp(`^${escapedGroupNameForSummary}, \\d+ members, All settled up, \\$0\\.00$`))))
       .toBeVisible()
       .withTimeout(15000);
   });

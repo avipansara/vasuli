@@ -1,23 +1,20 @@
 const { goBack, loginToFriends, openFriends, openGroups } = require('./helpers/auth');
-const {
-  addFirstAvailableFriend,
-  createGroup,
-  openFriendDetail,
-  openGroupDetails,
-} = require('./helpers/groups');
+const { openFriendDetail, openGroupDetails } = require('./helpers/groups');
+const { purgeFixtureRun, seedGroupMembership } = require('./helpers/fixtures');
+const { fillExpenseDescription } = require('./helpers/splits');
+
+afterEach(async () => {
+  await purgeFixtureRun({ testKey: 'payer-selection' });
+});
 
 describe('Payer selection', () => {
   it('records an expense paid by the friend and flips the balance direction', async () => {
     await loginToFriends();
+    const fixture = await seedGroupMembership({ testKey: 'payer-selection' });
+    await device.reloadReactNative();
     await openGroups();
-    const groupName = await createGroup();
+    const { groupName, friendName } = fixture;
     await openGroupDetails(groupName);
-    const friendName = await addFirstAvailableFriend(groupName);
-    if (!friendName) {
-      throw new Error(
-        'Payer selection E2E requires at least one accepted friend for the configured development test account.',
-      );
-    }
 
     await element(by.label('Add expense')).tap();
     await element(by.label(`Select group ${groupName}`)).tap();
@@ -26,7 +23,7 @@ describe('Payer selection', () => {
       .toBeVisible()
       .withTimeout(10000);
     await element(by.id('expense-amount-input')).replaceText('9.00');
-    await element(by.id('expense-description-input')).typeText(`Detox Payer ${Date.now()}`);
+    await fillExpenseDescription(`Detox Payer ${Date.now()}`);
     await element(by.label(`Paid by ${friendName}`)).tap();
     await element(by.id('add-expense-submit-button')).tap();
     await waitFor(element(by.text(groupName)))

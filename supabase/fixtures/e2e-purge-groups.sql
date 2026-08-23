@@ -1,51 +1,94 @@
 -- Development E2E fixture only.
--- Run this once in the development Supabase SQL editor so scripts/e2e-cleanup.cjs
--- can remove Detox-created groups whose settlement history (settlement scope
--- transfers and settlement operations) otherwise restricts group deletion,
--- and wipe the E2E accounts' test history (activities, direct Detox expenses,
--- and the settlements between them) so runs start from a clean baseline.
--- Do not run against production. Safe to rerun.
+-- Install supabase/fixtures/e2e-run-scoped-fixtures.sql first. This file
+-- reuses its development and allowlisted-actor checks so legacy cleanup cannot
+-- delete another account's groups. Do not run against production.
 
 CREATE OR REPLACE FUNCTION public.purge_e2e_groups(group_prefix text)
 RETURNS integer
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, pg_temp
 AS $$
 DECLARE
+  v_actor_id uuid;
   v_group_ids uuid[];
   v_operation_ids uuid[];
+  v_commitment_ids uuid[];
   v_deleted integer;
 BEGIN
+  PERFORM public.e2e_fixture_require_development();
+  v_actor_id := public.e2e_fixture_actor();
+
   IF group_prefix IS NULL OR group_prefix NOT LIKE 'Detox Group %' THEN
     RAISE EXCEPTION 'Refusing to purge groups outside the E2E prefix';
   END IF;
 
-  SELECT coalesce(array_agg(id), '{}')
+  SELECT coalesce(array_agg(fixture_group.id), '{}')
     INTO v_group_ids
-  FROM public.groups
-  WHERE name LIKE group_prefix || '%';
+  FROM public.groups fixture_group
+  JOIN public.group_members member
+    ON member.group_id = fixture_group.id
+   AND member.user_id = v_actor_id
+  WHERE fixture_group.name LIKE group_prefix || '%';
 
   IF coalesce(array_length(v_group_ids, 1), 0) = 0 THEN
     RETURN 0;
   END IF;
 
-  DELETE FROM public.settlement_scope_transfers
-   WHERE group_id = ANY(v_group_ids);
-
-  SELECT coalesce(array_agg(id), '{}')
+  -- Capture every operation linked to the selected Groups before deleting any
+  -- child rows. All-balance operations may have a NULL group_id, so include
+  -- links through transfers and settlements as well.
+  SELECT coalesce(array_agg(DISTINCT operation.id), '{}')
     INTO v_operation_ids
-  FROM public.settlement_operations
-  WHERE group_id = ANY(v_group_ids);
+  FROM public.settlement_operations operation
+  WHERE operation.group_id = ANY(v_group_ids)
+     OR EXISTS (
+       SELECT 1
+       FROM public.settlement_scope_transfers transfer
+       WHERE transfer.operation_id = operation.id
+         AND transfer.group_id = ANY(v_group_ids)
+     )
+     OR EXISTS (
+       SELECT 1
+       FROM public.settlements settlement
+       WHERE settlement.operation_id = operation.id
+         AND settlement.group_id = ANY(v_group_ids)
+     );
+
+  SELECT coalesce(array_agg(DISTINCT settlement.commitment_id)
+                 FILTER (WHERE settlement.commitment_id IS NOT NULL), '{}')
+    INTO v_commitment_ids
+  FROM public.settlements settlement
+  WHERE settlement.group_id = ANY(v_group_ids)
+     OR settlement.operation_id = ANY(v_operation_ids);
 
   IF coalesce(array_length(v_operation_ids, 1), 0) > 0 THEN
-    UPDATE public.settlements
-       SET operation_id = NULL
+    DELETE FROM public.settlement_operation_reversals
      WHERE operation_id = ANY(v_operation_ids);
+
+    DELETE FROM public.settlement_scope_transfers
+     WHERE operation_id = ANY(v_operation_ids);
+
+    DELETE FROM public.settlements
+     WHERE group_id = ANY(v_group_ids)
+        OR operation_id = ANY(v_operation_ids);
 
     DELETE FROM public.settlement_operations
      WHERE id = ANY(v_operation_ids);
+  ELSE
+    DELETE FROM public.settlements
+     WHERE group_id = ANY(v_group_ids);
   END IF;
+
+  -- A commitment can be shared by legacy settlement rows. Delete only the
+  -- commitments made orphaned by this group purge.
+  DELETE FROM public.settlement_commitments commitment
+   WHERE commitment.id = ANY(v_commitment_ids)
+     AND NOT EXISTS (
+       SELECT 1
+       FROM public.settlements settlement
+       WHERE settlement.commitment_id = commitment.id
+     );
 
   DELETE FROM public.groups
    WHERE id = ANY(v_group_ids);
@@ -55,84 +98,9 @@ BEGIN
 END;
 $$;
 
-REVOKE EXECUTE ON FUNCTION public.purge_e2e_groups(text) FROM PUBLIC, anon;
+-- Ticket 11 removed the old broad history RPC. Dropping it here also fixes
+-- development projects that installed an earlier copy of this fixture.
+DROP FUNCTION IF EXISTS public.purge_e2e_history(uuid);
+
+REVOKE EXECUTE ON FUNCTION public.purge_e2e_groups(text) FROM PUBLIC, anon, service_role;
 GRANT EXECUTE ON FUNCTION public.purge_e2e_groups(text) TO authenticated;
-
--- Wipes all test history for the given E2E account and its accepted friends:
--- activity rows, direct expenses whose description starts with the E2E
--- prefix (and their splits), and every settlement plus settlement operation
--- recorded between these accounts. The accepted friendships are preserved.
-CREATE OR REPLACE FUNCTION public.purge_e2e_history(p_user_id uuid)
-RETURNS integer
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-  v_user_ids uuid[];
-  v_expense_ids uuid[];
-  v_operation_ids uuid[];
-  v_deleted integer;
-BEGIN
-  IF p_user_id IS NULL THEN
-    RAISE EXCEPTION 'purge_e2e_history requires a user id';
-  END IF;
-
-  SELECT coalesce(array_agg(uid), '{}')
-    INTO v_user_ids
-  FROM (
-    SELECT p_user_id AS uid
-    UNION
-    SELECT CASE WHEN f.user_id = p_user_id THEN f.friend_id ELSE f.user_id END AS uid
-    FROM public.friendships f
-    WHERE f.status = 'accepted'
-      AND (f.user_id = p_user_id OR f.friend_id = p_user_id)
-  ) members;
-
-  DELETE FROM public.activities
-   WHERE user_id = ANY(v_user_ids);
-
-  SELECT coalesce(array_agg(id), '{}')
-    INTO v_expense_ids
-  FROM public.expenses
-  WHERE group_id IS NULL
-    AND description LIKE 'Detox %'
-    AND (paid_by = ANY(v_user_ids) OR created_by = ANY(v_user_ids));
-
-  DELETE FROM public.expense_splits
-   WHERE expense_id = ANY(v_expense_ids);
-
-  DELETE FROM public.expenses
-   WHERE id = ANY(v_expense_ids);
-
-  SELECT coalesce(array_agg(id), '{}')
-    INTO v_operation_ids
-  FROM public.settlement_operations
-  WHERE actor_user_id = ANY(v_user_ids)
-    AND friend_user_id = ANY(v_user_ids);
-
-  DELETE FROM public.settlement_scope_transfers
-   WHERE operation_id = ANY(v_operation_ids);
-
-  DELETE FROM public.settlement_operation_reversals
-   WHERE operation_id = ANY(v_operation_ids);
-
-  UPDATE public.settlements
-     SET operation_id = NULL
-   WHERE (from_user_id = ANY(v_user_ids) AND to_user_id = ANY(v_user_ids))
-      OR operation_id = ANY(v_operation_ids);
-
-  DELETE FROM public.settlements
-   WHERE (from_user_id = ANY(v_user_ids) AND to_user_id = ANY(v_user_ids))
-      OR operation_id = ANY(v_operation_ids);
-
-  DELETE FROM public.settlement_operations
-   WHERE id = ANY(v_operation_ids);
-
-  GET DIAGNOSTICS v_deleted = ROW_COUNT;
-  RETURN coalesce(array_length(v_user_ids, 1), 0);
-END;
-$$;
-
-REVOKE EXECUTE ON FUNCTION public.purge_e2e_history(uuid) FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.purge_e2e_history(uuid) TO authenticated;
