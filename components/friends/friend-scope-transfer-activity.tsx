@@ -35,7 +35,16 @@ export function FriendScopeTransferActivity({
       accessible
       accessibilityRole="text"
       accessibilityLabel={`${title}, ${groupName}, ${item.currency} ${item.amount.toFixed(2)}, ${formatDate(item.date)}`}
-      style={[styles.card, { backgroundColor: isDark ? '#0d1321' : '#ffffff' }]}>
+      style={[styles.card, isDark ? {
+        backgroundColor: '#000000',
+        borderWidth: 0,
+        borderColor: 'rgba(255, 255, 255, 0.08)',
+        shadowColor: '#64748b',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 4,
+        elevation: 4,
+      } : { backgroundColor: '#ffffff' }]}>
       <View style={[styles.icon, { backgroundColor: isDark ? '#1e293b' : '#E0F2FE' }]}>
         <IconSymbol name="arrow.right" size={20} color={isDark ? '#7DD3FC' : '#0369A1'} />
       </View>

@@ -529,7 +529,7 @@ export default function FriendDetailScreen() {
             <LinearGradient
               colors={
                 isDark
-                  ? ['rgba(13, 19, 33, 0.8)', 'rgba(13, 19, 33, 0.6)']
+                  ? ['#000000', '#000000']
                   : isOwing
                     ? ['#FFF2F4', '#FFFFFF']
                     : isOwed
@@ -544,11 +544,11 @@ export default function FriendDetailScreen() {
               accessibilityLiveRegion="polite"
               style={[styles.summaryCard, {
                 borderWidth: 0,
-                shadowColor: isDark ? '#000000' : '#475569',
-                shadowOffset: { width: 0, height: 8 },
-                shadowOpacity: isDark ? 0.45 : 0.12,
-                shadowRadius: 18,
-                elevation: 8,
+                shadowColor: isDark ? '#64748b' : '#475569',
+                shadowOffset: { width: 0, height: isDark ? 4 : 8 },
+                shadowOpacity: isDark ? 0.15 : 0.12,
+                shadowRadius: isDark ? 4 : 18,
+                elevation: isDark ? 4 : 8,
                 alignItems: 'center',
                 paddingVertical: 24,
                 paddingHorizontal: 16,
@@ -616,7 +616,16 @@ export default function FriendDetailScreen() {
                   accessibilityRole="button"
                   accessibilityLabel={`Open ${summary.groupName} group balance`}
                   onPress={() => router.push(`/groups/${summary.groupId}` as any)}
-                  style={[styles.groupBalanceRow, {
+                  style={[styles.groupBalanceRow, isDark ? {
+                    backgroundColor: '#000000',
+                    borderWidth: 0,
+                    borderColor: 'rgba(255, 255, 255, 0.08)',
+                    shadowColor: '#64748b',
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.15,
+                    shadowRadius: 4,
+                    elevation: 4,
+                  } : {
                     backgroundColor: friendDetailTheme.surface,
                   }]}
                 >

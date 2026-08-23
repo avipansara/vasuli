@@ -499,12 +499,12 @@ export default function GroupDetailScreen() {
           onPress={() => router.push(`/expense-detail/${item.id}` as any)}
           style={[styles.expenseCard, {
             backgroundColor: colors.card,
-            borderWidth: isDark ? 1 : 0,
+            borderWidth: 0,
             borderColor: colors.border,
-            shadowColor: isDark ? '#000000' : '#475569',
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: isDark ? 0.32 : 0.09,
-            shadowRadius: 0,
+            shadowColor: isDark ? '#64748b' : '#475569',
+            shadowOffset: { width: 0, height: isDark ? 4 : 2 },
+            shadowOpacity: isDark ? 0.15 : 0.09,
+            shadowRadius: isDark ? 4 : 0,
             elevation: 4,
           }]}>
           <View style={[styles.expenseIcon, {
@@ -671,12 +671,12 @@ export default function GroupDetailScreen() {
           onPress={() => item.userId !== currentUserId && router.push(`/friends/${item.userId}` as any)}
           style={[styles.memberCard, {
             backgroundColor: colors.card,
-            borderWidth: isDark ? 1 : 0,
+            borderWidth: 0,
             borderColor: colors.border,
-            shadowColor: isDark ? '#000000' : '#475569',
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: isDark ? 0.32 : 0.09,
-            shadowRadius: 0,
+            shadowColor: isDark ? '#64748b' : '#475569',
+            shadowOffset: { width: 0, height: isDark ? 4 : 2 },
+            shadowOpacity: isDark ? 0.15 : 0.09,
+            shadowRadius: isDark ? 4 : 0,
             elevation: 4,
           }]}>
           <View style={[styles.memberAvatar, {
@@ -890,7 +890,7 @@ export default function GroupDetailScreen() {
             <LinearGradient
               colors={
                 isDark
-                  ? ['rgba(13, 19, 33, 0.8)', 'rgba(13, 19, 33, 0.6)']
+                  ? ['#000000', '#000000']
                   : currentUserBalance < 0
                     ? ['#FFF2F4', '#FFFFFF']
                     : currentUserBalance > 0
@@ -905,11 +905,11 @@ export default function GroupDetailScreen() {
               accessibilityLiveRegion="polite"
               style={[styles.summaryCard, {
                 borderWidth: 0,
-                shadowColor: isDark ? '#000000' : '#475569',
-                shadowOffset: { width: 0, height: 8 },
-                shadowOpacity: isDark ? 0.45 : 0.12,
-                shadowRadius: 18,
-                elevation: 8,
+                shadowColor: isDark ? '#64748b' : '#475569',
+                shadowOffset: { width: 0, height: isDark ? 4 : 8 },
+                shadowOpacity: isDark ? 0.15 : 0.12,
+                shadowRadius: isDark ? 4 : 18,
+                elevation: isDark ? 4 : 8,
                 alignItems: 'center',
                 paddingVertical: 24,
                 paddingHorizontal: 16,

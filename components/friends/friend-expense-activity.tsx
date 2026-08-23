@@ -158,12 +158,12 @@ export function FriendExpenseActivity({
         onPress={() => onOpenExpense(expense.id)}>
         <View style={[styles.expenseCard, {
           backgroundColor: colors.card,
-          borderWidth: isDark ? 1 : 0,
+          borderWidth: 0,
           borderColor: colors.border,
-          shadowColor: isDark ? '#000000' : '#475569',
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: isDark ? 0.32 : 0.09,
-          shadowRadius: 0,
+          shadowColor: isDark ? '#64748b' : '#475569',
+          shadowOffset: { width: 0, height: isDark ? 4 : 2 },
+          shadowOpacity: isDark ? 0.15 : 0.09,
+          shadowRadius: isDark ? 4 : 0,
           elevation: 4,
         }]}>
           <View style={[styles.expenseIcon, {
