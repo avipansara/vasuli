@@ -21,7 +21,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Animated, FlatList, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 export default function GroupsScreen() {
-  const { colors, gradients, isDark } = useThemeColors();
+  const { colors, isDark } = useThemeColors();
   const [modalVisible, setModalVisible] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
   const [newGroupDescription, setNewGroupDescription] = useState('');
