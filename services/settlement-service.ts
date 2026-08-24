@@ -203,7 +203,7 @@ export const settlementModule = {
           groupId: transfer.groupId,
           fromUserId: transfer.fromUserId,
           toUserId: transfer.toUserId,
-          amount: transfer.amount,
+          amount: Math.abs(transfer.signedGroupBalanceDelta),
           signedGroupBalanceDelta: transfer.signedGroupBalanceDelta,
         })),
       });
@@ -576,6 +576,19 @@ export const settlementService = {
       throw mapCombinedSettlementError(error);
     }
     return mapSettlementOperationReversal(data);
+  },
+
+  async getById(id: string): Promise<Settlement | null> {
+    const { data, error } = await supabase
+      .from('settlements')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (error) throw error;
+    if (!data) return null;
+
+    return mapSettlementRow(data, { preserveNullGroupId: true });
   },
 
   async create(settlement: Omit<Settlement, 'id' | 'createdAt'>): Promise<Settlement> {

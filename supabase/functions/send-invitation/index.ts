@@ -1,8 +1,8 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 
-import { inviteCtaUrl, parseInvitationBody } from './invitation'
+import { inviteCtaUrl, parseInvitationBody } from './invitation.ts'
 
-const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!
+const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -67,6 +67,12 @@ async function sendInvitationEmail(
   invitationId: string
 ): Promise<boolean> {
   const joinUrl = inviteCtaUrl(inviterId, invitationId)
+
+  if (!RESEND_API_KEY) {
+    console.error('RESEND_API_KEY is not configured.');
+    return false;
+  }
+
   try {
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',

@@ -1,11 +1,13 @@
 import { FriendExpenseActivity } from '@/components/friends/friend-expense-activity';
 import { FriendExpenseActivityEvent } from '@/components/friends/friend-expense-activity-event';
-import { FriendSettlementActivity } from '@/components/friends/friend-settlement-activity';
 import { FriendScopeTransferActivity } from '@/components/friends/friend-scope-transfer-activity';
+import { FriendSettlementActivity } from '@/components/friends/friend-settlement-activity';
 import { ThemedText } from '@/components/themed-text';
 import { AsyncErrorState } from '@/components/ui/async-error-state';
 import { IconSymbol, type IconSymbolName } from '@/components/ui/icon-symbol';
 import { FriendDetailSkeleton } from '@/components/ui/skeleton';
+import { ThemedIconButton } from '@/components/ui/themed-icon-button';
+import { Gradients } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useFriendDetailController } from '@/hooks/use-friend-detail-controller';
 import { useThemeColors } from '@/hooks/use-theme-colors';
@@ -16,12 +18,11 @@ import {
   groupFriendActivityByMonth,
   type FriendActivityFilter,
 } from '@/services/friend-detail-module';
-import { settlementModule, CombinedSettlementError } from '@/services/settlement-service';
 import { projectFriendRelationship, type FriendDetailData } from '@/services/friend-detail-service';
-import type { GroupDetailReadModel } from '@/services/group-detail-read-model';
-import { applySettlementToGroupReadModel } from '@/services/group-detail-read-model';
-import { queryKeys } from '@/services/query-keys';
+import { CombinedSettlementError, settlementModule } from '@/services/settlement-service';
 import type { Expense, User } from '@/types/database';
+import { formatCurrency } from '@/utils/currency';
+import { getFirstName } from '@/utils/validation';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -40,7 +41,6 @@ interface UserWithBalance extends User {
   recentExpenses?: Expense[];
 }
 
-const MIN_TOUCH_HIT_SLOP = { top: 8, right: 8, bottom: 8, left: 8 };
 const SEGMENTED_CONTROL_PADDING = 2;
 const SEGMENTED_CONTROL_GAP = 3;
 type ActivityFilter = FriendActivityFilter;
@@ -57,7 +57,6 @@ export default function FriendDetailScreen() {
   const [activityFilter, setActivityFilter] = useState<ActivityFilter>('all');
   const [segmentedWidth, setSegmentedWidth] = useState(0);
   const [isRemovingFriend, setIsRemovingFriend] = useState(false);
-  const [isSettlingUp, setIsSettlingUp] = useState(false);
   const [deletingExpenseId, setDeletingExpenseId] = useState<string | null>(null);
   const { user } = useAuth();
   const currentUserId = user?.id || '';
@@ -66,23 +65,6 @@ export default function FriendDetailScreen() {
   // Animations
   const insets = useSafeAreaInsets();
   const scrollY = useRef(new Animated.Value(0)).current;
-
-  // Collapsible summary card and header animation interpolations
-  const summaryOpacity = scrollY.interpolate({
-    inputRange: [0, 80],
-    outputRange: [1, 0],
-    extrapolate: 'clamp',
-  });
-  const summaryScale = scrollY.interpolate({
-    inputRange: [0, 80],
-    outputRange: [1, 0.95],
-    extrapolate: 'clamp',
-  });
-  const summaryTranslateY = scrollY.interpolate({
-    inputRange: [0, 80],
-    outputRange: [0, -10],
-    extrapolate: 'clamp',
-  });
 
   const headerTitleOpacity = scrollY.interpolate({
     inputRange: [40, 80],
@@ -95,9 +77,6 @@ export default function FriendDetailScreen() {
     extrapolate: 'clamp',
   });
 
-  const [fadeAnim] = useState(() => new Animated.Value(0));
-  const [slideAnim] = useState(() => new Animated.Value(30));
-  const [scaleAnim] = useState(() => new Animated.Value(0.98));
   const tabIndicatorX = useSharedValue(0);
   const segmentWidth = segmentedWidth > 0
     ? (segmentedWidth - (SEGMENTED_CONTROL_PADDING * 2) - (SEGMENTED_CONTROL_GAP * (ACTIVITY_FILTERS.length - 1))) / ACTIVITY_FILTERS.length
@@ -162,32 +141,6 @@ export default function FriendDetailScreen() {
       easing: ReanimatedEasing.out(ReanimatedEasing.cubic),
     });
   }, [activityFilter, segmentWidth, tabIndicatorX]);
-
-  useEffect(() => {
-    if (!loading && friend) {
-      Animated.parallel([
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 400,
-          useNativeDriver: true,
-        }),
-        Animated.timing(slideAnim, {
-          toValue: 0,
-          duration: 400,
-          useNativeDriver: true,
-        }),
-        Animated.spring(scaleAnim, {
-          toValue: 1,
-          friction: 8,
-          tension: 40,
-          useNativeDriver: true,
-        }),
-      ]).start();
-
-    }
-  }, [fadeAnim, friend, loading, scaleAnim, slideAnim]);
-
-
 
   function handleEditExpense(expenseId: string) {
     swipeableRefs.current.get(expenseId)?.close();
@@ -409,14 +362,18 @@ export default function FriendDetailScreen() {
       <View style={styles.container}>
         <LinearGradient colors={gradients.screenBackground} style={StyleSheet.absoluteFill} />
         <View style={styles.header}>
-          <TouchableOpacity
+          <ThemedIconButton
+            name="chevron.left"
             onPress={() => router.back()}
-            style={[styles.backButtonRect, {
+            size={20}
+            shape="circle"
+            accessibilityLabel="Go back"
+            accessibilityHint="Returns to the previous screen"
+            style={{
               backgroundColor: friendDetailTheme.actionSurface,
               borderColor: friendDetailTheme.actionBorder,
-            }]}>
-            <IconSymbol size={20} name="chevron.left" color={friendDetailTheme.actionIcon} />
-          </TouchableOpacity>
+            }}
+          />
         </View>
         <FriendDetailSkeleton />
       </View>
@@ -428,14 +385,18 @@ export default function FriendDetailScreen() {
       <View style={styles.container}>
         <LinearGradient colors={gradients.screenBackground} style={StyleSheet.absoluteFill} />
         <View style={styles.header}>
-          <TouchableOpacity
+          <ThemedIconButton
+            name="chevron.left"
             onPress={() => router.back()}
-            style={[styles.backButtonRect, {
+            size={20}
+            shape="circle"
+            accessibilityLabel="Go back"
+            accessibilityHint="Returns to the previous screen"
+            style={{
               backgroundColor: friendDetailTheme.actionSurface,
               borderColor: friendDetailTheme.actionBorder,
-            }]}>
-            <IconSymbol size={20} name="chevron.left" color={friendDetailTheme.actionIcon} />
-          </TouchableOpacity>
+            }}
+          />
         </View>
         <AsyncErrorState
           message={loadError}
@@ -482,38 +443,38 @@ export default function FriendDetailScreen() {
   const balanceCopy = hasCurrencyAmbiguity
     ? 'Multiple currencies'
     : isOwed
-    ? `${friend.name.split(' ')[0]} owes you`
-    : isOwing
-      ? `You owe ${friend.name.split(' ')[0]}`
-      : 'All settled up';
+      ? `${getFirstName(friend.name)} owes you`
+      : isOwing
+        ? `You owe ${getFirstName(friend.name)}`
+        : 'All settled up';
   const balanceCardTitle = hasCurrencyAmbiguity
     ? 'MULTIPLE CURRENCIES'
     : isOwed
-    ? `${friend.name.split(' ')[0].toUpperCase()} OWES YOU`
-    : isOwing
-      ? `YOU OWE ${friend.name.split(' ')[0].toUpperCase()}`
-      : 'ALL SETTLED UP';
+      ? `${getFirstName(friend.name).toUpperCase()} OWES YOU`
+      : isOwing
+        ? `YOU OWE ${getFirstName(friend.name).toUpperCase()}`
+        : 'ALL SETTLED UP';
   const balanceAccessibilityValue = hasCurrencyAmbiguity
     ? `${balanceCopy}, choose a currency to settle`
-    : `${balanceCopy}, ${relationship.settleableTotal?.currency ?? relationship.directCurrency ?? ''} ${Math.abs(balance).toFixed(2)}`;
+    : `${balanceCopy}, ${formatCurrency(Math.abs(balance), relationship.settleableTotal?.currency ?? relationship.directCurrency)}`;
 
 
   return (
     <View style={[styles.container, { backgroundColor: isDark ? '#050914' : colors.background }]}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity
+        <ThemedIconButton
+          name="chevron.left"
           onPress={() => router.back()}
-          accessibilityRole="button"
+          size={20}
+          shape="circle"
           accessibilityLabel="Go back"
           accessibilityHint="Returns to the previous screen"
-          hitSlop={MIN_TOUCH_HIT_SLOP}
-          style={[styles.backButtonRect, {
+          style={{
             backgroundColor: friendDetailTheme.actionSurface,
             borderColor: friendDetailTheme.actionBorder,
-          }]}>
-          <IconSymbol size={20} name="chevron.left" color={friendDetailTheme.actionIcon} />
-        </TouchableOpacity>
+          }}
+        />
 
         {/* Floating Header Title (Friend Name) */}
         <View style={styles.headerTitleContainer} pointerEvents="none">
@@ -528,36 +489,36 @@ export default function FriendDetailScreen() {
         </View>
 
         <View style={styles.headerActions}>
-          <TouchableOpacity
+          <ThemedIconButton
+            name="bell.fill"
+            color={friendDetailTheme.warning}
             onPress={handleRemind}
             disabled={balance === 0}
-            accessibilityRole="button"
+            size={18}
+            shape="square"
             accessibilityLabel={`Remind ${friend.name}`}
             accessibilityHint="Sends a reminder about this balance"
-            accessibilityState={{ disabled: balance === 0 }}
-            hitSlop={MIN_TOUCH_HIT_SLOP}
-            style={[styles.headerActionButton, {
+            style={{
               backgroundColor: friendDetailTheme.warningSurface,
-              borderColor: friendDetailTheme.warningBorder,
+              borderColor: friendDetailTheme.warning,
               opacity: balance === 0 ? 0.45 : 1,
-            }]}>
-            <IconSymbol size={18} name="bell.fill" color={friendDetailTheme.warning} />
-          </TouchableOpacity>
-          <TouchableOpacity
+            }}
+          />
+          <ThemedIconButton
+            name="trash.fill"
             onPress={handleRemoveFriend}
             disabled={isRemovingFriend}
-            accessibilityRole="button"
+            loading={isRemovingFriend}
+            size={18}
+            shape="square"
+            variant="danger"
             accessibilityLabel={`Remove ${friend.name}`}
             accessibilityHint="Removes this person from your friends"
-            accessibilityState={{ busy: isRemovingFriend, disabled: isRemovingFriend }}
-            hitSlop={MIN_TOUCH_HIT_SLOP}
-            style={[styles.headerActionButton, {
+            style={{
               backgroundColor: friendDetailTheme.dangerSurface,
               borderColor: friendDetailTheme.dangerBorder,
-              opacity: isRemovingFriend ? 0.5 : 1,
-            }]}>
-            <IconSymbol size={18} name="trash" color={friendDetailTheme.danger} />
-          </TouchableOpacity>
+            }}
+          />
         </View>
       </View>
 
@@ -571,89 +532,75 @@ export default function FriendDetailScreen() {
           { useNativeDriver: true }
         )}>
 
-        <Animated.View style={[
-          styles.summarySection,
-          {
-            opacity: fadeAnim,
-            transform: [{ translateY: slideAnim }, { scale: scaleAnim }],
-          }
-        ]}>
-          <Animated.View style={{
-            opacity: summaryOpacity,
-            transform: [
-              { translateY: summaryTranslateY },
-              { scale: summaryScale }
-            ]
-          }}>
-            <LinearGradient
-              colors={
-                isDark
-                  ? ['rgba(13, 19, 33, 0.8)', 'rgba(13, 19, 33, 0.6)']
-                  : isOwing
-                    ? ['#FFF2F4', '#FFFFFF']
-                    : isOwed
-                      ? ['#F0FDF4', '#FFFFFF']
-                      : ['#F9FAFB', '#FFFFFF']
-              }
-              start={{ x: 1, y: 0 }}
-              end={{ x: 0, y: 1 }}
-              accessible
-              accessibilityRole="summary"
-              accessibilityLabel={`${friend.name}${friend.email ? `, ${friend.email}` : ''}, ${balanceAccessibilityValue}`}
-              accessibilityLiveRegion="polite"
-              style={[styles.summaryCard, {
-                borderWidth: 0,
-                shadowColor: isDark ? '#000000' : '#475569',
-                shadowOffset: { width: 0, height: 8 },
-                shadowOpacity: isDark ? 0.45 : 0.12,
-                shadowRadius: 18,
-                elevation: 8,
-                alignItems: 'center',
-                paddingVertical: 24,
-                paddingHorizontal: 16,
-                borderRadius: 24,
-              }]}>
+        <View style={styles.summarySection}>
+          <LinearGradient
+            colors={
+              isDark
+                ? ['#000000', '#000000']
+                : isOwing
+                  ? ['#FFF2F4', '#FFFFFF']
+                  : isOwed
+                    ? ['#F0FDF4', '#FFFFFF']
+                    : ['#F9FAFB', '#FFFFFF']
+            }
+            start={{ x: 1, y: 0 }}
+            end={{ x: 0, y: 1 }}
+            accessible
+            accessibilityRole="summary"
+            accessibilityLabel={`${friend.name}${friend.email ? `, ${friend.email}` : ''}, ${balanceAccessibilityValue}`}
+            accessibilityLiveRegion="polite"
+            style={[styles.summaryCard, {
+              borderWidth: 0,
+              shadowColor: isDark ? '#64748b' : '#475569',
+              shadowOffset: { width: 0, height: isDark ? 4 : 8 },
+              shadowOpacity: isDark ? 0.15 : 0.12,
+              shadowRadius: isDark ? 4 : 18,
+              elevation: isDark ? 4 : 8,
+              alignItems: 'center',
+              paddingVertical: 24,
+              paddingHorizontal: 16,
+              borderRadius: 24,
+            }]}>
 
-              <ThemedText type='defaultSemiBold' style={[styles.summaryCardTitle, { color: isDark ? (isOwing ? '#ffb3b0' : isOwed ? '#45dfa4' : '#94A3B8') : balanceColor }]}>
-                {balanceCardTitle}
-              </ThemedText>
+            <ThemedText type='defaultSemiBold' style={[styles.summaryCardTitle, { color: isDark ? (isOwing ? '#ffb3b0' : isOwed ? '#45dfa4' : '#94A3B8') : balanceColor }]}>
+              {balanceCardTitle}
+            </ThemedText>
 
-              <ThemedText type='subtitle' style={[styles.summaryCardAmount, { color: isDark ? (isOwing ? '#ffb3b0' : isOwed ? '#4edea3' : '#94A3B8') : balanceColor }]}>
-                {hasCurrencyAmbiguity
-                  ? 'Multiple currencies'
-                  : `${isOwing ? '-' : isOwed ? '+' : ''}${relationship.settleableTotal?.currency ?? relationship.directCurrency ?? ''} ${Math.abs(balance).toFixed(2)}`}
-              </ThemedText>
+            <ThemedText type='subtitle' style={[styles.summaryCardAmount, { color: isDark ? (isOwing ? '#ffb3b0' : isOwed ? '#4edea3' : '#94A3B8') : balanceColor }]}>
+              {hasCurrencyAmbiguity
+                ? 'Multiple currencies'
+                : `${isOwing ? '-' : isOwed ? '+' : ''}${formatCurrency(Math.abs(balance), relationship.settleableTotal?.currency ?? relationship.directCurrency ?? 'USD')}`}
+            </ThemedText>
 
-              <ThemedText style={[styles.summaryCardSubtitle, { color: isDark ? '#94A3B8' : colors.textSecondary }]}>
-                {groupBalanceCount > 0
-                  ? `${sharedExpensesCount} direct expenses + ${groupBalanceCount} group ${groupBalanceCount === 1 ? 'balance' : 'balances'}`
-                  : `Across ${sharedExpensesCount} direct expenses`}
-              </ThemedText>
+            <ThemedText style={[styles.summaryCardSubtitle, { color: isDark ? '#94A3B8' : colors.textSecondary }]}>
+              {groupBalanceCount > 0
+                ? `${sharedExpensesCount} direct expenses + ${groupBalanceCount} group ${groupBalanceCount === 1 ? 'balance' : 'balances'}`
+                : `Across ${sharedExpensesCount} direct expenses`}
+            </ThemedText>
 
-              <ThemedText style={[styles.summaryCardSubtitle, { color: isDark ? '#94A3B8' : colors.textSecondary }] }>
-                Direct ledger: {relationship.directCurrency ?? 'multiple currencies'} {relationship.directBalance >= 0 ? '+' : '-'}{Math.abs(relationship.directBalance).toFixed(2)}
-              </ThemedText>
+            <ThemedText style={[styles.summaryCardSubtitle, { color: isDark ? '#94A3B8' : colors.textSecondary }]}>
+              Direct ledger: {relationship.directBalance >= 0 ? '+' : ''}{formatCurrency(Math.abs(relationship.directBalance), relationship.directCurrency ?? 'USD')}
+            </ThemedText>
 
-              {((balance !== 0 && !hasCurrencyAmbiguity) || canClearZeroNet) && (
-                <View style={styles.cardQuickActions}>
-                  <TouchableOpacity
-                    style={[styles.cardQuickActionButton, {
-                      backgroundColor: isDark ? '#10b981' : '#043424',
-                      opacity: isSettlingUp ? 0.7 : 1,
-                    }]}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Settle up with ${friend.name}`}
-                    accessibilityHint="Opens the settlement form for this balance"
-                    accessibilityState={{ disabled: isSettlingUp, busy: isSettlingUp }}
-                    onPress={() => router.push(`/friend-settle/${id}`)}>
-                    <IconSymbol size={18} name="banknote" color="#ffffff" />
-                    <ThemedText style={[styles.cardQuickActionText, { color: '#ffffff' }]}>Settle Up</ThemedText>
-                  </TouchableOpacity>
-                </View>
-              )}
-            </LinearGradient>
-          </Animated.View>
-        </Animated.View>
+            {((balance !== 0 && !hasCurrencyAmbiguity) || canClearZeroNet) && (
+              <View style={styles.cardQuickActions}>
+                <TouchableOpacity
+                  style={[styles.cardQuickActionButton, {
+                    backgroundColor: isDark ? '#10b981' : '#043424',
+                    opacity: 1,
+                  }]}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Settle up with ${friend.name}`}
+                  accessibilityHint="Opens the settlement form for this balance"
+                  accessibilityState={{ disabled: false, busy: false }}
+                  onPress={() => router.push(`/friend-settle/${id}`)}>
+                  <IconSymbol size={18} name="banknote" color="#ffffff" />
+                  <ThemedText style={[styles.cardQuickActionText, { color: '#ffffff' }]}>Settle Up</ThemedText>
+                </TouchableOpacity>
+              </View>
+            )}
+          </LinearGradient>
+        </View>
 
         {outstandingGroupBalances.length > 0 && (
           <View style={styles.groupBalancesSection}>
@@ -676,7 +623,16 @@ export default function FriendDetailScreen() {
                   accessibilityRole="button"
                   accessibilityLabel={`Open ${summary.groupName} group balance`}
                   onPress={() => router.push(`/groups/${summary.groupId}` as any)}
-                  style={[styles.groupBalanceRow, {
+                  style={[styles.groupBalanceRow, isDark ? {
+                    backgroundColor: '#000000',
+                    borderWidth: 0,
+                    borderColor: 'rgba(255, 255, 255, 0.08)',
+                    shadowColor: '#64748b',
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.15,
+                    shadowRadius: 4,
+                    elevation: 4,
+                  } : {
                     backgroundColor: friendDetailTheme.surface,
                   }]}
                 >
@@ -689,13 +645,13 @@ export default function FriendDetailScreen() {
                     </ThemedText>
                     <ThemedText style={{ color: isDark ? '#94A3B8' : colors.textSecondary }}>
                       {isOwedInGroup
-                        ? `${friend.name.split(' ')[0]} owes you in this group`
-                        : `You owe ${friend.name.split(' ')[0]} in this group`}
+                        ? `${getFirstName(friend.name)} owes you in this group`
+                        : `You owe ${getFirstName(friend.name)} in this group`}
                     </ThemedText>
                   </View>
                   <View style={styles.groupBalanceAmount}>
                     <ThemedText type="defaultSemiBold" style={{ color: isOwedInGroup ? friendDetailTheme.positive : friendDetailTheme.negative }}>
-                      {isOwedInGroup ? '+' : '-'}{summary.currency} {Math.abs(summary.amount).toFixed(2)}
+                      {isOwedInGroup ? '+' : '-'}{formatCurrency(Math.abs(summary.amount), summary.currency)}
                     </ThemedText>
                   </View>
                 </TouchableOpacity>
@@ -753,7 +709,7 @@ export default function FriendDetailScreen() {
         <View style={styles.historySection}>
           <View style={styles.sectionHeader}>
             <ThemedText type="subtitle" style={[styles.sectionTitle, { color: isDark ? '#F8FAFC' : colors.text }]}>
-              Activity with {friend.name.split(' ')[0]}
+              Activity with {getFirstName(friend.name)}
             </ThemedText>
             <ThemedText style={[styles.expenseCount, { color: isDark ? '#94A3B8' : colors.textSecondary }]}>
               {activityCountLabel}
@@ -771,8 +727,8 @@ export default function FriendDetailScreen() {
                 </ThemedText>
                 <ThemedText style={[styles.emptyText, { color: colors.textSecondary }]}>
                   {activityFilter === 'updates'
-                    ? `Changes and settlements with ${friend.name.split(' ')[0]} will show here`
-                    : `Add an expense to start tracking with ${friend.name.split(' ')[0]}`}
+                    ? `Changes and settlements with ${getFirstName(friend.name)} will show here`
+                    : `Add an expense to start tracking with ${getFirstName(friend.name)}`}
                 </ThemedText>
               </View>
             ) : (
@@ -811,27 +767,30 @@ export default function FriendDetailScreen() {
                             formatDate={formatDate}
                             canReverse={Boolean(item.operationId) && !item.notes?.startsWith('Reversal of settlement operation')}
                             onReverse={() => handleReverseSettlement(item)}
+                            swipeableRefs={swipeableRefs}
                           />
                           : item.type === 'scope_transfer'
                             ? <FriendScopeTransferActivity
                               item={item}
                               friendName={friend.name}
                               colors={colors as Record<string, string>}
+                              friendDetailTheme={friendDetailTheme as Record<string, string>}
                               isDark={isDark}
                               formatDate={formatDate}
                               canReverse={item.fromUserId === currentUserId || item.toUserId === currentUserId}
                               onReverse={() => handleReverseScopeTransfer(item)}
+                              swipeableRefs={swipeableRefs}
                             />
                             : <FriendExpenseActivityEvent
-                            item={item}
-                            currentUserId={currentUserId}
-                            friendName={friend.name}
-                            colors={colors as Record<string, string>}
-                            friendDetailTheme={friendDetailTheme as Record<string, string>}
-                            isDark={isDark}
-                            formatDate={formatDate}
-                            onOpenExpense={handleOpenExpense}
-                          />}
+                              item={item}
+                              currentUserId={currentUserId}
+                              friendName={friend.name}
+                              colors={colors as Record<string, string>}
+                              friendDetailTheme={friendDetailTheme as Record<string, string>}
+                              isDark={isDark}
+                              formatDate={formatDate}
+                              onOpenExpense={handleOpenExpense}
+                            />}
                     </View>
                   ))}
                 </View>
@@ -854,12 +813,15 @@ export default function FriendDetailScreen() {
           style={[styles.floatingButton, isDark ? styles.darkShadow : styles.lightShadow]}
         >
           <LinearGradient
-            colors={gradients.buttonPrimary}
+            colors={Gradients.light.buttonPrimary}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.floatingButtonGradient}
           >
-            <IconSymbol name="doc.text.fill" size={25} color="#fff" />
+            <IconSymbol name="doc.text.fill" size={16} color="#fff" />
+            <ThemedText style={styles.floatingButtonText} type="defaultSemiBold">
+              Add Expense
+            </ThemedText>
           </LinearGradient>
         </TouchableOpacity>
       </View>
@@ -1044,15 +1006,22 @@ const styles = StyleSheet.create({
     zIndex: 20,
   },
   floatingButton: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
+    borderRadius: 22,
+    height: 44,
     overflow: 'hidden',
   },
   floatingButtonGradient: {
-    flex: 1,
-    justifyContent: 'center',
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    height: 44,
+    paddingHorizontal: 16,
+    gap: 8,
+  },
+  floatingButtonText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '700',
   },
   darkShadow: {
     elevation: 6,

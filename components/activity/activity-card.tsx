@@ -3,8 +3,9 @@ import { IconSymbol, IconSymbolName } from '@/components/ui/icon-symbol';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getActivityHref } from '@/lib/activity-link';
 import type { Activity as DbActivity } from '@/types/database';
+import { formatCurrency } from '@/utils/currency';
 import { router } from 'expo-router';
-import { memo } from 'react';
+import { memo, useMemo } from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 
 interface ActivityItem {
@@ -87,7 +88,7 @@ function ActivityCardInner({ activity, currentUserId, deletedExpenseTargetIds }:
   const title = item.description.replace(/^(Deleted|Updated):\s*/i, '');
   const actorName = activity.userName?.trim() || 'Someone';
   const actorLabel = currentUserId && activity.userId === currentUserId ? 'You' : actorName;
-  const amountLabel = item.amount === undefined ? null : `${item.type === 'settlement' ? '+' : ''}$${item.amount.toFixed(2)}`;
+  const amountLabel = item.amount === undefined ? null : `${item.type === 'settlement' ? '+' : ''}${formatCurrency(item.amount)}`;
   const statusLabel = isDeleted ? 'Deleted' : isUpdated ? 'Updated' : null;
   const accessibilityLabel = [
     statusLabel,
@@ -121,24 +122,24 @@ function ActivityCardInner({ activity, currentUserId, deletedExpenseTargetIds }:
     isDeleted
       ? colors.error
       : item.type === 'expense'
-        ? isDark ? '#10b981' : colors.tint
+        ? isDark ? '#FBBF24' : '#D97706'
         : item.type === 'settlement'
-          ? isDark ? '#10b981' : colors.success
-          : isDark ? '#4edea3' : '#8B5CF6';
+          ? isDark ? '#10b981' : '#005E44'
+          : isDark ? '#A78BFA' : '#7C3AED';
 
   const iconBgColor =
     isDeleted
       ? 'rgba(239, 68, 68, 0.15)'
       : item.type === 'expense'
-        ? isDark ? '#064e3b' : 'rgba(34, 197, 94, 0.1)'
+        ? isDark ? 'rgba(251, 191, 36, 0.14)' : 'rgba(245, 158, 11, 0.12)'
         : item.type === 'settlement'
-          ? isDark ? '#064e3b' : 'rgba(16, 185, 129, 0.15)'
-          : isDark ? 'rgba(0, 79, 52, 0.4)' : 'rgba(167, 139, 250, 0.15)';
+          ? isDark ? 'rgba(16, 185, 129, 0.15)' : 'rgba(34, 197, 94, 0.1)'
+          : isDark ? 'rgba(167, 139, 250, 0.14)' : 'rgba(124, 58, 237, 0.1)';
 
   const content = (
     <>
       <View style={[styles.icon, { backgroundColor: iconBgColor }]}>
-        <IconSymbol size={20} name={iconName} color={iconColor} />
+        <IconSymbol size={18} name={iconName} color={iconColor} />
       </View>
       <View style={styles.info}>
         <View style={styles.titleRow}>
@@ -159,24 +160,51 @@ function ActivityCardInner({ activity, currentUserId, deletedExpenseTargetIds }:
         <ThemedText style={[styles.actor, { color: isDark ? '#9ba6b8' : colors.textSecondary }]} numberOfLines={1}>
           {actorLabel}, {dateStr}
         </ThemedText>
-        {item.groupName && (
-          <View style={styles.details}>
+        <View style={styles.details}>
+          <View
+            style={[
+              styles.typePill,
+              {
+                backgroundColor: item.type === 'settlement'
+                  ? (isDark ? 'rgba(16, 185, 129, 0.15)' : 'rgba(34, 197, 94, 0.08)')
+                  : item.type === 'expense'
+                    ? (isDark ? 'rgba(251, 191, 36, 0.14)' : 'rgba(245, 158, 11, 0.08)')
+                    : (isDark ? 'rgba(167, 139, 250, 0.14)' : 'rgba(124, 58, 237, 0.08)'),
+              },
+            ]}>
+            <ThemedText
+              type="defaultSemiBold"
+              style={[
+                styles.pillText,
+                {
+                  color: item.type === 'settlement'
+                    ? (isDark ? '#34d399' : '#005E44')
+                    : item.type === 'expense'
+                      ? (isDark ? '#FBBF24' : '#B45309')
+                      : (isDark ? '#c084fc' : '#6D28D9'),
+                },
+              ]}>
+              {item.type === 'settlement' ? 'Payment' : item.type === 'expense' ? 'Expense' : 'Group'}
+            </ThemedText>
+          </View>
+
+          {item.groupName && (
             <View
               style={[
                 styles.groupPill,
                 {
-                  backgroundColor: isDark ? 'rgba(0, 79, 52, 0.4)' : 'rgba(7, 202, 79, 0.08)',
+                  backgroundColor: isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.04)',
                 },
               ]}>
               <ThemedText
                 type="defaultSemiBold"
                 numberOfLines={1}
-                style={[styles.groupName, { color: isDark ? '#31c98f' : colors.tint }]}>
+                style={[styles.groupName, { color: isDark ? '#9ba6b8' : '#4b5563' }]}>
                 {item.groupName}
               </ThemedText>
             </View>
-          </View>
-        )}
+          )}
+        </View>
       </View>
       {(item.amount !== undefined || href) && (
         <View style={styles.trailing}>
@@ -190,31 +218,32 @@ function ActivityCardInner({ activity, currentUserId, deletedExpenseTargetIds }:
               {amountLabel}
             </ThemedText>
           )}
-          {href && (
-            <IconSymbol
-              size={14}
-              name="chevron.right"
-              color={isDark ? '#64748b' : colors.textSecondary}
-            />
-          )}
         </View>
       )}
     </>
   );
 
-  const cardStyle = [
-    styles.card,
-    {
-      backgroundColor: colors.card,
-      borderWidth: isDark ? 1 : 0,
-      borderColor: colors.border,
-      shadowColor: isDark ? 'transparent' : '#64748B',
+  const cardStyle = useMemo(
+    () => (isDark ? {
+      backgroundColor: '#000000',
+      borderWidth: 0,
+      borderColor: 'rgba(255, 255, 255, 0.08)',
+      shadowColor: '#64748b',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.15,
+      shadowRadius: 4,
+      elevation: 4,
+    } : {
+      backgroundColor: '#ffffff',
+      borderWidth: 0,
+      shadowColor: '#475569',
       shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: isDark ? 0 : 0.09,
+      shadowOpacity: 0.09,
       shadowRadius: 0,
-      elevation: isDark ? 0 : 4,
-    },
-  ];
+      elevation: 4,
+    }),
+    [isDark]
+  );
 
   if (href) {
     return (
@@ -224,14 +253,14 @@ function ActivityCardInner({ activity, currentUserId, deletedExpenseTargetIds }:
         accessibilityLabel={accessibilityLabel}
         accessibilityHint="Opens the related activity details"
         onPress={() => router.push(href)}
-        style={cardStyle}>
+        style={[styles.card, cardStyle]}>
         {content}
       </TouchableOpacity>
     );
   }
 
   return (
-    <View style={cardStyle}>
+    <View style={[styles.card, cardStyle]}>
       {content}
     </View>
   );
@@ -248,9 +277,9 @@ const styles = StyleSheet.create({
     borderRadius: 14,
   },
   icon: {
-    width: 42,
-    height: 42,
-    borderRadius: 13,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -291,16 +320,26 @@ const styles = StyleSheet.create({
   details: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 7,
+    gap: 6,
+    marginTop: 6,
+  },
+  typePill: {
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  pillText: {
+    fontSize: 11,
+    lineHeight: 14,
+    fontWeight: '700',
   },
   groupPill: {
-    maxWidth: '100%',
-    borderRadius: 999,
+    borderRadius: 6,
     paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingVertical: 3,
   },
   groupName: {
-    fontSize: 12,
+    fontSize: 11,
     lineHeight: 14,
     fontWeight: '700',
   },

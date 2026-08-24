@@ -1,7 +1,9 @@
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol, type IconSymbolName } from '@/components/ui/icon-symbol';
 import type { FriendActivityItem } from '@/services/friend-detail-service';
-import { Animated, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { formatCurrency } from '@/utils/currency';
+import { getFirstName } from '@/utils/validation';
+import { StyleSheet, TouchableOpacity, View } from 'react-native';
 
 type ExpenseActivityEvent = Extract<FriendActivityItem, { type: 'expense_activity' }>;
 
@@ -29,24 +31,24 @@ export function FriendExpenseActivityEvent({
   const isDeleted = item.isDeleted;
   const statusLabel = isDeleted ? 'Deleted' : 'Updated';
   const title = item.description.replace(/^(Deleted|Updated):\s*/i, '');
-  const actorName = item.userId === currentUserId ? 'You' : item.userName || friendName.split(' ')[0];
+  const actorName = item.userId === currentUserId ? 'You' : getFirstName(item.userName || friendName);
   const statusColor = isDeleted ? friendDetailTheme.danger : friendDetailTheme.warning;
   const iconSurface = isDeleted ? friendDetailTheme.dangerSurface : friendDetailTheme.warningSurface;
   const iconName: IconSymbolName = isDeleted ? 'trash.fill' : 'pencil';
-  const amountLabel = item.amount === undefined ? null : `$${item.amount.toFixed(2)}`;
+  const amountLabel = item.amount === undefined ? null : formatCurrency(item.amount);
   const isGroupExpense = Boolean(item.groupId);
   const sourceLabel = item.groupName || (isGroupExpense ? 'Group' : 'Direct expense');
 
   const content = (
-    <Animated.View style={[styles.updateCard, {
+    <View style={[styles.updateCard, {
       backgroundColor: colors.card,
-      borderWidth: isDark ? 1 : 0,
+      borderWidth: 0,
       borderColor: colors.border,
-      shadowColor: isDark ? 'transparent' : '#475569',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: isDark ? 0 : 0.09,
-      shadowRadius: 0,
-      elevation: isDark ? 0 : 4,
+      shadowColor: isDark ? '#64748b' : '#475569',
+      shadowOffset: { width: 0, height: isDark ? 4 : 2 },
+      shadowOpacity: isDark ? 0.15 : 0.09,
+      shadowRadius: isDark ? 4 : 0,
+      elevation: 4,
     }]}>
       <View style={[styles.updateIcon, { backgroundColor: iconSurface }]}>
         <IconSymbol size={20} name={iconName} color={statusColor} />
@@ -101,7 +103,7 @@ export function FriendExpenseActivityEvent({
           <IconSymbol size={17} name="chevron.right" color={statusColor} />
         </View>
       )}
-    </Animated.View>
+    </View>
   );
 
   return (

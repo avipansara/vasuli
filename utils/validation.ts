@@ -40,6 +40,14 @@ export function getDisplayName(name: string | undefined, email: string | undefin
   return normalizedEmail?.split('@')[0] || normalizedName || 'Unknown friend';
 }
 
+/** Robust first name helper that handles both spaces, dots, and email addresses */
+export function getFirstName(name: string | undefined): string {
+  if (!name) return 'Someone';
+  const cleanName = name.split('@')[0];
+  const parts = cleanName.split(/[ .]/); // split by space or dot
+  return parts[0] || name;
+}
+
 /**
  * Validates and formats email address
  * @param email - Email address to validate and format

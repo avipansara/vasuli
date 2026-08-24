@@ -3,21 +3,23 @@ import { ThemedText } from '@/components/themed-text';
 import { AsyncErrorState } from '@/components/ui/async-error-state';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { GroupDetailSkeleton } from '@/components/ui/skeleton';
+import { ThemedIconButton } from '@/components/ui/themed-icon-button';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useDebouncedQueryInvalidation } from '@/hooks/use-debounced-query-invalidation';
-import { useRefetchOnFocus } from '@/hooks/use-refetch-on-focus';
 import { useRealtime } from '@/hooks/use-realtime';
+import { useRefetchOnFocus } from '@/hooks/use-refetch-on-focus';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { createGroupDetailTraceId, logGroupDetailDiagnostic } from '@/lib/group-detail-diagnostics';
-import { CombinedSettlementError } from '@/services/settlement-service';
 import { areGroupBalancesSettled } from '@/services/group-balance';
+import { groupDetailMutationController } from '@/services/group-detail-mutation-controller';
 import type { GroupDetailReadModel, GroupExpenseView } from '@/services/group-detail-read-model';
 import { groupDetailService } from '@/services/group-detail-service';
-import { groupDetailMutationController } from '@/services/group-detail-mutation-controller';
 import { createReactQueryCacheAdapter } from '@/services/query-cache-adapter';
 import { queryKeys } from '@/services/query-keys';
+import { CombinedSettlementError } from '@/services/settlement-service';
 import type { Expense, GroupMember, Settlement, User } from '@/types/database';
+import { formatCurrency } from '@/utils/currency';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -70,15 +72,12 @@ function GroupDetailSwipeAction({
   );
 }
 
+import { getFirstName } from '@/utils/validation';
+
 type SectionTab = 'all' | 'expenses';
 
-const SECTION_TABS: { id: SectionTab; label: string }[] = [
-  { id: 'all', label: 'All' },
-  { id: 'expenses', label: 'Expenses' },
-];
-
 export default function GroupDetailScreen() {
-  const { gradients, colors, friendDetail: friendDetailTheme, settle, isDark } = useThemeColors();
+  const { friends: friendsTheme, colors, friendDetail: friendDetailTheme, settle, isDark } = useThemeColors();
   const { id, groupDetailTraceId } = useLocalSearchParams<{
     id: string;
     groupDetailTraceId?: string;
@@ -106,26 +105,7 @@ export default function GroupDetailScreen() {
     outputRange: [10, 0],
     extrapolate: 'clamp',
   });
-  const summaryOpacity = scrollY.interpolate({
-    inputRange: [0, 80],
-    outputRange: [1, 0],
-    extrapolate: 'clamp',
-  });
-  const summaryScale = scrollY.interpolate({
-    inputRange: [0, 80],
-    outputRange: [1, 0.95],
-    extrapolate: 'clamp',
-  });
-  const summaryTranslateY = scrollY.interpolate({
-    inputRange: [0, 80],
-    outputRange: [0, -10],
-    extrapolate: 'clamp',
-  });
 
-  // Animations
-  const [fadeAnim] = useState(() => new Animated.Value(0));
-  const [slideAnim] = useState(() => new Animated.Value(30));
-  const [scaleAnim] = useState(() => new Animated.Value(0.95));
   const [memberModalVisible, setMemberModalVisible] = useState(false);
   const [expenseSearch, setExpenseSearch] = useState('');
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
@@ -136,6 +116,28 @@ export default function GroupDetailScreen() {
   const groupDetailQueryKey = useMemo(() => queryKeys.groups.detail(currentUserId, id), [currentUserId, id]);
   const invalidateGroupDetail = useDebouncedQueryInvalidation(groupDetailQueryKey, 500);
   const queryCache = useMemo(() => createReactQueryCacheAdapter(queryClient), [queryClient]);
+
+  const cardStyle = useMemo(
+    () => (isDark ? {
+      backgroundColor: '#000000',
+      borderWidth: 0,
+      borderColor: 'rgba(255, 255, 255, 0.08)',
+      shadowColor: '#64748b',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.15,
+      shadowRadius: 4,
+      elevation: 4,
+    } : {
+      backgroundColor: '#ffffff',
+      borderWidth: 0,
+      shadowColor: '#475569',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.09,
+      shadowRadius: 0,
+      elevation: 4,
+    }),
+    [isDark]
+  );
 
   const tabItems = useMemo(() => [
     { type: 'tab' as const, id: 'all' as SectionTab, label: 'All', icon: 'person.3.fill' as const },
@@ -186,7 +188,7 @@ export default function GroupDetailScreen() {
     [filteredExpenses],
   );
   const displayItems = sectionTab === 'all' ? timelineItems : expenseItems;
-
+  const avatarTextColor = colors.tint;
   const loadGroupData = useCallback(async () => {
     await refetch();
   }, [refetch]);
@@ -496,22 +498,22 @@ export default function GroupDetailScreen() {
           onPress={() => router.push(`/expense-detail/${item.id}` as any)}
           style={[styles.expenseCard, {
             backgroundColor: colors.card,
-            borderWidth: isDark ? 1 : 0,
+            borderWidth: 0,
             borderColor: colors.border,
-            shadowColor: isDark ? 'transparent' : '#475569',
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: isDark ? 0 : 0.09,
-            shadowRadius: 0,
-            elevation: isDark ? 0 : 4,
+            shadowColor: isDark ? '#64748b' : '#475569',
+            shadowOffset: { width: 0, height: isDark ? 4 : 2 },
+            shadowOpacity: isDark ? 0.15 : 0.09,
+            shadowRadius: isDark ? 4 : 0,
+            elevation: 4,
           }]}>
           <View style={[styles.expenseIcon, {
             backgroundColor: isDark ? categoryStyle.darkBg : categoryStyle.lightBg,
-            borderRadius: 24,
-            width: 48,
-            height: 48,
+            borderRadius: 20,
+            width: 40,
+            height: 40,
           }]}>
             <IconSymbol
-              size={20}
+              size={18}
               name={categoryStyle.icon}
               color={isDark ? categoryStyle.darkColor : categoryStyle.lightColor}
             />
@@ -521,12 +523,12 @@ export default function GroupDetailScreen() {
               {item.description}
             </ThemedText>
             <ThemedText style={[styles.expenseDate, { color: isDark ? '#94A3B8' : colors.textSecondary }]} numberOfLines={2}>
-              {paidByYou ? 'Paid by you' : `Paid by ${item.paidByUser?.name.split(' ')[0] || 'Someone'}`}{'\n'}{dateStr}
+              {paidByYou ? 'Paid by you' : `Paid by ${getFirstName(item.paidByUser?.name || 'Someone')}`}{'\n'}{dateStr}
             </ThemedText>
           </View>
           <View style={styles.amountBlock}>
             <ThemedText type="title" style={[styles.expenseAmount, { color: isDark ? '#F8FAFC' : colors.text }]}>
-              ${item.amount.toFixed(2)}
+              {formatCurrency(item.amount, item.currency)}
             </ThemedText>
             <View style={[styles.badge, { backgroundColor: paidByYou ? friendDetailTheme.positiveSurface : friendDetailTheme.settledSurface }]}>
               <ThemedText style={[styles.badgeText, { color: paidByYou ? friendDetailTheme.positive : (isDark ? '#94A3B8' : colors.textSecondary) }]}>
@@ -540,21 +542,23 @@ export default function GroupDetailScreen() {
   }
 
   function renderSettlement({ item }: { item: Settlement }) {
-    const fromUser = members.find(member => member.userId === item.fromUserId)?.user?.name || 'Someone';
-    const toUser = members.find(member => member.userId === item.toUserId)?.user?.name || 'Someone';
+    const fromUserName = members.find(member => member.userId === item.fromUserId)?.user?.name || 'Someone';
+    const toUserName = members.find(member => member.userId === item.toUserId)?.user?.name || 'Someone';
+    const fromUser = getFirstName(fromUserName);
+    const toUser = getFirstName(toUserName);
     const dateStr = new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
     return (
-      <View style={[styles.transferRow, { backgroundColor: colors.card, borderColor: colors.border }]}>
-        <View style={[styles.expenseIcon, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.15)' : '#D1FAE5' }]}>
-          <IconSymbol size={20} name="banknote" color={isDark ? '#6EE7B7' : '#047857'} />
+      <View style={[styles.transferRow, cardStyle]}>
+        <View style={[styles.expenseIcon, { backgroundColor: friendDetailTheme.positiveSurface }]}>
+          <IconSymbol size={20} name="checkmark.circle.fill" color={friendDetailTheme.positive} />
         </View>
         <View style={styles.transferCopy}>
           <ThemedText type="defaultSemiBold" style={{ color: colors.text }}>Settlement</ThemedText>
           <ThemedText style={{ color: colors.textSecondary }}>{fromUser} paid {toUser}{'\n'}{dateStr}</ThemedText>
         </View>
         <ThemedText type="defaultSemiBold" style={{ color: isDark ? '#6EE7B7' : '#047857' }}>
-          {item.currency} {item.amount.toFixed(2)}
+          {formatCurrency(item.amount, item.currency)}
         </ThemedText>
       </View>
     );
@@ -668,21 +672,21 @@ export default function GroupDetailScreen() {
           onPress={() => item.userId !== currentUserId && router.push(`/friends/${item.userId}` as any)}
           style={[styles.memberCard, {
             backgroundColor: colors.card,
-            borderWidth: isDark ? 1 : 0,
+            borderWidth: 0,
             borderColor: colors.border,
-            shadowColor: isDark ? 'transparent' : '#475569',
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: isDark ? 0 : 0.09,
-            shadowRadius: 0,
-            elevation: isDark ? 0 : 4,
+            shadowColor: isDark ? '#64748b' : '#475569',
+            shadowOffset: { width: 0, height: isDark ? 4 : 2 },
+            shadowOpacity: isDark ? 0.15 : 0.09,
+            shadowRadius: isDark ? 4 : 0,
+            elevation: 4,
           }]}>
           <View style={[styles.memberAvatar, {
-            backgroundColor: isDark ? '#1e293b' : 'rgba(15, 76, 58, 0.1)',
-            borderRadius: 24,
-            width: 48,
-            height: 48,
+            backgroundColor: isDark ? '#064e3b' : friendsTheme.avatarSurface,
+            borderRadius: 12,
+            width: 40,
+            height: 40,
           }]}>
-            <ThemedText style={[styles.avatarText, { color: isDark ? '#10b981' : '#0F4C3A' }]}>
+            <ThemedText type="title" style={[styles.avatarText, { color: isDark ? '#10b981' : avatarTextColor }]}>
               {item.user?.name.charAt(0).toUpperCase() || '?'}
             </ThemedText>
           </View>
@@ -731,7 +735,7 @@ export default function GroupDetailScreen() {
             {balance !== 0 && (
               <>
                 <ThemedText type='subtitle' style={[styles.memberBalanceAmount, { color: balanceColor }]}>
-                  ${Math.abs(balance).toFixed(2)}
+                  {formatCurrency(Math.abs(balance))}
                 </ThemedText>
                 <ThemedText style={[styles.balanceLabel, { color: isDark ? '#94A3B8' : colors.textSecondary }]}>
                   {balance > 0 ? 'gets back' : 'owes'}
@@ -747,46 +751,22 @@ export default function GroupDetailScreen() {
     );
   }
 
-  // Start animations when data loads
-  useEffect(() => {
-    if (!loading && group) {
-      Animated.parallel([
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 400,
-          useNativeDriver: true,
-        }),
-        Animated.timing(slideAnim, {
-          toValue: 0,
-          duration: 400,
-          useNativeDriver: true,
-        }),
-        Animated.spring(scaleAnim, {
-          toValue: 1,
-          friction: 8,
-          tension: 40,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    }
-  }, [fadeAnim, group, loading, scaleAnim, slideAnim]);
-
   if (loading) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={styles.header}>
-          <TouchableOpacity
+          <ThemedIconButton
+            name="chevron.left"
             onPress={() => router.back()}
-            accessibilityRole="button"
+            size={20}
+            shape="circle"
             accessibilityLabel="Go back"
             accessibilityHint="Returns to the previous screen"
-            hitSlop={MIN_TOUCH_HIT_SLOP}
-            style={[styles.backButtonRect, {
+            style={{
               backgroundColor: friendDetailTheme.actionSurface,
               borderColor: friendDetailTheme.actionBorder,
-            }]}>
-            <IconSymbol size={20} name="chevron.left" color={friendDetailTheme.actionIcon} />
-          </TouchableOpacity>
+            }}
+          />
         </View>
         <GroupDetailSkeleton />
       </View>
@@ -797,18 +777,18 @@ export default function GroupDetailScreen() {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={styles.header}>
-          <TouchableOpacity
+          <ThemedIconButton
+            name="chevron.left"
             onPress={() => router.back()}
-            accessibilityRole="button"
+            size={20}
+            shape="circle"
             accessibilityLabel="Go back"
             accessibilityHint="Returns to the previous screen"
-            hitSlop={MIN_TOUCH_HIT_SLOP}
-            style={[styles.backButtonRect, {
+            style={{
               backgroundColor: friendDetailTheme.actionSurface,
               borderColor: friendDetailTheme.actionBorder,
-            }]}>
-            <IconSymbol size={20} name="chevron.left" color={friendDetailTheme.actionIcon} />
-          </TouchableOpacity>
+            }}
+          />
           <View style={styles.headerSpacer} />
         </View>
         <AsyncErrorState
@@ -849,25 +829,25 @@ export default function GroupDetailScreen() {
       ? friendDetailTheme.negativeSurface
       : friendDetailTheme.settledSurface;
   const balanceCopy = currentUserBalance > 0 ? 'You are owed' : currentUserBalance < 0 ? 'You owe' : 'All settled up';
-  const balanceAccessibilityValue = `${balanceCopy}, $${Math.abs(currentUserBalance).toFixed(2)}`;
+  const balanceAccessibilityValue = `${balanceCopy}, ${formatCurrency(Math.abs(currentUserBalance))}`;
 
   return (
     <View style={[styles.container, { backgroundColor: isDark ? '#050914' : colors.background }]}>
 
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity
+        <ThemedIconButton
+          name="chevron.left"
           onPress={() => router.back()}
-          accessibilityRole="button"
+          size={20}
+          shape="circle"
           accessibilityLabel="Go back"
           accessibilityHint="Returns to the previous screen"
-          hitSlop={MIN_TOUCH_HIT_SLOP}
-          style={[styles.backButtonRect, {
+          style={{
             backgroundColor: friendDetailTheme.actionSurface,
             borderColor: friendDetailTheme.actionBorder,
-          }]}>
-          <IconSymbol size={20} name="chevron.left" color={friendDetailTheme.actionIcon} />
-        </TouchableOpacity>
+          }}
+        />
 
         {/* Floating Header Title (Group Name) */}
         <View style={styles.headerTitleContainer} pointerEvents="none">
@@ -877,22 +857,22 @@ export default function GroupDetailScreen() {
         </View>
 
         <View style={styles.headerActions}>
-          <TouchableOpacity
+          <ThemedIconButton
+            name="trash.fill"
             onPress={handleDeleteGroup}
             disabled={isDeletingGroup}
-            accessibilityRole="button"
+            loading={isDeletingGroup}
+            size={18}
+            shape="square"
+            variant="danger"
             accessibilityLabel={`Delete ${group.name}`}
             accessibilityHint={groupIsSettled ? 'Deletes this group after confirmation' : 'Shows why this group needs settlement before deletion'}
-            accessibilityState={{ busy: isDeletingGroup, disabled: isDeletingGroup }}
-            hitSlop={MIN_TOUCH_HIT_SLOP}
             testID="delete-group-button"
-            style={[styles.headerActionButton, {
+            style={{
               backgroundColor: friendDetailTheme.dangerSurface,
               borderColor: friendDetailTheme.dangerBorder,
-              opacity: isDeletingGroup ? 0.5 : 1,
-            }]}>
-            <IconSymbol size={18} name="trash" color={friendDetailTheme.danger} />
-          </TouchableOpacity>
+            }}
+          />
         </View>
       </View>
 
@@ -907,84 +887,68 @@ export default function GroupDetailScreen() {
         )}>
 
         {/* Summary Card */}
-        <Animated.View style={[
-          styles.summarySection,
-          {
-            opacity: fadeAnim,
-            transform: [{ translateY: slideAnim }, { scale: scaleAnim }],
-          }
-        ]}>
-          <Animated.View style={{
-            opacity: summaryOpacity,
-            transform: [
-              { translateY: summaryTranslateY },
-              { scale: summaryScale }
-            ]
-          }}>
-            <LinearGradient
-              colors={
-                isDark
-                  ? ['rgba(13, 19, 33, 0.8)', 'rgba(13, 19, 33, 0.6)']
-                  : currentUserBalance < 0
-                    ? ['#FFF2F4', '#FFFFFF']
-                    : currentUserBalance > 0
-                      ? ['#F0FDF4', '#FFFFFF']
-                      : ['#F9FAFB', '#FFFFFF']
-              }
-              start={{ x: 1, y: 0 }}
-              end={{ x: 0, y: 1 }}
-              accessible
-              accessibilityRole="summary"
-              accessibilityLabel={`${group.name}, ${members.length} members, ${balanceAccessibilityValue}`}
-              accessibilityLiveRegion="polite"
-              style={[styles.summaryCard, {
-                borderWidth: 0,
-                shadowColor: isDark ? '#000000' : '#475569',
-                shadowOffset: { width: 0, height: 8 },
-                shadowOpacity: isDark ? 0.45 : 0.12,
-                shadowRadius: 18,
-                elevation: 8,
-                alignItems: 'center',
-                paddingVertical: 24,
-                paddingHorizontal: 16,
-                borderRadius: 24,
-              }]}>
+        <View style={styles.summarySection}>
+          <LinearGradient
+            colors={
+              isDark
+                ? ['#000000', '#000000']
+                : currentUserBalance < 0
+                  ? ['#FFF2F4', '#FFFFFF']
+                  : currentUserBalance > 0
+                    ? ['#F0FDF4', '#FFFFFF']
+                    : ['#F9FAFB', '#FFFFFF']
+            }
+            start={{ x: 1, y: 0 }}
+            end={{ x: 0, y: 1 }}
+            accessible
+            accessibilityRole="summary"
+            accessibilityLabel={`${group.name}, ${members.length} members, ${balanceAccessibilityValue}`}
+            accessibilityLiveRegion="polite"
+            style={[styles.summaryCard, {
+              borderWidth: 0,
+              shadowColor: isDark ? '#64748b' : '#475569',
+              shadowOffset: { width: 0, height: isDark ? 4 : 8 },
+              shadowOpacity: isDark ? 0.15 : 0.12,
+              shadowRadius: isDark ? 4 : 18,
+              elevation: isDark ? 4 : 8,
+              alignItems: 'center',
+              paddingVertical: 24,
+              paddingHorizontal: 16,
+              borderRadius: 24,
+            }]}>
+            <ThemedText type='defaultSemiBold' style={[styles.summaryCardTitle, { color: isDark ? (currentUserBalance < 0 ? '#ffb3b0' : currentUserBalance > 0 ? '#45dfa4' : '#94A3B8') : balanceColor }]}>
+              {currentUserBalance > 0
+                ? 'YOU ARE OWED'
+                : currentUserBalance < 0
+                  ? 'YOU OWE'
+                  : 'ALL SETTLED UP'}
+            </ThemedText>
 
+            <ThemedText type='subtitle' style={[styles.summaryCardAmount, { color: isDark ? (currentUserBalance < 0 ? '#ffb3b0' : currentUserBalance > 0 ? '#4edea3' : '#94A3B8') : balanceColor }]}>
+              {currentUserBalance < 0 ? '-' : currentUserBalance > 0 ? '+' : ''}{formatCurrency(Math.abs(currentUserBalance))}
+            </ThemedText>
 
-              <ThemedText type='defaultSemiBold' style={[styles.summaryCardTitle, { color: isDark ? (currentUserBalance < 0 ? '#ffb3b0' : currentUserBalance > 0 ? '#45dfa4' : '#94A3B8') : balanceColor }]}>
-                {currentUserBalance > 0
-                  ? 'YOU ARE OWED'
-                  : currentUserBalance < 0
-                    ? 'YOU OWE'
-                    : 'ALL SETTLED UP'}
-              </ThemedText>
+            <ThemedText style={[styles.summaryCardSubtitle, { color: isDark ? '#94A3B8' : colors.textSecondary }]}>
+              Across {members.length} members
+            </ThemedText>
 
-              <ThemedText type='subtitle' style={[styles.summaryCardAmount, { color: isDark ? (currentUserBalance < 0 ? '#ffb3b0' : currentUserBalance > 0 ? '#4edea3' : '#94A3B8') : balanceColor }]}>
-                {currentUserBalance < 0 ? '-' : currentUserBalance > 0 ? '+' : ''}${Math.abs(currentUserBalance).toFixed(2)}
-              </ThemedText>
-
-              <ThemedText style={[styles.summaryCardSubtitle, { color: isDark ? '#94A3B8' : colors.textSecondary }]}>
-                Across {members.length} members
-              </ThemedText>
-
-              {!groupIsSettled && currentUserBalance !== 0 && (
-                <View style={styles.cardQuickActions}>
-                  <TouchableOpacity
-                    style={[styles.cardQuickActionButton, {
-                      backgroundColor: isDark ? '#10b981' : '#043424',
-                    }]}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Settle up in ${group.name}`}
-                    accessibilityHint="Opens the settlement form"
-                    onPress={handleSettleUp}>
-                    <IconSymbol size={18} name="banknote" color="#ffffff" />
-                    <ThemedText style={[styles.cardQuickActionText, { color: '#ffffff' }]}>Settle Up</ThemedText>
-                  </TouchableOpacity>
-                </View>
-              )}
-            </LinearGradient>
-          </Animated.View>
-        </Animated.View>
+            {!groupIsSettled && currentUserBalance !== 0 && (
+              <View style={styles.cardQuickActions}>
+                <TouchableOpacity
+                  style={[styles.cardQuickActionButton, {
+                    backgroundColor: isDark ? '#10b981' : '#043424',
+                  }]}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Settle up in ${group.name}`}
+                  accessibilityHint="Opens the settlement form"
+                  onPress={handleSettleUp}>
+                  <IconSymbol size={18} name="banknote" color="#ffffff" />
+                  <ThemedText style={[styles.cardQuickActionText, { color: '#ffffff' }]}>Settle Up</ThemedText>
+                </TouchableOpacity>
+              </View>
+            )}
+          </LinearGradient>
+        </View>
 
         {/* Tab / Action Tiles */}
         <View style={styles.tabTilesRow}>
@@ -1042,15 +1006,10 @@ export default function GroupDetailScreen() {
                 <IconSymbol size={16} name="plus" color={friendDetailTheme.actionIcon} />
               </TouchableOpacity>
             </View>
-            {members.map((member, index) => (
-              <Animated.View
-                key={member.id}
-                style={{
-                  opacity: fadeAnim,
-                  transform: [{ translateY: Animated.multiply(slideAnim, new Animated.Value((index + 1) * 0.15)) }],
-                }}>
+            {members.map(member => (
+              <View key={member.id}>
                 {renderMember({ item: member })}
-              </Animated.View>
+              </View>
             ))}
           </View>
         )}
@@ -1065,15 +1024,26 @@ export default function GroupDetailScreen() {
             {scopeTransfers.map(transfer => {
               const movedToFriendship = transfer.fromUserId === currentUserId;
               return (
-                <View key={transfer.id} style={[styles.transferRow, { backgroundColor: friendDetailTheme.surface, borderColor: friendDetailTheme.surfaceBorder }]}>
+                <View key={transfer.id} style={[styles.transferRow, cardStyle]}>
                   <IconSymbol name="arrow.left.arrow.right" size={17} color={friendDetailTheme.actionIcon} />
                   <View style={styles.transferCopy}>
                     <ThemedText type="defaultSemiBold" style={{ color: colors.text }}>{transfer.isReversal ? 'Reversed balance offset' : movedToFriendship ? 'Moved to friendship balance' : 'Moved from friendship balance'}</ThemedText>
-                    <ThemedText style={{ color: colors.textSecondary }}>{transfer.currency} {Math.abs(transfer.signedGroupBalanceDelta).toFixed(2)}</ThemedText>
+                    <ThemedText style={{ color: colors.textSecondary }}>{formatCurrency(Math.abs(transfer.signedGroupBalanceDelta), transfer.currency)}</ThemedText>
                   </View>
                   {!transfer.isReversal && (transfer.fromUserId === currentUserId || transfer.toUserId === currentUserId) ? (
-                    <TouchableOpacity accessibilityRole="button" accessibilityLabel="Reverse settlement" hitSlop={8} onPress={() => handleReverseTransfer(transfer)}>
-                      <ThemedText style={{ color: friendDetailTheme.danger, fontSize: 12, fontWeight: '700' }}>Reverse</ThemedText>
+                    <TouchableOpacity
+                      accessibilityRole="button"
+                      accessibilityLabel="Reverse settlement"
+                      hitSlop={8}
+                      onPress={() => handleReverseTransfer(transfer)}
+                      style={{
+                        backgroundColor: isDark ? 'rgba(239, 68, 68, 0.15)' : '#FEE2E2',
+                        paddingHorizontal: 8,
+                        paddingVertical: 4,
+                        borderRadius: 6,
+                      }}
+                    >
+                      <ThemedText style={{ color: isDark ? '#fca5a5' : colors.error, fontSize: 12, fontWeight: '700' }}>Reverse</ThemedText>
                     </TouchableOpacity>
                   ) : null}
                 </View>
@@ -1145,17 +1115,12 @@ export default function GroupDetailScreen() {
               </ThemedText>
             </View>
           ) : (
-            displayItems.map((item, index) => (
-              <Animated.View
-                key={item.type === 'expense' ? item.expense.id : item.settlement.id}
-                style={{
-                  opacity: fadeAnim,
-                  transform: [{ translateY: Animated.multiply(slideAnim, new Animated.Value((index + 1) * 0.1)) }],
-                }}>
+            displayItems.map(item => (
+              <View key={item.type === 'expense' ? item.expense.id : item.settlement.id}>
                 {item.type === 'expense'
                   ? renderExpense({ item: item.expense })
                   : renderSettlement({ item: item.settlement })}
-              </Animated.View>
+              </View>
             ))
           )}
         </View>
@@ -1384,7 +1349,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.09,
     shadowRadius: 0,
     elevation: 4,
-    borderWidth: 1,
     borderColor: 'transparent',
     paddingHorizontal: 16,
   },
@@ -1468,7 +1432,7 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   avatarText: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '600',
   },
   memberInfo: {
@@ -1530,16 +1494,15 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     marginBottom: 8,
     borderRadius: 12,
-    borderWidth: 1,
   },
   transferCopy: {
     flex: 1,
     gap: 2,
   },
   expenseIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: 10,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 10,

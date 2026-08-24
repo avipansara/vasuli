@@ -1,14 +1,14 @@
 import { ThemedText } from '@/components/themed-text';
 import {
-    ACCENT_TEAL,
-    BG_ICON_DARK,
-    BG_ICON_LIGHT,
-    ERROR_COLOR,
-    SUCCESS_DARK,
+  ACCENT_TEAL,
+  BG_ICON_DARK,
+  BG_ICON_LIGHT,
+  ERROR_COLOR,
+  SUCCESS_DARK,
 } from '@/constants/theme';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import type { GroupMember, User } from '@/types/database';
-import React from 'react';
+import { formatCurrency } from '@/utils/currency';
 import { StyleSheet, View } from 'react-native';
 
 interface MemberCardProps {
@@ -23,8 +23,8 @@ export function MemberCard({ member, balance }: MemberCardProps) {
     balance > 0
       ? isDark ? SUCCESS_DARK : colors.success
       : balance < 0
-      ? isDark ? ERROR_COLOR : colors.error
-      : isDark ? ACCENT_TEAL : colors.tint;
+        ? isDark ? ERROR_COLOR : colors.error
+        : isDark ? ACCENT_TEAL : colors.tint;
 
   return (
     <View style={[styles.card, !isDark && { borderColor: colors.border }]}>
@@ -53,7 +53,7 @@ export function MemberCard({ member, balance }: MemberCardProps) {
         {balance !== 0 ? (
           <>
             <ThemedText style={[styles.balanceAmount, { color: balanceColor }]}>
-              ${Math.abs(balance).toFixed(2)}
+              {formatCurrency(Math.abs(balance))}
             </ThemedText>
             <ThemedText
               style={[styles.balanceLabel, !isDark && { color: colors.textSecondary }]}>

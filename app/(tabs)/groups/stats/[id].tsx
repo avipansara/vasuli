@@ -19,9 +19,7 @@ import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, View } fro
 
 const AVATAR_COLORS = ['#7C5CFC', '#22C55E', '#F59E0B', '#3B82F6', '#EC4899'];
 
-function formatCurrency(amount: number): string {
-  return `$${amount.toFixed(2)}`;
-}
+import { formatCurrency } from '@/utils/currency';
 
 function formatDateRange(expenses: { date: number }[]): string {
   if (expenses.length === 0) return 'No expenses yet';

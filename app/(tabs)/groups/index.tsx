@@ -2,20 +2,20 @@ import { CreateGroupModal, GroupCard } from '@/components/groups';
 import { ThemedText } from '@/components/themed-text';
 import { AsyncErrorState } from '@/components/ui/async-error-state';
 import { EmptyState } from '@/components/ui/empty-state';
-import { IconSymbol } from '@/components/ui/icon-symbol';
 import { GroupsListSkeleton } from '@/components/ui/skeleton';
+import { ThemedIconButton } from '@/components/ui/themed-icon-button';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useDebouncedQueryInvalidation } from '@/hooks/use-debounced-query-invalidation';
-import { useRefetchOnFocus } from '@/hooks/use-refetch-on-focus';
 import { useGroupsHomeRealtime } from '@/hooks/use-realtime';
+import { useRefetchOnFocus } from '@/hooks/use-refetch-on-focus';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { groupService } from '@/services/group-service';
-import { userService } from '@/services/user-service';
 import { queryKeys } from '@/services/query-keys';
+import { userService } from '@/services/user-service';
 import type { Group, GroupWithMembers } from '@/types/database';
+import { formatCurrency } from '@/utils/currency';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Animated, FlatList, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
@@ -142,11 +142,11 @@ export default function GroupsScreen() {
   const totalOwe = groups.reduce((sum, g) => sum + Math.max(-(g.yourBalance || 0), 0), 0);
   const hasSeparateBalances = totalOwed > 0 && totalOwe > 0;
   const summaryAccessibilityLabel = hasSeparateBalances
-    ? `You owe $${totalOwe.toFixed(2)} and you are owed $${totalOwed.toFixed(2)}`
+    ? `You owe ${formatCurrency(totalOwe)} and you are owed ${formatCurrency(totalOwed)}`
     : totalOwe > 0
-      ? `You owe $${totalOwe.toFixed(2)}`
+      ? `You owe ${formatCurrency(totalOwe)}`
       : totalOwed > 0
-        ? `You are owed $${totalOwed.toFixed(2)}`
+        ? `You are owed ${formatCurrency(totalOwed)}`
         : 'All settled up';
 
   return (
@@ -157,11 +157,11 @@ export default function GroupsScreen() {
             <View style={styles.balanceSummaryRow}>
               <View>
                 <ThemedText style={[styles.headerLabel, { color: isDark ? '#9ba6b8' : colors.textSecondary }]}>You owe</ThemedText>
-                <ThemedText type="header" style={[styles.headerAmount, { color: isDark ? '#ffb4ab' : colors.error }]}>${totalOwe.toFixed(2)}</ThemedText>
+                <ThemedText type="header" style={[styles.headerAmount, { color: isDark ? '#ffb4ab' : colors.error }]}>{formatCurrency(totalOwe)}</ThemedText>
               </View>
-              <View>
+              <View style={{ marginLeft: 32 }}>
                 <ThemedText style={[styles.headerLabel, { color: isDark ? '#9ba6b8' : colors.textSecondary }]}>You are owed</ThemedText>
-                <ThemedText type="header" style={[styles.headerAmount, { color: isDark ? '#10b981' : colors.success }]}>${totalOwed.toFixed(2)}</ThemedText>
+                <ThemedText type="header" style={[styles.headerAmount, { color: isDark ? '#10b981' : colors.success }]}>{formatCurrency(totalOwed)}</ThemedText>
               </View>
             </View>
           ) : (
@@ -173,19 +173,19 @@ export default function GroupsScreen() {
                 type="header"
                 style={[styles.headerAmount, { color: isDark ? (totalOwe > 0 ? '#ffb4ab' : '#10b981') : (totalOwe > 0 ? colors.error : colors.success) }]}
               >
-                ${Math.abs(totalBalance).toFixed(2)}
+                {formatCurrency(Math.abs(totalBalance))}
               </ThemedText>
             </>
           )}
         </View>
-        <TouchableOpacity
-          style={[styles.addButtonRect, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: isDark ? 1 : 0 }]}
+        <ThemedIconButton
+          name="plus"
+          size={20}
+          shape='square'
+          accessibilityLabel='Create Group'
+          accessibilityHint="Opens the form to create a new group"
           onPress={() => router.push('/create-group')}
-          accessibilityRole="button"
-          accessibilityLabel="Create group"
-          accessibilityHint="Opens the form to create a new group">
-          <IconSymbol size={20} name="plus" color={isDark ? '#10b981' : colors.tint} />
-        </TouchableOpacity>
+        />
       </View>
 
       {deletedGroups.length > 0 && (

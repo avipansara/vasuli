@@ -1,12 +1,13 @@
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { useThemeColors } from '@/hooks/use-theme-colors';
 import { useAuth } from '@/contexts/auth-context-otp';
+import { useThemeColors } from '@/hooks/use-theme-colors';
 import { createGroupDetailTraceId, logGroupDetailDiagnostic } from '@/lib/group-detail-diagnostics';
 import { groupService } from '@/services/group-service';
+import { formatCurrency } from '@/utils/currency';
 import type { GroupWithMembers } from '@/types/database';
 import { router } from 'expo-router';
-import { memo, useRef } from 'react';
+import { memo, useMemo, useRef } from 'react';
 import { Alert, StyleSheet, TouchableOpacity, View } from 'react-native';
 import ReanimatedSwipeable, { type SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable';
 import type { SharedValue } from 'react-native-reanimated';
@@ -84,6 +85,28 @@ function GroupCardInner({ group, onRefresh }: GroupCardProps) {
     );
   }
 
+  const cardStyle = useMemo(
+    () => (isDark ? {
+      backgroundColor: '#000000',
+      borderWidth: 0,
+      borderColor: 'rgba(255, 255, 255, 0.08)',
+      shadowColor: '#64748b',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.15,
+      shadowRadius: 4,
+      elevation: 4,
+    } : {
+      backgroundColor: '#ffffff',
+      borderWidth: 0,
+      shadowColor: '#475569',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.09,
+      shadowRadius: 0,
+      elevation: 4,
+    }),
+    [isDark]
+  );
+
   return (
     <View style={styles.wrapper}>
       <ReanimatedSwipeable
@@ -110,81 +133,67 @@ function GroupCardInner({ group, onRefresh }: GroupCardProps) {
         overshootFriction={8}
         enableTrackpadTwoFingerGesture
         containerStyle={{ overflow: 'visible' }}>
-        <View
-          style={[
-            styles.card,
-            {
-              backgroundColor: colors.card,
-              borderWidth: isDark ? 1 : 0,
-              borderColor: colors.border,
-              shadowColor: isDark ? 'transparent' : '#475569',
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: isDark ? 0 : 0.09,
-              shadowRadius: 0,
-              elevation: isDark ? 0 : 4,
-            },
-          ]}>
-          <TouchableOpacity
-            activeOpacity={0.7}
-            style={styles.content}
-            onPress={handleOpenGroup}
-            accessibilityRole="button"
-            accessibilityLabel={`${group.name}, ${isSettled ? 'all settled up' : `${isPositive ? 'you are owed' : 'you owe'} $${Math.abs(balance).toFixed(2)}`}`}
-            accessibilityHint="Opens this group">
-            <View style={styles.row}>
-              <View
-                style={[
-                  styles.iconContainer,
-                  {
-                    backgroundColor: isDark
-                      ? '#064e3b'
-                      : 'rgba(34, 197, 94, 0.1)',
-                  },
-                ]}>
-                <IconSymbol
-                  size={28}
-                  name="person.3.fill"
-                  color={isDark ? '#10b981' : colors.tint}
-                />
-              </View>
-              <View style={styles.info}>
-                <ThemedText style={[styles.name, { color: isDark ? '#f8fafc' : colors.text }]} numberOfLines={1}>
-                  {group.name}
-                </ThemedText>
-                {group.description && (
-                  <ThemedText
-                    style={[styles.description, { color: isDark ? '#9ba6b8' : colors.textSecondary }]}
-                    numberOfLines={1}>
-                    {group.description}
-                  </ThemedText>
-                )}
-              </View>
-              <View style={styles.balanceContainer}>
-                {isSettled ? (
-                  <ThemedText style={[styles.settledText, { color: isDark ? '#10b981' : colors.textSecondary }]}>
-                    settled up
-                  </ThemedText>
-                ) : (
-                  <>
-                    <ThemedText style={[styles.balanceLabel, { color: isDark ? '#64748b' : colors.textSecondary }]}>
-                      {isPositive ? "you're owed" : "you owe"}
-                    </ThemedText>
-                    <ThemedText
-                      type='title'
-                      style={[
-                        styles.balanceAmount,
-                        {
-                          color: isDark ? (isPositive ? '#10b981' : '#ffb4ab') : (isPositive ? colors.success : colors.error),
-                        },
-                      ]}>
-                      ${Math.abs(balance).toFixed(2)}
-                    </ThemedText>
-                  </>
-                )}
-              </View>
+        <TouchableOpacity
+          activeOpacity={0.7}
+          style={[styles.card, cardStyle]}
+          onPress={handleOpenGroup}
+          accessibilityRole="button"
+          accessibilityLabel={`${group.name}, ${isSettled ? 'all settled up' : `${isPositive ? 'you are owed' : 'you owe'} ${formatCurrency(Math.abs(balance))}`}`}
+          accessibilityHint="Opens this group">
+          <View style={styles.row}>
+            <View
+              style={[
+                styles.iconContainer,
+                {
+                  backgroundColor: isDark
+                    ? '#064e3b'
+                    : 'rgba(34, 197, 94, 0.1)',
+                },
+              ]}>
+              <IconSymbol
+                size={28}
+                name="person.3.fill"
+                color={isDark ? '#10b981' : colors.tint}
+              />
             </View>
-          </TouchableOpacity>
-        </View>
+            <View style={styles.info}>
+              <ThemedText style={[styles.name, { color: isDark ? '#f8fafc' : colors.text }]} numberOfLines={1}>
+                {group.name}
+              </ThemedText>
+              {group.description && (
+                <ThemedText
+                  style={[styles.description, { color: isDark ? '#9ba6b8' : colors.textSecondary }]}
+                  numberOfLines={1}>
+                  {group.description}
+                </ThemedText>
+              )}
+            </View>
+            <View style={styles.balanceContainer}>
+              {isSettled ? (
+                <ThemedText style={[styles.settledText, { color: isDark ? '#10b981' : colors.textSecondary }]}>
+                  settled up
+                </ThemedText>
+              ) : (
+                <>
+                  <ThemedText style={[styles.balanceLabel, { color: isDark ? '#64748b' : colors.textSecondary }]}>
+                    {isPositive ? "you're owed" : "you owe"}
+                  </ThemedText>
+                  <ThemedText
+                    type='title'
+                    style={[
+                      styles.balanceAmount,
+                      {
+                        color: isDark ? (isPositive ? '#10b981' : '#ffb4ab') : (isPositive ? colors.success : colors.error),
+                      },
+                    ]}>
+                    {formatCurrency(Math.abs(balance))}
+                  </ThemedText>
+                </>
+              )}
+            </View>
+          </View>
+        </TouchableOpacity>
+
       </ReanimatedSwipeable>
     </View>
   );
@@ -212,7 +221,7 @@ function GroupSwipeAction({
         style={styles.swipeActionButton}
         accessibilityRole="button"
         accessibilityLabel={accessibilityLabel}>
-        <IconSymbol name={side === 'left' ? 'pencil' : 'trash'} size={20} color="#fff" />
+        <IconSymbol name={side === 'left' ? 'pencil' : 'trash.fill'} size={20} color="#fff" />
         <ThemedText style={styles.swipeActionText}>{side === 'left' ? 'Edit' : 'Delete'}</ThemedText>
       </TouchableOpacity>
     </Reanimated.View>
@@ -227,10 +236,8 @@ const styles = StyleSheet.create({
   },
   card: {
     borderRadius: 14,
-    overflow: 'hidden',
-  },
-  content: {
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
   },
   row: {
     flexDirection: 'row',
