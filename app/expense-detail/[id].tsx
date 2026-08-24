@@ -231,7 +231,7 @@ export default function ExpenseDetailScreen() {
                 name="pencil"
                 size={18}
                 shape='square'
-                accessibilityLabel='Edit Espense'
+                accessibilityLabel='Edit expense'
                 onPress={() => router.push(`/edit-expense/${id}` as any)}
               />
             )}
