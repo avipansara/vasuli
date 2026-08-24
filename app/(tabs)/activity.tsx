@@ -49,7 +49,7 @@ function getTimePeriod(timestamp: number): string {
 }
 
 export default function ActivityScreen() {
-  const { gradients, colors, friendDetail: friendDetailTheme, isDark } = useThemeColors();
+  const { colors, friendDetail: friendDetailTheme, isDark } = useThemeColors();
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [activitySearch, setActivitySearch] = useState('');

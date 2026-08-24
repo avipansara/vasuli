@@ -76,11 +76,6 @@ import { getFirstName } from '@/utils/validation';
 
 type SectionTab = 'all' | 'expenses';
 
-const SECTION_TABS: { id: SectionTab; label: string }[] = [
-  { id: 'all', label: 'All' },
-  { id: 'expenses', label: 'Expenses' },
-];
-
 export default function GroupDetailScreen() {
   const { friends: friendsTheme, colors, friendDetail: friendDetailTheme, settle, isDark } = useThemeColors();
   const { id, groupDetailTraceId } = useLocalSearchParams<{

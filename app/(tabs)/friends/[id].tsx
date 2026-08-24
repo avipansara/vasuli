@@ -3,11 +3,11 @@ import { FriendExpenseActivityEvent } from '@/components/friends/friend-expense-
 import { FriendScopeTransferActivity } from '@/components/friends/friend-scope-transfer-activity';
 import { FriendSettlementActivity } from '@/components/friends/friend-settlement-activity';
 import { ThemedText } from '@/components/themed-text';
-import { Gradients } from '@/constants/theme';
 import { AsyncErrorState } from '@/components/ui/async-error-state';
 import { IconSymbol, type IconSymbolName } from '@/components/ui/icon-symbol';
 import { FriendDetailSkeleton } from '@/components/ui/skeleton';
 import { ThemedIconButton } from '@/components/ui/themed-icon-button';
+import { Gradients } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useFriendDetailController } from '@/hooks/use-friend-detail-controller';
 import { useThemeColors } from '@/hooks/use-theme-colors';
@@ -57,7 +57,6 @@ export default function FriendDetailScreen() {
   const [activityFilter, setActivityFilter] = useState<ActivityFilter>('all');
   const [segmentedWidth, setSegmentedWidth] = useState(0);
   const [isRemovingFriend, setIsRemovingFriend] = useState(false);
-  const [isSettlingUp, setIsSettlingUp] = useState(false);
   const [deletingExpenseId, setDeletingExpenseId] = useState<string | null>(null);
   const { user } = useAuth();
   const currentUserId = user?.id || '';
@@ -588,12 +587,12 @@ export default function FriendDetailScreen() {
                 <TouchableOpacity
                   style={[styles.cardQuickActionButton, {
                     backgroundColor: isDark ? '#10b981' : '#043424',
-                    opacity: isSettlingUp ? 0.7 : 1,
+                    opacity: 1,
                   }]}
                   accessibilityRole="button"
                   accessibilityLabel={`Settle up with ${friend.name}`}
                   accessibilityHint="Opens the settlement form for this balance"
-                  accessibilityState={{ disabled: isSettlingUp, busy: isSettlingUp }}
+                  accessibilityState={{ disabled: false, busy: false }}
                   onPress={() => router.push(`/friend-settle/${id}`)}>
                   <IconSymbol size={18} name="banknote" color="#ffffff" />
                   <ThemedText style={[styles.cardQuickActionText, { color: '#ffffff' }]}>Settle Up</ThemedText>

@@ -27,7 +27,7 @@ interface UserWithBalance extends User {
 }
 
 export default function FriendsScreen() {
-  const { gradients, colors, friends: friendsTheme } = useThemeColors();
+  const { colors, friends: friendsTheme } = useThemeColors();
   const [refreshing, setRefreshing] = useState(false);
   const { user } = useAuth();
   const currentUserId = user?.id || '';
@@ -166,10 +166,6 @@ export default function FriendsScreen() {
   const balanceColor = isDark
     ? (netBalance > 0 ? '#10b981' : netBalance < 0 ? '#ffb4ab' : '#10b981')
     : (netBalance > 0 ? colors.success : netBalance < 0 ? colors.error : colors.tint);
-  const actionButtonStyle = {
-    backgroundColor: isDark ? '#000000' : friendsTheme.actionSurface,
-    borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : friendsTheme.actionBorder,
-  };
 
   return (
     <View style={[styles.container, { backgroundColor: isDark ? '#05080e' : colors.background }]}>

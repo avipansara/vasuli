@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { CurrencyCode, getPreferredCurrency, setPreferredCurrency, formatCurrency as formatCurrencyUtil, getCurrencySymbol } from '@/utils/currency';
+import { CurrencyCode, getPreferredCurrency, hydratePreferredCurrency, setPreferredCurrency, formatCurrency as formatCurrencyUtil, getCurrencySymbol } from '@/utils/currency';
 
 interface CurrencyContextType {
   currency: CurrencyCode;
@@ -14,8 +14,17 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
   const [currency, setCurrencyState] = useState<CurrencyCode>('USD');
 
   useEffect(() => {
-    // Sync initial state
-    setCurrencyState(getPreferredCurrency());
+    let active = true;
+    async function load() {
+      const persisted = await hydratePreferredCurrency();
+      if (active) {
+        setCurrencyState(persisted);
+      }
+    }
+    load();
+    return () => {
+      active = false;
+    };
   }, []);
 
   const changeCurrency = async (newCurrency: CurrencyCode) => {

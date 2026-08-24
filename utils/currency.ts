@@ -22,9 +22,40 @@ export function getPreferredCurrency(): CurrencyCode {
   return currentPreferredCurrency;
 }
 
+export async function hydratePreferredCurrency(): Promise<CurrencyCode> {
+  try {
+    const val = await AsyncStorage.getItem(STORAGE_KEY);
+    if (val === 'USD' || val === 'GBP' || val === 'INR') {
+      currentPreferredCurrency = val;
+    }
+  } catch (error) {
+    console.warn('Failed to hydrate preferred currency:', error);
+  }
+  return currentPreferredCurrency;
+}
+
 export async function setPreferredCurrency(currency: CurrencyCode): Promise<void> {
   currentPreferredCurrency = currency;
   await AsyncStorage.setItem(STORAGE_KEY, currency);
+}
+
+export const EXCHANGE_RATES: Record<CurrencyCode, number> = {
+  USD: 1.0,
+  GBP: 0.77,
+  INR: 83.33,
+};
+
+export function convertCurrency(amount: number, from: string, to: string): number {
+  const fromCode = (from || 'USD').toUpperCase() as CurrencyCode;
+  const toCode = (to || 'USD').toUpperCase() as CurrencyCode;
+
+  const rateFrom = EXCHANGE_RATES[fromCode] || 1.0;
+  const rateTo = EXCHANGE_RATES[toCode] || 1.0;
+
+  if (fromCode === toCode) return amount;
+
+  const amountInUSD = amount / rateFrom;
+  return amountInUSD * rateTo;
 }
 
 export function getCurrencySymbol(currencyCode: string = 'USD'): string {
@@ -34,6 +65,7 @@ export function getCurrencySymbol(currencyCode: string = 'USD'): string {
 
 export function formatCurrency(amount: number, currencyCode: string = 'USD'): string {
   const preferred = getPreferredCurrency();
+  const converted = convertCurrency(amount, currencyCode, preferred);
   const symbol = CURRENCY_SYMBOLS[preferred] || '$';
-  return `${symbol}${amount.toFixed(2)}`;
+  return `${symbol}${converted.toFixed(2)}`;
 }

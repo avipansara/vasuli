@@ -23,7 +23,7 @@ import {
   isSettleableGroupBalance,
 } from '@/utils/group-settle-selection';
 import { formatCurrencyInput, normalizeCurrencyInput } from '@/utils/validation';
-import { formatCurrency, getCurrencySymbol } from '@/utils/currency';
+import { formatCurrency, getCurrencySymbol, getPreferredCurrency } from '@/utils/currency';
 import { useQueryClient } from '@tanstack/react-query';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { memo, useCallback, useEffect, useState } from 'react';
@@ -269,7 +269,7 @@ export default function GroupSettleScreen() {
         fromUserId,
         toUserId,
         amount: amountNum,
-        currency: 'USD',
+        currency: getPreferredCurrency(),
         date: Date.now(),
       });
       const groupDetailQueryKey = queryKeys.groups.detail(currentUserId, id);

@@ -19,7 +19,7 @@ import { filterFriendsForExpenseSearch } from '@/utils/friend-search';
 import { getGroupExpenseParticipant } from '@/utils/group-expense-participants';
 import { calculateExpenseSplits, getEvenSplitValues, getSplitProgress } from '@/utils/split-validation';
 import { normalizeCurrencyInput } from '@/utils/validation';
-import { formatCurrency, getCurrencySymbol } from '@/utils/currency';
+import { formatCurrency, getCurrencySymbol, getPreferredCurrency } from '@/utils/currency';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -269,7 +269,7 @@ export default function AddExpenseScreen() {
           : { kind: 'friends', friendIds: selectedFriendIds },
         description: trimmedDescription,
         amount: amountNum,
-        currency: 'USD',
+        currency: getPreferredCurrency(),
         date: expenseDate.getTime(),
         payerId: selectedPayerId,
         currentUserId,
