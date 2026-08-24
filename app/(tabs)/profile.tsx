@@ -2,12 +2,11 @@ import { ThemedText } from '@/components/themed-text';
 import { AsyncErrorState } from '@/components/ui/async-error-state';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useAuth } from '@/contexts/auth-context-otp';
+import { useCurrency } from '@/contexts/currency-context';
 import { useTheme } from '@/contexts/theme-context';
 import { useRealtime } from '@/hooks/use-realtime';
 import { useRefetchOnFocus } from '@/hooks/use-refetch-on-focus';
 import { useThemeColors } from '@/hooks/use-theme-colors';
-import { useCurrency } from '@/contexts/currency-context';
-import { formatCurrency } from '@/utils/currency';
 import { getAppVersionLabel } from '@/lib/app-version';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { calculateFriendSummaryTotals, friendSummaryService } from '@/services/friend-summary-service';
@@ -16,6 +15,7 @@ import { invitationService } from '@/services/invitation-service';
 import { notificationService } from '@/services/notification-service';
 import { queryKeys } from '@/services/query-keys';
 import { userService } from '@/services/user-service';
+import { formatCurrency } from '@/utils/currency';
 import { getPendingInvitationCount } from '@/utils/invitation-count';
 import { normalizeEmail } from '@/utils/validation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -43,7 +43,7 @@ type SettingsItem = {
 };
 
 export default function ProfileScreen() {
-  const { gradients, isDark, colors } = useThemeColors();
+  const { isDark, colors } = useThemeColors();
   const { toggleTheme } = useTheme();
   const { user: currentUser, signOut, refreshUser } = useAuth();
   const [notificationOverride, setNotificationOverride] = useState<boolean | null>(null);
@@ -263,7 +263,7 @@ export default function ProfileScreen() {
     );
   }
 
-  const { currency, changeCurrency, currencySymbol } = useCurrency();
+  const { changeCurrency, currencySymbol } = useCurrency();
 
   const handleSelectCurrency = () => {
     Alert.alert(
