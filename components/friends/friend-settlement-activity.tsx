@@ -120,12 +120,12 @@ export function FriendSettlementActivity({
           },
         ]}>
         <View style={[styles.expenseIcon, {
-          backgroundColor: isDark ? '#1e293b' : '#F3F4F6',
+          backgroundColor: friendDetailTheme.positiveSurface,
           borderRadius: 20,
           width: 40,
           height: 40,
         }]}>
-          <IconSymbol size={20} name="checkmark.circle.fill" color={isDark ? '#94A3B8' : '#4B5563'} />
+          <IconSymbol size={20} name="checkmark.circle.fill" color={friendDetailTheme.positive} />
         </View>
         <View style={styles.expenseInfo}>
           <ThemedText type='subtitle' style={[styles.expenseDescription, { color: isDark ? '#F8FAFC' : colors.text }]} numberOfLines={1}>

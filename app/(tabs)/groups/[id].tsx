@@ -82,7 +82,7 @@ const SECTION_TABS: { id: SectionTab; label: string }[] = [
 ];
 
 export default function GroupDetailScreen() {
-  const { gradients, colors, friendDetail: friendDetailTheme, settle, isDark } = useThemeColors();
+  const { friends: friendsTheme, colors, friendDetail: friendDetailTheme, settle, isDark } = useThemeColors();
   const { id, groupDetailTraceId } = useLocalSearchParams<{
     id: string;
     groupDetailTraceId?: string;
@@ -193,7 +193,7 @@ export default function GroupDetailScreen() {
     [filteredExpenses],
   );
   const displayItems = sectionTab === 'all' ? timelineItems : expenseItems;
-
+  const avatarTextColor = colors.tint;
   const loadGroupData = useCallback(async () => {
     await refetch();
   }, [refetch]);
@@ -513,12 +513,12 @@ export default function GroupDetailScreen() {
           }]}>
           <View style={[styles.expenseIcon, {
             backgroundColor: isDark ? categoryStyle.darkBg : categoryStyle.lightBg,
-            borderRadius: 24,
-            width: 48,
-            height: 48,
+            borderRadius: 20,
+            width: 40,
+            height: 40,
           }]}>
             <IconSymbol
-              size={20}
+              size={18}
               name={categoryStyle.icon}
               color={isDark ? categoryStyle.darkColor : categoryStyle.lightColor}
             />
@@ -555,8 +555,8 @@ export default function GroupDetailScreen() {
 
     return (
       <View style={[styles.transferRow, cardStyle]}>
-        <View style={[styles.expenseIcon, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.15)' }]}>
-          <IconSymbol size={20} name="banknote" color='#047857' />
+        <View style={[styles.expenseIcon, { backgroundColor: friendDetailTheme.positiveSurface }]}>
+          <IconSymbol size={20} name="checkmark.circle.fill" color={friendDetailTheme.positive} />
         </View>
         <View style={styles.transferCopy}>
           <ThemedText type="defaultSemiBold" style={{ color: colors.text }}>Settlement</ThemedText>
@@ -686,12 +686,12 @@ export default function GroupDetailScreen() {
             elevation: 4,
           }]}>
           <View style={[styles.memberAvatar, {
-            backgroundColor: isDark ? '#1e293b' : 'rgba(15, 76, 58, 0.1)',
-            borderRadius: 24,
-            width: 48,
-            height: 48,
+            backgroundColor: isDark ? '#064e3b' : friendsTheme.avatarSurface,
+            borderRadius: 12,
+            width: 40,
+            height: 40,
           }]}>
-            <ThemedText style={[styles.avatarText, { color: isDark ? '#10b981' : '#0F4C3A' }]}>
+            <ThemedText type="title" style={[styles.avatarText, { color: isDark ? '#10b981' : avatarTextColor }]}>
               {item.user?.name.charAt(0).toUpperCase() || '?'}
             </ThemedText>
           </View>
@@ -1437,7 +1437,7 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   avatarText: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '600',
   },
   memberInfo: {

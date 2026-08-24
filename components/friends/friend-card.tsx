@@ -187,7 +187,7 @@ function FriendCardInner({ friend, onPress, onDelete }: FriendCardProps) {
               styles.avatar,
               { backgroundColor: isDark ? '#064e3b' : friendsTheme.avatarSurface },
             ]}>
-            <ThemedText style={[styles.avatarText, { color: isDark ? '#10b981' : avatarTextColor }]}>
+            <ThemedText type="title" style={[styles.avatarText, { color: isDark ? '#10b981' : avatarTextColor }]}>
               {displayName.charAt(0).toUpperCase()}
             </ThemedText>
           </View>

@@ -115,7 +115,7 @@ export function FriendScopeTransferActivity({
           elevation: 4,
         } : { backgroundColor: '#ffffff' }]}>
         <View style={[styles.icon, { backgroundColor: isDark ? '#1e293b' : '#E0F2FE' }]}>
-          <IconSymbol name="arrow.right" size={20} color={isDark ? '#7DD3FC' : '#0369A1'} />
+          <IconSymbol name="arrow.right" size={18} color={isDark ? '#7DD3FC' : '#0369A1'} />
         </View>
         <View style={styles.info}>
           <ThemedText type="subtitle" style={{ color: isDark ? '#F8FAFC' : colors.text }} numberOfLines={1}>
@@ -144,9 +144,9 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   icon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 10,
