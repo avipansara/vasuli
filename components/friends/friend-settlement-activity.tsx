@@ -105,6 +105,10 @@ export function FriendSettlementActivity({
       <View
         accessible
         accessibilityRole="text"
+        accessibilityActions={canReverse ? [{ name: 'reverse', label: 'Reverse settlement' }] : undefined}
+        onAccessibilityAction={(event) => {
+          if (event.nativeEvent.actionName === 'reverse') onReverse();
+        }}
         accessibilityLabel={`${title}, ${scopeLabel}, ${formatDate(item.date)}, ${youPaid ? 'you paid' : 'you received'} ${formatCurrency(item.amount)}`}
         style={[
           styles.expenseCard,

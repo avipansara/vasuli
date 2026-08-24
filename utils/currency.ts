@@ -23,17 +23,17 @@ export function getPreferredCurrency(): CurrencyCode {
 }
 
 export async function setPreferredCurrency(currency: CurrencyCode): Promise<void> {
-  currentPreferredCurrency = currency;
   await AsyncStorage.setItem(STORAGE_KEY, currency);
+  currentPreferredCurrency = currency;
 }
 
 export function getCurrencySymbol(currencyCode: string = 'USD'): string {
   const code = (currencyCode || 'USD').toUpperCase() as CurrencyCode;
-  return CURRENCY_SYMBOLS[code] || '$';
+  return CURRENCY_SYMBOLS[code] || code;
 }
 
-export function formatCurrency(amount: number, currencyCode: string = 'USD'): string {
-  const preferred = getPreferredCurrency();
-  const symbol = CURRENCY_SYMBOLS[preferred] || '$';
-  return `${symbol}${amount.toFixed(2)}`;
+export function formatCurrency(amount: number, currencyCode?: string): string {
+  const code = (currencyCode || getPreferredCurrency()).toUpperCase();
+  const symbol = CURRENCY_SYMBOLS[code as CurrencyCode];
+  return symbol ? `${symbol}${amount.toFixed(2)}` : `${code} ${amount.toFixed(2)}`;
 }

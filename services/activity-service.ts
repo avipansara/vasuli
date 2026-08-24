@@ -49,7 +49,7 @@ export const activityService = {
     // Parallel fetch to identify groups, settlements, and expenses where the user is involved, and fetch activities
     const [memberData, settlementsData, splitsData, activitiesData] = await Promise.all([
       supabase.from('group_members').select('group_id').eq('user_id', userId),
-      supabase.from('settlements').select('*').or(`from_user_id.eq.${userId},to_user_id.eq.${userId}`),
+      supabase.from('settlements').select('*'),
       supabase.from('expense_splits').select('expense_id').eq('user_id', userId),
       supabase.from('activities').select('*'),
     ]);
@@ -126,7 +126,7 @@ export const activityService = {
       .replace(/[^a-zA-Z0-9\s$-]/g, ' ')
       .replace(/\s+/g, ' ');
     if (normalizedSearch) {
-      const searchPattern = new RegExp(normalizedSearch, 'i');
+      const searchPattern = new RegExp(normalizedSearch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
       combined = combined.filter(a =>
         searchPattern.test(a.description || '') ||
         searchPattern.test(a.groupName || '') ||

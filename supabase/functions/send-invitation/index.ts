@@ -69,12 +69,8 @@ async function sendInvitationEmail(
   const joinUrl = inviteCtaUrl(inviterId, invitationId)
 
   if (!RESEND_API_KEY) {
-    console.warn('--------------------------------------------------')
-    console.warn('RESEND_API_KEY is not configured in local environment.')
-    console.warn(`[LOCAL ONLY] Simulated invitation email sent to: ${inviteeEmail}`)
-    console.warn(`[LOCAL ONLY] Accept Invitation URL: ${joinUrl}`)
-    console.warn('--------------------------------------------------')
-    return true
+    console.error('RESEND_API_KEY is not configured.');
+    return false;
   }
 
   try {
