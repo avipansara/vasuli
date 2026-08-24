@@ -2,8 +2,8 @@ import { AddMemberModal } from '@/components/group';
 import { ThemedText } from '@/components/themed-text';
 import { AsyncErrorState } from '@/components/ui/async-error-state';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { ThemedIconButton } from '@/components/ui/themed-icon-button';
 import { GroupDetailSkeleton } from '@/components/ui/skeleton';
+import { ThemedIconButton } from '@/components/ui/themed-icon-button';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useDebouncedQueryInvalidation } from '@/hooks/use-debounced-query-invalidation';
 import { useRealtime } from '@/hooks/use-realtime';
@@ -12,7 +12,6 @@ import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { createGroupDetailTraceId, logGroupDetailDiagnostic } from '@/lib/group-detail-diagnostics';
 import { areGroupBalancesSettled } from '@/services/group-balance';
-import { formatCurrency } from '@/utils/currency';
 import { groupDetailMutationController } from '@/services/group-detail-mutation-controller';
 import type { GroupDetailReadModel, GroupExpenseView } from '@/services/group-detail-read-model';
 import { groupDetailService } from '@/services/group-detail-service';
@@ -20,6 +19,7 @@ import { createReactQueryCacheAdapter } from '@/services/query-cache-adapter';
 import { queryKeys } from '@/services/query-keys';
 import { CombinedSettlementError } from '@/services/settlement-service';
 import type { Expense, GroupMember, Settlement, User } from '@/types/database';
+import { formatCurrency } from '@/utils/currency';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -555,8 +555,8 @@ export default function GroupDetailScreen() {
 
     return (
       <View style={[styles.transferRow, cardStyle]}>
-        <View style={[styles.expenseIcon, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.15)' : '#D1FAE5' }]}>
-          <IconSymbol size={20} name="banknote" color={isDark ? '#6EE7B7' : '#047857'} />
+        <View style={[styles.expenseIcon, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.15)' }]}>
+          <IconSymbol size={20} name="banknote" color='#047857' />
         </View>
         <View style={styles.transferCopy}>
           <ThemedText type="defaultSemiBold" style={{ color: colors.text }}>Settlement</ThemedText>
@@ -893,66 +893,66 @@ export default function GroupDetailScreen() {
 
         {/* Summary Card */}
         <View style={styles.summarySection}>
-            <LinearGradient
-              colors={
-                isDark
-                  ? ['#000000', '#000000']
-                  : currentUserBalance < 0
-                    ? ['#FFF2F4', '#FFFFFF']
-                    : currentUserBalance > 0
-                      ? ['#F0FDF4', '#FFFFFF']
-                      : ['#F9FAFB', '#FFFFFF']
-              }
-              start={{ x: 1, y: 0 }}
-              end={{ x: 0, y: 1 }}
-              accessible
-              accessibilityRole="summary"
-              accessibilityLabel={`${group.name}, ${members.length} members, ${balanceAccessibilityValue}`}
-              accessibilityLiveRegion="polite"
-              style={[styles.summaryCard, {
-                borderWidth: 0,
-                shadowColor: isDark ? '#64748b' : '#475569',
-                shadowOffset: { width: 0, height: isDark ? 4 : 8 },
-                shadowOpacity: isDark ? 0.15 : 0.12,
-                shadowRadius: isDark ? 4 : 18,
-                elevation: isDark ? 4 : 8,
-                alignItems: 'center',
-                paddingVertical: 24,
-                paddingHorizontal: 16,
-                borderRadius: 24,
-              }]}>
-              <ThemedText type='defaultSemiBold' style={[styles.summaryCardTitle, { color: isDark ? (currentUserBalance < 0 ? '#ffb3b0' : currentUserBalance > 0 ? '#45dfa4' : '#94A3B8') : balanceColor }]}>
-                {currentUserBalance > 0
-                  ? 'YOU ARE OWED'
-                  : currentUserBalance < 0
-                    ? 'YOU OWE'
-                    : 'ALL SETTLED UP'}
-              </ThemedText>
+          <LinearGradient
+            colors={
+              isDark
+                ? ['#000000', '#000000']
+                : currentUserBalance < 0
+                  ? ['#FFF2F4', '#FFFFFF']
+                  : currentUserBalance > 0
+                    ? ['#F0FDF4', '#FFFFFF']
+                    : ['#F9FAFB', '#FFFFFF']
+            }
+            start={{ x: 1, y: 0 }}
+            end={{ x: 0, y: 1 }}
+            accessible
+            accessibilityRole="summary"
+            accessibilityLabel={`${group.name}, ${members.length} members, ${balanceAccessibilityValue}`}
+            accessibilityLiveRegion="polite"
+            style={[styles.summaryCard, {
+              borderWidth: 0,
+              shadowColor: isDark ? '#64748b' : '#475569',
+              shadowOffset: { width: 0, height: isDark ? 4 : 8 },
+              shadowOpacity: isDark ? 0.15 : 0.12,
+              shadowRadius: isDark ? 4 : 18,
+              elevation: isDark ? 4 : 8,
+              alignItems: 'center',
+              paddingVertical: 24,
+              paddingHorizontal: 16,
+              borderRadius: 24,
+            }]}>
+            <ThemedText type='defaultSemiBold' style={[styles.summaryCardTitle, { color: isDark ? (currentUserBalance < 0 ? '#ffb3b0' : currentUserBalance > 0 ? '#45dfa4' : '#94A3B8') : balanceColor }]}>
+              {currentUserBalance > 0
+                ? 'YOU ARE OWED'
+                : currentUserBalance < 0
+                  ? 'YOU OWE'
+                  : 'ALL SETTLED UP'}
+            </ThemedText>
 
-              <ThemedText type='subtitle' style={[styles.summaryCardAmount, { color: isDark ? (currentUserBalance < 0 ? '#ffb3b0' : currentUserBalance > 0 ? '#4edea3' : '#94A3B8') : balanceColor }]}>
-                {currentUserBalance < 0 ? '-' : currentUserBalance > 0 ? '+' : ''}{formatCurrency(Math.abs(currentUserBalance))}
-              </ThemedText>
+            <ThemedText type='subtitle' style={[styles.summaryCardAmount, { color: isDark ? (currentUserBalance < 0 ? '#ffb3b0' : currentUserBalance > 0 ? '#4edea3' : '#94A3B8') : balanceColor }]}>
+              {currentUserBalance < 0 ? '-' : currentUserBalance > 0 ? '+' : ''}{formatCurrency(Math.abs(currentUserBalance))}
+            </ThemedText>
 
-              <ThemedText style={[styles.summaryCardSubtitle, { color: isDark ? '#94A3B8' : colors.textSecondary }]}>
-                Across {members.length} members
-              </ThemedText>
+            <ThemedText style={[styles.summaryCardSubtitle, { color: isDark ? '#94A3B8' : colors.textSecondary }]}>
+              Across {members.length} members
+            </ThemedText>
 
-              {!groupIsSettled && currentUserBalance !== 0 && (
-                <View style={styles.cardQuickActions}>
-                  <TouchableOpacity
-                    style={[styles.cardQuickActionButton, {
-                      backgroundColor: isDark ? '#10b981' : '#043424',
-                    }]}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Settle up in ${group.name}`}
-                    accessibilityHint="Opens the settlement form"
-                    onPress={handleSettleUp}>
-                    <IconSymbol size={18} name="banknote" color="#ffffff" />
-                    <ThemedText style={[styles.cardQuickActionText, { color: '#ffffff' }]}>Settle Up</ThemedText>
-                  </TouchableOpacity>
-                </View>
-              )}
-            </LinearGradient>
+            {!groupIsSettled && currentUserBalance !== 0 && (
+              <View style={styles.cardQuickActions}>
+                <TouchableOpacity
+                  style={[styles.cardQuickActionButton, {
+                    backgroundColor: isDark ? '#10b981' : '#043424',
+                  }]}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Settle up in ${group.name}`}
+                  accessibilityHint="Opens the settlement form"
+                  onPress={handleSettleUp}>
+                  <IconSymbol size={18} name="banknote" color="#ffffff" />
+                  <ThemedText style={[styles.cardQuickActionText, { color: '#ffffff' }]}>Settle Up</ThemedText>
+                </TouchableOpacity>
+              </View>
+            )}
+          </LinearGradient>
         </View>
 
         {/* Tab / Action Tiles */}
@@ -1036,10 +1036,10 @@ export default function GroupDetailScreen() {
                     <ThemedText style={{ color: colors.textSecondary }}>{formatCurrency(Math.abs(transfer.signedGroupBalanceDelta), transfer.currency)}</ThemedText>
                   </View>
                   {!transfer.isReversal && (transfer.fromUserId === currentUserId || transfer.toUserId === currentUserId) ? (
-                    <TouchableOpacity 
-                      accessibilityRole="button" 
-                      accessibilityLabel="Reverse settlement" 
-                      hitSlop={8} 
+                    <TouchableOpacity
+                      accessibilityRole="button"
+                      accessibilityLabel="Reverse settlement"
+                      hitSlop={8}
                       onPress={() => handleReverseTransfer(transfer)}
                       style={{
                         backgroundColor: isDark ? 'rgba(239, 68, 68, 0.15)' : '#FEE2E2',
@@ -1505,9 +1505,9 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   expenseIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: 10,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 10,

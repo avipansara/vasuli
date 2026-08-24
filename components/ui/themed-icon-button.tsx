@@ -21,6 +21,7 @@ const MIN_TOUCH_HIT_SLOP: Insets = { top: 12, bottom: 12, left: 12, right: 12 };
 
 export interface ThemedIconButtonProps {
   name: IconSymbolName;
+  color?: string;
   onPress: (event: GestureResponderEvent) => void;
   size?: number;
   variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
@@ -36,6 +37,7 @@ export interface ThemedIconButtonProps {
 
 export function ThemedIconButton({
   name,
+  color,
   onPress,
   size = 20,
   variant = 'secondary',
@@ -56,7 +58,9 @@ export function ThemedIconButton({
   let borderWidth = 0;
   let iconColor = colors.text;
 
-  if (variant === 'primary') {
+  if (color) {
+    iconColor = color;
+  } else if (variant === 'primary') {
     backgroundColor = isDark ? '#0D9488' : '#0F4C3A';
     iconColor = '#ffffff';
   } else if (variant === 'secondary') {

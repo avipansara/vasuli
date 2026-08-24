@@ -58,7 +58,7 @@ type HomeFriend = User & { balance: number; recentExpenses?: Expense[] };
 type EditableSplit = Pick<ExpenseSplit, 'userId' | 'amount' | 'splitType' | 'percentage'>;
 
 export default function EditExpenseScreen() {
-  const { gradients, colors, isDark } = useThemeColors();
+  const { gradients, colors, settle, isDark } = useThemeColors();
   const { user } = useAuth();
   const { id } = useLocalSearchParams<{ id: string }>();
   const currentUserId = user?.id || '';
@@ -479,13 +479,15 @@ export default function EditExpenseScreen() {
             style={[
               styles.headerButton,
               {
-                backgroundColor: isValid && !loading ? (isDark ? '#2DD4BF' : '#22C55E') : (isDark ? '#374151' : '#E5E7EB'),
+                backgroundColor: (isValid && !loading)
+                  ? settle.buttonBackground
+                  : (colors.border),
               },
             ]}>
             {loading ? (
-              <ActivityIndicator size="small" color="#ffffff" />
+              <ActivityIndicator size="small" color={isDark ? '#003824' : '#ffffff'} />
             ) : (
-              <ThemedText style={[styles.headerButtonText, { color: isValid ? '#ffffff' : (isDark ? '#9CA3AF' : '#6B7280') }]}>
+              <ThemedText style={[styles.headerButtonText, { color: isValid ? (isDark ? '#003824' : '#ffffff') : (isDark ? '#bbcabf' : '#6B7280') }]}>
                 Save
               </ThemedText>
             )}
@@ -501,7 +503,7 @@ export default function EditExpenseScreen() {
               How much?
             </ThemedText>
             <View style={styles.amountInputRow}>
-              <Text style={[styles.currencySymbol, { color: isDark ? '#2DD4BF' : colors.tint }]}>{getCurrencySymbol(editFormQuery.data?.expense?.currency)}</Text>
+              <Text style={[styles.currencySymbol, { color: settle.accentText }]}>{getCurrencySymbol(editFormQuery.data?.expense?.currency)}</Text>
               <TextInput
                 ref={amountInputRef}
                 style={[styles.amountInput, { color: isDark ? '#fff' : colors.text }]}
@@ -523,8 +525,8 @@ export default function EditExpenseScreen() {
               Description *
             </ThemedText>
             <View style={[styles.inputContainer, {
-              backgroundColor: isDark ? 'rgba(30, 41, 59, 0.6)' : 'rgba(241, 245, 249, 0.9)',
-              borderColor: isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(34, 197, 94, 0.2)',
+              backgroundColor: colors.card,
+              borderColor: colors.border,
             }]}>
               <IconSymbol name="text.alignleft" size={20} color={isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'} />
               <TextInput
@@ -547,8 +549,8 @@ export default function EditExpenseScreen() {
               accessibilityLabel={`Expense date, ${expenseDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}`}
               onPress={() => setShowDatePicker(current => !current)}
               style={[styles.inputContainer, {
-                backgroundColor: isDark ? 'rgba(30, 41, 59, 0.6)' : 'rgba(241, 245, 249, 0.9)',
-                borderColor: isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(34, 197, 94, 0.2)',
+                backgroundColor: colors.card,
+                borderColor: colors.border,
               }]}>
               <IconSymbol name="calendar" size={20} color={isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'} />
               <ThemedText style={[styles.textInput, { color: isDark ? '#fff' : colors.text }]}>
@@ -592,24 +594,19 @@ export default function EditExpenseScreen() {
                         styles.splitMethodButton,
                         isActive && styles.splitMethodButtonActive,
                         {
-                          backgroundColor: isActive
-                            ? (isDark ? '#2DD4BF' : colors.tint)
-                            : (isDark ? 'rgba(30, 41, 59, 0.6)' : 'rgba(241, 245, 249, 0.9)'),
-                          borderColor: isActive
-                            ? (isDark ? '#2DD4BF' : colors.tint)
-                            : (isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(34, 197, 94, 0.2)'),
+                          backgroundColor: isActive ? (settle.buttonBackground) : settle.pillBackground,
+                          borderColor: isActive ? (settle.buttonBackground) : (colors.border),
                         },
                       ]}
                       onPress={() => setSplitMethod(method.id)}>
                       <IconSymbol
                         name={method.icon}
                         size={18}
-                        color={isActive ? '#0A0A0F' : (isDark ? '#2DD4BF' : colors.tint)}
+                        color={isActive ? (isDark ? '#003824' : '#ffffff') : (colors.text)}
                       />
                       <ThemedText style={[
                         styles.splitMethodText,
-                        isActive && styles.splitMethodTextActive,
-                        !isDark && !isActive && { color: colors.text },
+                        { color: isActive ? (isDark ? '#003824' : '#ffffff') : (colors.text) },
                       ]}>
                         {method.label}
                       </ThemedText>
@@ -641,36 +638,39 @@ export default function EditExpenseScreen() {
                   </ThemedText>
                 </View>
               ) : (
-                groups.map(group => (
-                  <TouchableOpacity
-                    key={group.id}
-                    onPress={() => setSelectedGroupId(group.id)}
-                    style={[
-                      styles.selectionCard,
-                      selectedGroupId === group.id && styles.selectionCardActive,
-                      {
-                        backgroundColor: selectedGroupId === group.id
-                          ? (isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.15)')
-                          : (isDark ? 'rgba(30, 41, 59, 0.6)' : 'rgba(241, 245, 249, 0.9)'),
-                        borderColor: selectedGroupId === group.id
-                          ? (isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(34, 197, 94, 0.3)')
-                          : (isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(34, 197, 94, 0.2)'),
-                      },
-                    ]}>
-                    <IconSymbol
-                      name="person.3.fill"
-                      size={24}
-                      color={selectedGroupId === group.id ? (isDark ? '#2DD4BF' : colors.tint) : (isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)')}
-                    />
-                    <ThemedText
-                      style={[
-                        styles.selectionCardText,
-                        { color: selectedGroupId === group.id ? (isDark ? '#2DD4BF' : colors.tint) : (isDark ? '#fff' : colors.text) }
-                      ]}>
-                      {group.name}
-                    </ThemedText>
-                  </TouchableOpacity>
-                ))
+                groups.map(group => {
+                  const isSelected = selectedGroupId === group.id;
+                  return (
+                    <TouchableOpacity
+                      key={group.id}
+                      onPress={() => setSelectedGroupId(group.id)}
+                      style={styles.selectionCard}>
+                      <View style={[styles.selectionIcon, {
+                        backgroundColor: isSelected
+                          ? (settle.buttonBackground)
+                          : (settle.avatarUnselectedBackground),
+                      }]}>
+                        <IconSymbol
+                          name="person.3.fill"
+                          size={20}
+                          color={isSelected ? (isDark ? '#003824' : '#ffffff') : (colors.text)}
+                        />
+                      </View>
+                      <View style={styles.selectionTextContainer}>
+                        <ThemedText
+                          style={[
+                            styles.selectionCardText,
+                            { color: isSelected ? (settle.buttonBackground) : (colors.text) }
+                          ]}>
+                          {group.name}
+                        </ThemedText>
+                      </View>
+                      {isSelected && (
+                        <IconSymbol name="checkmark.circle.fill" size={22} color={settle.buttonBackground} />
+                      )}
+                    </TouchableOpacity>
+                  );
+                })
               )}
             </View>
           ) : (
@@ -686,42 +686,45 @@ export default function EditExpenseScreen() {
                   </ThemedText>
                 </View>
               ) : (
-                friends.map(friend => (
-                  <TouchableOpacity
-                    key={friend.id}
-                    onPress={() => {
-                      setSelectedFriendIds(prev =>
-                        prev.includes(friend.id)
-                          ? prev.filter(id => id !== friend.id)
-                          : [...prev, friend.id]
-                      );
-                    }}
-                    style={[
-                      styles.selectionCard,
-                      selectedFriendIds.includes(friend.id) && styles.selectionCardActive,
-                      {
-                        backgroundColor: selectedFriendIds.includes(friend.id)
-                          ? (isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.15)')
-                          : (isDark ? 'rgba(30, 41, 59, 0.6)' : 'rgba(241, 245, 249, 0.9)'),
-                        borderColor: selectedFriendIds.includes(friend.id)
-                          ? (isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(34, 197, 94, 0.3)')
-                          : (isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(34, 197, 94, 0.2)'),
-                      },
-                    ]}>
-                    <IconSymbol
-                      name="person.fill"
-                      size={24}
-                      color={selectedFriendIds.includes(friend.id) ? (isDark ? '#2DD4BF' : colors.tint) : (isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)')}
-                    />
-                    <ThemedText
-                      style={[
-                        styles.selectionCardText,
-                        { color: selectedFriendIds.includes(friend.id) ? (isDark ? '#2DD4BF' : colors.tint) : (isDark ? '#fff' : colors.text) }
-                      ]}>
-                      {friend.name}
-                    </ThemedText>
-                  </TouchableOpacity>
-                ))
+                friends.map(friend => {
+                  const isSelected = selectedFriendIds.includes(friend.id);
+                  return (
+                    <TouchableOpacity
+                      key={friend.id}
+                      onPress={() => {
+                        setSelectedFriendIds(prev =>
+                          prev.includes(friend.id)
+                            ? prev.filter(id => id !== friend.id)
+                            : [...prev, friend.id]
+                        );
+                      }}
+                      style={styles.selectionCard}>
+                      <View style={[styles.selectionIcon, {
+                        backgroundColor: isSelected
+                          ? (settle.buttonBackground)
+                          : (settle.avatarUnselectedBackground),
+                      }]}>
+                        <IconSymbol
+                          name="person.fill"
+                          size={20}
+                          color={isSelected ? (isDark ? '#003824' : '#ffffff') : (colors.text)}
+                        />
+                      </View>
+                      <View style={styles.selectionTextContainer}>
+                        <ThemedText
+                          style={[
+                            styles.selectionCardText,
+                            { color: isSelected ? (settle.buttonBackground) : (colors.text) }
+                          ]}>
+                          {friend.name}
+                        </ThemedText>
+                      </View>
+                      {isSelected && (
+                        <IconSymbol name="checkmark.circle.fill" size={22} color={settle.buttonBackground} />
+                      )}
+                    </TouchableOpacity>
+                  );
+                })
               )}
             </View>
           )}
@@ -766,13 +769,13 @@ export default function EditExpenseScreen() {
 
                 {/* Current User */}
                 <View style={[styles.customSplitCard, {
-                  backgroundColor: isDark ? 'rgba(30, 41, 59, 0.6)' : 'rgba(241, 245, 249, 0.9)',
-                  borderColor: isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(34, 197, 94, 0.2)',
+                  backgroundColor: colors.card,
+                  borderColor: colors.border,
                 }]}>
                   <View style={[styles.customSplitAvatar, {
-                    backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)',
+                    backgroundColor: settle.avatarUnselectedBackground,
                   }]}>
-                    <ThemedText style={{ color: isDark ? '#2DD4BF' : colors.tint, fontWeight: '600' }}>
+                    <ThemedText style={{ color: colors.text, fontWeight: '600' }}>
                       You
                     </ThemedText>
                   </View>
@@ -781,10 +784,10 @@ export default function EditExpenseScreen() {
                   </ThemedText>
                   <TextInput
                     style={[styles.customSplitInput, {
-                      backgroundColor: isDark ? 'rgba(20, 35, 38, 0.8)' : 'rgba(255,255,255,0.9)',
+                      backgroundColor: isDark ? '#05080e' : 'rgba(255,255,255,0.9)',
                       color: isDark ? '#fff' : colors.text,
                       borderWidth: 1,
-                      borderColor: isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(34, 197, 94, 0.3)',
+                      borderColor: colors.border,
                     }]}
                     value={splitMethod === SplitMethod.UNEQUAL ? customAmounts[currentUserId] : splitMethod === SplitMethod.PERCENTAGE ? customPercentages[currentUserId] : customShares[currentUserId]}
                     onChangeText={(text) => {
@@ -797,7 +800,7 @@ export default function EditExpenseScreen() {
                     keyboardType="decimal-pad"
                   />
                   <ThemedText style={[styles.customSplitSuffix, !isDark && { color: colors.textSecondary }]}>
-                    {splitMethod === SplitMethod.UNEQUAL ? '$' : splitMethod === SplitMethod.PERCENTAGE ? '%' : 'x'}
+                    {splitMethod === SplitMethod.UNEQUAL ? getCurrencySymbol(editFormQuery.data?.expense?.currency) : splitMethod === SplitMethod.PERCENTAGE ? '%' : 'x'}
                   </ThemedText>
                   {(splitMethod === SplitMethod.PERCENTAGE || splitMethod === SplitMethod.SHARES) && (() => {
                     const totalAmount = parseFloat(amount);
@@ -825,13 +828,13 @@ export default function EditExpenseScreen() {
                   if (!participant) return null;
                   return (
                     <View key={userId} style={[styles.customSplitCard, {
-                      backgroundColor: isDark ? 'rgba(30, 41, 59, 0.6)' : 'rgba(241, 245, 249, 0.9)',
-                      borderColor: isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(34, 197, 94, 0.2)',
+                      backgroundColor: colors.card,
+                      borderColor: colors.border,
                     }]}>
                       <View style={[styles.customSplitAvatar, {
-                        backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)',
+                        backgroundColor: settle.avatarUnselectedBackground,
                       }]}>
-                        <ThemedText style={{ color: isDark ? '#2DD4BF' : colors.tint, fontWeight: '600' }}>
+                        <ThemedText style={{ color: colors.text, fontWeight: '600' }}>
                           {participant.name.charAt(0).toUpperCase()}
                         </ThemedText>
                       </View>
@@ -840,10 +843,10 @@ export default function EditExpenseScreen() {
                       </ThemedText>
                       <TextInput
                         style={[styles.customSplitInput, {
-                          backgroundColor: isDark ? 'rgba(20, 35, 38, 0.8)' : 'rgba(255,255,255,0.9)',
+                          backgroundColor: isDark ? '#05080e' : 'rgba(255,255,255,0.9)',
                           color: isDark ? '#fff' : colors.text,
                           borderWidth: 1,
-                          borderColor: isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(34, 197, 94, 0.3)',
+                          borderColor: colors.border,
                         }]}
                         value={splitMethod === SplitMethod.UNEQUAL ? customAmounts[userId] : splitMethod === SplitMethod.PERCENTAGE ? customPercentages[userId] : customShares[userId]}
                         onChangeText={(text) => {
@@ -1007,18 +1010,27 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   selectionSection: {
-    gap: 12,
+    gap: 0,
   },
   selectionCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderRadius: 12,
-    borderWidth: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 18,
+    marginHorizontal: -18,
+    gap: 14,
   },
-  selectionCardActive: {},
+  selectionIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  selectionTextContainer: {
+    flex: 1,
+    justifyContent: 'center',
+  },
   selectionCardText: {
     fontSize: 16,
     fontWeight: '500',

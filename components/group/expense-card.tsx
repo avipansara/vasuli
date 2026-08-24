@@ -2,9 +2,8 @@ import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { ACCENT_TEAL, BG_ICON_DARK, BG_ICON_LIGHT } from '@/constants/theme';
 import { useThemeColors } from '@/hooks/use-theme-colors';
-import { formatCurrency } from '@/utils/currency';
 import type { Expense, User } from '@/types/database';
-import React from 'react';
+import { formatCurrency } from '@/utils/currency';
 import { StyleSheet, View } from 'react-native';
 
 interface ExpenseCardProps {

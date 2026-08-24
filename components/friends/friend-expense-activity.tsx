@@ -1,8 +1,8 @@
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import type { FriendActivityItem } from '@/services/friend-detail-service';
 import { formatCurrency } from '@/utils/currency';
 import { getFirstName } from '@/utils/validation';
-import type { FriendActivityItem } from '@/services/friend-detail-service';
 import type { MutableRefObject } from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import ReanimatedSwipeable, { type SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable';
@@ -170,12 +170,12 @@ export function FriendExpenseActivity({
         }]}>
           <View style={[styles.expenseIcon, {
             backgroundColor: isDark ? categoryStyle.darkBg : categoryStyle.lightBg,
-            borderRadius: 24,
-            width: 48,
-            height: 48,
+            borderRadius: 20,
+            width: 40,
+            height: 40,
           }]}>
             <IconSymbol
-              size={20}
+              size={18}
               name={categoryStyle.icon}
               color={isDark ? categoryStyle.darkColor : categoryStyle.lightColor}
             />

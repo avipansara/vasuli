@@ -1,8 +1,8 @@
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol, type IconSymbolName } from '@/components/ui/icon-symbol';
+import type { FriendActivityItem } from '@/services/friend-detail-service';
 import { formatCurrency } from '@/utils/currency';
 import { getFirstName } from '@/utils/validation';
-import type { FriendActivityItem } from '@/services/friend-detail-service';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 
 type ExpenseActivityEvent = Extract<FriendActivityItem, { type: 'expense_activity' }>;

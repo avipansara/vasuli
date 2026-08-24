@@ -1,17 +1,15 @@
 import { FriendExpenseActivity } from '@/components/friends/friend-expense-activity';
 import { FriendExpenseActivityEvent } from '@/components/friends/friend-expense-activity-event';
-import { FriendSettlementActivity } from '@/components/friends/friend-settlement-activity';
 import { FriendScopeTransferActivity } from '@/components/friends/friend-scope-transfer-activity';
+import { FriendSettlementActivity } from '@/components/friends/friend-settlement-activity';
 import { ThemedText } from '@/components/themed-text';
 import { AsyncErrorState } from '@/components/ui/async-error-state';
 import { IconSymbol, type IconSymbolName } from '@/components/ui/icon-symbol';
-import { ThemedIconButton } from '@/components/ui/themed-icon-button';
 import { FriendDetailSkeleton } from '@/components/ui/skeleton';
+import { ThemedIconButton } from '@/components/ui/themed-icon-button';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useFriendDetailController } from '@/hooks/use-friend-detail-controller';
 import { useThemeColors } from '@/hooks/use-theme-colors';
-import { formatCurrency } from '@/utils/currency';
-import { getFirstName } from '@/utils/validation';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import {
   filterFriendActivity,
@@ -19,12 +17,11 @@ import {
   groupFriendActivityByMonth,
   type FriendActivityFilter,
 } from '@/services/friend-detail-module';
-import { settlementModule, CombinedSettlementError } from '@/services/settlement-service';
 import { projectFriendRelationship, type FriendDetailData } from '@/services/friend-detail-service';
-import type { GroupDetailReadModel } from '@/services/group-detail-read-model';
-import { applySettlementToGroupReadModel } from '@/services/group-detail-read-model';
-import { queryKeys } from '@/services/query-keys';
+import { CombinedSettlementError, settlementModule } from '@/services/settlement-service';
 import type { Expense, User } from '@/types/database';
+import { formatCurrency } from '@/utils/currency';
+import { getFirstName } from '@/utils/validation';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -43,7 +40,6 @@ interface UserWithBalance extends User {
   recentExpenses?: Expense[];
 }
 
-const MIN_TOUCH_HIT_SLOP = { top: 8, right: 8, bottom: 8, left: 8 };
 const SEGMENTED_CONTROL_PADDING = 2;
 const SEGMENTED_CONTROL_GAP = 3;
 type ActivityFilter = FriendActivityFilter;
@@ -447,17 +443,17 @@ export default function FriendDetailScreen() {
   const balanceCopy = hasCurrencyAmbiguity
     ? 'Multiple currencies'
     : isOwed
-    ? `${getFirstName(friend.name)} owes you`
-    : isOwing
-      ? `You owe ${getFirstName(friend.name)}`
-      : 'All settled up';
+      ? `${getFirstName(friend.name)} owes you`
+      : isOwing
+        ? `You owe ${getFirstName(friend.name)}`
+        : 'All settled up';
   const balanceCardTitle = hasCurrencyAmbiguity
     ? 'MULTIPLE CURRENCIES'
     : isOwed
-    ? `${getFirstName(friend.name).toUpperCase()} OWES YOU`
-    : isOwing
-      ? `YOU OWE ${getFirstName(friend.name).toUpperCase()}`
-      : 'ALL SETTLED UP';
+      ? `${getFirstName(friend.name).toUpperCase()} OWES YOU`
+      : isOwing
+        ? `YOU OWE ${getFirstName(friend.name).toUpperCase()}`
+        : 'ALL SETTLED UP';
   const balanceAccessibilityValue = hasCurrencyAmbiguity
     ? `${balanceCopy}, choose a currency to settle`
     : `${balanceCopy}, ${formatCurrency(Math.abs(balance), relationship.settleableTotal?.currency ?? relationship.directCurrency)}`;
@@ -495,6 +491,7 @@ export default function FriendDetailScreen() {
         <View style={styles.headerActions}>
           <ThemedIconButton
             name="bell.fill"
+            color={friendDetailTheme.warning}
             onPress={handleRemind}
             disabled={balance === 0}
             size={18}
@@ -503,7 +500,7 @@ export default function FriendDetailScreen() {
             accessibilityHint="Sends a reminder about this balance"
             style={{
               backgroundColor: friendDetailTheme.warningSurface,
-              borderColor: friendDetailTheme.warningBorder,
+              borderColor: friendDetailTheme.warning,
               opacity: balance === 0 ? 0.45 : 1,
             }}
           />
@@ -536,73 +533,73 @@ export default function FriendDetailScreen() {
         )}>
 
         <View style={styles.summarySection}>
-            <LinearGradient
-              colors={
-                isDark
-                  ? ['#000000', '#000000']
-                  : isOwing
-                    ? ['#FFF2F4', '#FFFFFF']
-                    : isOwed
-                      ? ['#F0FDF4', '#FFFFFF']
-                      : ['#F9FAFB', '#FFFFFF']
-              }
-              start={{ x: 1, y: 0 }}
-              end={{ x: 0, y: 1 }}
-              accessible
-              accessibilityRole="summary"
-              accessibilityLabel={`${friend.name}${friend.email ? `, ${friend.email}` : ''}, ${balanceAccessibilityValue}`}
-              accessibilityLiveRegion="polite"
-              style={[styles.summaryCard, {
-                borderWidth: 0,
-                shadowColor: isDark ? '#64748b' : '#475569',
-                shadowOffset: { width: 0, height: isDark ? 4 : 8 },
-                shadowOpacity: isDark ? 0.15 : 0.12,
-                shadowRadius: isDark ? 4 : 18,
-                elevation: isDark ? 4 : 8,
-                alignItems: 'center',
-                paddingVertical: 24,
-                paddingHorizontal: 16,
-                borderRadius: 24,
-              }]}>
+          <LinearGradient
+            colors={
+              isDark
+                ? ['#000000', '#000000']
+                : isOwing
+                  ? ['#FFF2F4', '#FFFFFF']
+                  : isOwed
+                    ? ['#F0FDF4', '#FFFFFF']
+                    : ['#F9FAFB', '#FFFFFF']
+            }
+            start={{ x: 1, y: 0 }}
+            end={{ x: 0, y: 1 }}
+            accessible
+            accessibilityRole="summary"
+            accessibilityLabel={`${friend.name}${friend.email ? `, ${friend.email}` : ''}, ${balanceAccessibilityValue}`}
+            accessibilityLiveRegion="polite"
+            style={[styles.summaryCard, {
+              borderWidth: 0,
+              shadowColor: isDark ? '#64748b' : '#475569',
+              shadowOffset: { width: 0, height: isDark ? 4 : 8 },
+              shadowOpacity: isDark ? 0.15 : 0.12,
+              shadowRadius: isDark ? 4 : 18,
+              elevation: isDark ? 4 : 8,
+              alignItems: 'center',
+              paddingVertical: 24,
+              paddingHorizontal: 16,
+              borderRadius: 24,
+            }]}>
 
-              <ThemedText type='defaultSemiBold' style={[styles.summaryCardTitle, { color: isDark ? (isOwing ? '#ffb3b0' : isOwed ? '#45dfa4' : '#94A3B8') : balanceColor }]}>
-                {balanceCardTitle}
-              </ThemedText>
+            <ThemedText type='defaultSemiBold' style={[styles.summaryCardTitle, { color: isDark ? (isOwing ? '#ffb3b0' : isOwed ? '#45dfa4' : '#94A3B8') : balanceColor }]}>
+              {balanceCardTitle}
+            </ThemedText>
 
-              <ThemedText type='subtitle' style={[styles.summaryCardAmount, { color: isDark ? (isOwing ? '#ffb3b0' : isOwed ? '#4edea3' : '#94A3B8') : balanceColor }]}>
-                {hasCurrencyAmbiguity
-                  ? 'Multiple currencies'
-                  : `${isOwing ? '-' : isOwed ? '+' : ''}${formatCurrency(Math.abs(balance), relationship.settleableTotal?.currency ?? relationship.directCurrency ?? 'USD')}`}
-              </ThemedText>
+            <ThemedText type='subtitle' style={[styles.summaryCardAmount, { color: isDark ? (isOwing ? '#ffb3b0' : isOwed ? '#4edea3' : '#94A3B8') : balanceColor }]}>
+              {hasCurrencyAmbiguity
+                ? 'Multiple currencies'
+                : `${isOwing ? '-' : isOwed ? '+' : ''}${formatCurrency(Math.abs(balance), relationship.settleableTotal?.currency ?? relationship.directCurrency ?? 'USD')}`}
+            </ThemedText>
 
-              <ThemedText style={[styles.summaryCardSubtitle, { color: isDark ? '#94A3B8' : colors.textSecondary }]}>
-                {groupBalanceCount > 0
-                  ? `${sharedExpensesCount} direct expenses + ${groupBalanceCount} group ${groupBalanceCount === 1 ? 'balance' : 'balances'}`
-                  : `Across ${sharedExpensesCount} direct expenses`}
-              </ThemedText>
+            <ThemedText style={[styles.summaryCardSubtitle, { color: isDark ? '#94A3B8' : colors.textSecondary }]}>
+              {groupBalanceCount > 0
+                ? `${sharedExpensesCount} direct expenses + ${groupBalanceCount} group ${groupBalanceCount === 1 ? 'balance' : 'balances'}`
+                : `Across ${sharedExpensesCount} direct expenses`}
+            </ThemedText>
 
-              <ThemedText style={[styles.summaryCardSubtitle, { color: isDark ? '#94A3B8' : colors.textSecondary }] }>
-                Direct ledger: {relationship.directBalance >= 0 ? '+' : ''}{formatCurrency(Math.abs(relationship.directBalance), relationship.directCurrency ?? 'USD')}
-              </ThemedText>
+            <ThemedText style={[styles.summaryCardSubtitle, { color: isDark ? '#94A3B8' : colors.textSecondary }]}>
+              Direct ledger: {relationship.directBalance >= 0 ? '+' : ''}{formatCurrency(Math.abs(relationship.directBalance), relationship.directCurrency ?? 'USD')}
+            </ThemedText>
 
-              {((balance !== 0 && !hasCurrencyAmbiguity) || canClearZeroNet) && (
-                <View style={styles.cardQuickActions}>
-                  <TouchableOpacity
-                    style={[styles.cardQuickActionButton, {
-                      backgroundColor: isDark ? '#10b981' : '#043424',
-                      opacity: isSettlingUp ? 0.7 : 1,
-                    }]}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Settle up with ${friend.name}`}
-                    accessibilityHint="Opens the settlement form for this balance"
-                    accessibilityState={{ disabled: isSettlingUp, busy: isSettlingUp }}
-                    onPress={() => router.push(`/friend-settle/${id}`)}>
-                    <IconSymbol size={18} name="banknote" color="#ffffff" />
-                    <ThemedText style={[styles.cardQuickActionText, { color: '#ffffff' }]}>Settle Up</ThemedText>
-                  </TouchableOpacity>
-                </View>
-              )}
-            </LinearGradient>
+            {((balance !== 0 && !hasCurrencyAmbiguity) || canClearZeroNet) && (
+              <View style={styles.cardQuickActions}>
+                <TouchableOpacity
+                  style={[styles.cardQuickActionButton, {
+                    backgroundColor: isDark ? '#10b981' : '#043424',
+                    opacity: isSettlingUp ? 0.7 : 1,
+                  }]}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Settle up with ${friend.name}`}
+                  accessibilityHint="Opens the settlement form for this balance"
+                  accessibilityState={{ disabled: isSettlingUp, busy: isSettlingUp }}
+                  onPress={() => router.push(`/friend-settle/${id}`)}>
+                  <IconSymbol size={18} name="banknote" color="#ffffff" />
+                  <ThemedText style={[styles.cardQuickActionText, { color: '#ffffff' }]}>Settle Up</ThemedText>
+                </TouchableOpacity>
+              </View>
+            )}
+          </LinearGradient>
         </View>
 
         {outstandingGroupBalances.length > 0 && (
@@ -770,27 +767,30 @@ export default function FriendDetailScreen() {
                             formatDate={formatDate}
                             canReverse={Boolean(item.operationId) && !item.notes?.startsWith('Reversal of settlement operation')}
                             onReverse={() => handleReverseSettlement(item)}
+                            swipeableRefs={swipeableRefs}
                           />
                           : item.type === 'scope_transfer'
                             ? <FriendScopeTransferActivity
                               item={item}
                               friendName={friend.name}
                               colors={colors as Record<string, string>}
+                              friendDetailTheme={friendDetailTheme as Record<string, string>}
                               isDark={isDark}
                               formatDate={formatDate}
                               canReverse={item.fromUserId === currentUserId || item.toUserId === currentUserId}
                               onReverse={() => handleReverseScopeTransfer(item)}
+                              swipeableRefs={swipeableRefs}
                             />
                             : <FriendExpenseActivityEvent
-                            item={item}
-                            currentUserId={currentUserId}
-                            friendName={friend.name}
-                            colors={colors as Record<string, string>}
-                            friendDetailTheme={friendDetailTheme as Record<string, string>}
-                            isDark={isDark}
-                            formatDate={formatDate}
-                            onOpenExpense={handleOpenExpense}
-                          />}
+                              item={item}
+                              currentUserId={currentUserId}
+                              friendName={friend.name}
+                              colors={colors as Record<string, string>}
+                              friendDetailTheme={friendDetailTheme as Record<string, string>}
+                              isDark={isDark}
+                              formatDate={formatDate}
+                              onOpenExpense={handleOpenExpense}
+                            />}
                     </View>
                   ))}
                 </View>
