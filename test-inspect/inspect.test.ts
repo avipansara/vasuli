@@ -22,7 +22,7 @@ describe('inspect database', () => {
       token: otp,
       type: 'email',
     });
-    console.log('SignIn OTP verify:', { verifyData, verifyError });
+    console.log('SignIn OTP verify:', { success: !verifyError, error: verifyError?.message });
 
     if (verifyError) {
       console.log('Fallback: Querying without auth...');

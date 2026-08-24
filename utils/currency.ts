@@ -35,8 +35,8 @@ export async function hydratePreferredCurrency(): Promise<CurrencyCode> {
 }
 
 export async function setPreferredCurrency(currency: CurrencyCode): Promise<void> {
-  currentPreferredCurrency = currency;
   await AsyncStorage.setItem(STORAGE_KEY, currency);
+  currentPreferredCurrency = currency;
 }
 
 export const EXCHANGE_RATES: Record<CurrencyCode, number> = {
@@ -60,12 +60,11 @@ export function convertCurrency(amount: number, from: string, to: string): numbe
 
 export function getCurrencySymbol(currencyCode: string = 'USD'): string {
   const code = (currencyCode || 'USD').toUpperCase() as CurrencyCode;
-  return CURRENCY_SYMBOLS[code] || '$';
+  return CURRENCY_SYMBOLS[code] || code;
 }
 
-export function formatCurrency(amount: number, currencyCode: string = 'USD'): string {
-  const preferred = getPreferredCurrency();
-  const converted = convertCurrency(amount, currencyCode, preferred);
-  const symbol = CURRENCY_SYMBOLS[preferred] || '$';
-  return `${symbol}${converted.toFixed(2)}`;
+export function formatCurrency(amount: number, currencyCode?: string): string {
+  const code = (currencyCode || getPreferredCurrency()).toUpperCase();
+  const symbol = CURRENCY_SYMBOLS[code as CurrencyCode];
+  return symbol ? `${symbol}${amount.toFixed(2)}` : `${code} ${amount.toFixed(2)}`;
 }

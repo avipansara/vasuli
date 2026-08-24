@@ -88,7 +88,7 @@ export default function SettlementDetailScreen() {
         <Stack.Screen options={{ headerShown: false }} />
         <NavigationHeader title="Settlement" onBack={() => router.back()} />
         <View style={styles.centerContainer}>
-          <IconSymbol name="slash.circle" size={48} color={colors.icon} />
+          <IconSymbol name="questionmark.circle" size={48} color={colors.icon} />
           <ThemedText style={[styles.notFoundText, { color: colors.textSecondary }]}>
             Settlement not found
           </ThemedText>

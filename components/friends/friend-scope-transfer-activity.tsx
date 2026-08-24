@@ -103,6 +103,10 @@ export function FriendScopeTransferActivity({
       <View
         accessible
         accessibilityRole="text"
+        accessibilityActions={canReverse && !item.isReversal ? [{ name: 'reverse', label: 'Reverse settlement' }] : undefined}
+        onAccessibilityAction={(event) => {
+          if (event.nativeEvent.actionName === 'reverse') onReverse();
+        }}
         accessibilityLabel={`${title}, ${groupName}, ${formatCurrency(item.amount, item.currency)}, ${formatDate(item.date)}`}
         style={[styles.card, isDark ? {
           backgroundColor: '#000000',
