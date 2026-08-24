@@ -1,3 +1,10 @@
+## 2026-08-24
+
+- Replaced the unbounded 6-query client-side activity-feed merge in `getUserActivities` with a single `supabase.rpc('get_user_activities')` call backed by a new `SECURITY DEFINER` PostgreSQL function. The function merges `activities` and `settlements` server-side, applies optional `ILIKE` search, and uses `LIMIT`/`OFFSET` for true server-side pagination; added supporting indexes on `activities` and `settlements`. Every infinite-scroll page now requires exactly one network round-trip instead of growing with history size and page count.
+- Fixed the currency selector so choosing GBP or INR now persists across app restarts; `CurrencyProvider` awaits an async `hydratePreferredCurrency()` read from `AsyncStorage` on mount instead of synchronously reading the in-memory default that was still `USD` while storage hydration was pending.
+- Added static exchange-rate conversion (`USD/GBP/INR`) to `formatCurrency` so amounts stored in one currency render correctly when the user picks a different display currency; new expenses and group settlements now write the user's selected currency code instead of the hardcoded `'USD'`.
+- Aligned the "How to split?" button row on the Edit Expense screen with the Add Expense screen: replaced the fixed vertical layout with a horizontally scrollable row of pill buttons, updated styles to match (`flexDirection: 'row'`, `minWidth: 112`, `minHeight: 44`), and shortened the label from `'Percentage'` to `'Percent'` to prevent text wrapping.
+
 ## 2026-08-22
 
 - Removed animated wrappers from Friend and Group Detail cards and Add Friend lookup results so card surfaces stay visually stable while scrolling and loading.

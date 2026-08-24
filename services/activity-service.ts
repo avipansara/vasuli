@@ -46,103 +46,27 @@ export const activityService = {
   },
 
   async getUserActivities(userId: string, limit?: number, offset?: number, search?: string): Promise<Activity[]> {
-    // Parallel fetch to identify groups, settlements, and expenses where the user is involved, and fetch activities
-    const [memberData, settlementsData, splitsData, activitiesData] = await Promise.all([
-      supabase.from('group_members').select('group_id').eq('user_id', userId),
-      supabase.from('settlements').select('*').or(`from_user_id.eq.${userId},to_user_id.eq.${userId}`),
-      supabase.from('expense_splits').select('expense_id').eq('user_id', userId),
-      supabase.from('activities').select('*'),
-    ]);
-
-    if (memberData.error) throw memberData.error;
-    if (settlementsData.error) throw settlementsData.error;
-    if (splitsData.error) throw splitsData.error;
-    if (activitiesData.error) throw activitiesData.error;
-
-    const groupIds = (memberData.data || []).map(m => m.group_id);
-    const expenseIds = [...new Set((splitsData.data || []).map(s => s.expense_id))];
-
-    // Filter DB activities to exclude database settlement activities (as we generate/merge them from settlements table)
-    let dbActivities = (activitiesData.data || [])
-      .map(mapActivityRow)
-      .filter(a => a.type !== ActivityType.SETTLEMENT_CREATED && a.type !== ActivityType.SETTLEMENT_DELETED);
-
-    // Apply visibility filter client-side to mimic the activities RLS policy
-    const groupIdsSet = new Set(groupIds);
-    const expenseIdsSet = new Set(expenseIds);
-    dbActivities = dbActivities.filter(a =>
-      a.userId === userId ||
-      (a.groupId && groupIdsSet.has(a.groupId)) ||
-      (a.targetId && expenseIdsSet.has(a.targetId))
-    );
-
-    // Fetch related users & groups to resolve their display names
-    const relatedUserIds = [...new Set((settlementsData.data || []).flatMap(s => [s.from_user_id, s.to_user_id]))];
-    const relatedGroupIds = [...new Set((settlementsData.data || []).flatMap(s => s.group_id ? [s.group_id] : []))];
-
-    const [usersRes, groupsRes] = await Promise.all([
-      relatedUserIds.length > 0
-        ? supabase.from('users').select('id, name').in('id', relatedUserIds)
-        : Promise.resolve({ data: [], error: null }),
-      relatedGroupIds.length > 0
-        ? supabase.from('groups').select('id, name').in('id', relatedGroupIds)
-        : Promise.resolve({ data: [], error: null })
-    ]);
-
-    const userNames = new Map((usersRes.data || []).map(u => [u.id, u.name]));
-    const groupNames = new Map((groupsRes.data || []).map(g => [g.id, g.name]));
-
-    // Map settlements to Activities client-side
-    const settlementActivities: Activity[] = (settlementsData.data || []).map(s => {
-      const fromName = s.from_user_id === userId ? 'You' : (userNames.get(s.from_user_id) || 'Someone');
-      const toName = s.to_user_id === userId ? 'You' : (userNames.get(s.to_user_id) || 'Someone');
-      const isReversal = s.notes?.toLowerCase().startsWith('reversal of') || s.notes?.toLowerCase().startsWith('reversed');
-      const prefix = isReversal ? 'Deleted: ' : '';
-      const description = `${prefix}${fromName} paid ${toName}`;
-
-      return {
-        id: s.id,
-        type: isReversal ? ActivityType.SETTLEMENT_DELETED : ActivityType.SETTLEMENT_CREATED,
-        userId: s.from_user_id,
-        userName: userNames.get(s.from_user_id) || 'Someone',
-        targetId: s.id,
-        groupId: s.group_id || undefined,
-        groupName: s.group_id ? groupNames.get(s.group_id) : undefined,
-        description,
-        amount: s.amount,
-        createdAt: new Date(s.created_at).getTime(),
-      };
+    // All filtering, ordering, and LIMIT/OFFSET pagination are handled by the
+    // get_user_activities SECURITY DEFINER function in the database.
+    // This replaces the previous 6-query client-side merge where every page
+    // re-fetched unbounded datasets and discarded rows via Array.slice.
+    console.log('[getUserActivities] calling RPC with', { p_limit: limit ?? 20, p_offset: offset ?? 0, p_search: search ?? '' });
+    const { data, error } = await supabase.rpc('get_user_activities', {
+      p_limit:  limit  ?? 20,
+      p_offset: offset ?? 0,
+      p_search: search ?? '',
     });
 
-    // Merge all activities
-    let combined = [...dbActivities, ...settlementActivities];
-
-    // Sort by date descending
-    combined.sort((a, b) => b.createdAt - a.createdAt);
-
-    // Apply search filter client-side
-    const normalizedSearch = search
-      ?.trim()
-      .replace(/[^a-zA-Z0-9\s$-]/g, ' ')
-      .replace(/\s+/g, ' ');
-    if (normalizedSearch) {
-      const searchPattern = new RegExp(normalizedSearch, 'i');
-      combined = combined.filter(a =>
-        searchPattern.test(a.description || '') ||
-        searchPattern.test(a.groupName || '') ||
-        searchPattern.test(a.userName || '')
-      );
+    if (error) {
+      console.error('[getUserActivities] RPC error:', JSON.stringify(error));
+      throw error;
     }
 
-    // Apply pagination
-    if (limit !== undefined) {
-      const from = offset || 0;
-      const to = from + limit;
-      combined = combined.slice(from, to);
-    }
-
-    return combined;
+    console.log('[getUserActivities] got', (data || []).length, 'rows');
+    return (data || []).map(mapActivityRow);
   },
+
+
 
   async getByGroup(groupId: string, limit?: number): Promise<Activity[]> {
     let query = supabase

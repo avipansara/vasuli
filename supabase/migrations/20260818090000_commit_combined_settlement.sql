@@ -4,8 +4,13 @@
 -- The active Supabase schema uses UUID app-domain IDs. The older 001 migration
 -- is a legacy text-ID bootstrap and is not the schema contract for this RPC.
 
+-- Ensure uuid-ossp is available (idempotent; no-op if already installed).
+-- Newer Postgres/Supabase instances provide gen_random_uuid() natively, but
+-- the table below keeps uuid_generate_v4 via extension for backwards compat.
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
 CREATE TABLE IF NOT EXISTS public.settlement_commitments (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   payment_intent_id UUID NOT NULL,
   actor_user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
   friend_user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
