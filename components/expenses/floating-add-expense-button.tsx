@@ -1,5 +1,7 @@
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { ThemedText } from '@/components/themed-text';
 import { useThemeColors } from '@/hooks/use-theme-colors';
+import { Gradients } from '@/constants/theme';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, usePathname } from 'expo-router';
 import { Pressable, StyleSheet, View } from 'react-native';
@@ -14,7 +16,7 @@ export function FloatingAddExpenseButton({
   bottomOffset = 74,
   rightOffset = 18,
 }: FloatingAddExpenseButtonProps) {
-  const { gradients, isDark } = useThemeColors();
+  const { isDark } = useThemeColors();
   const insets = useSafeAreaInsets();
   const pathname = usePathname();
   const bottom = Math.max(insets.bottom, 12) + bottomOffset;
@@ -36,11 +38,14 @@ export function FloatingAddExpenseButton({
           pressed && styles.pressed,
         ]}>
         <LinearGradient
-          colors={gradients.buttonPrimary}
+          colors={Gradients.light.buttonPrimary}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.gradient}>
-          <IconSymbol name="doc.text.fill" size={25} color="#fff" />
+          <IconSymbol name="doc.text.fill" size={16} color="#fff" />
+          <ThemedText style={styles.buttonText} type="defaultSemiBold">
+            Add Expense
+          </ThemedText>
         </LinearGradient>
       </Pressable>
     </View>
@@ -53,15 +58,22 @@ const styles = StyleSheet.create({
     zIndex: 20,
   },
   button: {
-    borderRadius: 27,
-    height: 54,
+    borderRadius: 22,
+    height: 44,
     overflow: 'hidden',
-    width: 54,
   },
   gradient: {
+    flexDirection: 'row',
     alignItems: 'center',
-    flex: 1,
     justifyContent: 'center',
+    height: 44,
+    paddingHorizontal: 16,
+    gap: 8,
+  },
+  buttonText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '700',
   },
   darkShadow: {
     elevation: 6,

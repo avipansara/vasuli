@@ -3,6 +3,7 @@ import { FriendExpenseActivityEvent } from '@/components/friends/friend-expense-
 import { FriendScopeTransferActivity } from '@/components/friends/friend-scope-transfer-activity';
 import { FriendSettlementActivity } from '@/components/friends/friend-settlement-activity';
 import { ThemedText } from '@/components/themed-text';
+import { Gradients } from '@/constants/theme';
 import { AsyncErrorState } from '@/components/ui/async-error-state';
 import { IconSymbol, type IconSymbolName } from '@/components/ui/icon-symbol';
 import { FriendDetailSkeleton } from '@/components/ui/skeleton';
@@ -813,12 +814,15 @@ export default function FriendDetailScreen() {
           style={[styles.floatingButton, isDark ? styles.darkShadow : styles.lightShadow]}
         >
           <LinearGradient
-            colors={gradients.buttonPrimary}
+            colors={Gradients.light.buttonPrimary}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.floatingButtonGradient}
           >
-            <IconSymbol name="doc.text.fill" size={25} color="#fff" />
+            <IconSymbol name="doc.text.fill" size={16} color="#fff" />
+            <ThemedText style={styles.floatingButtonText} type="defaultSemiBold">
+              Add Expense
+            </ThemedText>
           </LinearGradient>
         </TouchableOpacity>
       </View>
@@ -1003,15 +1007,22 @@ const styles = StyleSheet.create({
     zIndex: 20,
   },
   floatingButton: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
+    borderRadius: 22,
+    height: 44,
     overflow: 'hidden',
   },
   floatingButtonGradient: {
-    flex: 1,
-    justifyContent: 'center',
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    height: 44,
+    paddingHorizontal: 16,
+    gap: 8,
+  },
+  floatingButtonText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '700',
   },
   darkShadow: {
     elevation: 6,

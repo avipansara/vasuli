@@ -19,12 +19,32 @@ import { Animated, Platform, RefreshControl, SectionList, StyleSheet, TextInput,
 function getTimePeriod(timestamp: number): string {
   const now = new Date();
   const date = new Date(timestamp);
-  const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
 
-  if (diffDays === 0 && date.toDateString() === now.toDateString()) return 'Today';
-  if (diffDays === 1 || (diffDays === 0 && date.toDateString() !== now.toDateString())) return 'Yesterday';
-  if (diffDays < 7) return 'This Week';
-  if (diffDays < 30) return 'This Month';
+  // Strip time parts to compare calendar dates
+  const todayDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const targetDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
+  const diffTime = todayDate.getTime() - targetDate.getTime();
+  const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+
+  if (diffDays === 0) return 'Today';
+  if (diffDays === 1) return 'Yesterday';
+
+  // Get start of this week (Monday)
+  const currentDayOfWeek = now.getDay(); // 0 (Sunday) to 6 (Saturday)
+  const daysSinceMonday = currentDayOfWeek === 0 ? 6 : currentDayOfWeek - 1;
+  const mondayOfThisWeek = new Date(todayDate.getTime() - daysSinceMonday * 24 * 60 * 60 * 1000);
+
+  if (targetDate.getTime() >= mondayOfThisWeek.getTime()) {
+    return 'This Week';
+  }
+
+  // Get start of this month
+  const firstOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  if (targetDate.getTime() >= firstOfThisMonth.getTime()) {
+    return 'This Month';
+  }
+
   return 'Earlier';
 }
 

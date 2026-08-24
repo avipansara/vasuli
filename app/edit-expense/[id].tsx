@@ -33,6 +33,7 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  ScrollView,
 } from 'react-native';
 
 enum SplitType {
@@ -576,7 +577,11 @@ export default function EditExpenseScreen() {
             <ThemedText style={[styles.inputLabel, !isDark && { color: colors.textSecondary }]}>
               How to split?
             </ThemedText>
-            <View style={styles.splitMethodContainer}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.splitMethodContainer}
+              keyboardShouldPersistTaps="handled">
               {SPLIT_METHODS
                 .filter(method => {
                   // Hide shares option for friends
@@ -587,6 +592,7 @@ export default function EditExpenseScreen() {
                 })
                 .map(method => {
                   const isActive = splitMethod === method.id;
+                  const compactLabel = method.id === SplitMethod.PERCENTAGE ? 'Percent' : method.label;
                   return (
                     <TouchableOpacity
                       key={method.id}
@@ -601,19 +607,19 @@ export default function EditExpenseScreen() {
                       onPress={() => setSplitMethod(method.id)}>
                       <IconSymbol
                         name={method.icon}
-                        size={18}
+                        size={16}
                         color={isActive ? (isDark ? '#003824' : '#ffffff') : (colors.text)}
                       />
                       <ThemedText style={[
                         styles.splitMethodText,
                         { color: isActive ? (isDark ? '#003824' : '#ffffff') : (colors.text) },
                       ]}>
-                        {method.label}
+                        {compactLabel}
                       </ThemedText>
                     </TouchableOpacity>
                   );
                 })}
-            </View>
+            </ScrollView>
           </View>
 
           {/* Group/Friend Selection - locked to original type */}
@@ -1047,24 +1053,28 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   splitMethodContainer: {
-    flexDirection: 'row',
     gap: 8,
+    paddingRight: 18,
   },
   splitMethodButton: {
-    flex: 1,
-    flexDirection: 'column',
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 12,
-    paddingHorizontal: 8,
+    gap: 5,
+    minHeight: 44,
+    minWidth: 112,
+    paddingHorizontal: 12,
     borderRadius: 12,
     borderWidth: 1,
   },
-  splitMethodButtonActive: {},
+  splitMethodButtonActive: {
+    borderWidth: 1.5,
+  },
   splitMethodText: {
-    fontSize: 13,
-    fontWeight: '600',
+    flexShrink: 1,
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: '700',
     color: '#fff',
   },
   splitMethodTextActive: {
