@@ -2,6 +2,7 @@ import { ActivityType, type Activity } from '@/types/database';
 
 export type ActivityHref =
   | `/expense-detail/${string}`
+  | `/settlement-detail/${string}`
   | `/groups/${string}`
   | `/friends/${string}`;
 
@@ -53,13 +54,17 @@ export function getActivityHref(
   }
 
   if (settlementTypes.has(activity.type)) {
-    if (activity.groupId) {
-      return `/groups/${activity.groupId}`;
+    if (activity.type === ActivityType.SETTLEMENT_DELETED) {
+      if (activity.groupId) {
+        return `/groups/${activity.groupId}`;
+      }
+      if (currentUserId && activity.userId !== currentUserId) {
+        return `/friends/${activity.userId}`;
+      }
+      return null;
     }
-
-    if (currentUserId && activity.userId !== currentUserId) {
-      return `/friends/${activity.userId}`;
-    }
+    
+    return `/settlement-detail/${activity.targetId}`;
   }
 
   return null;

@@ -3,6 +3,7 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import type { FriendRelationshipProjection } from '@/services/friend-detail-service';
 import type { User } from '@/types/database';
+import { formatCurrency } from '@/utils/currency';
 import { getDisplayName } from '@/utils/validation';
 import { memo, useMemo } from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
@@ -29,7 +30,7 @@ function normalizeDisplayBalance(balance: number) {
 }
 
 function formatBreakdownAmount(currency: string, amount: number) {
-  return currency === 'USD' ? `$${amount.toFixed(2)}` : `${currency} ${amount.toFixed(2)}`;
+  return formatCurrency(amount, currency);
 }
 
 function FriendDeleteAction({
@@ -50,7 +51,7 @@ function FriendDeleteAction({
   return (
     <Reanimated.View style={[styles.swipeActionRight, { backgroundColor }, actionStyle]}>
       <TouchableOpacity onPress={onDelete} style={styles.swipeActionButton}>
-        <IconSymbol name="trash" size={20} color={iconColor} />
+        <IconSymbol name="trash.fill" size={20} color={iconColor} />
         <ThemedText style={[styles.swipeActionText, { color: iconColor }]}>Delete</ThemedText>
       </TouchableOpacity>
     </Reanimated.View>
@@ -144,13 +145,13 @@ function FriendCardInner({ friend, onPress, onDelete }: FriendCardProps) {
   const cardStyle = useMemo(
     () => (isDark ? {
       backgroundColor: '#000000',
-      borderWidth: 1,
+      borderWidth: 0,
       borderColor: 'rgba(255, 255, 255, 0.08)',
-      shadowColor: 'transparent',
-      shadowOffset: { width: 0, height: 0 },
-      shadowOpacity: 0,
-      shadowRadius: 0,
-      elevation: 0,
+      shadowColor: '#64748b',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.15,
+      shadowRadius: 4,
+      elevation: 4,
     } : {
       backgroundColor: '#ffffff',
       borderWidth: 0,
@@ -186,7 +187,7 @@ function FriendCardInner({ friend, onPress, onDelete }: FriendCardProps) {
               styles.avatar,
               { backgroundColor: isDark ? '#064e3b' : friendsTheme.avatarSurface },
             ]}>
-            <ThemedText style={[styles.avatarText, { color: isDark ? '#10b981' : avatarTextColor }]}>
+            <ThemedText type="title" style={[styles.avatarText, { color: isDark ? '#10b981' : avatarTextColor }]}>
               {displayName.charAt(0).toUpperCase()}
             </ThemedText>
           </View>
@@ -209,7 +210,7 @@ function FriendCardInner({ friend, onPress, onDelete }: FriendCardProps) {
               {balance !== 0 ? (
                 <>
                   <ThemedText type='title' style={[styles.balanceAmount, { color: isDark ? (balance > 0 ? '#10b981' : '#ffb4ab') : balanceColor }]}>
-                    ${Math.abs(balance).toFixed(2)}
+                    {formatCurrency(Math.abs(balance))}
                   </ThemedText>
                   <ThemedText
                     style={[styles.balanceLabel, { color: isDark ? '#64748b' : colors.textSecondary }]}
@@ -288,7 +289,6 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     marginBottom: 12,
     borderRadius: 16,
-    // borderWidth: 1,
   },
   topSection: {
     flexDirection: 'row',

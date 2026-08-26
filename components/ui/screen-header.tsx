@@ -10,6 +10,7 @@ import React from 'react';
 import { ActivityIndicator, Platform, StyleSheet, TouchableOpacity, View, ViewStyle } from 'react-native';
 import { ThemedText } from '../themed-text';
 import { IconSymbol, IconSymbolName } from './icon-symbol';
+import { ThemedIconButton } from './themed-icon-button';
 
 interface ScreenHeaderProps {
   label?: string;
@@ -45,20 +46,14 @@ interface HeaderButtonProps {
 }
 
 export function HeaderButton({ icon, onPress, size = 20 }: HeaderButtonProps) {
-  const { colors, isDark } = useThemeColors();
-
   return (
-    <TouchableOpacity
-      style={[
-        styles.headerButton,
-        {
-          backgroundColor: isDark ? BG_ICON_DARK : BG_ICON_LIGHT,
-          borderColor: isDark ? BORDER_ACCENT_DARK : BORDER_ACCENT_LIGHT,
-        },
-      ]}
-      onPress={onPress}>
-      <IconSymbol size={size} name={icon} color={isDark ? ACCENT_TEAL : colors.tint} />
-    </TouchableOpacity>
+    <ThemedIconButton
+      name={icon}
+      onPress={onPress}
+      size={size}
+      shape="square"
+      accessibilityLabel={`Action button: ${icon}`}
+    />
   );
 }
 
@@ -67,20 +62,15 @@ interface BackButtonProps {
 }
 
 export function BackButton({ onPress }: BackButtonProps) {
-  const { colors, isDark } = useThemeColors();
-
   return (
-    <TouchableOpacity
+    <ThemedIconButton
+      name="chevron.left"
       onPress={onPress}
-      style={[
-        styles.backButton,
-        {
-          backgroundColor: isDark ? BG_ICON_DARK : BG_ICON_LIGHT,
-          borderColor: isDark ? BORDER_ACCENT_DARK : BORDER_ACCENT_LIGHT,
-        },
-      ]}>
-      <IconSymbol size={20} name="chevron.left" color={isDark ? ACCENT_TEAL : colors.tint} />
-    </TouchableOpacity>
+      size={20}
+      shape="square"
+      accessibilityLabel="Go back"
+      accessibilityHint="Returns to the previous screen"
+    />
   );
 }
 
@@ -96,20 +86,14 @@ export function NavigationHeader({ title, onBack, rightAction, style }: Navigati
 
   return (
     <View style={[styles.navigationHeader, style]}>
-      <TouchableOpacity
+      <ThemedIconButton
+        name="chevron.left"
         onPress={onBack}
-        accessibilityRole="button"
+        size={20}
+        shape="circle"
         accessibilityLabel="Go back"
         accessibilityHint="Returns to the previous screen"
-        style={[
-          styles.navBackButton,
-          {
-            backgroundColor: isDark ? BG_ICON_DARK : BG_ICON_LIGHT,
-            borderColor: isDark ? BORDER_ACCENT_DARK : BORDER_ACCENT_LIGHT,
-          },
-        ]}>
-        <IconSymbol size={20} name="chevron.left" color={isDark ? ACCENT_TEAL : colors.tint} />
-      </TouchableOpacity>
+      />
       <ThemedText type="subtitle" style={[styles.navigationTitle, !isDark && { color: colors.text }]}>
         {title}
       </ThemedText>

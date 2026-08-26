@@ -16,7 +16,6 @@ import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Animated,
   Keyboard,
   Share,
   StyleSheet,
@@ -34,14 +33,12 @@ export default function AddFriendScreen() {
   const [lookupState, setLookupState] = useState<LookupState>('idle');
   const [matchedUser, setMatchedUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(false);
-  const [resultOpacity] = useState(() => new Animated.Value(0));
 
   const validEmail = isEmailValid(email);
 
   useEffect(() => {
     const normalized = normalizeEmail(email);
     if (!normalized || !isEmailValid(normalized)) {
-      resultOpacity.setValue(0);
       return;
     }
 
@@ -53,7 +50,6 @@ export default function AddFriendScreen() {
         if (cancelled) return;
         setMatchedUser(found);
         setLookupState(found ? 'found' : 'not-found');
-        Animated.timing(resultOpacity, { toValue: 1, duration: 180, useNativeDriver: true }).start();
       } catch {
         if (!cancelled) setLookupState('error');
       }
@@ -63,7 +59,7 @@ export default function AddFriendScreen() {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [email, resultOpacity]);
+  }, [email]);
 
   function handleEmailChange(value: string) {
     setEmail(value);
@@ -71,7 +67,6 @@ export default function AddFriendScreen() {
     // account from being shown while the new email is being checked.
     setLookupState('idle');
     setMatchedUser(null);
-    resultOpacity.setValue(0);
   }
 
   async function handlePrimaryAction() {
@@ -127,12 +122,12 @@ export default function AddFriendScreen() {
   const initials = displayName.split(' ').map(part => part[0]).join('').slice(0, 2).toUpperCase();
 
   const cardStyle = {
-    backgroundColor: isDark ? 'rgba(20, 35, 38, 0.95)' : '#ffffff',
+    backgroundColor: isDark ? '#000000' : '#ffffff',
     borderWidth: 0,
-    shadowColor: isDark ? '#000000' : '#475569',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: isDark ? 0.35 : 0.09,
-    shadowRadius: 10,
+    shadowColor: isDark ? '#64748b' : '#475569',
+    shadowOffset: { width: 0, height: isDark ? 4 : 3 },
+    shadowOpacity: isDark ? 0.15 : 0.09,
+    shadowRadius: isDark ? 4 : 10,
     elevation: 3,
     borderRadius: 14,
   };
@@ -181,8 +176,7 @@ export default function AddFriendScreen() {
           </View>
 
           {(lookupState === 'found' || lookupState === 'not-found' || lookupState === 'error') && (
-            <Animated.View style={{ opacity: resultOpacity }}>
-              <View style={[styles.resultCard, cardStyle]}>
+            <View style={[styles.resultCard, cardStyle]}>
                 {lookupState === 'found' ? (
                   <>
                     <View style={styles.resultRow}>
@@ -227,8 +221,7 @@ export default function AddFriendScreen() {
                     )}
                   </>
                 )}
-              </View>
-            </Animated.View>
+            </View>
           )}
 
           <View style={styles.optionsSection}>

@@ -102,10 +102,10 @@ export default function CreateGroupScreen() {
   const cardStyle = {
     backgroundColor: colors.card,
     borderWidth: 0,
-    shadowColor: isDark ? '#000000' : '#475569',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: isDark ? 0.35 : 0.09,
-    shadowRadius: 10,
+    shadowColor: isDark ? '#64748b' : '#475569',
+    shadowOffset: { width: 0, height: isDark ? 4 : 3 },
+    shadowOpacity: isDark ? 0.15 : 0.09,
+    shadowRadius: isDark ? 4 : 10,
     elevation: 3,
     borderRadius: 14,
   };

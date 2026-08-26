@@ -3,6 +3,7 @@ import { AsyncErrorState } from '@/components/ui/async-error-state';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { NavigationHeader } from '@/components/ui/screen-header';
 import { ExpenseDetailSkeleton } from '@/components/ui/skeleton';
+import { ThemedIconButton } from '@/components/ui/themed-icon-button';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useRefetchOnFocus } from '@/hooks/use-refetch-on-focus';
 import { useThemeColors } from '@/hooks/use-theme-colors';
@@ -14,6 +15,7 @@ import { createExpenseDeletedNotification, notificationService } from '@/service
 import { getExpenseDeletionInvalidationKeys } from '@/services/expense-deletion-invalidation';
 import { queryKeys } from '@/services/query-keys';
 import { userService } from '@/services/user-service';
+import { formatCurrency } from '@/utils/currency';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
@@ -218,12 +220,12 @@ export default function ExpenseDetailScreen() {
   const payerName = isPayer ? 'You' : payer?.name || 'Unknown';
 
   const cardStyle = {
-    backgroundColor: isDark ? '#0b1120' : '#ffffff',
+    backgroundColor: isDark ? '#000000' : '#ffffff',
     borderWidth: 0,
-    shadowColor: isDark ? '#000000' : '#475569',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: isDark ? 0.35 : 0.09,
-    shadowRadius: 10,
+    shadowColor: isDark ? '#64748b' : '#475569',
+    shadowOffset: { width: 0, height: isDark ? 4 : 3 },
+    shadowOpacity: isDark ? 0.15 : 0.09,
+    shadowRadius: isDark ? 4 : 10,
     elevation: 3,
   };
 
@@ -237,18 +239,13 @@ export default function ExpenseDetailScreen() {
         rightAction={
           <View style={styles.headerActions}>
             {canManageExpense && (
-              <TouchableOpacity
+              <ThemedIconButton
+                name="pencil"
+                size={18}
+                shape='square'
+                accessibilityLabel='Edit expense'
                 onPress={() => router.push(`/edit-expense/${id}` as any)}
-                disabled={isDeleting}
-                style={[styles.actionButton, {
-                  backgroundColor: expenseDetail.accentSurface,
-                  borderColor: expenseDetail.accentSurfaceBorder,
-                  opacity: isDeleting ? 0.5 : 1,
-                }]}
-                accessibilityLabel="Edit expense"
-                testID="expense-detail-edit-button">
-                <IconSymbol name="pencil" size={18} color={expenseDetail.accent} />
-              </TouchableOpacity>
+              />
             )}
             {canManageExpense && (
               <TouchableOpacity
@@ -264,7 +261,7 @@ export default function ExpenseDetailScreen() {
                 {isDeleting ? (
                   <IconSymbol name="clock" size={18} color={expenseDetail.danger} />
                 ) : (
-                  <IconSymbol name="trash" size={18} color={expenseDetail.danger} />
+                  <IconSymbol name="trash.fill" size={18} color={expenseDetail.danger} />
                 )}
               </TouchableOpacity>
             )}
@@ -293,7 +290,7 @@ export default function ExpenseDetailScreen() {
                   </ThemedText>
                 </View>
                 <ThemedText type='title' style={[styles.amount, { color: isDark ? '#10b981' : colors.accent }]}>
-                  ${expense.amount.toFixed(2)}
+                  {formatCurrency(expense.amount, expense.currency)}
                 </ThemedText>
               </View>
 
@@ -337,7 +334,7 @@ export default function ExpenseDetailScreen() {
               backgroundColor: isDark ? 'rgba(239, 68, 68, 0.14)' : '#fef2f2',
               borderColor: isDark ? 'rgba(248, 113, 113, 0.35)' : '#fecaca',
             }]}>
-              <IconSymbol name="trash" size={18} color={isDark ? '#fca5a5' : '#b91c1c'} />
+              <IconSymbol name="trash.fill" size={18} color={isDark ? '#fca5a5' : '#b91c1c'} />
               <View style={styles.deletedBannerContent}>
                 <ThemedText type="defaultSemiBold" style={{ color: isDark ? '#fecaca' : '#991b1b' }}>
                   Expense deleted
@@ -396,7 +393,7 @@ export default function ExpenseDetailScreen() {
                       <ThemedText type="defaultSemiBold" style={[styles.splitAmount, {
                         color: isCurrentUser ? (isDark ? '#10b981' : colors.accent) : (isDark ? '#f8fafc' : colors.text),
                       }]}>
-                        ${split.amount.toFixed(2)}
+                        {formatCurrency(split.amount, expense.currency)}
                       </ThemedText>
                     </View>
                   );
@@ -480,7 +477,7 @@ export default function ExpenseDetailScreen() {
                     </View>
                     {activity.amount && (
                       <ThemedText type="defaultSemiBold" style={[styles.activityAmount, { color: isDark ? '#f8fafc' : colors.text }]}>
-                        ${activity.amount.toFixed(2)}
+                        {formatCurrency(activity.amount, expense.currency)}
                       </ThemedText>
                     )}
                   </View>

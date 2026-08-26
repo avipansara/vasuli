@@ -19,6 +19,7 @@ import { filterFriendsForExpenseSearch } from '@/utils/friend-search';
 import { getGroupExpenseParticipant } from '@/utils/group-expense-participants';
 import { calculateExpenseSplits, getEvenSplitValues, getSplitProgress } from '@/utils/split-validation';
 import { normalizeCurrencyInput } from '@/utils/validation';
+import { formatCurrency, getCurrencySymbol, getPreferredCurrency } from '@/utils/currency';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -268,7 +269,7 @@ export default function AddExpenseScreen() {
           : { kind: 'friends', friendIds: selectedFriendIds },
         description: trimmedDescription,
         amount: amountNum,
-        currency: 'USD',
+        currency: getPreferredCurrency(),
         date: expenseDate.getTime(),
         payerId: selectedPayerId,
         currentUserId,
@@ -351,7 +352,7 @@ export default function AddExpenseScreen() {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: isDark ? '#0b1326' : colors.background }]}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <NavigationHeader
         title={expenseStep === 1 ? 'Choose people' : 'Add Expense'}
         onBack={handleHeaderBack}
@@ -365,7 +366,7 @@ export default function AddExpenseScreen() {
               {
                 backgroundColor: (expenseStep === 1 ? canContinue : canSubmit && !loading)
                   ? settle.buttonBackground
-                  : (isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'),
+                  : (colors.border),
               },
             ]}>
             {loading ? (
@@ -383,21 +384,21 @@ export default function AddExpenseScreen() {
         <View style={styles.stepIndicator} accessibilityLabel={`Step ${expenseStep} of 2`}>
           <View style={styles.stepperRow}>
             <View style={styles.stepItem}>
-              <View style={[styles.stepBadge, { backgroundColor: isDark ? '#4edea3' : settle.buttonBackground }]}>
+              <View style={[styles.stepBadge, { backgroundColor: settle.buttonBackground }]}>
                 {expenseStep === 2 ? (
                   <IconSymbol name="checkmark" size={14} color={isDark ? '#003824' : '#ffffff'} />
                 ) : (
                   <ThemedText style={[styles.stepBadgeText, { color: isDark ? '#003824' : '#ffffff' }]}>1</ThemedText>
                 )}
               </View>
-              <ThemedText style={[styles.stepName, { color: isDark ? '#4edea3' : settle.buttonBackground }]}>People</ThemedText>
+              <ThemedText style={[styles.stepName, { color: settle.buttonBackground }]}>People</ThemedText>
             </View>
-            <View style={[styles.stepLine, { backgroundColor: expenseStep === 2 ? (isDark ? '#4edea3' : settle.buttonBackground) : (isDark ? 'rgba(60, 74, 66, 0.4)' : colors.border) }]} />
+            <View style={[styles.stepLine, { backgroundColor: expenseStep === 2 ? (settle.buttonBackground) : (isDark ? 'rgba(60, 74, 66, 0.4)' : colors.border) }]} />
             <View style={styles.stepItem}>
-              <View style={[styles.stepBadge, { backgroundColor: expenseStep === 2 ? (isDark ? '#4edea3' : settle.buttonBackground) : (isDark ? '#222a3d' : colors.border) }]}>
-                <ThemedText style={[styles.stepBadgeText, { color: expenseStep === 2 ? (isDark ? '#003824' : '#ffffff') : (isDark ? '#bbcabf' : colors.textSecondary) }]}>2</ThemedText>
+              <View style={[styles.stepBadge, { backgroundColor: expenseStep === 2 ? (settle.buttonBackground) : (colors.border) }]}>
+                <ThemedText style={[styles.stepBadgeText, { color: expenseStep === 2 ? (isDark ? '#003824' : '#ffffff') : (colors.textSecondary) }]}>2</ThemedText>
               </View>
-              <ThemedText style={[styles.stepName, { color: expenseStep === 2 ? (isDark ? '#dae2fd' : colors.text) : (isDark ? '#bbcabf' : colors.textSecondary) }]}>Split</ThemedText>
+              <ThemedText style={[styles.stepName, { color: expenseStep === 2 ? (colors.text) : (colors.textSecondary) }]}>Split</ThemedText>
             </View>
           </View>
         </View>
@@ -422,8 +423,8 @@ export default function AddExpenseScreen() {
                   />
                 </View>
                 <View style={styles.participantSummaryCopy}>
-                  <ThemedText style={[styles.participantSummaryLabel, { color: isDark ? '#bbcabf' : colors.textSecondary }]}>Splitting with</ThemedText>
-                  <ThemedText style={[styles.participantSummaryNames, { color: isDark ? '#dae2fd' : colors.text }]} numberOfLines={2}>
+                  <ThemedText style={[styles.participantSummaryLabel, { color: colors.textSecondary }]}>Splitting with</ThemedText>
+                  <ThemedText style={[styles.participantSummaryNames, { color: colors.text }]} numberOfLines={2}>
                     {splitType === SplitType.GROUP
                       ? selectedGroup?.name || 'Selected group'
                       : selectedFriendNames.join(', ')}
@@ -431,7 +432,7 @@ export default function AddExpenseScreen() {
                 </View>
               </View>
               <View style={styles.inputSection}>
-                <ThemedText style={[styles.inputLabel, { color: isDark ? '#bbcabf' : colors.textSecondary }]}>Paid by</ThemedText>
+                <ThemedText style={[styles.inputLabel, { color: colors.textSecondary }]}>Paid by</ThemedText>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.splitMethodContainer}>
                   {payerOptions.map(payer => {
                     const isSelected = payer.id === selectedPayerId;
@@ -442,11 +443,11 @@ export default function AddExpenseScreen() {
                         accessibilityState={{ selected: isSelected }}
                         accessibilityLabel={`Paid by ${payer.id === currentUserId ? 'you' : payer.name}`}
                         style={[styles.splitMethodButton, isSelected && styles.splitMethodButtonActive, {
-                          backgroundColor: isSelected ? (isDark ? '#4edea3' : settle.buttonBackground) : settle.pillBackground,
-                          borderColor: isSelected ? (isDark ? '#4edea3' : '#003527') : (isDark ? 'rgba(60, 74, 66, 0.3)' : 'rgba(191, 201, 195, 0.3)'),
+                          backgroundColor: isSelected ? (settle.buttonBackground) : settle.pillBackground,
+                          borderColor: isSelected ? (settle.buttonBackground) : (colors.border),
                         }]}
                         onPress={() => setSelectedPayerId(payer.id)}>
-                        <ThemedText style={[styles.splitMethodText, { color: isSelected ? (isDark ? '#003824' : '#ffffff') : (isDark ? '#dae2fd' : colors.text) }]}>
+                        <ThemedText style={[styles.splitMethodText, { color: isSelected ? (isDark ? '#003824' : '#ffffff') : (colors.text) }]}>
                           {payer.id === currentUserId ? 'You' : payer.name}
                         </ThemedText>
                       </TouchableOpacity>
@@ -470,14 +471,14 @@ export default function AddExpenseScreen() {
                     </ThemedText>
                   </View>
                   <View style={styles.amountInputRow}>
-                    <Text style={[styles.currencySymbol, { color: settle.accentText }]}>$</Text>
+                    <Text style={[styles.currencySymbol, { color: settle.accentText }]}>{getCurrencySymbol()}</Text>
                     <TextInput
                       ref={amountInputRef}
                       style={[styles.amountInput, { color: settle.accentText }]}
                       value={amount}
                       onChangeText={(text) => setAmount(normalizeCurrencyInput(text))}
                       placeholder="0.00"
-                      placeholderTextColor={isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(6, 78, 59, 0.3)'}
+                      placeholderTextColor={colors.textSecondary}
                       keyboardType="decimal-pad"
                       returnKeyType="next"
                       maxFontSizeMultiplier={1.4}
@@ -492,21 +493,21 @@ export default function AddExpenseScreen() {
 
               {/* Description Input */}
               <View style={styles.inputSection}>
-                <ThemedText style={[styles.inputLabel, { color: isDark ? '#bbcabf' : colors.textSecondary }]}>
+                <ThemedText style={[styles.inputLabel, { color: colors.textSecondary }]}>
                   Description
                 </ThemedText>
                 <View style={[styles.inputContainer, {
                   backgroundColor: colors.card,
                   borderColor: colors.border,
                 }]}>
-                  <IconSymbol name="doc.text" size={20} color={isDark ? '#bbcabf' : 'rgba(0,0,0,0.4)'} />
+                  <IconSymbol name="doc.text" size={20} color={colors.textSecondary} />
                   <TextInput
                     ref={descriptionInputRef}
-                    style={[styles.textInput, { color: isDark ? '#dae2fd' : colors.text }]}
+                    style={[styles.textInput, { color: colors.text }]}
                     value={description}
                     onChangeText={setDescription}
                     placeholder="e.g. Dinner, Groceries, Uber..."
-                    placeholderTextColor={isDark ? '#bbcabf' : 'rgba(0,0,0,0.4)'}
+                    placeholderTextColor={colors.textSecondary}
                     returnKeyType="done"
                     onSubmitEditing={() => Keyboard.dismiss()}
                     testID="expense-description-input"
@@ -515,7 +516,7 @@ export default function AddExpenseScreen() {
               </View>
 
               <View style={styles.inputSection}>
-                <ThemedText style={[styles.inputLabel, { color: isDark ? '#bbcabf' : colors.textSecondary }]}>Date</ThemedText>
+                <ThemedText style={[styles.inputLabel, { color: colors.textSecondary }]}>Date</ThemedText>
                 <TouchableOpacity
                   accessibilityRole="button"
                   accessibilityLabel={`Expense date, ${formattedExpenseDate}`}
@@ -524,8 +525,8 @@ export default function AddExpenseScreen() {
                     backgroundColor: colors.card,
                     borderColor: colors.border,
                   }]}>
-                  <IconSymbol name="calendar" size={20} color={isDark ? '#bbcabf' : 'rgba(0,0,0,0.4)'} />
-                  <ThemedText style={[styles.textInput, { color: isDark ? '#dae2fd' : colors.text }]}>{formattedExpenseDate}</ThemedText>
+                  <IconSymbol name="calendar" size={20} color={colors.textSecondary} />
+                  <ThemedText style={[styles.textInput, { color: colors.text }]}>{formattedExpenseDate}</ThemedText>
                 </TouchableOpacity>
                 {showDatePicker && (
                   <DateTimePicker
@@ -547,7 +548,7 @@ export default function AddExpenseScreen() {
           {/* Split Type Toggle - only show if not pre-selected from friend/group screen */}
           {expenseStep === 1 && !preselectedGroupId && !preselectedFriendId && (
             <View style={styles.inputSection}>
-              <ThemedText style={[styles.inputLabel, { color: isDark ? '#bbcabf' : colors.textSecondary }]}>
+              <ThemedText style={[styles.inputLabel, { color: colors.textSecondary }]}>
                 Split with
               </ThemedText>
               <View
@@ -565,7 +566,7 @@ export default function AddExpenseScreen() {
                     styles.toggleButton,
                     {
                       backgroundColor: splitType === SplitType.GROUP
-                        ? (isDark ? '#4edea3' : settle.buttonBackground)
+                        ? (settle.buttonBackground)
                         : 'transparent',
                     },
                   ]}
@@ -576,11 +577,11 @@ export default function AddExpenseScreen() {
                   <IconSymbol
                     name="person.3.fill"
                     size={17}
-                    color={splitType === SplitType.GROUP ? (isDark ? '#003824' : '#ffffff') : (isDark ? '#bbcabf' : colors.textSecondary)}
+                    color={splitType === SplitType.GROUP ? (isDark ? '#003824' : '#ffffff') : (colors.textSecondary)}
                   />
                   <Text style={[
                     styles.toggleText,
-                    { color: splitType === SplitType.GROUP ? (isDark ? '#003824' : '#ffffff') : (isDark ? '#bbcabf' : colors.textSecondary) },
+                    { color: splitType === SplitType.GROUP ? (isDark ? '#003824' : '#ffffff') : (colors.textSecondary) },
                   ]}>
                     Group
                   </Text>
@@ -592,7 +593,7 @@ export default function AddExpenseScreen() {
                     styles.toggleButton,
                     {
                       backgroundColor: splitType === SplitType.FRIENDS
-                        ? (isDark ? '#4edea3' : settle.buttonBackground)
+                        ? (settle.buttonBackground)
                         : 'transparent',
                     },
                   ]}
@@ -600,11 +601,11 @@ export default function AddExpenseScreen() {
                   <IconSymbol
                     name="person.2.fill"
                     size={17}
-                    color={splitType === SplitType.FRIENDS ? (isDark ? '#003824' : '#ffffff') : (isDark ? '#bbcabf' : colors.textSecondary)}
+                    color={splitType === SplitType.FRIENDS ? (isDark ? '#003824' : '#ffffff') : (colors.textSecondary)}
                   />
                   <Text style={[
                     styles.toggleText,
-                    { color: splitType === SplitType.FRIENDS ? (isDark ? '#003824' : '#ffffff') : (isDark ? '#bbcabf' : colors.textSecondary) },
+                    { color: splitType === SplitType.FRIENDS ? (isDark ? '#003824' : '#ffffff') : (colors.textSecondary) },
                   ]}>
                     Friends
                   </Text>
@@ -618,7 +619,7 @@ export default function AddExpenseScreen() {
 
               {/* Split Method Selection */}
               <View style={styles.inputSection}>
-                <ThemedText style={[styles.inputLabel, { color: isDark ? '#bbcabf' : colors.textSecondary }]}>
+                <ThemedText style={[styles.inputLabel, { color: colors.textSecondary }]}>
                   Split method
                 </ThemedText>
                 <ScrollView
@@ -646,19 +647,15 @@ export default function AddExpenseScreen() {
                             styles.splitMethodButton,
                             isActive && styles.splitMethodButtonActive,
                             {
-                              backgroundColor: isActive
-                                ? (isDark ? '#4edea3' : '#E8FDF5')
-                                : settle.pillBackground,
-                              borderColor: isActive
-                                ? (isDark ? '#4edea3' : '#003527')
-                                : (isDark ? 'rgba(60, 74, 66, 0.3)' : 'rgba(191, 201, 195, 0.3)'),
+                              backgroundColor: isActive ? (settle.buttonBackground) : settle.pillBackground,
+                              borderColor: isActive ? (settle.buttonBackground) : (colors.border),
                             },
                           ]}
                           onPress={() => setSplitMethod(method.id)}>
                           <IconSymbol
                             name={method.icon}
                             size={18}
-                            color={isActive ? (isDark ? '#003824' : '#003527') : (isDark ? '#bbcabf' : colors.text)}
+                            color={isActive ? (isDark ? '#003824' : '#ffffff') : (colors.text)}
                           />
                           <Text
                             numberOfLines={1}
@@ -666,7 +663,7 @@ export default function AddExpenseScreen() {
                             minimumFontScale={0.82}
                             style={[
                               styles.splitMethodText,
-                              { color: isActive ? (isDark ? '#003824' : '#003527') : (isDark ? '#dae2fd' : colors.text) },
+                              { color: isActive ? (isDark ? '#003824' : '#ffffff') : (colors.text) },
                             ]}>
                             {compactLabel}
                           </Text>
@@ -682,7 +679,7 @@ export default function AddExpenseScreen() {
           {/* Selection List */}
           {expenseStep === 1 && (
             <View style={styles.selectionSection}>
-              <ThemedText style={[styles.inputLabel, { color: isDark ? '#bbcabf' : colors.textSecondary }]}>
+              <ThemedText style={[styles.inputLabel, { color: colors.textSecondary }]}>
                 {splitType === SplitType.GROUP ? 'Select a group' : 'Select friends'}
               </ThemedText>
 
@@ -708,8 +705,8 @@ export default function AddExpenseScreen() {
                 <View style={styles.optionsList}>
                   {groups.length === 0 ? (
                     <View style={styles.emptyState}>
-                      <IconSymbol name="person.3" size={32} color={isDark ? '#bbcabf' : 'rgba(0,0,0,0.3)'} />
-                      <ThemedText style={[styles.emptyText, { color: isDark ? '#bbcabf' : colors.textSecondary }]}>
+                      <IconSymbol name="person.3" size={32} color={colors.textSecondary} />
+                      <ThemedText style={[styles.emptyText, { color: colors.textSecondary }]}>
                         No groups yet
                       </ThemedText>
                     </View>
@@ -729,22 +726,22 @@ export default function AddExpenseScreen() {
                           disabled={!!preselectedGroupId}>
                           <View style={[styles.optionIcon, {
                             backgroundColor: selectedGroupId === group.id
-                              ? (isDark ? '#4edea3' : '#003527')
-                              : (isDark ? '#05080e' : 'rgba(0, 0, 0, 0.05)'),
+                              ? (settle.buttonBackground)
+                              : (settle.avatarUnselectedBackground),
                           }]}>
                             <IconSymbol
                               name="person.3.fill"
                               size={20}
-                              color={selectedGroupId === group.id ? (isDark ? '#003824' : '#ffffff') : (isDark ? '#dae2fd' : colors.text)}
+                              color={selectedGroupId === group.id ? (isDark ? '#003824' : '#ffffff') : (colors.text)}
                             />
                           </View>
                           <View style={styles.optionTextContainer}>
-                            <Text style={[styles.optionText, { color: selectedGroupId === group.id ? (isDark ? '#4edea3' : '#003527') : (isDark ? '#dae2fd' : colors.text) }]}>
+                            <Text style={[styles.optionText, { color: selectedGroupId === group.id ? (settle.buttonBackground) : (colors.text) }]}>
                               {group.name}
                             </Text>
                           </View>
                           {selectedGroupId === group.id && (
-                            <IconSymbol name="checkmark.circle.fill" size={22} color={isDark ? '#4edea3' : '#003527'} />
+                            <IconSymbol name="checkmark.circle.fill" size={22} color={settle.buttonBackground} />
                           )}
                         </TouchableOpacity>
                       );
@@ -755,8 +752,8 @@ export default function AddExpenseScreen() {
                 <View style={styles.optionsList}>
                   {friends.length === 0 ? (
                     <View style={styles.emptyState}>
-                      <IconSymbol name="person.2" size={32} color={isDark ? '#bbcabf' : 'rgba(0,0,0,0.3)'} />
-                      <ThemedText style={[styles.emptyText, { color: isDark ? '#bbcabf' : colors.textSecondary }]}>
+                      <IconSymbol name="person.2" size={32} color={colors.textSecondary} />
+                      <ThemedText style={[styles.emptyText, { color: colors.textSecondary }]}>
                         No friends yet
                       </ThemedText>
                     </View>
@@ -767,13 +764,13 @@ export default function AddExpenseScreen() {
                           backgroundColor: colors.card,
                           borderColor: colors.border,
                         }]}>
-                          <IconSymbol name="magnifyingglass" size={18} color={isDark ? '#bbcabf' : 'rgba(0,0,0,0.4)'} />
+                          <IconSymbol name="magnifyingglass" size={18} color={colors.textSecondary} />
                           <TextInput
-                            style={[styles.searchInput, { color: isDark ? '#dae2fd' : colors.text }]}
+                            style={[styles.searchInput, { color: colors.text }]}
                             value={friendSearchQuery}
                             onChangeText={setFriendSearchQuery}
                             placeholder={`Search ${friends.length} friends`}
-                            placeholderTextColor={isDark ? '#bbcabf' : 'rgba(0,0,0,0.4)'}
+                            placeholderTextColor={colors.textSecondary}
                             autoCapitalize="none"
                             autoCorrect={false}
                             returnKeyType="search"
@@ -783,20 +780,20 @@ export default function AddExpenseScreen() {
                               accessibilityLabel="Clear friend search"
                               onPress={() => setFriendSearchQuery('')}
                               style={styles.clearSearchButton}>
-                              <IconSymbol name="xmark.circle.fill" size={18} color={isDark ? '#bbcabf' : 'rgba(0,0,0,0.35)'} />
+                              <IconSymbol name="xmark.circle.fill" size={18} color={colors.textSecondary} />
                             </TouchableOpacity>
                           )}
                         </View>
                       )}
                       {visibleFriends.length === 0 ? (
                         <View style={styles.emptyState}>
-                          <IconSymbol name="magnifyingglass" size={32} color={isDark ? '#bbcabf' : 'rgba(0,0,0,0.3)'} />
-                          <ThemedText style={[styles.emptyText, { color: isDark ? '#bbcabf' : colors.textSecondary }]}>No matching friends</ThemedText>
+                          <IconSymbol name="magnifyingglass" size={32} color={colors.textSecondary} />
+                          <ThemedText style={[styles.emptyText, { color: colors.textSecondary }]}>No matching friends</ThemedText>
                         </View>
                       ) : (
                         <>
                           {visibleFriends.length > displayedFriends.length && (
-                            <ThemedText style={[styles.friendListHint, { color: isDark ? '#bbcabf' : colors.textSecondary }]}>
+                            <ThemedText style={[styles.friendListHint, { color: colors.textSecondary }]}>
                               {friendSearchQuery.trim()
                                 ? `Showing ${displayedFriends.length} matches. Refine your search to see fewer.`
                                 : `Showing ${displayedFriends.length} of ${visibleFriends.length}. Search to find someone else.`}
@@ -814,17 +811,17 @@ export default function AddExpenseScreen() {
                                 disabled={!!preselectedFriendId}>
                                 <View style={[styles.optionAvatar, {
                                   backgroundColor: isSelected
-                                    ? (isDark ? '#4edea3' : '#003527')
-                                    : (isDark ? '#05080e' : 'rgba(0, 0, 0, 0.05)'),
+                                    ? (settle.buttonBackground)
+                                    : (settle.avatarUnselectedBackground),
                                 }]}>
                                   <Text style={[styles.avatarText, {
-                                    color: isSelected ? (isDark ? '#003824' : '#ffffff') : (isDark ? '#dae2fd' : colors.text),
+                                    color: isSelected ? (isDark ? '#003824' : '#ffffff') : (colors.text),
                                   }]}>
                                     {friend.name.charAt(0).toUpperCase()}
                                   </Text>
                                 </View>
                                 <View style={styles.optionTextContainer}>
-                                  <Text style={[styles.optionText, { color: isSelected ? (isDark ? '#4edea3' : '#003527') : (isDark ? '#dae2fd' : colors.text) }]}>
+                                  <Text style={[styles.optionText, { color: isSelected ? (settle.buttonBackground) : (colors.text) }]}>
                                     {friend.name}
                                   </Text>
                                   {friend.email && (
@@ -835,7 +832,7 @@ export default function AddExpenseScreen() {
                                 </View>
                                 {
                                   isSelected && (
-                                    <IconSymbol name="checkmark.circle.fill" size={22} color={isDark ? '#4edea3' : '#003527'} />
+                                    <IconSymbol name="checkmark.circle.fill" size={22} color={settle.buttonBackground} />
                                   )
                                 }
                               </TouchableOpacity>
@@ -883,7 +880,7 @@ export default function AddExpenseScreen() {
                             ? (isDark ? '#fbbf24' : '#f59e0b')
                             : (isDark ? '#ef4444' : '#dc2626'),
                       }]}>
-                        {isBalanced ? '✓ Balanced' : `${remaining > 0 ? 'Remaining' : 'Over'}: $${Math.abs(remaining).toFixed(2)}`}
+                        {isBalanced ? '✓ Balanced' : `${remaining > 0 ? 'Remaining' : 'Over'}: ${formatCurrency(Math.abs(remaining))}`}
                       </ThemedText>
                     </View>
                   )}
@@ -895,17 +892,17 @@ export default function AddExpenseScreen() {
                     ? (isDark ? 'rgba(45, 212, 191, 0.32)' : 'rgba(34, 197, 94, 0.28)')
                     : (isDark ? 'rgba(251, 191, 36, 0.32)' : 'rgba(245, 158, 11, 0.28)'),
                 }]}
-                  accessibilityLabel={`Split total $${splitProgress.allocated.toFixed(2)} of $${totalAmount.toFixed(2)}`}>
+                  accessibilityLabel={`Split total ${formatCurrency(splitProgress.allocated)} of ${formatCurrency(totalAmount)}`}>
                   <View style={styles.splitSummaryTopline}>
                     <View>
                       <ThemedText style={[styles.splitSummaryLabel, { color: colors.textSecondary }]}>Live split total</ThemedText>
                       <View style={styles.splitSummaryTotalRow}>
-                        <ThemedText style={[styles.splitSummaryTotal, { color: colors.text }]}>{`$${splitProgress.allocated.toFixed(2)}`}</ThemedText>
-                        <ThemedText style={[styles.splitSummaryTotalContext, { color: colors.textSecondary }]}>{`of $${totalAmount.toFixed(2)}`}</ThemedText>
+                        <ThemedText style={[styles.splitSummaryTotal, { color: colors.text }]}>{formatCurrency(splitProgress.allocated)}</ThemedText>
+                        <ThemedText style={[styles.splitSummaryTotalContext, { color: colors.textSecondary }]}>{`of ${formatCurrency(totalAmount)}`}</ThemedText>
                       </View>
                     </View>
                     <ThemedText style={[styles.splitSummaryStatus, { color: splitProgress.isBalanced ? (isDark ? '#2DD4BF' : '#16A34A') : (isDark ? '#FBBF24' : '#B45309') }]}>
-                      {splitProgress.isBalanced ? 'Ready to add' : `${splitProgress.remaining > 0 ? '$' + splitProgress.remaining.toFixed(2) + ' left' : '$' + Math.abs(splitProgress.remaining).toFixed(2) + ' over'}`}
+                      {splitProgress.isBalanced ? 'Ready to add' : `${splitProgress.remaining > 0 ? formatCurrency(splitProgress.remaining) + ' left' : formatCurrency(Math.abs(splitProgress.remaining)) + ' over'}`}
                     </ThemedText>
                   </View>
                   {splitProgress.people.map(person => {
@@ -917,7 +914,7 @@ export default function AddExpenseScreen() {
                     return (
                       <View key={person.userId} style={styles.splitSummaryRow}>
                         <ThemedText style={[styles.splitSummaryPerson, { color: colors.textSecondary }]}>{personName}</ThemedText>
-                        <ThemedText style={[styles.splitSummaryAmount, { color: colors.text }]}>${person.amount.toFixed(2)}</ThemedText>
+                        <ThemedText style={[styles.splitSummaryAmount, { color: colors.text }]}>{formatCurrency(person.amount)}</ThemedText>
                       </View>
                     );
                   })}
@@ -967,7 +964,7 @@ export default function AddExpenseScreen() {
                     testID="custom-split-you-input"
                   />
                   <ThemedText style={[styles.customSplitSuffix, { color: colors.textSecondary }]}>
-                    {splitMethod === SplitMethod.UNEQUAL ? '$' : splitMethod === SplitMethod.PERCENTAGE ? '%' : 'x'}
+                    {splitMethod === SplitMethod.UNEQUAL ? getCurrencySymbol() : splitMethod === SplitMethod.PERCENTAGE ? '%' : 'x'}
                   </ThemedText>
                   {(splitMethod === SplitMethod.PERCENTAGE || splitMethod === SplitMethod.SHARES) && (() => {
                     let calculatedAmount = 0;
@@ -981,7 +978,7 @@ export default function AddExpenseScreen() {
                     }
                     return (
                       <ThemedText style={[styles.calculatedAmount, { color: colors.textSecondary }]}>
-                        ${calculatedAmount.toFixed(2)}
+                        {formatCurrency(calculatedAmount)}
                       </ThemedText>
                     );
                   })()}
@@ -1025,7 +1022,7 @@ export default function AddExpenseScreen() {
                         testID="custom-split-participant-input"
                       />
                       <ThemedText style={[styles.customSplitSuffix, { color: colors.textSecondary }]}>
-                        {splitMethod === SplitMethod.UNEQUAL ? '$' : splitMethod === SplitMethod.PERCENTAGE ? '%' : 'x'}
+                        {splitMethod === SplitMethod.UNEQUAL ? getCurrencySymbol() : splitMethod === SplitMethod.PERCENTAGE ? '%' : 'x'}
                       </ThemedText>
                       {(splitMethod === SplitMethod.PERCENTAGE || splitMethod === SplitMethod.SHARES) && (() => {
                         let calculatedAmount = 0;
@@ -1039,7 +1036,7 @@ export default function AddExpenseScreen() {
                         }
                         return (
                           <ThemedText style={[styles.calculatedAmount, { color: colors.textSecondary }]}>
-                            ${calculatedAmount.toFixed(2)}
+                            {formatCurrency(calculatedAmount)}
                           </ThemedText>
                         );
                       })()}
@@ -1085,7 +1082,7 @@ export default function AddExpenseScreen() {
                         testID="custom-split-participant-input"
                       />
                       <ThemedText style={[styles.customSplitSuffix, { color: colors.textSecondary }]}>
-                        {splitMethod === SplitMethod.UNEQUAL ? '$' : splitMethod === SplitMethod.PERCENTAGE ? '%' : 'x'}
+                        {splitMethod === SplitMethod.UNEQUAL ? getCurrencySymbol() : splitMethod === SplitMethod.PERCENTAGE ? '%' : 'x'}
                       </ThemedText>
                       {(splitMethod === SplitMethod.PERCENTAGE || splitMethod === SplitMethod.SHARES) && (() => {
                         let calculatedAmount = 0;
@@ -1099,7 +1096,7 @@ export default function AddExpenseScreen() {
                         }
                         return (
                           <ThemedText style={[styles.calculatedAmount, { color: colors.textSecondary }]}>
-                            ${calculatedAmount.toFixed(2)}
+                            {formatCurrency(calculatedAmount)}
                           </ThemedText>
                         );
                       })()}

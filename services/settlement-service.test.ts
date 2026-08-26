@@ -1047,12 +1047,14 @@ describe('settlementService.commit adapter', () => {
       expectedBalance: 0,
       allocations: [],
       transfers: [{
+        id: 't-1',
+        operationId: 'op-1',
         groupId: 'group-1',
         fromUserId: 'current-user',
         toUserId: 'friend-a',
-        amount: 8,
         currency: 'USD',
         signedGroupBalanceDelta: 8,
+        createdAt: 0,
       }],
     })).resolves.toMatchObject({
       operationId: 'operation-zero',
@@ -1067,12 +1069,14 @@ describe('settlementService.commit adapter', () => {
       p_date: '2026-08-18T03:00:00.000Z',
       p_expected_balance: 0,
       p_transfers: [{
+        id: 't-1',
+        operationId: 'op-1',
         groupId: 'group-1',
         fromUserId: 'current-user',
         toUserId: 'friend-a',
-        amount: 8,
         currency: 'USD',
         signedGroupBalanceDelta: 8,
+        createdAt: 0,
       }],
     });
   });

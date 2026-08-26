@@ -32,23 +32,30 @@ describe('getActivityHref', () => {
     expect(getActivityHref(activity({ type: ActivityType.MEMBER_ADDED, groupId: 'group-2' }))).toBe('/groups/group-2');
   });
 
-  it('links ungrouped settlement activities to the other user when known', () => {
+  it('links ungrouped settlement activities to the settlement detail', () => {
     expect(
       getActivityHref(
-        activity({ type: ActivityType.SETTLEMENT_CREATED, userId: 'friend-1', targetId: 'settlement-1' }),
+        activity({ type: ActivityType.SETTLEMENT_CREATED, targetId: 'settlement-1', userId: 'friend-1' }),
         'current-user'
       )
-    ).toBe('/friends/friend-1');
+    ).toBe('/settlement-detail/settlement-1');
   });
 
   it('does not link deleted ungrouped expenses or current-user-only settlements', () => {
     expect(getActivityHref(activity({ type: ActivityType.EXPENSE_DELETED }))).toBeNull();
+
+    expect(
+      getActivityHref(
+        activity({ type: ActivityType.SETTLEMENT_DELETED, targetId: 'settlement-1', userId: 'current-user' }),
+        'current-user'
+      )
+    ).toBeNull();
     expect(
       getActivityHref(
         activity({ type: ActivityType.SETTLEMENT_CREATED, userId: 'current-user', targetId: 'settlement-1' }),
         'current-user'
       )
-    ).toBeNull();
+    ).toBe('/settlement-detail/settlement-1');
   });
 
   it('does not link stale expense activities after the expense has been deleted', () => {

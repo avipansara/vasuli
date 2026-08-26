@@ -46,53 +46,27 @@ export const activityService = {
   },
 
   async getUserActivities(userId: string, limit?: number, offset?: number, search?: string): Promise<Activity[]> {
-    // Get activities from groups the user is a member of
-    const { data: memberData, error: memberError } = await supabase
-      .from('group_members')
-      .select('group_id')
-      .eq('user_id', userId);
+    // All filtering, ordering, and LIMIT/OFFSET pagination are handled by the
+    // get_user_activities SECURITY DEFINER function in the database.
+    // This replaces the previous 6-query client-side merge where every page
+    // re-fetched unbounded datasets and discarded rows via Array.slice.
+    console.log('[getUserActivities] calling RPC with', { p_limit: limit ?? 20, p_offset: offset ?? 0, p_search: search ?? '' });
+    const { data, error } = await supabase.rpc('get_user_activities', {
+      p_limit:  limit  ?? 20,
+      p_offset: offset ?? 0,
+      p_search: search ?? '',
+    });
 
-    if (memberError) throw memberError;
-
-    const groupIds = (memberData || []).map(m => m.group_id);
-
-    // Build query for activities: user's own activities OR activities in their groups
-    let query = supabase
-      .from('activities')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    // If user has groups, include activities from those groups OR user's own activities
-    // If no groups, only get user's own activities
-    if (groupIds.length > 0) {
-      query = query.or(`user_id.eq.${userId},group_id.in.(${groupIds.join(',')})`);
-    } else {
-      query = query.eq('user_id', userId);
+    if (error) {
+      console.error('[getUserActivities] RPC error:', JSON.stringify(error));
+      throw error;
     }
 
-    const normalizedSearch = search
-      ?.trim()
-      .replace(/[^a-zA-Z0-9\s$-]/g, ' ')
-      .replace(/\s+/g, ' ');
-    if (normalizedSearch) {
-      const searchPattern = `%${normalizedSearch}%`;
-      query = query.or(
-        `description.ilike.${searchPattern},group_name.ilike.${searchPattern},user_name.ilike.${searchPattern}`
-      );
-    }
-
-    if (limit) {
-      const from = offset || 0;
-      const to = from + limit - 1;
-      query = query.range(from, to);
-    }
-
-    const { data, error } = await query;
-
-    if (error) throw error;
-
+    console.log('[getUserActivities] got', (data || []).length, 'rows');
     return (data || []).map(mapActivityRow);
   },
+
+
 
   async getByGroup(groupId: string, limit?: number): Promise<Activity[]> {
     let query = supabase

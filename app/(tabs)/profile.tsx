@@ -2,6 +2,7 @@ import { ThemedText } from '@/components/themed-text';
 import { AsyncErrorState } from '@/components/ui/async-error-state';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useAuth } from '@/contexts/auth-context-otp';
+import { useCurrency } from '@/contexts/currency-context';
 import { useTheme } from '@/contexts/theme-context';
 import { useRealtime } from '@/hooks/use-realtime';
 import { useRefetchOnFocus } from '@/hooks/use-refetch-on-focus';
@@ -14,6 +15,7 @@ import { invitationService } from '@/services/invitation-service';
 import { notificationService } from '@/services/notification-service';
 import { queryKeys } from '@/services/query-keys';
 import { userService } from '@/services/user-service';
+import { formatCurrency } from '@/utils/currency';
 import { getPendingInvitationCount } from '@/utils/invitation-count';
 import { normalizeEmail } from '@/utils/validation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -41,7 +43,7 @@ type SettingsItem = {
 };
 
 export default function ProfileScreen() {
-  const { gradients, isDark, colors } = useThemeColors();
+  const { isDark, colors } = useThemeColors();
   const { toggleTheme } = useTheme();
   const { user: currentUser, signOut, refreshUser } = useAuth();
   const [notificationOverride, setNotificationOverride] = useState<boolean | null>(null);
@@ -261,10 +263,26 @@ export default function ProfileScreen() {
     );
   }
 
+  const { changeCurrency, currencySymbol } = useCurrency();
+
+  const handleSelectCurrency = () => {
+    Alert.alert(
+      'Select Currency',
+      'Choose your preferred currency for displaying balances and amounts.',
+      [
+        { text: 'Dollar ($)', onPress: () => changeCurrency('USD') },
+        { text: 'British Pound (£)', onPress: () => changeCurrency('GBP') },
+        { text: 'Indian Rupee (₹)', onPress: () => changeCurrency('INR') },
+        { text: 'Cancel', style: 'cancel' }
+      ]
+    );
+  };
+
   const settingsItems: SettingsItem[] = [
     { icon: 'envelope.badge', title: 'Invitations', badge: pendingInvitationCount, onPress: () => router.push('/invitations') },
     { icon: 'person.badge.plus', title: 'Invite a Friend', onPress: () => router.push('/add-friend') },
     // { icon: 'figure.skateboarding', title: 'Loading Playground', onPress: () => setPlaygroundVisible(true) },
+    { icon: 'dollarsign.circle.fill', title: `Currency (${currencySymbol})`, onPress: handleSelectCurrency },
     { icon: 'bell.fill', title: 'Notifications', hasSwitch: true, value: notificationsEnabled, onToggle: handleToggleNotifications },
     { icon: 'moon.fill', title: 'Dark Mode', hasSwitch: true, value: isDark, onToggle: toggleTheme },
     { icon: 'lock.shield.fill', title: 'Privacy Policy', onPress: () => router.push('/privacy-policy') },
@@ -274,13 +292,13 @@ export default function ProfileScreen() {
 
   const cardStyle = {
     backgroundColor: colors.card,
-    borderWidth: isDark ? 1 : 0,
+    borderWidth: 0,
     borderColor: colors.border,
-    shadowColor: isDark ? 'transparent' : '#475569',
+    shadowColor: isDark ? '#64748b' : '#475569',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: isDark ? 0 : 0.09,
-    shadowRadius: 12,
-    elevation: isDark ? 0 : 4,
+    shadowOpacity: isDark ? 0.15 : 0.09,
+    shadowRadius: isDark ? 4 : 12,
+    elevation: 4,
   };
 
   return (
@@ -345,14 +363,14 @@ export default function ProfileScreen() {
             <>
               <View style={styles.statItem}>
                 <ThemedText type='title' style={[styles.statValue, { color: isDark ? '#10b981' : colors.tint }]}>
-                  ${totalOwed.toFixed(2)}
+                  {formatCurrency(totalOwed)}
                 </ThemedText>
                 <ThemedText style={[styles.statLabel, { color: isDark ? '#9ba6b8' : colors.textSecondary }]}>You are owed</ThemedText>
               </View>
               <View style={[styles.statDivider, { backgroundColor: isDark ? '#2a3441' : 'rgba(0, 0, 0, 0.08)' }]} />
               <View style={styles.statItem}>
                 <ThemedText type='title' style={[styles.statValue, { color: isDark ? '#ffb4ab' : '#DC2626' }]}>
-                  ${totalOwing.toFixed(2)}
+                  {formatCurrency(totalOwing)}
                 </ThemedText>
                 <ThemedText style={[styles.statLabel, { color: isDark ? '#9ba6b8' : colors.textSecondary }]}>You owe</ThemedText>
               </View>

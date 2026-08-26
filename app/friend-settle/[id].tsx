@@ -10,6 +10,7 @@ import { settlementModule, createPaymentIntentId, CombinedSettlementError } from
 import type { FriendRelationshipProjection } from '@/services/friend-detail-service';
 import type { User } from '@/types/database';
 import { formatCurrencyInput, normalizeCurrencyInput } from '@/utils/validation';
+import { formatCurrency, getCurrencySymbol } from '@/utils/currency';
 import { useQueryClient } from '@tanstack/react-query';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -147,7 +148,7 @@ export default function FriendSettleScreen() {
           return;
         }
 
-        Alert.alert('Success', `Recorded settlement of ${receipt.currency} ${receipt.totalAmount.toFixed(2)} with ${friend.name}`);
+        Alert.alert('Success', `Recorded settlement of ${formatCurrency(receipt.totalAmount, receipt.currency)} with ${friend.name}`);
         paymentIntentIdRef.current = null;
         router.back();
       } catch (error) {
@@ -179,16 +180,16 @@ export default function FriendSettleScreen() {
 
     const previewLines = [
       ...((allocationPreview?.allocations ?? []).map(allocation =>
-        `${allocation.groupId ? relationship.groupBalances.find(group => group.groupId === allocation.groupId)?.groupName ?? 'Group' : 'Direct'}: ${allocation.currency} ${allocation.amount.toFixed(2)} cash`
+        `${allocation.groupId ? relationship.groupBalances.find(group => group.groupId === allocation.groupId)?.groupName ?? 'Group' : 'Direct'}: ${formatCurrency(allocation.amount, allocation.currency)} cash`
       )),
       ...((allocationPreview?.transfers ?? []).map(transfer =>
-        `${relationship.groupBalances.find(group => group.groupId === transfer.groupId)?.groupName ?? 'Group'}: ${transfer.currency} ${transfer.amount.toFixed(2)} internal offset`
+        `${relationship.groupBalances.find(group => group.groupId === transfer.groupId)?.groupName ?? 'Group'}: ${formatCurrency(Math.abs(transfer.signedGroupBalanceDelta), transfer.currency)} internal offset`
       )),
     ];
     Alert.alert(
       'Confirm Settle Up',
       [
-        `Cash payment: ${settlementCurrency} ${amountNum.toFixed(2)}`,
+        `Cash payment: ${formatCurrency(amountNum, settlementCurrency)}`,
         ...(amountNum === 0 ? ['No money changes hands; internal offsets only.'] : []),
         ...previewLines,
       ].join('\n'),
@@ -282,9 +283,9 @@ export default function FriendSettleScreen() {
             backgroundColor: settle.cardBackground,
             borderColor: settle.cardBorder,
             borderWidth: isDark ? 1 : 0,
-            shadowColor: isDark ? 'transparent' : '#000000',
-            shadowOpacity: isDark ? 0 : 0.12,
-            elevation: isDark ? 0 : 5,
+            shadowColor: '#000000',
+            shadowOpacity: isDark ? 0.32 : 0.12,
+            elevation: 5,
           }]}>
             <View style={styles.profileRow}>
               <View style={[styles.avatar, { backgroundColor: settle.avatarSelectedBackground }]}>
@@ -307,7 +308,7 @@ export default function FriendSettleScreen() {
                 Combined relationship summary
               </ThemedText>
               <ThemedText style={[styles.balanceValueText, { color: settle.accentText }]}>
-              {settleableTotal?.currency ?? zeroNetCurrency ?? ''} {maxAmount.toFixed(2)}
+              {formatCurrency(maxAmount, settleableTotal?.currency ?? zeroNetCurrency)}
               </ThemedText>
             </View>
           </View>
@@ -322,7 +323,7 @@ export default function FriendSettleScreen() {
               borderColor: settle.heroBorder,
             }]}>
               <View style={styles.inputInnerRow}>
-                <Text style={[styles.currency, { color: settle.accentText }]}>{settlementCurrency ?? '$'}</Text>
+                <Text style={[styles.currency, { color: settle.accentText }]}>{getCurrencySymbol(settlementCurrency)}</Text>
                 <TextInput
                   style={[styles.input, { color: settle.accentText }]}
                   value={amount}
@@ -332,9 +333,8 @@ export default function FriendSettleScreen() {
                   placeholder="0.00"
                   placeholderTextColor={isDark ? 'rgba(16, 185, 129, 0.4)' : 'rgba(6, 78, 59, 0.3)'}
                   selectTextOnFocus
-                  testID="friend-settle-amount-input"
-                  accessibilityLabel={`Settlement amount in ${settlementCurrency ?? 'the selected currency'}`}
-                  accessibilityHint={settleableTotal ? `Enter up to ${settlementCurrency} ${maxAmount.toFixed(2)}` : undefined}
+                  accessibilityLabel={`Settlement amount in ${getCurrencySymbol(settlementCurrency)}`}
+                  accessibilityHint={settleableTotal ? `Enter up to ${formatCurrency(maxAmount, settlementCurrency)}` : undefined}
                   maxFontSizeMultiplier={1.4}
                 />
               </View>
@@ -369,7 +369,7 @@ export default function FriendSettleScreen() {
               ? `This records that ${isOwed ? `${friend.name} paid you ` : `you paid ${friend.name} `}`
               : 'Choose one currency with an outstanding balance before settling.'}
             <Text style={[styles.helperBoldAmount, { color: isDark ? '#dae2fd' : colors.text }]}>
-              {settleableTotal ? `${settleableTotal.currency} ${amountNum.toFixed(2)}` : `${zeroNetCurrency ?? ''} ${amountNum.toFixed(2)}`}
+              {formatCurrency(amountNum, settleableTotal?.currency ?? zeroNetCurrency)}
             </Text>
             {isZeroNet ? '' : ' to settle up.'}
           </ThemedText>
@@ -383,7 +383,7 @@ export default function FriendSettleScreen() {
                     {allocation.groupId ? relationship?.groupBalances.find(group => group.groupId === allocation.groupId)?.groupName ?? 'Group' : 'Direct'}
                   </ThemedText>
                   <ThemedText style={[styles.previewValue, { color: colors.text }]}>
-                    {allocation.currency} {allocation.amount.toFixed(2)} cash
+                    {formatCurrency(allocation.amount, allocation.currency)} cash
                   </ThemedText>
                 </View>
               ))}
@@ -393,7 +393,7 @@ export default function FriendSettleScreen() {
                     {relationship?.groupBalances.find(group => group.groupId === transfer.groupId)?.groupName ?? 'Group'}
                   </ThemedText>
                   <ThemedText style={[styles.previewValue, { color: colors.text }]}>
-                    {transfer.currency} {transfer.amount.toFixed(2)} internal offset
+                    {formatCurrency(Math.abs(transfer.signedGroupBalanceDelta), transfer.currency)} internal offset
                   </ThemedText>
                 </View>
               ))}

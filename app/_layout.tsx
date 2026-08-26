@@ -307,6 +307,8 @@ function RootLayoutNav() {
   );
 }
 
+import { CurrencyProvider } from '@/contexts/currency-context';
+
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
     'Manrope_400Regular': require('@expo-google-fonts/manrope/400Regular/Manrope_400Regular.ttf'),
@@ -329,9 +331,11 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <QueryClientProvider client={queryClient}>
         <AppThemeProvider>
-          <AuthProvider>
-            <RootLayoutNav />
-          </AuthProvider>
+          <CurrencyProvider>
+            <AuthProvider>
+              <RootLayoutNav />
+            </AuthProvider>
+          </CurrencyProvider>
         </AppThemeProvider>
       </QueryClientProvider>
     </GestureHandlerRootView>

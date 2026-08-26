@@ -3,7 +3,7 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { ACCENT_TEAL, BG_ICON_DARK, BG_ICON_LIGHT } from '@/constants/theme';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import type { Expense, User } from '@/types/database';
-import React from 'react';
+import { formatCurrency } from '@/utils/currency';
 import { StyleSheet, View } from 'react-native';
 
 interface ExpenseCardProps {
@@ -43,7 +43,7 @@ export function ExpenseCard({ expense }: ExpenseCardProps) {
         </ThemedText>
       </View>
       <ThemedText style={[styles.amount, !isDark && { color: colors.text }]}>
-        ${expense.amount.toFixed(2)}
+        {formatCurrency(expense.amount, expense.currency)}
       </ThemedText>
     </View>
   );

@@ -1,6 +1,8 @@
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import type { FriendActivityItem } from '@/services/friend-detail-service';
+import { formatCurrency } from '@/utils/currency';
+import { getFirstName } from '@/utils/validation';
 import type { MutableRefObject } from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import ReanimatedSwipeable, { type SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable';
@@ -97,9 +99,9 @@ export function FriendExpenseActivity({
   const sourceLabel = expense.groupName || (isGroupExpense ? 'Group' : 'Direct expense');
   const groupRelationship = isGroupExpense
     ? expense.paidBy === currentUserId && expense.friendShare > 0
-      ? { amount: expense.friendShare, label: `${friendName.split(' ')[0]} owes you in this group`, color: friendDetailTheme.positive }
+      ? { amount: expense.friendShare, label: `${getFirstName(friendName)} owes you in this group`, color: friendDetailTheme.positive }
       : expense.paidBy !== currentUserId && expense.paidByName === friendName && expense.yourShare > 0
-        ? { amount: expense.yourShare, label: `You owe ${friendName.split(' ')[0]} in this group`, color: friendDetailTheme.danger }
+        ? { amount: expense.yourShare, label: `You owe ${getFirstName(friendName)} in this group`, color: friendDetailTheme.danger }
         : null
     : null;
   const amountColor = isGroupExpense
@@ -152,28 +154,28 @@ export function FriendExpenseActivity({
       containerStyle={{ overflow: 'visible' }}>
       <TouchableOpacity
         accessibilityRole="button"
-        accessibilityLabel={`${expense.description}, ${sourceLabel}, ${formatDate(expense.date)}, ${expense.paidByName} paid $${expense.amount.toFixed(2)}, ${isGroupExpense ? groupRelationship ? `${groupRelationship.label}, $${groupRelationship.amount.toFixed(2)}` : 'no balance impact' : expense.paidBy === currentUserId ? `you are owed $${expense.friendShare.toFixed(2)}` : `you owe $${expense.yourShare.toFixed(2)}`}`}
+        accessibilityLabel={`${expense.description}, ${sourceLabel}, ${formatDate(expense.date)}, ${expense.paidByName} paid ${formatCurrency(expense.amount, expense.currency)}, ${isGroupExpense ? groupRelationship ? `${groupRelationship.label}, ${formatCurrency(groupRelationship.amount, expense.currency)}` : 'no balance impact' : expense.paidBy === currentUserId ? `you are owed ${formatCurrency(expense.friendShare, expense.currency)}` : `you owe ${formatCurrency(expense.yourShare, expense.currency)}`}`}
         accessibilityHint="Opens expense details"
         activeOpacity={0.7}
         onPress={() => onOpenExpense(expense.id)}>
-        <Reanimated.View style={[styles.expenseCard, {
+        <View style={[styles.expenseCard, {
           backgroundColor: colors.card,
-          borderWidth: isDark ? 1 : 0,
+          borderWidth: 0,
           borderColor: colors.border,
-          shadowColor: isDark ? 'transparent' : '#475569',
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: isDark ? 0 : 0.09,
-          shadowRadius: 0,
-          elevation: isDark ? 0 : 4,
+          shadowColor: isDark ? '#64748b' : '#475569',
+          shadowOffset: { width: 0, height: isDark ? 4 : 2 },
+          shadowOpacity: isDark ? 0.15 : 0.09,
+          shadowRadius: isDark ? 4 : 0,
+          elevation: 4,
         }]}>
           <View style={[styles.expenseIcon, {
             backgroundColor: isDark ? categoryStyle.darkBg : categoryStyle.lightBg,
-            borderRadius: 24,
-            width: 48,
-            height: 48,
+            borderRadius: 20,
+            width: 40,
+            height: 40,
           }]}>
             <IconSymbol
-              size={20}
+              size={18}
               name={categoryStyle.icon}
               color={isDark ? categoryStyle.darkColor : categoryStyle.lightColor}
             />
@@ -199,18 +201,18 @@ export function FriendExpenseActivity({
           <View style={styles.amountBlock}>
             <ThemedText type="title" style={[styles.expenseAmount, { color: amountColor }]}>
               {isGroupExpense
-                ? groupRelationship ? `$${groupRelationship.amount.toFixed(2)}` : 'No balance impact'
-                : expense.paidBy === currentUserId ? `+$${expense.friendShare.toFixed(2)}` : `-$${expense.yourShare.toFixed(2)}`}
+                ? groupRelationship ? formatCurrency(groupRelationship.amount, expense.currency) : 'No balance impact'
+                : expense.paidBy === currentUserId ? `+${formatCurrency(expense.friendShare, expense.currency)}` : `-${formatCurrency(expense.yourShare, expense.currency)}`}
             </ThemedText>
             <View style={[styles.badge, { backgroundColor: isGroupExpense ? friendDetailTheme.settledSurface : expense.paidBy === currentUserId ? friendDetailTheme.positiveSurface : friendDetailTheme.dangerSurface }]}>
               <ThemedText style={[styles.badgeText, { color: isGroupExpense ? friendDetailTheme.actionIcon : expense.paidBy === currentUserId ? friendDetailTheme.positive : friendDetailTheme.danger }]}>
                 {isGroupExpense
                   ? groupRelationship?.label ?? 'No balance impact'
-                  : expense.paidBy === currentUserId ? `${friendName.split(' ')[0]} owes` : 'You owe'}
+                  : expense.paidBy === currentUserId ? `${getFirstName(friendName)} owes` : 'You owe'}
               </ThemedText>
             </View>
           </View>
-        </Reanimated.View>
+        </View>
       </TouchableOpacity>
     </ReanimatedSwipeable>
   );

@@ -23,6 +23,7 @@ import {
   isSettleableGroupBalance,
 } from '@/utils/group-settle-selection';
 import { formatCurrencyInput, normalizeCurrencyInput } from '@/utils/validation';
+import { formatCurrency, getCurrencySymbol, getPreferredCurrency } from '@/utils/currency';
 import { useQueryClient } from '@tanstack/react-query';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { memo, useCallback, useEffect, useState } from 'react';
@@ -72,7 +73,7 @@ const SettleMemberRow = memo(function SettleMemberRow({ item, isSelected, onSele
     <TouchableOpacity
       accessible={true}
       accessibilityRole="button"
-      accessibilityLabel={`Select ${item.user?.name || 'member'} to settle $${Math.abs(item.balance).toFixed(2)}`}
+      accessibilityLabel={`Select ${item.user?.name || 'member'} to settle ${formatCurrency(Math.abs(item.balance))}`}
       accessibilityState={{ selected: isSelected }}
       onPress={() => onSelect(item)}
       disabled={!isSettleable}
@@ -110,10 +111,10 @@ const SettleMemberRow = memo(function SettleMemberRow({ item, isSelected, onSele
                         : colors.textSecondary,
                   },
                 ]}>
-                {owesYou
-                  ? `Owes you $${Math.abs(balance).toFixed(2)}`
+                 {owesYou
+                  ? `Owes you ${formatCurrency(Math.abs(balance))}`
                   : youOwe
-                    ? `You owe $${Math.abs(balance).toFixed(2)}`
+                    ? `You owe ${formatCurrency(Math.abs(balance))}`
                     : 'Settled up'}
               </Text>
             )}
@@ -268,7 +269,7 @@ export default function GroupSettleScreen() {
         fromUserId,
         toUserId,
         amount: amountNum,
-        currency: 'USD',
+        currency: getPreferredCurrency(),
         date: Date.now(),
       });
       const groupDetailQueryKey = queryKeys.groups.detail(currentUserId, id);
@@ -296,7 +297,7 @@ export default function GroupSettleScreen() {
         }
       }
 
-      Alert.alert('Success', `Settled $${amountNum.toFixed(2)} with ${selectedMember.user?.name}`);
+      Alert.alert('Success', `Settled ${formatCurrency(amountNum)} with ${selectedMember.user?.name}`);
       router.back();
     } catch (error) {
       console.error('Error settling up:', error);
@@ -361,12 +362,12 @@ export default function GroupSettleScreen() {
             backgroundColor: settle.heroBackground,
             borderColor: settle.heroBorder,
             borderWidth: isDark ? 1 : 0,
-            shadowColor: isDark ? 'transparent' : '#000000',
-            shadowOpacity: isDark ? 0 : 0.12,
-            elevation: isDark ? 0 : 5,
+            shadowColor: '#000000',
+            shadowOpacity: isDark ? 0.32 : 0.12,
+            elevation: 5,
           }]}>
             <View style={styles.amountInputRow}>
-              <Text style={[styles.currencySymbol, { color: settle.accentText }]}>$</Text>
+              <Text style={[styles.currencySymbol, { color: settle.accentText }]}>{getCurrencySymbol()}</Text>
               <TextInput
                 style={[styles.amountInput, { color: settle.accentText }]}
                 value={amount}
@@ -377,8 +378,8 @@ export default function GroupSettleScreen() {
                 keyboardType="decimal-pad"
                 returnKeyType="done"
                 selectTextOnFocus
-                accessibilityLabel="Group settlement amount in US dollars"
-                accessibilityHint={selectedMember ? `Enter up to $${Math.abs(selectedMember.balance).toFixed(2)}` : undefined}
+                accessibilityLabel={`Group settlement amount in ${getCurrencySymbol()}`}
+                accessibilityHint={selectedMember ? `Enter up to ${formatCurrency(Math.abs(selectedMember.balance))}` : undefined}
                 testID="group-settle-amount-input"
                 maxFontSizeMultiplier={1.4}
                 onSubmitEditing={() => Keyboard.dismiss()}
