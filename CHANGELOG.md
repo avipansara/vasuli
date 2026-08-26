@@ -1,3 +1,12 @@
+## 2026-08-26
+
+- Fixed the "Build once and run smoke suite" CI job: the `expo-updates` Xcode
+  build phase runs Metro to generate update resources, and Metro requires
+  `EXPO_ROUTER_APP_ROOT` to be set so it can inline the expo-router context
+  root as a string literal.  The e2e build script now sets
+  `EXPO_ROUTER_APP_ROOT` to the absolute `app/` path before invoking
+  `detox build`.
+
 ## 2026-08-24
 
 - Replaced the unbounded 6-query client-side activity-feed merge in `getUserActivities` with a single `supabase.rpc('get_user_activities')` call backed by a new `SECURITY DEFINER` PostgreSQL function. The function merges `activities` and `settlements` server-side, applies optional `ILIKE` search, and uses `LIMIT`/`OFFSET` for true server-side pagination; added supporting indexes on `activities` and `settlements`. Every infinite-scroll page now requires exactly one network round-trip instead of growing with history size and page count.
