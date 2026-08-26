@@ -405,10 +405,10 @@ export default function ExpenseDetailScreen() {
           {activities.length > 0 && (
             <View style={styles.activitySection}>
               <View style={styles.sectionHeader}>
-                <ThemedText type="subtitle" style={[styles.sectionTitle, { color: isDark ? '#f8fafc' : colors.text }]}>
+                <ThemedText type="subtitle" style={[styles.sectionTitle, { color: colors.text }]}>
                   Activity
                 </ThemedText>
-                <ThemedText style={[styles.sectionMeta, { color: isDark ? '#9ba6b8' : colors.textSecondary }]}>
+                <ThemedText style={[styles.sectionMeta, { color: colors.textSecondary }]}>
                   {activities.length} {activities.length === 1 ? 'update' : 'updates'}
                 </ThemedText>
               </View>
@@ -438,20 +438,20 @@ export default function ExpenseDetailScreen() {
                 const getActivityColor = () => {
                   switch (activity.type) {
                     case 'expense_created':
-                      return isDark ? '#10b981' : colors.accent;
+                      return colors.accent;
                     case 'expense_updated':
-                      return '#F59E0B';
+                      return expenseDetail.warning;
                     case 'expense_deleted':
-                      return '#EF4444';
+                      return colors.error;
                     default:
-                      return isDark ? '#9ba6b8' : colors.textSecondary;
+                      return colors.textSecondary;
                   }
                 };
 
                 return (
                   <View style={[styles.activityCard, cardStyle]} key={activity.id}>
                     <View style={[styles.activityIcon, {
-                      backgroundColor: isDark ? '#162032' : 'rgba(15, 76, 58, 0.1)',
+                      backgroundColor: expenseDetail.avatarSurface,
                     }]}>
                       <IconSymbol
                         name={getActivityIcon()}
@@ -460,23 +460,23 @@ export default function ExpenseDetailScreen() {
                       />
                     </View>
                     <View style={styles.activityContent}>
-                      <ThemedText type="defaultSemiBold" style={[styles.activityDescription, { color: isDark ? '#f8fafc' : colors.text }]}>
+                      <ThemedText type="defaultSemiBold" style={[styles.activityDescription, { color: colors.text }]}>
                         {activity.description}
                       </ThemedText>
                       <View style={styles.activityMeta}>
-                        <ThemedText style={[styles.activityUser, { color: isDark ? '#9ba6b8' : colors.textSecondary }]}>
+                        <ThemedText style={[styles.activityUser, { color: colors.textSecondary }]}>
                           {activity.userName || 'Unknown'}
                         </ThemedText>
-                        <ThemedText style={[styles.activityDot, { color: isDark ? '#9ba6b8' : colors.textSecondary }]}>
+                        <ThemedText style={[styles.activityDot, { color: colors.textSecondary }]}>
                           •
                         </ThemedText>
-                        <ThemedText style={[styles.activityTime, { color: isDark ? '#9ba6b8' : colors.textSecondary }]}>
+                        <ThemedText style={[styles.activityTime, { color: colors.textSecondary }]}>
                           {timeStr}
                         </ThemedText>
                       </View>
                     </View>
                     {activity.amount && (
-                      <ThemedText type="defaultSemiBold" style={[styles.activityAmount, { color: isDark ? '#f8fafc' : colors.text }]}>
+                      <ThemedText type="defaultSemiBold" style={[styles.activityAmount, { color: colors.text }]}>
                         {formatCurrency(activity.amount, expense.currency)}
                       </ThemedText>
                     )}

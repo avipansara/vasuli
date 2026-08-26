@@ -8,21 +8,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const USE_MOCK_DATA = process.env.EXPO_PUBLIC_USE_MOCK_DATA === 'true';
 const MOCK_OTP_CODE = '123456';
 const AUTH_EMAIL_REDIRECT_URL = 'vasuli://auth/callback';
-const APP_REVIEWER_EMAIL = process.env.EXPO_PUBLIC_APP_REVIEWER_EMAIL || '';
-const APP_REVIEWER_OTP = process.env.EXPO_PUBLIC_APP_REVIEWER_OTP || '';
 const APP_REVIEWER_NAME = 'Apple Reviewer';
-
-// Apple App Store test accounts (from environment variables)
-const TEST_ACCOUNT_1_EMAIL = process.env.EXPO_PUBLIC_TEST_ACCOUNT_EMAIL || '';
-const TEST_ACCOUNT_2_EMAIL = process.env.EXPO_PUBLIC_TEST_ACCOUNT_2_EMAIL || '';
-const TEST_ACCOUNT_OTP = process.env.EXPO_PUBLIC_TEST_ACCOUNT_OTP || '';
-
-// Test accounts list for easy iteration
-const TEST_ACCOUNTS = [
-  { email: APP_REVIEWER_EMAIL },
-  { email: TEST_ACCOUNT_1_EMAIL },
-  { email: TEST_ACCOUNT_2_EMAIL },
-];
 
 function getOAuthParams(url: string): URLSearchParams {
   const hashIndex = url.indexOf('#');
@@ -32,24 +18,7 @@ function getOAuthParams(url: string): URLSearchParams {
   return new URLSearchParams(rawParams);
 }
 
-/**
- * Check if the email is a test account
- */
-function isTestAccount(email?: string): boolean {
-  const normalizedInputEmail = normalizeEmail(email);
-  return TEST_ACCOUNTS.some(account => {
-    const normalizedConfiguredEmail = normalizeEmail(account.email);
-    return !!(
-      normalizedConfiguredEmail &&
-      normalizedInputEmail &&
-      normalizedConfiguredEmail === normalizedInputEmail
-    );
-  });
-}
 
-function getTestAccountOTP(email?: string): string {
-  return normalizeEmail(email) === APP_REVIEWER_EMAIL ? APP_REVIEWER_OTP : TEST_ACCOUNT_OTP;
-}
 
 export interface User {
   id: string;
@@ -89,8 +58,15 @@ export async function sendSignUpCode(params: {
     }
 
     // Test accounts are real Supabase Auth password users for strict RLS.
-    if (isTestAccount(email)) {
-      return { success: false, error: 'Test accounts must use sign in.' };
+    try {
+      const { data: checkData } = await supabase.functions.invoke('verify-test-otp', {
+        body: { email, action: 'send' },
+      });
+      if (checkData?.success && checkData?.isTestAccount) {
+        return { success: false, error: 'Test accounts must use sign in.' };
+      }
+    } catch (checkError) {
+      console.warn('Failed to check test account status on server:', checkError);
     }
 
     const { error: authError } = await supabase.auth.signInWithOtp({
@@ -136,10 +112,17 @@ export async function sendSignInCode(params: {
       return { success: true };
     }
 
-    // Test account mode - skip email sending
-    if (isTestAccount(email)) {
-      console.log(`[TEST ACCOUNT] Sign in code for ${email}. Use code: ${TEST_ACCOUNT_OTP}`);
-      return { success: true };
+    // Test account mode - check server-side and skip email sending
+    try {
+      const { data: checkData } = await supabase.functions.invoke('verify-test-otp', {
+        body: { email, action: 'send' },
+      });
+      if (checkData?.success && checkData?.isTestAccount) {
+        console.log(`[TEST ACCOUNT] Sign in requested for test user ${email}. Skip email sending.`);
+        return { success: true };
+      }
+    } catch (checkError) {
+      console.warn('Failed to check test account status on server:', checkError);
     }
 
     const { error: authError } = await supabase.auth.signInWithOtp({
@@ -207,8 +190,15 @@ export async function verifySignUpCode(params: {
     }
 
     // Test accounts are real Supabase Auth password users for strict RLS.
-    if (isTestAccount(email)) {
-      return { success: false, error: 'Test accounts must use sign in.' };
+    try {
+      const { data: checkData } = await supabase.functions.invoke('verify-test-otp', {
+        body: { email, action: 'send' },
+      });
+      if (checkData?.success && checkData?.isTestAccount) {
+        return { success: false, error: 'Test accounts must use sign in.' };
+      }
+    } catch (checkError) {
+      console.warn('Failed to check test account status on server:', checkError);
     }
 
     const { data, error: authError } = await supabase.auth.verifyOtp({
@@ -277,40 +267,51 @@ export async function verifySignInCode(params: {
       return { success: true, user };
     }
 
-    // Test account mode - auto-verify with code
-    if (isTestAccount(email)) {
-      if (code !== getTestAccountOTP(email)) {
-        return { success: false, error: 'Invalid verification code. Use test account credentials.' };
-      }
-
-      const { data, error: authError } = await supabase.auth.signInWithPassword({
-        email,
-        password: code,
+    // Test account mode - call server-side test OTP verification
+    try {
+      const { data: verifyData, error: funcError } = await supabase.functions.invoke('verify-test-otp', {
+        body: { email, code, action: 'verify' },
       });
 
-      if (authError || !data.user) {
-        console.error('[TEST ACCOUNT] Supabase Auth password sign-in failed:', authError);
+      if (!funcError && verifyData?.success && verifyData?.isTestAccount) {
+        const session = verifyData.session;
+        if (!session) {
+          return { success: false, error: 'Test account sign-in failed' };
+        }
+
+        const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
+          access_token: session.access_token,
+          refresh_token: session.refresh_token,
+        });
+
+        if (sessionError || !sessionData.user) {
+          console.error('[TEST ACCOUNT] Failed to set session:', sessionError);
+          return { success: false, error: 'Failed to establish test session' };
+        }
+
+        const profile = await linkAuthUserToProfile({
+          authUserId: sessionData.user.id,
+          email,
+          name: sessionData.user.user_metadata?.name || 'Test Account',
+        });
+
+        try {
+          await ensureAppReviewDemoData(profile);
+        } catch (seedError) {
+          console.error('[TEST ACCOUNT] Failed to seed app review demo data:', seedError);
+        }
+
+        const user = createAppUserFromProfile(profile);
+        console.log('[TEST ACCOUNT] Sign in successful!');
+        return { success: true, user };
+      } else if (verifyData?.isTestAccount && !verifyData?.success) {
         return {
           success: false,
-          error: 'Test account is not configured in Supabase Auth',
+          error: verifyData.error || 'Invalid verification code. Use test account credentials.',
         };
       }
-
-      const profile = await linkAuthUserToProfile({
-        authUserId: data.user.id,
-        email,
-        name: normalizeEmail(email) === APP_REVIEWER_EMAIL ? APP_REVIEWER_NAME : 'Test Account',
-      });
-
-      try {
-        await ensureAppReviewDemoData(profile);
-      } catch (seedError) {
-        console.error('[TEST ACCOUNT] Failed to seed app review demo data:', seedError);
-      }
-
-      const user = createAppUserFromProfile(profile);
-      console.log('[TEST ACCOUNT] Sign in successful!');
-      return { success: true, user };
+    } catch (verifyError) {
+      console.warn('Server-side test OTP verification failed, falling back to standard OTP:', verifyError);
     }
 
     const { data, error: authError } = await supabase.auth.verifyOtp({

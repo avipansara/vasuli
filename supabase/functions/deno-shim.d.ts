@@ -21,6 +21,16 @@ declare module "https://esm.sh/@supabase/supabase-js@2" {
       data: { user: { id: string; email?: string | null } | null };
       error: Error | null;
     }>;
+    signInWithPassword(credentials: {
+      email?: string;
+      password?: string;
+    }): Promise<{
+      data: {
+        user: { id: string; email?: string | null; user_metadata?: Record<string, any> } | null;
+        session: { access_token: string; refresh_token: string; user: any } | null;
+      };
+      error: Error | null;
+    }>;
     admin: {
       deleteUser(id: string): Promise<{ error: Error | null }>;
     };

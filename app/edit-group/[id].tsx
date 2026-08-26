@@ -1,7 +1,7 @@
 import { ThemedText } from '@/components/themed-text';
 import { AsyncErrorState } from '@/components/ui/async-error-state';
 import { KeyboardAwareScroll } from '@/components/ui/keyboard-aware-scroll';
-import { NavigationHeader } from '@/components/ui/screen-header';
+import { NavigationHeader, HeaderActionButton } from '@/components/ui/screen-header';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ThemedInput } from '@/components/ui/themed-input';
 import { useAuth } from '@/contexts/auth-context-otp';
@@ -14,13 +14,11 @@ import { useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState, useRef } from 'react';
 import {
-  ActivityIndicator,
   Alert,
   Animated,
   Keyboard,
   Platform,
   StyleSheet,
-  TouchableOpacity,
   View
 } from 'react-native';
 
@@ -154,24 +152,13 @@ export default function EditGroupScreen() {
         title="Edit Group"
         onBack={() => router.back()}
         rightAction={
-          <TouchableOpacity
+          <HeaderActionButton
+            label="Save"
             onPress={handleSubmit}
-            disabled={!isValid || loading}
+            disabled={!isValid}
+            loading={loading}
             testID="edit-group-save-button"
-            style={[
-              styles.headerButton,
-              {
-                backgroundColor: isValid && !loading ? (isDark ? '#2DD4BF' : '#22C55E') : (isDark ? '#374151' : '#E5E7EB'),
-              },
-            ]}>
-            {loading ? (
-              <ActivityIndicator size="small" color="#ffffff" />
-            ) : (
-              <ThemedText style={[styles.headerButtonText, { color: isValid ? '#ffffff' : (isDark ? '#9CA3AF' : '#6B7280') }]}>
-                Save
-              </ThemedText>
-            )}
-          </TouchableOpacity>
+          />
         }
       />
 
@@ -242,18 +229,6 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 18,
-    fontWeight: '600',
-  },
-  headerButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 12,
-    minWidth: 60,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerButtonText: {
-    fontSize: 15,
     fontWeight: '600',
   },
   loadingContainer: {

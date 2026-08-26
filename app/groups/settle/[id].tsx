@@ -63,7 +63,7 @@ function areSettleMemberRowEqual(prev: SettleMemberRowProps, next: SettleMemberR
 }
 
 const SettleMemberRow = memo(function SettleMemberRow({ item, isSelected, onSelect }: SettleMemberRowProps) {
-  const { colors, settle, isDark } = useThemeColors();
+  const { colors, settle } = useThemeColors();
   const balance = item.balance;
   const owesYou = balance < 0;
   const youOwe = balance > 0;
@@ -125,7 +125,7 @@ const SettleMemberRow = memo(function SettleMemberRow({ item, isSelected, onSele
             <IconSymbol size={14} name="checkmark" color="#ffffff" />
           </View>
         ) : (
-          <View style={[styles.radioCircle, { borderColor: isDark ? 'rgba(255,255,255,0.3)' : '#707974' }]} />
+          <View style={[styles.radioCircle, { borderColor: settle.unselectedBorder }]} />
         )}
       </View>
     </TouchableOpacity>
@@ -354,7 +354,7 @@ export default function GroupSettleScreen() {
 
         <View style={styles.stickySummary}>
           <View style={styles.groupInfo}>
-            <ThemedText style={[styles.groupName, { color: isDark ? '#dae2fd' : colors.text }]}>
+            <ThemedText style={[styles.groupName, { color: settle.textPrimary }]}>
               {group?.name}
             </ThemedText>
           </View>
@@ -393,7 +393,7 @@ export default function GroupSettleScreen() {
           <View style={styles.content}>
             {/* Members List */}
             <View style={styles.membersSection}>
-              <ThemedText style={[styles.sectionLabel, { color: isDark ? '#bbcabf' : colors.textSecondary }]}>
+              <ThemedText style={[styles.sectionLabel, { color: settle.textSecondary }]}>
                 Choose someone to settle with
               </ThemedText>
               <FlatList
@@ -408,9 +408,9 @@ export default function GroupSettleScreen() {
                     <IconSymbol
                       size={48}
                       name="person.2.slash"
-                      color={isDark ? '#bbcabf' : colors.textSecondary}
+                      color={settle.textSecondary}
                     />
-                    <ThemedText style={[styles.emptyText, { color: isDark ? '#bbcabf' : colors.textSecondary }]}>
+                    <ThemedText style={[styles.emptyText, { color: settle.textSecondary }]}>
                       No other members in this group
                     </ThemedText>
                   </View>
@@ -435,13 +435,13 @@ export default function GroupSettleScreen() {
               },
             ]}>
             {settling ? (
-              <ActivityIndicator size="small" color={isDark ? '#003824' : '#ffffff'} />
+              <ActivityIndicator size="small" color={settle.buttonText} />
             ) : (
               <Text
                 style={[
                   styles.settleButtonText,
                   {
-                    color: canSubmitSettlement ? (isDark ? '#003824' : '#ffffff') : (isDark ? '#bbcabf' : colors.textSecondary),
+                    color: canSubmitSettlement ? settle.buttonText : settle.textSecondary,
                   },
                 ]}>
                 Record Settlement

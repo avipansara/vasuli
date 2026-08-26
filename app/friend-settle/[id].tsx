@@ -2,6 +2,7 @@ import { ThemedText } from '@/components/themed-text';
 import { AsyncErrorState } from '@/components/ui/async-error-state';
 import { KeyboardAwareScroll } from '@/components/ui/keyboard-aware-scroll';
 import { NavigationHeader } from '@/components/ui/screen-header';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
@@ -220,9 +221,9 @@ export default function FriendSettleScreen() {
         <Stack.Screen options={{ headerShown: false }} />
         <NavigationHeader title="SETTLE UP" onBack={() => router.back()} />
         <View style={styles.skeletonContainer}>
-          <View style={{ height: 60, borderRadius: 24, backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F3F4F6', marginBottom: 16 }} />
-          <View style={{ height: 120, borderRadius: 24, backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F3F4F6', marginBottom: 16 }} />
-          <View style={{ height: 48, borderRadius: 12, backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F3F4F6', marginBottom: 16 }} />
+          <Skeleton height={60} borderRadius={24} style={{ marginBottom: 16 }} />
+          <Skeleton height={120} borderRadius={24} style={{ marginBottom: 16 }} />
+          <Skeleton height={48} borderRadius={12} style={{ marginBottom: 16 }} />
         </View>
       </View>
     );
@@ -294,17 +295,17 @@ export default function FriendSettleScreen() {
                 </Text>
               </View>
               <View style={styles.profileTextContainer}>
-                <ThemedText style={[styles.profileName, { color: isDark ? '#dae2fd' : colors.text }]}>
+                <ThemedText style={[styles.profileName, { color: settle.textPrimary }]}>
                   {friend.name}
                 </ThemedText>
-                <ThemedText style={[styles.profileEmail, { color: isDark ? '#bbcabf' : colors.textSecondary }]}>
+                <ThemedText style={[styles.profileEmail, { color: settle.textSecondary }]}>
                   {friend.email || `${friend.name.toLowerCase().replace(/\s+/g, '.')}@vasuli.app`}
                 </ThemedText>
               </View>
             </View>
             <View style={[styles.divider, { backgroundColor: settle.cardBorder }]} />
             <View style={styles.balanceRow}>
-              <ThemedText style={[styles.balanceLabelText, { color: isDark ? '#bbcabf' : colors.textSecondary }]}>
+              <ThemedText style={[styles.balanceLabelText, { color: settle.textSecondary }]}>
                 Combined relationship summary
               </ThemedText>
               <ThemedText style={[styles.balanceValueText, { color: settle.accentText }]}>
@@ -315,7 +316,7 @@ export default function FriendSettleScreen() {
 
           {/* Amount to Settle Display */}
           <View style={styles.formContainer}>
-            <ThemedText style={[styles.inputLabel, { color: isDark ? '#bbcabf' : colors.textSecondary }]}>
+            <ThemedText style={[styles.inputLabel, { color: settle.textSecondary }]}>
               AMOUNT TO SETTLE
             </ThemedText>
             <View style={[styles.inputWrapper, {
@@ -347,28 +348,28 @@ export default function FriendSettleScreen() {
                 disabled={!settleableTotal}
                 accessibilityState={{ disabled: !settleableTotal }}
                 style={[styles.quickSelectButton, { backgroundColor: settle.pillBackground, opacity: settleableTotal ? 1 : 0.45 }]}>
-                <Text style={[styles.quickSelectText, { color: isDark ? '#dae2fd' : colors.text }]}>50%</Text>
+                <Text style={[styles.quickSelectText, { color: settle.textPrimary }]}>50%</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => handleQuickPercent(1.0)}
                 disabled={!settleableTotal}
                 accessibilityState={{ disabled: !settleableTotal }}
                 style={[styles.quickSelectButton, { backgroundColor: settle.pillBackground, opacity: settleableTotal ? 1 : 0.45 }]}>
-                <Text style={[styles.quickSelectText, { color: isDark ? '#dae2fd' : colors.text }]}>Full Balance</Text>
+                <Text style={[styles.quickSelectText, { color: settle.textPrimary }]}>Full Balance</Text>
               </TouchableOpacity>
             </View>
           </View>
 
           {/* Confirmation Text */}
           <ThemedText
-            style={[styles.helperText, { color: isDark ? '#bbcabf' : colors.textSecondary }]}
+            style={[styles.helperText, { color: settle.textSecondary }]}
           >
             {isZeroNet
               ? 'This moves outstanding group scopes into the friendship balance and records the relationship as cleared. '
               : settleableTotal
               ? `This records that ${isOwed ? `${friend.name} paid you ` : `you paid ${friend.name} `}`
               : 'Choose one currency with an outstanding balance before settling.'}
-            <Text style={[styles.helperBoldAmount, { color: isDark ? '#dae2fd' : colors.text }]}>
+            <Text style={[styles.helperBoldAmount, { color: settle.textPrimary }]}>
               {formatCurrency(amountNum, settleableTotal?.currency ?? zeroNetCurrency)}
             </Text>
             {isZeroNet ? '' : ' to settle up.'}
@@ -406,7 +407,7 @@ export default function FriendSettleScreen() {
           <TouchableOpacity
             onPress={() => router.back()}
             style={styles.cancelButton}>
-            <Text style={[styles.cancelButtonText, { color: isDark ? '#bbcabf' : colors.textSecondary }]}>
+            <Text style={[styles.cancelButtonText, { color: settle.textSecondary }]}>
               Cancel
             </Text>
           </TouchableOpacity>
@@ -421,9 +422,9 @@ export default function FriendSettleScreen() {
               (!isValidAmount || settling) && styles.submitButtonDisabled
             ]}>
             {settling ? (
-              <ActivityIndicator size="small" color={isDark ? '#003824' : '#ffffff'} />
+              <ActivityIndicator size="small" color={settle.buttonText} />
             ) : (
-              <Text style={[styles.submitButtonText, { color: isDark ? '#003824' : '#ffffff' }]}>{isZeroNet ? 'Clear Balances' : 'Record Payment'}</Text>
+              <Text style={[styles.submitButtonText, { color: settle.buttonText }]}>{isZeroNet ? 'Clear Balances' : 'Record Payment'}</Text>
             )}
           </TouchableOpacity>
         </View>
