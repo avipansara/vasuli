@@ -97,6 +97,11 @@ jobs:
           node -e 'const [startedAt, finishedAt, status] = process.argv.slice(1); process.stdout.write(JSON.stringify({ startedAt, finishedAt, durationMs: Number(finishedAt) - Number(startedAt), status: Number(status) }, null, 2) + "\n");' "$build_start" "$build_end" "$build_status" > ci-artifacts/build-timing.json
           exit "$build_status"
 
+      - name: Install Detox simulator utilities
+        run: |
+          brew tap wix/brew
+          brew install applesimutils
+
       - name: Run the full serial suite without rebuilding
         shell: bash
         run: |
