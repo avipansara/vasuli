@@ -52,7 +52,6 @@ jobs:
       E2E_MEASUREMENT_SCOPE: ci-smoke
       E2E_RUN_ID: ci-smoke-${{ github.run_id }}-${{ github.run_attempt }}
       E2E_WORKER_ID: ci-worker-0
-      NODE_ENV: test
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
