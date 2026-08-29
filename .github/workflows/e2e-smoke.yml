@@ -123,6 +123,7 @@ jobs:
       - name: Install Detox simulator utilities
         run: |
           brew tap wix/brew
+          brew trust wix/brew
           brew install applesimutils
 
       - name: Run the smoke suite without rebuilding
