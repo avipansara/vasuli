@@ -20,12 +20,12 @@ module.exports = {
     'ios.debug': {
       type: 'ios.app',
       binaryPath: 'ios/build/Build/Products/Debug-iphonesimulator/Vasuli.app',
-      build: 'xcodebuild -workspace ios/Vasuli.xcworkspace -scheme Vasuli -configuration Debug -sdk iphonesimulator -derivedDataPath ios/build'
+      build: 'xcodebuild -workspace ios/Vasuli.xcworkspace -scheme Vasuli -configuration Debug -sdk iphonesimulator -derivedDataPath ios/build EXPO_ROUTER_APP_ROOT="$(pwd)/app"'
     },
     'ios.release': {
       type: 'ios.app',
       binaryPath: 'ios/build/Build/Products/Release-iphonesimulator/Vasuli.app',
-      build: 'xcodebuild -workspace ios/Vasuli.xcworkspace -scheme Vasuli -configuration Release -sdk iphonesimulator -derivedDataPath ios/build'
+      build: 'xcodebuild -workspace ios/Vasuli.xcworkspace -scheme Vasuli -configuration Release -sdk iphonesimulator -derivedDataPath ios/build EXPO_ROUTER_APP_ROOT="$(pwd)/app"'
     },
     'android.debug': {
       type: 'android.apk',

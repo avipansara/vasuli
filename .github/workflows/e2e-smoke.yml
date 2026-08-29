@@ -75,12 +75,6 @@ jobs:
       - name: Select the runner Node binary
         run: echo "NODE_BINARY=$(command -v node)" >> "$GITHUB_ENV"
 
-      - name: Set Expo Router app root
-        shell: bash
-        run: |
-          echo "EXPO_ROUTER_APP_ROOT=$GITHUB_WORKSPACE/app" >> "$GITHUB_ENV"
-          echo "export EXPO_ROUTER_APP_ROOT=\"$GITHUB_WORKSPACE/app\"" >> ios/.xcode.env.local
-
       - name: Record Xcode identity
         id: xcode
         shell: bash
