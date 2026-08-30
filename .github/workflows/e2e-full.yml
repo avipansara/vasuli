@@ -1,0 +1,137 @@
+name: iOS E2E full suite
+
+on:
+  schedule:
+    - cron: '0 6 * * 1-5'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# The full serial suite is deliberately separate from PR CI and release/EAS
+# workflows. It uses the shared development account, so it waits behind any
+# smoke run instead of racing another simulator against the same data.
+concurrency:
+  group: vasuli-ios-e2e-development
+  cancel-in-progress: false
+
+jobs:
+  full:
+    name: Build once and run full suite
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
+    runs-on: macos-26
+    timeout-minutes: 60
+    env:
+      EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}
+      EXPO_PUBLIC_SUPABASE_KEY: ${{ secrets.E2E_SUPABASE_ANON_KEY }}
+      EXPO_PUBLIC_TEST_ACCOUNT_EMAIL: ${{ secrets.E2E_TEST_ACCOUNT_EMAIL }}
+      EXPO_PUBLIC_TEST_ACCOUNT_OTP: ${{ secrets.E2E_TEST_ACCOUNT_OTP }}
+      E2E_MEASUREMENT_SCOPE: ci-full
+      E2E_RUN_ID: ci-full-${{ github.run_id }}-${{ github.run_attempt }}
+      E2E_WORKER_ID: ci-worker-0
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Prepare CI artifact directory
+        run: mkdir -p ci-artifacts
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install JavaScript dependencies
+        run: npm ci
+
+      - name: Generate the iOS native project
+        run: npx expo prebuild --platform ios --no-install
+
+      - name: Select the runner Node binary
+        run: echo "NODE_BINARY=$(command -v node)" >> "$GITHUB_ENV"
+
+      - name: Record Xcode identity
+        id: xcode
+        shell: bash
+        run: |
+          xcodebuild -version | tee ci-artifacts/xcode-version.txt
+          identity=$(xcodebuild -version | shasum -a 256 | cut -d ' ' -f 1)
+          echo "identity=$identity" >> "$GITHUB_OUTPUT"
+
+      - name: Cache CocoaPods inputs
+        uses: actions/cache@v4
+        with:
+          path: |
+            ios/Pods
+            ios/Podfile.lock
+            ~/Library/Caches/CocoaPods
+          key: ${{ runner.os }}-${{ runner.arch }}-xcode-${{ steps.xcode.outputs.identity }}-cocoapods-${{ hashFiles('package.json', 'package-lock.json', 'app.json', 'app.config.ts', 'babel.config.js', 'metro.config.js', '.detoxrc.js', 'ios/**') }}
+
+      - name: Install native dependencies
+        shell: bash
+        run: |
+          if [[ -f ios/Podfile.lock ]]; then
+            pod install --project-directory=ios --deployment
+          else
+            pod install --project-directory=ios
+          fi
+
+      - name: Verify iPhone 17 Pro simulator
+        run: |
+          xcrun simctl list devices available | tee artifacts-simulators.txt
+          if ! grep -Fq 'iPhone 17 Pro' artifacts-simulators.txt; then
+            echo 'The pinned runner does not provide the simulator configured in .detoxrc.js.' >&2
+            exit 1
+          fi
+
+      - name: Build the release app once
+        shell: bash
+        run: |
+          build_start=$(node -e 'process.stdout.write(String(Date.now()))')
+          set +e
+          npm run e2e:build:ios 2>&1 | tee ci-artifacts/e2e-build.log
+          build_status=${PIPESTATUS[0]}
+          set -e
+          build_end=$(node -e 'process.stdout.write(String(Date.now()))')
+          node -e 'const [startedAt, finishedAt, status] = process.argv.slice(1); process.stdout.write(JSON.stringify({ startedAt, finishedAt, durationMs: Number(finishedAt) - Number(startedAt), status: Number(status) }, null, 2) + "\n");' "$build_start" "$build_end" "$build_status" > ci-artifacts/build-timing.json
+          exit "$build_status"
+
+      - name: Install Detox simulator utilities
+        run: |
+          brew tap wix/brew
+          brew trust wix/brew
+          brew install applesimutils
+
+      - name: Boot and pin the Detox simulator
+        run: node scripts/e2e-prepare-ios-simulator.cjs
+
+      - name: Run the full serial suite without rebuilding
+        shell: bash
+        run: |
+          mkdir -p ci-artifacts
+          set -o pipefail
+          npm run e2e:ios 2>&1 | tee ci-artifacts/e2e-full.log
+
+      - name: Collect full timing JSON for upload
+        if: always()
+        shell: bash
+        run: |
+          timing_dir=.scratch/detox-e2e-performance/measurements/ci-full
+          mkdir -p ci-artifacts/timing
+          if [[ -d "$timing_dir" ]]; then
+            find "$timing_dir" -type f -name '*.json' -exec cp {} ci-artifacts/timing/ \;
+          fi
+
+      - name: Upload full timing, logs, and Detox artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: detox-full-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ci-artifacts/**
+            artifacts/**
+            ios/build/Logs/**
+            artifacts-simulators.txt
+          if-no-files-found: warn
+          retention-days: 30

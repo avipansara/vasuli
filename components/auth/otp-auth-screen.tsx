@@ -289,31 +289,18 @@ export function OTPAuthScreen({ variant }: { variant: OTPAuthVariant }) {
     }
   }
 
-  const themedText = { color: isDark ? '#ffffff' : colors.text };
-  const mutedText = {
-    color: isDark ? 'rgba(255,255,255,0.65)' : colors.textSecondary,
-  };
-  const baseAccent = isDark ? '#2DD4BF' : '#0F4C3A';
-  const otpAccent = isDark ? '#2DD4BF' : isSignUp ? '#22C55E' : baseAccent;
-  const contactInputBackground = isDark ? 'rgba(15, 31, 34, 0.6)' : '#ffffff';
-  const otpInputBackground = isDark
-    ? isSignUp
-      ? '#1E293B'
-      : 'rgba(15, 31, 34, 0.6)'
-    : isSignUp
-      ? '#F8FAFC'
-      : '#ffffff';
-  const emptyOtpBorder =
-    isDark && isSignUp
-      ? '#374151'
-      : isDark
-        ? 'rgba(45, 212, 191, 0.2)'
-        : '#E2E8F0';
+  const themedText = { color: colors.text };
+  const mutedText = { color: colors.textSecondary };
+  const baseAccent = colors.accent;
+  const otpAccent = colors.tint;
+  const contactInputBackground = colors.inputBackground;
+  const otpInputBackground = isDark ? 'rgba(255, 255, 255, 0.04)' : '#ffffff';
+  const emptyOtpBorder = colors.border;
   const renderIcon = (name: IconName) =>
     isSignUp && name === 'lock.fill' ? (
       <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
         <LinearGradient
-          colors={isDark ? ['#2DD4BF', '#14B8A6'] : ['#22C55E', '#10B981']}
+          colors={isDark ? ['#10b981', '#059669'] : ['#22C55E', '#10B981']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.iconGradient}
@@ -325,13 +312,13 @@ export function OTPAuthScreen({ variant }: { variant: OTPAuthVariant }) {
       <View
         style={[
           styles.iconBox,
-          { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : '#0F4C3A' },
+          { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.12)' : colors.accent },
         ]}
       >
         <IconSymbol
           name={name}
           size={30}
-          color={isDark ? '#2DD4BF' : '#ffffff'}
+          color={isDark ? colors.tint : '#ffffff'}
         />
       </View>
     );
@@ -347,7 +334,7 @@ export function OTPAuthScreen({ variant }: { variant: OTPAuthVariant }) {
       <Text
         style={[
           styles.inputLabel,
-          { color: isDark ? 'rgba(255,255,255,0.85)' : '#334155' },
+          { color: colors.textSecondary },
         ]}
       >
         {label}
@@ -357,21 +344,22 @@ export function OTPAuthScreen({ variant }: { variant: OTPAuthVariant }) {
           styles.inputContainer,
           {
             backgroundColor: contactInputBackground,
-            borderColor: isDark ? 'rgba(45, 212, 191, 0.25)' : '#E2E8F0',
+            borderColor: colors.inputBorder,
           },
         ]}
       >
         <IconSymbol
           name={icon}
           size={18}
-          color={isDark ? '#2DD4BF' : '#0F4C3A'}
+          color={colors.tint}
         />
         <TextInput
           style={[styles.input, themedText]}
           placeholder={placeholder}
-          placeholderTextColor={isDark ? '#64748B' : '#94A3B8'}
+          placeholderTextColor={isDark ? '#64748b' : '#9ca3af'}
           value={value}
           onChangeText={onChangeText}
+          testID={keyboardType ? 'sign-in-email-input' : 'auth-name-input'}
           keyboardType={keyboardType}
           autoCapitalize={keyboardType ? 'none' : 'words'}
           autoCorrect={false}
@@ -396,7 +384,7 @@ export function OTPAuthScreen({ variant }: { variant: OTPAuthVariant }) {
       style={({ pressed }) => [
         styles.primaryButton,
         isSignUp && styles.signUpPrimaryButton,
-        { backgroundColor: isDark ? '#0D9488' : '#0F4C3A' },
+        { backgroundColor: colors.accent },
         pressed && styles.buttonPressed,
         disabled && styles.buttonDisabled,
       ]}
@@ -440,19 +428,20 @@ export function OTPAuthScreen({ variant }: { variant: OTPAuthVariant }) {
         handleSendCode,
         loading || !isContactValid,
         'arrow.right',
+        isSignUp ? 'send-sign-up-code-button' : 'send-sign-in-code-button',
       )}
       <View style={styles.oauthDivider}>
         <View
           style={[
             styles.oauthDividerLine,
-            { backgroundColor: isDark ? 'rgba(255,255,255,0.15)' : '#E2E8F0' },
+            { backgroundColor: colors.border },
           ]}
         />
         <Text style={[styles.oauthDividerText, mutedText]}>or</Text>
         <View
           style={[
             styles.oauthDividerLine,
-            { backgroundColor: isDark ? 'rgba(255,255,255,0.15)' : '#E2E8F0' },
+            { backgroundColor: colors.border },
           ]}
         />
       </View>
@@ -463,8 +452,8 @@ export function OTPAuthScreen({ variant }: { variant: OTPAuthVariant }) {
         style={({ pressed }) => [
           styles.googleButton,
           {
-            borderColor: isDark ? 'rgba(255,255,255,0.2)' : '#E2E8F0',
-            backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#ffffff',
+            borderColor: colors.border,
+            backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : '#ffffff',
           },
           pressed && styles.buttonPressed,
           loading && styles.buttonDisabled,
@@ -497,15 +486,11 @@ export function OTPAuthScreen({ variant }: { variant: OTPAuthVariant }) {
           styles.backButton,
           {
             backgroundColor: isDark
-              ? 'rgba(45, 212, 191, 0.15)'
-              : isSignUp
-                ? 'rgba(34, 197, 94, 0.1)'
-                : 'rgba(15, 76, 58, 0.08)',
+              ? 'rgba(16, 185, 129, 0.12)'
+              : 'rgba(0, 94, 68, 0.08)',
             borderColor: isDark
-              ? 'rgba(45, 212, 191, 0.4)'
-              : isSignUp
-                ? 'rgba(34, 197, 94, 0.3)'
-                : 'rgba(15, 76, 58, 0.2)',
+              ? 'rgba(16, 185, 129, 0.3)'
+              : 'rgba(0, 94, 68, 0.2)',
           },
         ]}
       >
@@ -548,6 +533,7 @@ export function OTPAuthScreen({ variant }: { variant: OTPAuthVariant }) {
                   onKeyPress={({ nativeEvent }) =>
                     handleOtpKeyPress(index, nativeEvent.key)
                   }
+                  testID={`sign-in-otp-${index}`}
                   keyboardType="number-pad"
                   maxLength={index === 0 ? 6 : 1}
                   selectTextOnFocus

@@ -162,16 +162,16 @@ export default function FriendsScreen() {
 
   // Accordion state for settled friends
   const [settledExpanded, setSettledExpanded] = useState(false);
-  const { isDark } = useThemeColors();
-  const balanceColor = isDark
-    ? (netBalance > 0 ? '#10b981' : netBalance < 0 ? '#ffb4ab' : '#10b981')
-    : (netBalance > 0 ? colors.success : netBalance < 0 ? colors.error : colors.tint);
+  const balanceColor = netBalance > 0 ? colors.success : netBalance < 0 ? colors.error : colors.tint;
 
   return (
-    <View style={[styles.container, { backgroundColor: isDark ? '#05080e' : colors.background }]}>
+    <View
+      testID="friends-screen"
+      style={[styles.container, { backgroundColor: colors.background }]}
+    >
       <View style={styles.header}>
         <View style={{ flexDirection: 'column', gap: 6 }}>
-          <ThemedText style={[styles.headerLabel, { color: isDark ? '#9ba6b8' : colors.textSecondary }]}>{balanceLabel}</ThemedText>
+          <ThemedText style={[styles.headerLabel, { color: colors.textSecondary }]}>{balanceLabel}</ThemedText>
           <ThemedText type="header" style={{ color: balanceColor }}>{formatCurrency(Math.abs(netBalance))}</ThemedText>
         </View>
         <View style={styles.headerButtons}>

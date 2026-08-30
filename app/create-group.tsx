@@ -123,6 +123,7 @@ export default function CreateGroupScreen() {
             onPress={handleSubmit}
             disabled={!isValid}
             loading={loading}
+            testID="create-group-submit-button"
           />
         }
       />
@@ -140,6 +141,7 @@ export default function CreateGroupScreen() {
               icon="pencil"
               value={groupName}
               onChangeText={setGroupName}
+              testID="create-group-name-input"
               placeholder="e.g. Summer Trip 2024"
               returnKeyType="next"
               onSubmitEditing={() => descriptionInputRef.current?.focus()}

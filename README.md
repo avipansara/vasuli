@@ -96,9 +96,210 @@ npm test
 npm run test:watch
 ```
 
-**Optional later:** component tests with [Expo unit testing](https://docs.expo.dev/develop/unit-testing/) (jest-expo / React Native Testing Library) and E2E smoke (e.g. Maestro) for full user flows — not wired in this repo yet.
+**Optional later:** component tests with [Expo unit testing](https://docs.expo.dev/develop/unit-testing/) (jest-expo / React Native Testing Library) for focused UI coverage. Full user-flow E2E coverage is provided by the Detox setup described above.
+
+### iOS E2E testing with Detox
+
+Detox runs the native user-flow tests on the configured **iPhone 17 Pro** iOS
+simulator. The current scenarios cover sign-in, Friends, Groups, creating a
+group, adding an expense, settlement flows (group and friend level), the
+expense edit/delete lifecycle via Expense Detail, group rename and deletion,
+and the Activity feed with balance verification.
+
+The retained behavior mapping for the serial suite is in
+[`docs/e2e-coverage-map.md`](./docs/e2e-coverage-map.md). The default full
+suite runs the focused journeys once; the smoke journey remains a separate
+development command.
+
+#### Prerequisites
+
+- macOS with Xcode and an available iOS simulator matching the configured
+  device. Check available devices with `xcrun simctl list devices available`.
+- Node dependencies installed with `npm install`.
+- The iOS native project generated and its Pods installed. If needed, run
+  `npx expo prebuild --clean` and `npx pod-install` before building.
+- A development Supabase project. E2E cleanup refuses to run against a
+  non-development Supabase host.
+
+#### Configure local E2E credentials
+
+Create or update `.env.development.local` in the repository root. This file is
+ignored by Git and must not be committed:
+
+```dotenv
+EXPO_PUBLIC_SUPABASE_URL=https://your-development-project.supabase.co
+EXPO_PUBLIC_SUPABASE_KEY=your-development-anon-key
+EXPO_PUBLIC_TEST_ACCOUNT_EMAIL=your-development-e2e-account@example.test
+EXPO_PUBLIC_TEST_ACCOUNT_OTP=your-development-e2e-password-or-otp
+```
+
+The E2E account must already exist as a Supabase Auth password user and have a
+matching row in `public.users`. Do not use production credentials or a
+`service_role` key.
+
+#### Prepare the development database
+
+Before the settlement scenarios, open
+[`supabase/fixtures/e2e-development-friend.sql`](./supabase/fixtures/e2e-development-friend.sql),
+replace its two placeholders with the development reviewer and E2E-friend
+emails, and run the resulting SQL in the **development** Supabase SQL Editor.
+Keep the populated SQL out of Git. The fixture creates an accepted friendship
+and is safe to rerun.
+
+Run
+[`supabase/fixtures/e2e-run-scoped-fixtures.sql`](./supabase/fixtures/e2e-run-scoped-fixtures.sql)
+before
+[`supabase/fixtures/e2e-purge-groups.sql`](./supabase/fixtures/e2e-purge-groups.sql)
+in the **development** SQL Editor. The second file installs a guarded
+`purge_e2e_groups` function that reuses the development setting and allowlisted
+E2E actor from the first file. It deletes only prefixed Groups where that actor
+is a member. Reapplying it removes the retired broad history-cleanup RPC from
+older development installs. The fixtures contain no secrets and are safe to
+rerun.
+
+For seeded, run-scoped journeys, after installing the run-scoped fixture above,
+replace the email placeholder in
+[`supabase/fixtures/e2e-run-scoped-fixtures.setup.sql`](./supabase/fixtures/e2e-run-scoped-fixtures.setup.sql)
+and run that setup file. It enables the development-only authenticated
+boundary and allowlists the E2E account. The `seed_e2e_outstanding_group` and
+`purge_e2e_fixture_run` RPCs accept the runner's run ID, worker ID, and test
+key, and never use a service-role key. An unconfigured project or account is
+rejected.
+
+#### Build and run
+
+From the repository root:
+
+```bash
+npm run e2e:build:ios
+npm run e2e:ios
+```
+
+For a fast development check, reuse the installed release binary and run the
+single deterministic authentication, Group, and Expense lifecycle journey:
+
+```bash
+npm run e2e:ios:smoke
+```
+
+The smoke journey validates the authenticated Friends route before navigating
+to Groups, then creates, renames, and deletes one Group and creates, edits, and
+deletes one Expense. It uses the same cleanup and timing output as the full
+suite. The installed release binary is reused; run `npm run e2e:build:ios`
+separately when the native app needs rebuilding.
+
+`e2e:build:ios` builds the Detox release app. `e2e:ios` removes only groups
+whose names begin with `Detox Group ` before and after the run, then executes
+the tests serially. The scripts load Supabase and test-account values from
+`.env.development.local`. Test execution does not build the app; reuse the
+existing release binary. Build once with `npm run e2e:build:ios`, then run the
+smoke, full, or focused commands as many times as needed. The Xcode build is
+measured separately and is excluded from the 40% wrapper-runtime gate. Run a
+focused file or named test without rebuilding by forwarding Detox arguments to
+the runner:
+
+```bash
+npm run e2e:ios -- e2e/auth.test.js
+npm run e2e:ios -- e2e/auth.test.js -t "signs in"
+```
+
+The runner prints cleanup, Detox/Jest, per-test, and total wrapper durations
+and writes a JSON timing artifact under the selected measurement scope in
+`.scratch/detox-e2e-performance/measurements/`. The full-suite default scope is
+`ticket-01`; the smoke command uses `ticket-02`.
+
+To preview cleanup without deleting anything:
+
+```bash
+npm run e2e:cleanup
+```
+
+To apply cleanup manually, use the explicit confirmation guard:
+
+```bash
+E2E_CLEANUP_CONFIRM=delete npm run e2e:cleanup -- --apply
+```
+
+Runner cleanup is run-scoped when `E2E_FIXTURE_MODE=1` and `E2E_RUN_ID` are
+present. To remove one interrupted run after it is at least one hour old,
+select it explicitly:
+
+```bash
+E2E_RUN_ID=stale-cleanup \
+E2E_FIXTURE_MODE=1 \
+E2E_STALE_RUN_ID=run-20260823-1234 \
+E2E_STALE_BEFORE=2026-08-23T10:00:00Z \
+E2E_CLEANUP_CONFIRM=delete npm run e2e:cleanup -- --apply
+```
+
+Never run the fixture or cleanup against production. If the simulator is not
+available, inspect the device name in `.detoxrc.js` and update the local Detox
+configuration only; do not commit account credentials.
 
 ## Workflows
+
+### GitHub Actions iOS E2E
+
+The repository keeps Detox verification in two GitHub Actions workflows. They
+are separate from the EAS build and release workflows below.
+
+- [`e2e-smoke.yml`](./.github/workflows/e2e-smoke.yml) runs on pull requests
+  that touch the app, native iOS project, E2E code, runner scripts, or their
+  lock/configuration inputs. This is the change boundary because it catches
+  native and user-flow regressions without making documentation-only or
+  unrelated repository pull requests wait for a simulator. It can also be
+  started with **Run workflow**.
+- [`e2e-full.yml`](./.github/workflows/e2e-full.yml) runs the serial full suite
+  on weekday mornings and through **Run workflow**. It is intentionally not a
+  job in general CI or a release build. Both workflows use `macos-26`, build
+  the ignored iOS project from the checked-in Expo config, build the release
+  app once, and run the selected suite against that installed binary. A
+  lock-keyed CocoaPods cache has no partial fallback restore, so native inputs
+  are regenerated when the runner or project inputs change. A shared
+  concurrency group prevents the development account and simulator from being
+  used by two runs at once.
+
+Repository administrators must add these GitHub Actions secrets, all pointing
+at the development Supabase project:
+
+```text
+E2E_SUPABASE_URL
+E2E_SUPABASE_ANON_KEY
+E2E_TEST_ACCOUNT_EMAIL
+E2E_TEST_ACCOUNT_OTP
+```
+
+Apply the guarded SQL files in
+[`supabase/fixtures/`](./supabase/fixtures/) to that development project
+before enabling the workflows. Both workflows need the run-scoped fixture,
+its account setup, and `e2e-purge-groups.sql`, because legacy cleanup reuses
+the same development and allowlisted-actor boundary. The full suite also
+uses the seeded run-scoped RPCs. Never add these values to workflow YAML,
+tracked files, or an artifact. Fork pull requests skip the secret-backed
+smoke job.
+
+The local reused-binary commands are the same commands used after the CI
+build step:
+
+```bash
+npm run e2e:build:ios
+npm run e2e:ios:smoke
+npm run e2e:ios
+npm run e2e:ios -- e2e/auth.test.js -t "signs in"
+```
+
+The local smoke median is about 83 seconds and the final serial suite median
+is about 9 minutes on the measured iPhone 17 Pro setup. CI jobs allow up to 30
+minutes for smoke and 60 minutes for the full suite because simulator startup
+and the native build vary by runner. Build time is recorded separately in
+`build-timing.json`; the runner timing JSON records cleanup, Detox/Jest, each
+test, and total wrapper duration. A failed suite leaves its non-zero status in
+place, while the `always()` artifact step uploads the timing JSON, build and
+test logs, simulator list, Detox `artifacts/`, and Xcode build logs. Download
+the artifact named `detox-smoke-<run>-<attempt>` or
+`detox-full-<run>-<attempt>` from the completed Actions run to identify the
+failed case without rerunning locally. Smoke artifacts are retained for 14
+days and full-suite artifacts for 30 days.
 
 This project is configured to use [EAS Workflows](https://docs.expo.dev/eas/workflows/get-started/) to automate some development and release processes. These commands are set up in [`package.json`](./package.json) and can be run using NPM scripts in your terminal.
 

@@ -7,7 +7,6 @@ import { userService } from '@/services/user-service';
 import type { Expense, ExpenseSplit, Group, User } from '@/types/database';
 import { normalizeEmail } from '@/utils/validation';
 
-const APP_REVIEWER_EMAIL = 'apple.reviewer@vasuli.app';
 
 type DemoFriend = {
   name: string;
@@ -200,7 +199,7 @@ async function ensureSettlement(params: {
 }
 
 export async function ensureAppReviewDemoData(user: Pick<User, 'id' | 'name' | 'email'>): Promise<void> {
-  if (normalizeEmail(user.email) !== APP_REVIEWER_EMAIL) return;
+  if (user.name !== 'Apple Reviewer') return;
 
   const friends = await Promise.all(DEMO_FRIENDS.map(ensureDemoFriend));
 

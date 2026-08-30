@@ -44,6 +44,7 @@ app-example
 
 # Supabase CLI
 supabase/.temp/
+supabase/fixtures/e2e-development-friend.sql
 
 # generated native folders
 /ios

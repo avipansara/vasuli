@@ -12,6 +12,7 @@ import { activityService } from '@/services/activity-service';
 import { expenseService } from '@/services/expense-service';
 import { groupService } from '@/services/group-service';
 import { createExpenseDeletedNotification, notificationService } from '@/services/notification-service';
+import { getExpenseDeletionInvalidationKeys } from '@/services/expense-deletion-invalidation';
 import { queryKeys } from '@/services/query-keys';
 import { userService } from '@/services/user-service';
 import { formatCurrency } from '@/utils/currency';
@@ -123,34 +124,45 @@ export default function ExpenseDetailScreen() {
             try {
               setIsDeleting(true);
               await expenseService.delete(id, currentUserId, user?.name || 'Unknown');
+              const otherParticipantIds = splits
+                .map(split => split.userId)
+                .filter((userId, index) => splits[index].amount > 0)
+                .filter(userId => userId !== currentUserId);
+              await Promise.allSettled(
+                getExpenseDeletionInvalidationKeys(currentUserId, {
+                  expenseId: id,
+                  groupId: group?.id,
+                  paidBy: expense?.paidBy,
+                  participantIds: otherParticipantIds,
+                }).map(queryKey => Promise.resolve().then(() => queryClient.invalidateQueries({ queryKey }))),
+              );
+              router.back();
               if (expense) {
-                const usersToNotify = await userService.getByIds(
-                  splits
-                    .map(split => split.userId)
-                    .filter((userId, index) => splits[index].amount > 0)
-                    .filter(userId => userId !== currentUserId)
-                );
-                const pushTokens = usersToNotify
-                  .filter(u => u.pushToken)
-                  .map(u => u.pushToken!);
-                if (pushTokens.length > 0) {
-                  const notification = createExpenseDeletedNotification(
-                    id,
-                    expense.description,
-                    expense.amount,
-                    user?.name || 'Someone',
-                    group?.name,
-                    group?.id
+                try {
+                  const usersToNotify = await userService.getByIds(
+                    splits
+                      .map(split => split.userId)
+                      .filter((userId, index) => splits[index].amount > 0)
+                      .filter(userId => userId !== currentUserId)
                   );
-                  await notificationService.sendNotificationToUsers(pushTokens, notification);
+                  const pushTokens = usersToNotify
+                    .filter(u => u.pushToken)
+                    .map(u => u.pushToken!);
+                  if (pushTokens.length > 0) {
+                    const notification = createExpenseDeletedNotification(
+                      id,
+                      expense.description,
+                      expense.amount,
+                      user?.name || 'Someone',
+                      group?.name,
+                      group?.id
+                    );
+                    await notificationService.sendNotificationToUsers(pushTokens, notification);
+                  }
+                } catch (notificationError) {
+                  console.warn('Expense deletion notification failed:', notificationError);
                 }
               }
-              await Promise.all([
-                queryClient.invalidateQueries({ queryKey: queryKeys.expenses.detail(id) }),
-                queryClient.invalidateQueries({ queryKey: queryKeys.expenses.list(currentUserId) }),
-                queryClient.invalidateQueries({ queryKey: queryKeys.activity.list(currentUserId) }),
-              ]);
-              router.back();
             } catch (error) {
               console.error('Error deleting expense:', error);
               Alert.alert('Error', 'Failed to delete expense');
@@ -232,6 +244,7 @@ export default function ExpenseDetailScreen() {
                 size={18}
                 shape='square'
                 accessibilityLabel='Edit expense'
+                testID="expense-detail-edit-button"
                 onPress={() => router.push(`/edit-expense/${id}` as any)}
               />
             )}
@@ -244,7 +257,8 @@ export default function ExpenseDetailScreen() {
                   borderColor: expenseDetail.dangerBorder,
                   opacity: isDeleting ? 0.5 : 1,
                 }]}
-                accessibilityLabel="Delete expense">
+                accessibilityLabel="Delete expense"
+                testID="expense-detail-delete-button">
                 {isDeleting ? (
                   <IconSymbol name="clock" size={18} color={expenseDetail.danger} />
                 ) : (
@@ -392,10 +406,10 @@ export default function ExpenseDetailScreen() {
           {activities.length > 0 && (
             <View style={styles.activitySection}>
               <View style={styles.sectionHeader}>
-                <ThemedText type="subtitle" style={[styles.sectionTitle, { color: isDark ? '#f8fafc' : colors.text }]}>
+                <ThemedText type="subtitle" style={[styles.sectionTitle, { color: colors.text }]}>
                   Activity
                 </ThemedText>
-                <ThemedText style={[styles.sectionMeta, { color: isDark ? '#9ba6b8' : colors.textSecondary }]}>
+                <ThemedText style={[styles.sectionMeta, { color: colors.textSecondary }]}>
                   {activities.length} {activities.length === 1 ? 'update' : 'updates'}
                 </ThemedText>
               </View>
@@ -425,20 +439,20 @@ export default function ExpenseDetailScreen() {
                 const getActivityColor = () => {
                   switch (activity.type) {
                     case 'expense_created':
-                      return isDark ? '#10b981' : colors.accent;
+                      return colors.accent;
                     case 'expense_updated':
-                      return '#F59E0B';
+                      return expenseDetail.warning;
                     case 'expense_deleted':
-                      return '#EF4444';
+                      return colors.error;
                     default:
-                      return isDark ? '#9ba6b8' : colors.textSecondary;
+                      return colors.textSecondary;
                   }
                 };
 
                 return (
                   <View style={[styles.activityCard, cardStyle]} key={activity.id}>
                     <View style={[styles.activityIcon, {
-                      backgroundColor: isDark ? '#162032' : 'rgba(15, 76, 58, 0.1)',
+                      backgroundColor: expenseDetail.avatarSurface,
                     }]}>
                       <IconSymbol
                         name={getActivityIcon()}
@@ -447,23 +461,23 @@ export default function ExpenseDetailScreen() {
                       />
                     </View>
                     <View style={styles.activityContent}>
-                      <ThemedText type="defaultSemiBold" style={[styles.activityDescription, { color: isDark ? '#f8fafc' : colors.text }]}>
+                      <ThemedText type="defaultSemiBold" style={[styles.activityDescription, { color: colors.text }]}>
                         {activity.description}
                       </ThemedText>
                       <View style={styles.activityMeta}>
-                        <ThemedText style={[styles.activityUser, { color: isDark ? '#9ba6b8' : colors.textSecondary }]}>
+                        <ThemedText style={[styles.activityUser, { color: colors.textSecondary }]}>
                           {activity.userName || 'Unknown'}
                         </ThemedText>
-                        <ThemedText style={[styles.activityDot, { color: isDark ? '#9ba6b8' : colors.textSecondary }]}>
+                        <ThemedText style={[styles.activityDot, { color: colors.textSecondary }]}>
                           •
                         </ThemedText>
-                        <ThemedText style={[styles.activityTime, { color: isDark ? '#9ba6b8' : colors.textSecondary }]}>
+                        <ThemedText style={[styles.activityTime, { color: colors.textSecondary }]}>
                           {timeStr}
                         </ThemedText>
                       </View>
                     </View>
                     {activity.amount && (
-                      <ThemedText type="defaultSemiBold" style={[styles.activityAmount, { color: isDark ? '#f8fafc' : colors.text }]}>
+                      <ThemedText type="defaultSemiBold" style={[styles.activityAmount, { color: colors.text }]}>
                         {formatCurrency(activity.amount, expense.currency)}
                       </ThemedText>
                     )}

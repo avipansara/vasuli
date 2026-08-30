@@ -1,3 +1,24 @@
+## 2026-08-30
+
+- Hardened the iOS E2E runs against cold or transient simulator launches by
+  booting and pinning the CI device before Detox starts and giving the smoke
+  journey enough time to finish on hosted runners.
+
+## 2026-08-29
+
+- Hardened the iOS E2E smoke run against slow or transient simulator app
+  launches, repaired stale accessibility selectors, and corrected CI timing
+  artifact collection.
+
+## 2026-08-26
+
+- Fixed the "Build once and run smoke suite" CI job: the `expo-updates` Xcode
+  build phase runs Metro to generate update resources, and Metro requires
+  `EXPO_ROUTER_APP_ROOT` to be set so it can inline the expo-router context
+  root as a string literal.  The e2e build script now sets
+  `EXPO_ROUTER_APP_ROOT` to the absolute `app/` path before invoking
+  `detox build`.
+
 ## 2026-08-24
 
 - Replaced the unbounded 6-query client-side activity-feed merge in `getUserActivities` with a single `supabase.rpc('get_user_activities')` call backed by a new `SECURITY DEFINER` PostgreSQL function. The function merges `activities` and `settlements` server-side, applies optional `ILIKE` search, and uses `LIMIT`/`OFFSET` for true server-side pagination; added supporting indexes on `activities` and `settlements`. Every infinite-scroll page now requires exactly one network round-trip instead of growing with history size and page count.
@@ -11,6 +32,69 @@
 - Restored dark-mode card depth with a visible cool-gray shadow and Android elevation across detail, activity, profile, settlement, and loading-card states.
 - Restored the same dark-mode depth for Home Friend, Group, and Activity cards, which had separately disabled their shadows and elevation, without changing card surfaces.
 - Standardized dark-mode card surfaces to the shared black, borderless, slate-shadow elevation style while preserving existing light-mode card styling.
+
+## 2026-08-23
+
+- Fixed deleted expenses leaving Friends and Group balances stale until a
+  matching Realtime event arrived.
+- Added an implementation-ready specification for reducing Detox E2E runtime
+  through measured baselines, run-scoped fixtures, focused device coverage,
+  deterministic helpers, cheaper cleanup, and safe sharding.
+- Configured the repository's local Markdown issue tracker and published the
+  E2E performance plan as ten dependency-linked, agent-ready tickets.
+- Adapted the specification implementation workflow to use GPT-5.6 Luna
+  workers with primary-agent review, correction loops, and persistent local
+  ticket execution state.
+- Consolidated the Detox release suite to 11 focused journeys, moved removed
+  setup coverage to retained device or Vitest tests, and documented the
+  coverage map. The default full run no longer repeats the smoke journey.
+- Added separate macOS GitHub Actions workflows for PR smoke coverage and
+  scheduled or manually started full-suite verification, with native-input
+  caching and retained timing, logs, and Detox artifacts.
+- Hardened legacy E2E cleanup so it requires the development fixture boundary
+  and allowlisted actor, deletes only that actor's prefixed Groups, and removes
+  the retired broad history-cleanup RPC from existing development installs.
+
+## 2026-08-20
+
+- Fixed edited expenses taking tens of seconds to show updated amounts:
+  cache invalidations now run immediately after the expense update
+  persists instead of waiting on activity logging and push notifications.
+- Fixed group renames not appearing in the Groups list after saving: the edit
+  screen now invalidates the groups list cache like group creation does.
+- Clearing the Activity search now also dismisses the keyboard.
+- Expanded Detox E2E coverage with four new scenario files: friend-level
+  settlement from the Friend detail screen, the expense edit → delete lifecycle
+  via Expense Detail, group rename (list swipe action) and deletion, and an
+  Activity-feed search plus group-balance settlement verification.
+- Added stable testIDs to the friend settle form, edit-expense form, expense
+  detail actions, edit-group form, activity search, and the Friend detail
+  Settle Up button; NavigationHeader back buttons now expose a "Go back"
+  accessibility label.
+- Added a development-only purge_e2e_groups fixture so E2E cleanup can delete
+  Detox groups whose combined settlements create restricting settlement scope
+  transfers and operations; cleanup now runs through it instead of direct
+  group deletes.
+- Added a Detox/Jest iOS simulator E2E setup targeting the Vasuli Xcode scheme
+  and iPhone 17 Pro, with launch, email-input, and environment-driven OTP login
+  coverage that bypasses the OTP resend countdown and dismisses notification
+  onboarding during automation.
+- Added an Expo Router native-intent rewrite for the Groups deep link, providing
+  a stable navigation seam for native E2E coverage.
+- Added Detox coverage for native Groups-tab navigation and the create-group →
+  add-expense flow, including keyboard-safe amount entry on iOS simulator.
+- Split Detox coverage into authentication, groups, expenses, and settlement
+  scenario files with shared login and group-flow helpers.
+- Fixed the Detox iOS build wrapper so the simulator bundle uses the development
+  Supabase project consistently with E2E cleanup and test credentials.
+- Added an idempotent development SQL fixture for connecting the reviewer account
+  to the E2E friend account required by settlement coverage.
+- Added guarded development-database cleanup before and after Detox runs for
+  groups created by the E2E account.
+- Removed the obsolete alternative E2E reference; Detox is now the project’s
+  supported mobile E2E runner.
+- Removed real E2E/reviewer account identifiers and OTP fallbacks from tracked
+  source; local environment configuration now supplies those values.
 
 ## 2026-08-19
 

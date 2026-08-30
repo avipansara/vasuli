@@ -358,6 +358,7 @@ export default function AddExpenseScreen() {
         onBack={handleHeaderBack}
         rightAction={
           <TouchableOpacity
+            testID={expenseStep === 1 ? 'add-expense-next-button' : 'add-expense-submit-button'}
             onPress={handleHeaderAction}
             disabled={expenseStep === 1 ? !canContinue : !canSubmit || loading}
             style={[
@@ -403,7 +404,10 @@ export default function AddExpenseScreen() {
         </View>
       )}
 
-      <KeyboardAwareScroll contentContainerStyle={styles.scrollContent}>
+      <KeyboardAwareScroll
+        testID="expense-form-scroll"
+        contentContainerStyle={styles.scrollContent}
+      >
         <Animated.View style={[styles.content, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
           {expenseStep === 2 && (
             <>
@@ -714,6 +718,7 @@ export default function AddExpenseScreen() {
                       return (
                         <TouchableOpacity
                           key={group.id}
+                          accessibilityLabel={`Select group ${group.name}`}
                           style={[
                             styles.optionRow
                           ]}
@@ -956,6 +961,7 @@ export default function AddExpenseScreen() {
                     placeholder="0"
                     placeholderTextColor={isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)'}
                     keyboardType="decimal-pad"
+                    testID="custom-split-you-input"
                   />
                   <ThemedText style={[styles.customSplitSuffix, { color: colors.textSecondary }]}>
                     {splitMethod === SplitMethod.UNEQUAL ? getCurrencySymbol() : splitMethod === SplitMethod.PERCENTAGE ? '%' : 'x'}
@@ -1013,6 +1019,7 @@ export default function AddExpenseScreen() {
                         placeholder="0"
                         placeholderTextColor={isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)'}
                         keyboardType="decimal-pad"
+                        testID="custom-split-participant-input"
                       />
                       <ThemedText style={[styles.customSplitSuffix, { color: colors.textSecondary }]}>
                         {splitMethod === SplitMethod.UNEQUAL ? getCurrencySymbol() : splitMethod === SplitMethod.PERCENTAGE ? '%' : 'x'}
@@ -1072,6 +1079,7 @@ export default function AddExpenseScreen() {
                         placeholder="0"
                         placeholderTextColor={isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)'}
                         keyboardType="decimal-pad"
+                        testID="custom-split-participant-input"
                       />
                       <ThemedText style={[styles.customSplitSuffix, { color: colors.textSecondary }]}>
                         {splitMethod === SplitMethod.UNEQUAL ? getCurrencySymbol() : splitMethod === SplitMethod.PERCENTAGE ? '%' : 'x'}

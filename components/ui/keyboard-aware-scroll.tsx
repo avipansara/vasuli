@@ -18,6 +18,7 @@ interface KeyboardAwareScrollProps {
   contentContainerStyle?: any;
   showDismissButton?: boolean;
   footer?: React.ReactNode;
+  testID?: string;
 }
 
 export function KeyboardAwareScroll({
@@ -25,6 +26,7 @@ export function KeyboardAwareScroll({
   contentContainerStyle,
   showDismissButton = true,
   footer,
+  testID,
 }: KeyboardAwareScrollProps) {
   const { colors, isDark } = useThemeColors();
   const [keyboardVisible, setKeyboardVisible] = useState(false);
@@ -53,6 +55,7 @@ export function KeyboardAwareScroll({
       style={styles.container}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}>
       <ScrollView
+        testID={testID}
         style={styles.scrollView}
         contentContainerStyle={[styles.scrollContent, contentContainerStyle]}
         showsVerticalScrollIndicator={false}
@@ -65,6 +68,7 @@ export function KeyboardAwareScroll({
       {showDismissButton && keyboardVisible && Platform.OS === 'ios' && (
         <View style={styles.dismissButtonContainer}>
           <TouchableOpacity
+            testID="keyboard-dismiss-button"
             onPress={dismissKeyboard}
             style={[
               styles.dismissButton,

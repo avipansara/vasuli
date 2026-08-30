@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const reviewer = {
   id: 'reviewer-id',
   name: 'Apple Reviewer',
-  email: 'apple.reviewer@vasuli.app',
+  email: 'reviewer@example.test',
 }
 
 const demoUsersByEmail: Record<string, any> = {

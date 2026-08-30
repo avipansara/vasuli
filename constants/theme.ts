@@ -252,6 +252,7 @@ export const SettleTheme = {
     heroBorder: 'rgba(191, 201, 195, 0.3)',
     pillBackground: '#E1E8FD',
     buttonBackground: '#003527',
+    buttonText: '#ffffff',
     accentText: '#064E3B',
     cardBackground: '#FFFFFF',
     cardBorder: 'rgba(191, 201, 195, 0.35)',
@@ -262,6 +263,10 @@ export const SettleTheme = {
     avatarText: '#0B513D',
     positiveText: '#005E44',
     negativeText: '#A83639',
+    unselectedBorder: '#707974',
+    textPrimary: TEXT_LIGHT,
+    textSecondary: TEXT_SECONDARY_LIGHT,
+    background: BG_LIGHT,
   },
   dark: {
     heroBackground: '#000000',
@@ -282,6 +287,7 @@ export const SettleTheme = {
     textSecondary: '#bbcabf',
     positiveText: '#2DD4BF',
     negativeText: '#F87171',
+    unselectedBorder: 'rgba(255, 255, 255, 0.3)',
   },
 };
 
