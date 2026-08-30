@@ -7,7 +7,7 @@ function groupCardFor(groupName) {
 async function createGroup(
   groupName = `Detox Group ${process.env.E2E_RUN_ID ? `${process.env.E2E_RUN_ID} ` : ''}${Date.now()}`,
 ) {
-  await element(by.label('Create group')).tap();
+  await element(by.label('Create Group')).tap();
   await element(by.id('create-group-name-input')).typeText(groupName);
   await element(by.id('create-group-submit-button')).tap();
   await waitFor(element(by.label(`${groupName}, all settled up`)))
@@ -94,13 +94,13 @@ async function openExpenseDetail(description) {
   const row = element(by.label(`View details for ${description}`));
   await waitFor(row).toBeVisible().withTimeout(10000);
   await row.tap();
-  await waitFor(element(by.id('expense-detail-edit-button')))
+  await waitFor(element(by.label('Edit expense')))
     .toBeVisible()
     .withTimeout(10000);
 }
 
 async function editExpenseAmount(amount) {
-  await element(by.id('expense-detail-edit-button')).tap();
+  await element(by.label('Edit expense')).tap();
   await waitFor(element(by.id('edit-expense-amount-input')))
     .toBeVisible()
     .withTimeout(10000);

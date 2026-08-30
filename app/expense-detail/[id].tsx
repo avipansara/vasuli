@@ -244,6 +244,7 @@ export default function ExpenseDetailScreen() {
                 size={18}
                 shape='square'
                 accessibilityLabel='Edit expense'
+                testID="expense-detail-edit-button"
                 onPress={() => router.push(`/edit-expense/${id}` as any)}
               />
             )}

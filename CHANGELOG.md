@@ -1,3 +1,9 @@
+## 2026-08-29
+
+- Hardened the iOS E2E smoke run against slow or transient simulator app
+  launches, repaired stale accessibility selectors, and corrected CI timing
+  artifact collection.
+
 ## 2026-08-26
 
 - Fixed the "Build once and run smoke suite" CI job: the `expo-updates` Xcode

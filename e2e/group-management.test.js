@@ -11,7 +11,7 @@ describe('Group management', () => {
     await renameGroupFromList(groupName, renamedGroupName);
     await deleteGroupFromDetails(renamedGroupName);
 
-    await waitFor(element(by.label('Create group')))
+    await waitFor(element(by.label('Create Group')))
       .toBeVisible()
       .withTimeout(10000);
   });

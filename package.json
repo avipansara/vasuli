@@ -14,7 +14,7 @@
     "test:watch": "vitest",
     "e2e:build:ios": "node scripts/e2e-build.cjs",
     "e2e:cleanup": "node scripts/e2e-cleanup.cjs",
-    "e2e:ios:smoke": "E2E_INCLUDE_SMOKE=1 E2E_MEASUREMENT_SCOPE=ticket-02 node scripts/e2e-run.cjs e2e/smoke.test.js",
+    "e2e:ios:smoke": "E2E_INCLUDE_SMOKE=1 node scripts/e2e-run.cjs e2e/smoke.test.js",
     "e2e:ios": "node scripts/e2e-run.cjs",
     "precommit": "npm run lint && npm run typecheck:supabase && npm run test",
     "draft": "npx eas-cli@latest workflow:run create-draft.yml",

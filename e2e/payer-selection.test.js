@@ -31,7 +31,7 @@ describe('Payer selection', () => {
       .withTimeout(10000);
 
     await goBack();
-    await waitFor(element(by.label('Create group')))
+    await waitFor(element(by.label('Create Group')))
       .toBeVisible()
       .withTimeout(10000);
     await openFriends();

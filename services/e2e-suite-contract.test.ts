@@ -38,6 +38,10 @@ describe('serial Detox suite contract', () => {
   it('keeps smoke separate and removes the known-absent friend probe', () => {
     expect(read('e2e/jest.config.js')).toContain('E2E_INCLUDE_SMOKE');
     expect(read('package.json')).toContain('E2E_INCLUDE_SMOKE=1');
+    expect(read('package.json')).not.toContain('E2E_MEASUREMENT_SCOPE=');
+    expect(read('e2e/smoke.test.js')).toContain('}, 240000);');
+    expect(read('e2e/helpers/auth.js')).not.toContain("by.label('Create group')");
+    expect(read('e2e/helpers/groups.js')).not.toContain("by.label('Create group')");
     expect(read('e2e/helpers/groups.js')).not.toContain('No available users');
     const coverageMap = read('docs/e2e-coverage-map.md');
     expect(coverageMap).toContain('`split-methods.test.js` invalid unequal split');

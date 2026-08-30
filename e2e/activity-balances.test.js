@@ -31,7 +31,7 @@ describe('Activity and balances', () => {
     await dismissSuccessAlert();
 
     await goBack();
-    await waitFor(element(by.label('Create group')))
+    await waitFor(element(by.label('Create Group')))
       .toBeVisible()
       .withTimeout(10000);
 

@@ -1,10 +1,27 @@
 const LAUNCH_PERMISSIONS = { notifications: 'NO' };
 
+async function launchAppWithRetry(config) {
+  let lastError;
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      await device.launchApp(config);
+      return;
+    } catch (error) {
+      lastError = error;
+      if (attempt === 0) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    }
+  }
+
+  throw lastError;
+}
+
 async function launchSignedIn() {
   // Fast path: the Supabase session persists in AsyncStorage across relaunches
   // (requires behavior.init.reinstallApp=false in .detoxrc.js, otherwise
   // Detox wipes app data at every test-file boundary).
-  await device.launchApp({
+  await launchAppWithRetry({
     newInstance: true,
     permissions: LAUNCH_PERMISSIONS,
   });
@@ -31,7 +48,7 @@ async function loginToFriends() {
     );
   }
 
-  await device.launchApp({
+  await launchAppWithRetry({
     delete: true,
     newInstance: true,
     permissions: LAUNCH_PERMISSIONS,
@@ -78,7 +95,9 @@ async function openGroups() {
   // iOS 26 exposes the NativeTabs button frame at the top of the screen,
   // but Detox calculates its accessibility hit point at the bottom.
   await device.tap({ x: 137, y: 822 });
-  await expect(element(by.label('Create group'))).toBeVisible();
+  await waitFor(element(by.label('Create Group')))
+    .toBeVisible()
+    .withTimeout(10000);
 }
 
 async function openFriends() {
@@ -101,4 +120,4 @@ async function goBack() {
   await element(by.label('Go back')).atIndex(0).tap();
 }
 
-module.exports = { goBack, loginToFriends, openActivity, openFriends, openGroups };
+module.exports = { goBack, launchAppWithRetry, loginToFriends, openActivity, openFriends, openGroups };
