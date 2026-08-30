@@ -1,3 +1,9 @@
+## 2026-08-30
+
+- Hardened the iOS E2E runs against cold or transient simulator launches by
+  booting and pinning the CI device before Detox starts and giving the smoke
+  journey enough time to finish on hosted runners.
+
 ## 2026-08-29
 
 - Hardened the iOS E2E smoke run against slow or transient simulator app

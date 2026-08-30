@@ -1,3 +1,7 @@
+const iosSimulatorDevice = process.env.DETOX_DEVICE_UDID
+  ? { id: process.env.DETOX_DEVICE_UDID }
+  : { type: 'iPhone 17 Pro' };
+
 /** @type {Detox.DetoxConfig} */
 module.exports = {
   behavior: {
@@ -13,7 +17,7 @@ module.exports = {
       config: 'e2e/jest.config.js'
     },
     jest: {
-      setupTimeout: 120000
+      setupTimeout: 300000
     }
   },
   apps: {
@@ -44,9 +48,7 @@ module.exports = {
   devices: {
     simulator: {
       type: 'ios.simulator',
-      device: {
-        type: 'iPhone 17 Pro'
-      }
+      device: iosSimulatorDevice
     },
     attached: {
       type: 'android.attached',

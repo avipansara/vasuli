@@ -103,6 +103,9 @@ jobs:
           brew trust wix/brew
           brew install applesimutils
 
+      - name: Boot and pin the Detox simulator
+        run: node scripts/e2e-prepare-ios-simulator.cjs
+
       - name: Run the full serial suite without rebuilding
         shell: bash
         run: |

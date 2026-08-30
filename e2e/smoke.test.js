@@ -33,5 +33,5 @@ describe('Smoke journey', () => {
 
     await deleteGroupFromDetails(renamedGroupName);
     await expect(element(by.label(`Restore ${renamedGroupName}`))).toBeVisible();
-  }, 240000);
+  }, 600000);
 });

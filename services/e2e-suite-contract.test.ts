@@ -39,7 +39,7 @@ describe('serial Detox suite contract', () => {
     expect(read('e2e/jest.config.js')).toContain('E2E_INCLUDE_SMOKE');
     expect(read('package.json')).toContain('E2E_INCLUDE_SMOKE=1');
     expect(read('package.json')).not.toContain('E2E_MEASUREMENT_SCOPE=');
-    expect(read('e2e/smoke.test.js')).toContain('}, 240000);');
+    expect(read('e2e/smoke.test.js')).toContain('}, 600000);');
     expect(read('e2e/helpers/auth.js')).not.toContain("by.label('Create group')");
     expect(read('e2e/helpers/groups.js')).not.toContain("by.label('Create group')");
     expect(read('e2e/helpers/groups.js')).not.toContain('No available users');
@@ -64,6 +64,7 @@ describe('serial Detox suite contract', () => {
       expect(workflow).toContain('ios/Podfile.lock');
       expect(workflow).not.toContain('restore-keys:');
       expect(workflow).toContain('npm run e2e:build:ios');
+      expect(workflow).toContain('node scripts/e2e-prepare-ios-simulator.cjs');
       expect(workflow).toContain(suiteCommand);
       expect(workflow).toContain('Collect ');
       expect(workflow).toContain('ci-artifacts/timing');
@@ -77,8 +78,10 @@ describe('serial Detox suite contract', () => {
       expect(workflow.indexOf('npm ci')).toBeLessThan(workflow.indexOf('npx expo prebuild'));
       expect(workflow.indexOf('npx expo prebuild')).toBeLessThan(workflow.indexOf('pod install'));
       expect(workflow.indexOf('npm run e2e:build:ios')).toBeLessThan(workflow.indexOf(suiteCommand));
+      expect(workflow.indexOf('node scripts/e2e-prepare-ios-simulator.cjs')).toBeLessThan(workflow.indexOf(suiteCommand));
     }
 
+    expect(smokeWorkflow).toContain('timeout-minutes: 40');
     expect(smokeWorkflow).toContain('pull_request:');
     expect(smokeWorkflow).toContain('paths:');
     expect(fullWorkflow).toContain('schedule:');

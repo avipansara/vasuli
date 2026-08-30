@@ -43,7 +43,7 @@ jobs:
     name: Build once and run smoke suite
     if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: macos-26
-    timeout-minutes: 30
+    timeout-minutes: 40
     env:
       EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}
       EXPO_PUBLIC_SUPABASE_KEY: ${{ secrets.E2E_SUPABASE_ANON_KEY }}
@@ -125,6 +125,9 @@ jobs:
           brew tap wix/brew
           brew trust wix/brew
           brew install applesimutils
+
+      - name: Boot and pin the Detox simulator
+        run: node scripts/e2e-prepare-ios-simulator.cjs
 
       - name: Run the smoke suite without rebuilding
         shell: bash
