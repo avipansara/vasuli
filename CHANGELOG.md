@@ -1,3 +1,8 @@
+## 2026-09-01
+
+- Prepared the iOS 1.0.20 release after Apple closed the 1.0.19 release train
+  for further TestFlight uploads.
+
 ## 2026-08-30
 
 - Hardened the iOS E2E runs against cold or transient simulator launches by
