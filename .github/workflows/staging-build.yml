@@ -1,8 +1,11 @@
 name: Staging Build
 
+# Manual only: EAS build minutes are limited (~15/month), so preview builds
+# run when you press "Run workflow", not on every master push. Pushes are
+# still covered by the free checks in ci-validation.yml. Production releases
+# stay tag-driven via production-build.yml.
 on:
-  push:
-    branches: [ master ]
+  workflow_dispatch:
 
 jobs:
   validate:
