@@ -1,16 +1,44 @@
 name: iOS E2E full suite
 
 on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'app/**'
+      - 'components/**'
+      - 'contexts/**'
+      - 'hooks/**'
+      - 'lib/**'
+      - 'constants/**'
+      - 'services/**'
+      - 'utils/**'
+      - 'types/**'
+      - 'supabase/**'
+      - 'e2e/**'
+      - 'scripts/e2e-*.cjs'
+      - 'ios/**'
+      - 'app.json'
+      - 'app.config.ts'
+      - 'babel.config.js'
+      - 'metro.config.js'
+      - 'tsconfig.json'
+      - '.detoxrc.js'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/e2e-full.yml'
   schedule:
-    - cron: '0 6 * * 1-5'
+    - cron: '0 6 * * 1'
   workflow_dispatch:
 
 permissions:
   contents: read
 
 # The full serial suite is deliberately separate from PR CI and release/EAS
-# workflows. It uses the shared development account, so it waits behind any
-# smoke run instead of racing another simulator against the same data.
+# workflows. It runs when app-affecting code lands on master, plus a weekly
+# Monday heartbeat and manual dispatch. It uses the shared development
+# account, so it waits behind any smoke run instead of racing another
+# simulator against the same data.
 concurrency:
   group: vasuli-ios-e2e-development
   cancel-in-progress: false
@@ -18,7 +46,7 @@ concurrency:
 jobs:
   full:
     name: Build once and run full suite
-    if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule' || github.event_name == 'push'
     runs-on: macos-26
     timeout-minutes: 60
     env:
