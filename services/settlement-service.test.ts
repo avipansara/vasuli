@@ -302,6 +302,32 @@ describe('settlementModule.preview', () => {
     });
   });
 
+  it('accepts partial amounts with binary float cents like 19.99', () => {
+    expect(settlementModule.preview({
+      currentUserId: 'current-user',
+      friendId: 'friend-a',
+      currency: 'USD',
+      amount: 19.99,
+      directBalance: -50,
+      groupBalances: [{
+        groupId: 'group-1',
+        groupName: 'Trip',
+        currency: 'USD',
+        amount: 20,
+        direction: 'you_are_owed',
+      }],
+    })).toEqual({
+      transfers: [],
+      allocations: [{
+        groupId: undefined,
+        fromUserId: 'current-user',
+        toUserId: 'friend-a',
+        amount: 19.99,
+        currency: 'USD',
+      }],
+    });
+  });
+
 });
 
 describe('shouldLogSettlementActivity', () => {

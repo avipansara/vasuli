@@ -406,7 +406,7 @@ function toCents(amount: number): number {
 }
 
 function isWholeCent(amount: number): boolean {
-  return Math.abs(amount * 100 - Math.round(amount * 100)) < Number.EPSILON * 100;
+  return Math.abs(amount * 100 - Math.round(amount * 100)) < 1e-6;
 }
 
 export function shouldLogSettlementActivity(receipt: CombinedSettlementReceipt): boolean {
