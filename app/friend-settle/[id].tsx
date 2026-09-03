@@ -305,11 +305,17 @@ export default function FriendSettleScreen() {
             </View>
             <View style={[styles.divider, { backgroundColor: settle.cardBorder }]} />
             <View style={styles.balanceRow}>
-              <ThemedText style={[styles.balanceLabelText, { color: settle.textSecondary }]}>
+              <ThemedText
+                numberOfLines={2}
+                style={[styles.balanceLabelText, { color: settle.textSecondary }]}
+              >
                 Combined relationship summary
               </ThemedText>
-              <ThemedText style={[styles.balanceValueText, { color: settle.accentText }]}>
-              {formatCurrency(maxAmount, settleableTotal?.currency ?? zeroNetCurrency)}
+              <ThemedText
+                numberOfLines={1}
+                style={[styles.balanceValueText, { color: settle.accentText }]}
+              >
+                {formatCurrency(maxAmount, settleableTotal?.currency ?? zeroNetCurrency)}
               </ThemedText>
             </View>
           </View>
@@ -497,12 +503,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   balanceLabelText: {
+    flex: 1,
+    minWidth: 0,
     fontSize: 15,
     fontWeight: '400',
+    lineHeight: 21,
+    marginRight: 12,
   },
   balanceValueText: {
+    flexShrink: 0,
     fontSize: 20,
     fontWeight: '600',
+    lineHeight: 26,
   },
   formContainer: {
     gap: 12,
@@ -537,10 +549,12 @@ const styles = StyleSheet.create({
     textAlignVertical: 'center',
   },
   input: {
-    fontSize: 48,
+    fontSize: 40,
     fontWeight: '800',
     fontVariant: ['tabular-nums'],
-    width: 160,
+    width: '72%',
+    maxWidth: 240,
+    flexShrink: 1,
     padding: 0,
     margin: 0,
     textAlignVertical: 'center',
