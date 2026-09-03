@@ -17,6 +17,21 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       : 'com.avipansara.vasuli';
 
   const package_ = bundleIdentifier;
+  const plugins = config.plugins ?? [];
+  const productionPlugins = isDev || isPreview
+    ? plugins
+    : [
+        ...plugins,
+        [
+          'expo-build-properties',
+          {
+            android: {
+              // x86 targets are only needed for emulators and add native build time.
+              buildArchs: ['armeabi-v7a', 'arm64-v8a'],
+            },
+          },
+        ],
+      ];
 
   // Resolve google-services.json file paths dynamically (e.g. from EAS Secret path or default local path)
   const prodGoogleServices = './google-services.json';
@@ -34,6 +49,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       package: package_,
       googleServicesFile,
     },
+    plugins: productionPlugins,
     extra: {
       ...config.extra,
       eas: {

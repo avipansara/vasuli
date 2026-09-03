@@ -1,5 +1,24 @@
+## 2026-09-03
+
+- Added `npm run start:prod` for simulator Fast Refresh with credentials explicitly
+  loaded from `.env`, isolated from development environment files and Metro's default port.
+- Fixed friend and group settlement amount fields cropping long decimal values
+  by reducing numeral size and widening the responsive input area.
+- Prepared the iOS 1.0.21 release since 1.0.20 is already live in the App Store.
+
+## 2026-09-02
+
+- Configured production Android builds to compile device architectures only and
+  cache native compilation outputs, avoiding Expo's 45-minute free-plan build
+  timeout without changing development or preview emulator support.
+
 ## 2026-09-01
 
+- Fixed the production Friends Home read failing for signed-in users when the
+  database function confused its `created_at` result column with a settlement
+  timestamp.
+- Fixed the production Activity feed failing when its user-group CTE confused
+  `group_id` with a function result column.
 - Prepared the iOS 1.0.20 release after Apple closed the 1.0.19 release train
   for further TestFlight uploads.
 

@@ -1,0 +1,61 @@
+name: Auto-bump app version
+
+# Keeps the iOS marketing version moving forward without manual tracking:
+# every push to master patch-bumps expo.version in app.json and pushes the
+# bump back. Production releases stay tag-driven (production-build.yml only
+# runs on v* tags), so intermediate versions are harmless until you tag one.
+#
+# No infinite loop: pushes made with GITHUB_TOKEN do not trigger new workflow
+# runs, and the bump commit carries [skip ci], which the push-triggered
+# workflows (ci-validation, e2e-full, staging-build) explicitly ignore.
+
+on:
+  push:
+    branches: [ master ]
+
+permissions:
+  contents: write
+
+# Serialize bump runs so two rapid pushes cannot race each other.
+concurrency:
+  group: auto-bump-version
+  cancel-in-progress: false
+
+jobs:
+  bump:
+    name: Bump iOS marketing version
+    if: ${{ !contains(github.event.head_commit.message, '[skip ci]') }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Bump patch version in app.json
+        run: node scripts/bump-app-version.cjs
+
+      - name: Commit and push bump
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app.json
+          if git diff --cached --quiet; then
+            echo "No version change to commit."
+            exit 0
+          fi
+          git commit -m "chore(release): bump iOS to $(node -p "require('./app.json').expo.version") [skip ci]"
+          for attempt in 1 2 3; do
+            if git push origin HEAD:master; then
+              echo "Version bump pushed."
+              exit 0
+            fi
+            echo "Push rejected, rebasing onto latest master (attempt $attempt)..."
+            git pull --rebase origin master || break
+          done
+          echo "Failed to push version bump after retries." >&2
+          exit 1

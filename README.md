@@ -12,6 +12,21 @@ npm run start
 
 ### Supabase environment variables
 
+For iOS Simulator Fast Refresh against the production database, put the production
+public URL and key in `.env`, then run:
+
+```bash
+npm run start:prod -- --ios
+```
+
+This requires an installed development build. The command prints the selected
+Supabase host and uses `localhost:8085`. It loads public variables only from `.env`
+and excludes env files from Metro's module graph for this run. Expo SDK 57 otherwise
+loads `.env.development.local` again through its Fast Refresh virtual env module,
+even with `EXPO_NO_DOTENV=1`. Normal `npm start` behavior is unchanged.
+Actions taken in this mode affect production data. Restart this command after
+editing `.env`; source-code changes still use Fast Refresh.
+
 The app needs your Supabase **project URL** and **anon (public) API key** at startup (see [`lib/supabase.ts`](./lib/supabase.ts)).
 
 1. Open the [Supabase Dashboard](https://supabase.com/dashboard), select your project.
