@@ -15,11 +15,13 @@ import { areGroupBalancesSettled } from '@/services/group-balance';
 import { groupDetailMutationController } from '@/services/group-detail-mutation-controller';
 import type { GroupDetailReadModel, GroupExpenseView } from '@/services/group-detail-read-model';
 import { groupDetailService } from '@/services/group-detail-service';
+import { friendSummaryService } from '@/services/friend-summary-service';
 import { createReactQueryCacheAdapter } from '@/services/query-cache-adapter';
 import { queryKeys } from '@/services/query-keys';
 import { CombinedSettlementError } from '@/services/settlement-service';
 import type { Expense, GroupMember, Settlement, User } from '@/types/database';
 import { formatCurrency } from '@/utils/currency';
+import { getPairCaptionForGroupMember } from '@/utils/group-pair-caption';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -167,6 +169,22 @@ export default function GroupDetailScreen() {
   const expenseSplits = useMemo(() => expenses.flatMap(expense => expense.splits), [expenses]);
   const availableUsers = groupDetail?.availableUsers ?? [];
   const friendshipStatus = groupDetail?.friendshipStatus ?? new Map();
+  const { data: homeSummaries = [] } = useQuery({
+    queryKey: friendsHomeQueryKey,
+    enabled: !!currentUserId,
+    queryFn: () => friendSummaryService.getHomeSummaries(currentUserId),
+  });
+  // Bilateral pair position in THIS group (pot position stays the primary
+  // row value; this caption answers "with me" underneath it).
+  const pairCaptions = useMemo(() => {
+    const map = new Map<string, { amount: number; currency: string; direction: 'you_owe' | 'you_are_owed' }>();
+    for (const member of members) {
+      if (member.userId === currentUserId) continue;
+      const caption = getPairCaptionForGroupMember(homeSummaries, id, member.userId);
+      if (caption) map.set(member.userId, caption);
+    }
+    return map;
+  }, [homeSummaries, members, id, currentUserId]);
   const isRefreshingCachedMissingGroup = groupDetail === null && isFetching;
   const loading = (isLoading || isRefreshingCachedMissingGroup) && !group;
   const loadError = error ? getFetchErrorMessage(error) : null;
@@ -745,6 +763,19 @@ export default function GroupDetailScreen() {
             {balance === 0 && (
               <ThemedText style={[styles.settledLabel, { color: isDark ? '#94A3B8' : colors.textSecondary }]}>settled</ThemedText>
             )}
+            {(() => {
+              const caption = pairCaptions.get(item.userId);
+              if (!caption || item.userId === currentUserId) return null;
+              return (
+                <ThemedText
+                  testID={`group-member-pair-balance-${item.userId}`}
+                  style={[styles.pairBalanceLabel, { color: isDark ? '#94A3B8' : colors.textSecondary }]}>
+                  {caption.direction === 'you_owe'
+                    ? `You owe ${formatCurrency(caption.amount, caption.currency)}`
+                    : `Owes you ${formatCurrency(caption.amount, caption.currency)}`}
+                </ThemedText>
+              );
+            })()}
           </View>
         </TouchableOpacity>
       </ReanimatedSwipeable>
@@ -1471,6 +1502,11 @@ const styles = StyleSheet.create({
   settledLabel: {
     fontSize: 12,
     opacity: 0.6,
+  },
+  pairBalanceLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+    marginTop: 2,
   },
   expenseCard: {
     flexDirection: 'row',
