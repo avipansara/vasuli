@@ -59,4 +59,32 @@ describe('settlement RPC migration contracts', () => {
     expect(migration).not.toContain('DROP TABLE');
     expect(migration).not.toContain('DROP FUNCTION IF EXISTS public.reverse_settlement_operation');
   });
+
+  it('computes friend group balances bilaterally (pair-paid expenses only)', () => {
+    const migration = readMigration('20260904220000_bilateral_pair_group_balances.sql');
+
+    expect(migration).toContain("p.proname = 'get_friend_home_relationships_legacy'");
+    // DO-block style (repo precedent): guards fail loudly, settings inherited untouched
+    expect(migration).toContain('EXECUTE function_definition');
+    expect(migration).toContain('Could not update legacy group_impacts to bilateral');
+    // pair pattern: only expenses paid by one of the pair move the pair balance
+    expect(migration).toContain('e.paid_by IN (operation_row.actor_user_id, operation_row.friend_user_id)');
+    expect(migration).toContain('e.paid_by IN (app_user_id, p_friend_id)');
+    // pair settlements only on both write paths
+    expect(migration).toContain('s.from_user_id = operation_row.actor_user_id AND s.to_user_id = operation_row.friend_user_id');
+    expect(migration).toContain('s.from_user_id = app_user_id AND s.to_user_id = p_friend_id');
+    expect(migration).not.toContain('DROP TABLE');
+  });
+
+  it('validates commits, transfers and reversals against the same bilateral base', () => {
+    const migration = readMigration('20260904220000_bilateral_pair_group_balances.sql');
+
+    expect(migration).toContain('Could not update commit current_balance to bilateral');
+    expect(migration).toContain('Could not update scope-transfer validation base to bilateral');
+    expect(migration).toContain('Could not add viewer_split join to scope-transfer validation');
+    expect(migration).toContain('Could not update reversal current_balance to bilateral');
+    expect(migration).toContain("p.proname = 'validate_settlement_scope_transfer'");
+    expect(migration).toContain("p.proname = 'reverse_settlement_operation'");
+    expect(migration).not.toContain('DROP FUNCTION IF EXISTS public.reverse_settlement_operation');
+  });
 });
