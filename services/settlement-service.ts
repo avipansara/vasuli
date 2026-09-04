@@ -492,6 +492,7 @@ async function applyReceiptEffects({
 
   await invalidateSafely(queryClient, [
     ...affectedGroupIds.map(groupId => queryKeys.groups.detail(currentUserId, groupId)),
+    ...affectedGroupIds.map(groupId => queryKeys.groups.pairTotals(currentUserId, groupId)),
     queryKeys.activity.list(currentUserId),
   ]);
 }

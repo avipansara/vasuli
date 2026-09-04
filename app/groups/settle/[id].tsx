@@ -314,6 +314,7 @@ export default function GroupSettleScreen() {
         current => current ? applySettlementToGroupReadModel(current, settlement) : current
       );
       queryClient.invalidateQueries({ queryKey: groupDetailQueryKey });
+      queryClient.invalidateQueries({ queryKey: queryKeys.groups.pairTotals(currentUserId, id) });
       queryClient.invalidateQueries({ queryKey: queryKeys.groups.list(currentUserId) });
       queryClient.invalidateQueries({ queryKey: queryKeys.friends.home(currentUserId) });
 

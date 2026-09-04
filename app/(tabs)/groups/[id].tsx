@@ -22,7 +22,7 @@ import { CombinedSettlementError } from '@/services/settlement-service';
 import type { Expense, GroupMember, Settlement, User } from '@/types/database';
 import { formatCurrency } from '@/utils/currency';
 import { getPairCaptionForGroupMember } from '@/utils/group-pair-caption';
-import { groupPairTotalsService, type GroupPairTotal } from '@/services/group-pair-totals-service';
+import { groupPairTotalsService } from '@/services/group-pair-totals-service';
 import { getFirstName } from '@/utils/validation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -179,7 +179,12 @@ export default function GroupDetailScreen() {
   // Combined (direct + group) pair totals for the Balances tab: the full
   // bilateral truth per pair, including settled-with-flows pairs.
   const pairTotalsQueryKey = useMemo(() => queryKeys.groups.pairTotals(currentUserId, id), [currentUserId, id]);
-  const { data: pairTotals = [] } = useQuery({
+  const {
+    data: pairTotals = [],
+    refetch: refetchPairTotals,
+    isFetching: isFetchingPairTotals,
+    isStale: isPairTotalsStale,
+  } = useQuery({
     queryKey: pairTotalsQueryKey,
     enabled: !!currentUserId && !!id,
     queryFn: () => groupPairTotalsService.getByGroup(id),
@@ -248,6 +253,13 @@ export default function GroupDetailScreen() {
     refetch,
   });
 
+  useRefetchOnFocus({
+    enabled: !!currentUserId && !!id,
+    isFetching: isFetchingPairTotals,
+    isStale: isPairTotalsStale,
+    refetch: refetchPairTotals,
+  });
+
   useEffect(() => {
     logGroupDetailDiagnostic('route', {
       traceId,
@@ -278,6 +290,9 @@ export default function GroupDetailScreen() {
                 queryClient,
               });
               if (result.status === 'ignored') return;
+              await queryClient.invalidateQueries({
+                queryKey: queryKeys.groups.pairTotals(currentUserId, id),
+              });
               Alert.alert('Settlement reversed', 'The affected balances were restored.');
             } catch (error) {
               Alert.alert(

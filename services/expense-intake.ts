@@ -37,6 +37,7 @@ export type SubmitExpenseInput = {
   keys: {
     home: ExpenseIntakeCacheKey;
     groupDetail?: ExpenseIntakeCacheKey;
+    groupPairTotals?: ExpenseIntakeCacheKey;
     friendDetails?: ExpenseIntakeCacheKey[];
     groups: ExpenseIntakeCacheKey;
     expenses: ExpenseIntakeCacheKey;
@@ -216,6 +217,7 @@ export async function submitExpense(input: SubmitExpenseInput): Promise<void> {
     await Promise.allSettled([
       input.cache.invalidate(input.keys.home),
       ...(input.keys.groupDetail ? [input.cache.invalidate(input.keys.groupDetail)] : []),
+      ...(input.keys.groupPairTotals ? [input.cache.invalidate(input.keys.groupPairTotals)] : []),
       ...input.keys.friendDetails?.map(key => input.cache.invalidate(key) as Promise<unknown>) ?? [],
       input.cache.invalidate(input.keys.groups),
       input.cache.invalidate(input.keys.expenses),
