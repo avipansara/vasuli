@@ -9,8 +9,6 @@ type MemberBilateralLinesProps = {
   lines: BilateralLine[];
   namesById: Map<string, string>;
   currentUserId: string;
-  /** Gate for the per-line action (pair total must still be outstanding). */
-  isLineActionable: (line: BilateralLine) => boolean;
   onSettle: (line: BilateralLine) => void;
 };
 
@@ -19,6 +17,13 @@ function lineCopy(
   namesById: Map<string, string>,
   currentUserId: string,
 ): string {
+  if (line.amount < 0.01) {
+    if (line.fromUserId === currentUserId || line.toUserId === currentUserId) {
+      const otherId = line.fromUserId === currentUserId ? line.toUserId : line.fromUserId;
+      return `Settled with ${getFirstName(namesById.get(otherId) ?? 'them')}`;
+    }
+    return `${getFirstName(namesById.get(line.fromUserId) ?? 'Someone')} and ${getFirstName(namesById.get(line.toUserId) ?? 'them')} settled`;
+  }
   const amount = formatCurrency(line.amount, line.currency);
   if (line.fromUserId === currentUserId) {
     return `You owe ${amount} to ${getFirstName(namesById.get(line.toUserId) ?? 'them')}`;
@@ -34,7 +39,7 @@ function lineCopy(
  * nonzero pair debt involving the member, with a Settle up action for
  * lines the viewer is party to.
  */
-export function MemberBilateralLines({ lines, namesById, currentUserId, isLineActionable, onSettle }: MemberBilateralLinesProps) {
+export function MemberBilateralLines({ lines, namesById, currentUserId, onSettle }: MemberBilateralLinesProps) {
   const { colors, settle, isDark } = useThemeColors();
 
   if (lines.length === 0) {
@@ -50,7 +55,9 @@ export function MemberBilateralLines({ lines, namesById, currentUserId, isLineAc
       {lines.map(line => {
         const key = `${line.fromUserId}-${line.toUserId}-${line.currency}`;
         const involvesViewer = line.fromUserId === currentUserId || line.toUserId === currentUserId;
-        const actionable = involvesViewer && isLineActionable(line);
+        // Only outstanding viewer lines are actionable: a settled line
+        // (spent offset netted by cash elsewhere) must never invite payment.
+        const actionable = involvesViewer && line.amount >= 0.01;
         return (
           <View
             key={key}

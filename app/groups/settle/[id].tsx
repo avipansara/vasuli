@@ -26,7 +26,7 @@ import { formatCurrencyInput, normalizeCurrencyInput } from '@/utils/validation'
 import { formatCurrency, getCurrencySymbol, getPreferredCurrency } from '@/utils/currency';
 import { useQueryClient } from '@tanstack/react-query';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { memo, useCallback, useEffect, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -133,12 +133,7 @@ const SettleMemberRow = memo(function SettleMemberRow({ item, isSelected, onSele
 }, areSettleMemberRowEqual);
 
 export default function GroupSettleScreen() {
-  const { id, member: memberParam, amount: amountParam, payer: payerParam } = useLocalSearchParams<{
-    id: string;
-    member?: string;
-    amount?: string;
-    payer?: string;
-  }>();
+  const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const { colors, settle, isDark } = useThemeColors();
@@ -152,27 +147,6 @@ export default function GroupSettleScreen() {
   const [selectedMember, setSelectedMember] = useState<MemberWithBalance | null>(null);
   const [amount, setAmount] = useState('');
   const [settling, setSettling] = useState(false);
-  // Deep-link from a bilateral line (Balances tab): the line amount can
-  // exceed the member's group net, so net-capped validation is bypassed
-  // for it (the server accepts any positive group settlement).
-  const [isLineSettlement, setIsLineSettlement] = useState(false);
-
-  const paramsAppliedRef = useRef(false);
-  const applyMemberParams = useCallback((candidates: MemberWithBalance[]): boolean => {
-    if (paramsAppliedRef.current || !memberParam) return false;
-    const match = candidates.find(member => member.userId === memberParam);
-    if (!match) return false;
-    paramsAppliedRef.current = true;
-    setSelectedMember(match);
-    const parsed = Number.parseFloat(amountParam ?? '');
-    if (Number.isFinite(parsed) && parsed > 0) {
-      setAmount(parsed.toFixed(2));
-      setIsLineSettlement(true);
-    } else {
-      setAmount(getGroupSettleAmount(match.balance));
-    }
-    return true;
-  }, [memberParam, amountParam]);
 
   const applyGroupDetail = useCallback((groupDetail: GroupDetailReadModel) => {
     const membersWithBalances = groupDetail.members
@@ -185,11 +159,9 @@ export default function GroupSettleScreen() {
 
     setGroup(groupDetail.group);
     setMembers(membersWithBalances);
-    if (!applyMemberParams(membersWithBalances)) {
-      setSelectedMember(defaultMember);
-      setAmount(defaultMember ? getGroupSettleAmount(defaultMember.balance) : '');
-    }
-  }, [currentUserId, applyMemberParams]);
+    setSelectedMember(defaultMember);
+    setAmount(defaultMember ? getGroupSettleAmount(defaultMember.balance) : '');
+  }, [currentUserId]);
 
   const loadData = useCallback(async () => {
     try {
@@ -234,17 +206,15 @@ export default function GroupSettleScreen() {
       const defaultMember = getDefaultGroupSettleMember(membersWithBalances);
 
       setMembers(membersWithBalances);
-      if (!applyMemberParams(membersWithBalances)) {
-        setSelectedMember(defaultMember);
-        setAmount(defaultMember ? getGroupSettleAmount(defaultMember.balance) : '');
-      }
+      setSelectedMember(defaultMember);
+      setAmount(defaultMember ? getGroupSettleAmount(defaultMember.balance) : '');
     } catch (error) {
       console.error('Error loading data:', error);
       setLoadError(getFetchErrorMessage(error));
     } finally {
       setLoading(false);
     }
-  }, [applyGroupDetail, applyMemberParams, currentUserId, id, queryClient]);
+  }, [applyGroupDetail, currentUserId, id, queryClient]);
 
   useEffect(() => {
     loadData();
@@ -253,7 +223,6 @@ export default function GroupSettleScreen() {
   const handleSelectMember = useCallback((member: MemberWithBalance) => {
     setSelectedMember(member);
     setAmount(getGroupSettleAmount(member.balance));
-    setIsLineSettlement(false);
   }, []);
 
   const handleAmountChange = useCallback((text: string) => {
@@ -283,7 +252,7 @@ export default function GroupSettleScreen() {
 
     const amountCents = Math.round(amountNum * 100);
     const maxCents = Math.round(Math.abs(selectedMember.balance) * 100);
-    if (!isLineSettlement && amountCents > maxCents) {
+    if (amountCents > maxCents) {
       Alert.alert('Error', 'Settlement amount cannot exceed the outstanding balance.');
       return;
     }
@@ -292,13 +261,8 @@ export default function GroupSettleScreen() {
       setSettling(true);
 
       const isReceiving = selectedMember.balance < 0;
-      const explicitPayer = payerParam === currentUserId
-        || payerParam === selectedMember.userId ? payerParam : null;
-      const fromUserId = explicitPayer
-        ?? (isReceiving ? selectedMember.userId : currentUserId);
-      const toUserId = explicitPayer
-        ? (explicitPayer === currentUserId ? selectedMember.userId : currentUserId)
-        : (isReceiving ? currentUserId : selectedMember.userId);
+      const fromUserId = isReceiving ? selectedMember.userId : currentUserId;
+      const toUserId = isReceiving ? currentUserId : selectedMember.userId;
 
       const settlement = await settlementService.create({
         groupId: id,
@@ -354,10 +318,7 @@ export default function GroupSettleScreen() {
     [handleSelectMember, selectedMember?.userId]
   );
 
-  const parsedAmountValue = Number.parseFloat(amount);
-  const canSubmitSettlement = isLineSettlement
-    ? !!selectedMember && !settling && Number.isFinite(parsedAmountValue) && parsedAmountValue > 0
-    : canSubmitGroupSettlement(selectedMember, amount, settling);
+  const canSubmitSettlement = canSubmitGroupSettlement(selectedMember, amount, settling);
 
   if (loading && !group) {
     return (

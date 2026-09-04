@@ -21,8 +21,8 @@ import { queryKeys } from '@/services/query-keys';
 import { CombinedSettlementError } from '@/services/settlement-service';
 import type { Expense, GroupMember, Settlement, User } from '@/types/database';
 import { formatCurrency } from '@/utils/currency';
-import { computeBilateralLines, isPairOutstanding, linesOwedBy, linesOwedTo } from '@/utils/group-bilateral-matrix';
 import { getPairCaptionForGroupMember } from '@/utils/group-pair-caption';
+import { groupPairTotalsService, type GroupPairTotal } from '@/services/group-pair-totals-service';
 import { getFirstName } from '@/utils/validation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -176,23 +176,30 @@ export default function GroupDetailScreen() {
     enabled: !!currentUserId,
     queryFn: () => friendSummaryService.getHomeSummaries(currentUserId),
   });
-  // All-pairs bilateral debts for the Balances tab (Splitwise-style).
-  // Derived from groupDetail (stable query reference) for stable memo deps.
-  const bilateralLines = useMemo(() => computeBilateralLines({
-    expenses: groupDetail?.expenses ?? EMPTY_EXPENSES,
-    settlements: groupDetail?.settlements ?? EMPTY_SETTLEMENTS,
-    scopeTransfers: groupDetail?.scopeTransfers ?? [],
-    memberUserIds: (groupDetail?.members ?? []).map(member => member.userId),
-  }), [groupDetail]);
+  // Combined (direct + group) pair totals for the Balances tab: the full
+  // bilateral truth per pair, including settled-with-flows pairs.
+  const pairTotalsQueryKey = useMemo(() => queryKeys.groups.pairTotals(currentUserId, id), [currentUserId, id]);
+  const { data: pairTotals = [] } = useQuery({
+    queryKey: pairTotalsQueryKey,
+    enabled: !!currentUserId && !!id,
+    queryFn: () => groupPairTotalsService.getByGroup(id),
+  });
+  const linesForMember = useCallback((memberUserId: string) => pairTotals
+    .filter(total => total.fromUserId === memberUserId || total.toUserId === memberUserId)
+    .map(total => ({
+      fromUserId: total.fromUserId,
+      toUserId: total.toUserId,
+      amount: total.amount,
+      currency: total.currency,
+    }))
+    .sort((x, y) =>
+      x.fromUserId.localeCompare(y.fromUserId)
+      || x.toUserId.localeCompare(y.toUserId)
+      || x.currency.localeCompare(y.currency),
+    ), [pairTotals]);
   const namesById = useMemo(
     () => new Map((groupDetail?.members ?? []).map(member => [member.userId, member.user?.name ?? 'Unknown'] as const)),
     [groupDetail],
-  );
-  // Pair combined totals (all ledgers) per friend: a bilateral line is only
-  // actionable while its pair total is still outstanding in that currency.
-  const pairTotalsById = useMemo(
-    () => new Map(homeSummaries.map(summary => [summary.id, summary.relationship.totalsByCurrency] as const)),
-    [homeSummaries],
   );
   // Bilateral pair position in THIS group (pot position stays the primary
   // row value; this caption answers "with me" underneath it).
@@ -208,10 +215,6 @@ export default function GroupDetailScreen() {
     }
     return map;
   }, [homeSummaries, groupDetail, id, currentUserId]);
-  const isLineActionable = useCallback((line: { toUserId: string; fromUserId: string; currency: string }) => {
-    const otherId = line.fromUserId === currentUserId ? line.toUserId : line.fromUserId;
-    return isPairOutstanding(pairTotalsById.get(otherId), line.currency);
-  }, [pairTotalsById, currentUserId]);
   const isRefreshingCachedMissingGroup = groupDetail === null && isFetching;
   const loading = (isLoading || isRefreshingCachedMissingGroup) && !group;
   const loadError = error ? getFetchErrorMessage(error) : null;
@@ -377,11 +380,11 @@ export default function GroupDetailScreen() {
     router.push(`/groups/settle/${id}`);
   }
 
-  function handleSettleLine(line: { fromUserId: string; toUserId: string; amount: number }) {
+  function handleSettleLine(line: { fromUserId: string; toUserId: string }) {
+    // Combined lines span direct + group ledgers: settle on the friend page,
+    // which owns the combined flow (group settle only covers group scope).
     const otherId = line.fromUserId === currentUserId ? line.toUserId : line.fromUserId;
-    router.push(
-      `/groups/settle/${id}?member=${otherId}&amount=${line.amount.toFixed(2)}&payer=${line.fromUserId}` as any,
-    );
+    router.push(`/friend-settle/${otherId}` as any);
   }
 
   function handleDeleteGroup() {
@@ -1107,14 +1110,7 @@ export default function GroupDetailScreen() {
             </View>
             {members.map(member => {
               const expanded = expandedMemberId === member.userId;
-              const memberLines = [
-                ...linesOwedBy(bilateralLines, member.userId),
-                ...linesOwedTo(bilateralLines, member.userId),
-              ].sort((x, y) =>
-                x.fromUserId.localeCompare(y.fromUserId)
-                || x.toUserId.localeCompare(y.toUserId)
-                || x.currency.localeCompare(y.currency),
-              );
+              const memberLines = linesForMember(member.userId);
               return (
                 <View key={member.id}>
                   {renderMember({ item: member }, {
@@ -1129,7 +1125,6 @@ export default function GroupDetailScreen() {
                         lines={memberLines}
                         namesById={namesById}
                         currentUserId={currentUserId}
-                        isLineActionable={isLineActionable}
                         onSettle={handleSettleLine}
                       />
                     </View>

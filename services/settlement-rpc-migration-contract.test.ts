@@ -87,4 +87,14 @@ describe('settlement RPC migration contracts', () => {
     expect(migration).toContain("p.proname = 'reverse_settlement_operation'");
     expect(migration).not.toContain('DROP FUNCTION IF EXISTS public.reverse_settlement_operation');
   });
+
+  it('exposes combined pair totals with member-only access', () => {
+    const migration = readMigration('20260904230000_group_pair_combined_totals.sql');
+
+    expect(migration).toContain('CREATE OR REPLACE FUNCTION public.get_group_pair_totals(p_group_id UUID)');
+    expect(migration).toContain('SET search_path = public, private, pg_temp');
+    expect(migration).toContain('REVOKE ALL ON FUNCTION public.get_group_pair_totals(UUID) FROM PUBLIC, anon;');
+    expect(migration).toContain('GRANT EXECUTE ON FUNCTION public.get_group_pair_totals(UUID) TO authenticated;');
+    expect(migration).not.toContain('DROP TABLE');
+  });
 });
