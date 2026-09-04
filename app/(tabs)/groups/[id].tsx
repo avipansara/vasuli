@@ -1,4 +1,4 @@
-import { AddMemberModal } from '@/components/group';
+import { AddMemberModal, MemberBilateralLines } from '@/components/group';
 import { ThemedText } from '@/components/themed-text';
 import { AsyncErrorState } from '@/components/ui/async-error-state';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -21,7 +21,9 @@ import { queryKeys } from '@/services/query-keys';
 import { CombinedSettlementError } from '@/services/settlement-service';
 import type { Expense, GroupMember, Settlement, User } from '@/types/database';
 import { formatCurrency } from '@/utils/currency';
+import { computeBilateralLines, linesOwedBy, linesOwedTo } from '@/utils/group-bilateral-matrix';
 import { getPairCaptionForGroupMember } from '@/utils/group-pair-caption';
+import { getFirstName } from '@/utils/validation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -74,9 +76,7 @@ function GroupDetailSwipeAction({
   );
 }
 
-import { getFirstName } from '@/utils/validation';
-
-type SectionTab = 'all' | 'expenses';
+type SectionTab = 'all' | 'expenses' | 'balances';
 
 export default function GroupDetailScreen() {
   const { friends: friendsTheme, colors, friendDetail: friendDetailTheme, settle, isDark } = useThemeColors();
@@ -110,6 +110,7 @@ export default function GroupDetailScreen() {
 
   const [memberModalVisible, setMemberModalVisible] = useState(false);
   const [expenseSearch, setExpenseSearch] = useState('');
+  const [expandedMemberId, setExpandedMemberId] = useState<string | null>(null);
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
   const { user } = useAuth();
   const currentUserId = user?.id || '';
@@ -144,6 +145,7 @@ export default function GroupDetailScreen() {
   const tabItems = useMemo(() => [
     { type: 'tab' as const, id: 'all' as SectionTab, label: 'All', icon: 'person.3.fill' as const },
     { type: 'tab' as const, id: 'expenses' as SectionTab, label: 'Expenses', icon: 'dollarsign.circle.fill' as const },
+    { type: 'tab' as const, id: 'balances' as SectionTab, label: 'Balances', icon: 'list.bullet' as const },
     { type: 'action' as const, id: 'stats', label: 'Stats', icon: 'chart.bar.fill' as const, onPress: () => router.push(`/groups/stats/${id}` as any) },
   ], [id]);
 
@@ -167,6 +169,18 @@ export default function GroupDetailScreen() {
   const balances = groupDetail?.balances ?? new Map<string, number>();
   const scopeTransfers = groupDetail?.scopeTransfers ?? [];
   const expenseSplits = useMemo(() => expenses.flatMap(expense => expense.splits), [expenses]);
+  // All-pairs bilateral debts for the Balances tab (Splitwise-style).
+  // Derived from groupDetail (stable query reference) for stable memo deps.
+  const bilateralLines = useMemo(() => computeBilateralLines({
+    expenses: groupDetail?.expenses ?? EMPTY_EXPENSES,
+    settlements: groupDetail?.settlements ?? EMPTY_SETTLEMENTS,
+    scopeTransfers: groupDetail?.scopeTransfers ?? [],
+    memberUserIds: (groupDetail?.members ?? []).map(member => member.userId),
+  }), [groupDetail]);
+  const namesById = useMemo(
+    () => new Map((groupDetail?.members ?? []).map(member => [member.userId, member.user?.name ?? 'Unknown'] as const)),
+    [groupDetail],
+  );
   const availableUsers = groupDetail?.availableUsers ?? [];
   const friendshipStatus = groupDetail?.friendshipStatus ?? new Map();
   const { data: homeSummaries = [] } = useQuery({
@@ -176,15 +190,18 @@ export default function GroupDetailScreen() {
   });
   // Bilateral pair position in THIS group (pot position stays the primary
   // row value; this caption answers "with me" underneath it).
+  // NOTE: derived from groupDetail (stable query reference) so memo deps
+  // never change identity every render.
   const pairCaptions = useMemo(() => {
+    const groupMembers = groupDetail?.members ?? [];
     const map = new Map<string, { amount: number; currency: string; direction: 'you_owe' | 'you_are_owed' }>();
-    for (const member of members) {
+    for (const member of groupMembers) {
       if (member.userId === currentUserId) continue;
       const caption = getPairCaptionForGroupMember(homeSummaries, id, member.userId);
       if (caption) map.set(member.userId, caption);
     }
     return map;
-  }, [homeSummaries, members, id, currentUserId]);
+  }, [homeSummaries, groupDetail, id, currentUserId]);
   const isRefreshingCachedMissingGroup = groupDetail === null && isFetching;
   const loading = (isLoading || isRefreshingCachedMissingGroup) && !group;
   const loadError = error ? getFetchErrorMessage(error) : null;
@@ -348,6 +365,13 @@ export default function GroupDetailScreen() {
 
   function handleSettleUp() {
     router.push(`/groups/settle/${id}`);
+  }
+
+  function handleSettleLine(line: { fromUserId: string; toUserId: string; amount: number }) {
+    const otherId = line.fromUserId === currentUserId ? line.toUserId : line.fromUserId;
+    router.push(
+      `/groups/settle/${id}?member=${otherId}&amount=${line.amount.toFixed(2)}&payer=${line.fromUserId}` as any,
+    );
   }
 
   function handleDeleteGroup() {
@@ -659,7 +683,10 @@ export default function GroupDetailScreen() {
     );
   }
 
-  function renderMember({ item }: { item: GroupMember & { user?: User } }) {
+  function renderMember(
+    { item }: { item: GroupMember & { user?: User } },
+    opts?: { chevron?: { expanded: boolean; onToggle: () => void } },
+  ) {
     const balance = balances.get(item.userId) || 0;
     const balanceColor = balance > 0
       ? friendDetailTheme.positive
@@ -749,7 +776,22 @@ export default function GroupDetailScreen() {
               <ThemedText type='defaultSemiBold' style={[styles.roleLabel, { color: isDark ? '#94A3B8' : colors.text }]}>Admin</ThemedText>
             )}
           </View>
-          <View style={styles.balanceInfo}>
+            {opts?.chevron && (
+              <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityLabel={opts.chevron.expanded ? 'Collapse pair debts' : 'Expand pair debts'}
+                accessibilityState={{ expanded: opts.chevron.expanded }}
+                hitSlop={MIN_TOUCH_HIT_SLOP}
+                onPress={opts.chevron.onToggle}
+                style={styles.expandButton}>
+                <IconSymbol
+                  size={18}
+                  name={opts.chevron.expanded ? 'chevron.up' : 'chevron.down'}
+                  color={isDark ? '#94A3B8' : colors.textSecondary}
+                />
+              </TouchableOpacity>
+            )}
+            <View style={styles.balanceInfo}>
             {balance !== 0 && (
               <>
                 <ThemedText type='subtitle' style={[styles.memberBalanceAmount, { color: balanceColor }]}>
@@ -1042,6 +1084,48 @@ export default function GroupDetailScreen() {
                 {renderMember({ item: member })}
               </View>
             ))}
+          </View>
+        )}
+
+        {/* Balances Section (Splitwise-style bilateral breakdown) */}
+        {(sectionTab === 'balances') && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <ThemedText type="subtitle" style={[styles.sectionTitle, { color: isDark ? '#F8FAFC' : colors.text }]}>
+                Balances
+              </ThemedText>
+            </View>
+            {members.map(member => {
+              const expanded = expandedMemberId === member.userId;
+              const memberLines = [
+                ...linesOwedBy(bilateralLines, member.userId),
+                ...linesOwedTo(bilateralLines, member.userId),
+              ].sort((x, y) =>
+                x.fromUserId.localeCompare(y.fromUserId)
+                || x.toUserId.localeCompare(y.toUserId)
+                || x.currency.localeCompare(y.currency),
+              );
+              return (
+                <View key={member.id}>
+                  {renderMember({ item: member }, {
+                    chevron: {
+                      expanded,
+                      onToggle: () => setExpandedMemberId(current => current === member.userId ? null : member.userId),
+                    },
+                  })}
+                  {expanded && (
+                    <View style={styles.expandedLines}>
+                      <MemberBilateralLines
+                        lines={memberLines}
+                        namesById={namesById}
+                        currentUserId={currentUserId}
+                        onSettle={handleSettleLine}
+                      />
+                    </View>
+                  )}
+                </View>
+              );
+            })}
           </View>
         )}
 
@@ -1507,6 +1591,16 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '500',
     marginTop: 2,
+  },
+  expandButton: {
+    padding: 8,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  expandedLines: {
+    paddingHorizontal: 16,
+    paddingBottom: 12,
   },
   expenseCard: {
     flexDirection: 'row',
