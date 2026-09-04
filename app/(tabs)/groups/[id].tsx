@@ -21,7 +21,7 @@ import { queryKeys } from '@/services/query-keys';
 import { CombinedSettlementError } from '@/services/settlement-service';
 import type { Expense, GroupMember, Settlement, User } from '@/types/database';
 import { formatCurrency } from '@/utils/currency';
-import { computeBilateralLines, linesOwedBy, linesOwedTo } from '@/utils/group-bilateral-matrix';
+import { computeBilateralLines, isPairOutstanding, linesOwedBy, linesOwedTo } from '@/utils/group-bilateral-matrix';
 import { getPairCaptionForGroupMember } from '@/utils/group-pair-caption';
 import { getFirstName } from '@/utils/validation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -169,6 +169,13 @@ export default function GroupDetailScreen() {
   const balances = groupDetail?.balances ?? new Map<string, number>();
   const scopeTransfers = groupDetail?.scopeTransfers ?? [];
   const expenseSplits = useMemo(() => expenses.flatMap(expense => expense.splits), [expenses]);
+  const availableUsers = groupDetail?.availableUsers ?? [];
+  const friendshipStatus = groupDetail?.friendshipStatus ?? new Map();
+  const { data: homeSummaries = [] } = useQuery({
+    queryKey: friendsHomeQueryKey,
+    enabled: !!currentUserId,
+    queryFn: () => friendSummaryService.getHomeSummaries(currentUserId),
+  });
   // All-pairs bilateral debts for the Balances tab (Splitwise-style).
   // Derived from groupDetail (stable query reference) for stable memo deps.
   const bilateralLines = useMemo(() => computeBilateralLines({
@@ -181,13 +188,12 @@ export default function GroupDetailScreen() {
     () => new Map((groupDetail?.members ?? []).map(member => [member.userId, member.user?.name ?? 'Unknown'] as const)),
     [groupDetail],
   );
-  const availableUsers = groupDetail?.availableUsers ?? [];
-  const friendshipStatus = groupDetail?.friendshipStatus ?? new Map();
-  const { data: homeSummaries = [] } = useQuery({
-    queryKey: friendsHomeQueryKey,
-    enabled: !!currentUserId,
-    queryFn: () => friendSummaryService.getHomeSummaries(currentUserId),
-  });
+  // Pair combined totals (all ledgers) per friend: a bilateral line is only
+  // actionable while its pair total is still outstanding in that currency.
+  const pairTotalsById = useMemo(
+    () => new Map(homeSummaries.map(summary => [summary.id, summary.relationship.totalsByCurrency] as const)),
+    [homeSummaries],
+  );
   // Bilateral pair position in THIS group (pot position stays the primary
   // row value; this caption answers "with me" underneath it).
   // NOTE: derived from groupDetail (stable query reference) so memo deps
@@ -202,6 +208,10 @@ export default function GroupDetailScreen() {
     }
     return map;
   }, [homeSummaries, groupDetail, id, currentUserId]);
+  const isLineActionable = useCallback((line: { toUserId: string; fromUserId: string; currency: string }) => {
+    const otherId = line.fromUserId === currentUserId ? line.toUserId : line.fromUserId;
+    return isPairOutstanding(pairTotalsById.get(otherId), line.currency);
+  }, [pairTotalsById, currentUserId]);
   const isRefreshingCachedMissingGroup = groupDetail === null && isFetching;
   const loading = (isLoading || isRefreshingCachedMissingGroup) && !group;
   const loadError = error ? getFetchErrorMessage(error) : null;
@@ -1119,6 +1129,7 @@ export default function GroupDetailScreen() {
                         lines={memberLines}
                         namesById={namesById}
                         currentUserId={currentUserId}
+                        isLineActionable={isLineActionable}
                         onSettle={handleSettleLine}
                       />
                     </View>

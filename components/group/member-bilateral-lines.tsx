@@ -9,6 +9,8 @@ type MemberBilateralLinesProps = {
   lines: BilateralLine[];
   namesById: Map<string, string>;
   currentUserId: string;
+  /** Gate for the per-line action (pair total must still be outstanding). */
+  isLineActionable: (line: BilateralLine) => boolean;
   onSettle: (line: BilateralLine) => void;
 };
 
@@ -32,7 +34,7 @@ function lineCopy(
  * nonzero pair debt involving the member, with a Settle up action for
  * lines the viewer is party to.
  */
-export function MemberBilateralLines({ lines, namesById, currentUserId, onSettle }: MemberBilateralLinesProps) {
+export function MemberBilateralLines({ lines, namesById, currentUserId, isLineActionable, onSettle }: MemberBilateralLinesProps) {
   const { colors, settle, isDark } = useThemeColors();
 
   if (lines.length === 0) {
@@ -48,6 +50,7 @@ export function MemberBilateralLines({ lines, namesById, currentUserId, onSettle
       {lines.map(line => {
         const key = `${line.fromUserId}-${line.toUserId}-${line.currency}`;
         const involvesViewer = line.fromUserId === currentUserId || line.toUserId === currentUserId;
+        const actionable = involvesViewer && isLineActionable(line);
         return (
           <View
             key={key}
@@ -56,14 +59,14 @@ export function MemberBilateralLines({ lines, namesById, currentUserId, onSettle
             <ThemedText style={[styles.lineText, { color: isDark ? '#E2E8F0' : colors.text }]}>
               {lineCopy(line, namesById, currentUserId)}
             </ThemedText>
-            {involvesViewer && (
+            {actionable && (
               <TouchableOpacity
                 accessibilityRole="button"
-                accessibilityLabel={`Settle up ${formatCurrency(line.amount, line.currency)}`}
+                accessibilityLabel={`Record payment of ${formatCurrency(line.amount, line.currency)}`}
                 testID={`bilateral-settle-${key}`}
                 onPress={() => onSettle(line)}
                 style={[styles.settleButton, { backgroundColor: settle.buttonBackground, minHeight: 44 }]}>
-                <Text style={[styles.settleButtonText, { color: settle.buttonText }]}>Settle up</Text>
+                <Text style={[styles.settleButtonText, { color: settle.buttonText }]}>Record payment</Text>
               </TouchableOpacity>
             )}
           </View>

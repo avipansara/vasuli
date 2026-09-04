@@ -99,3 +99,24 @@ export function linesOwedBy(lines: BilateralLine[], memberUserId: string): Bilat
 export function linesOwedTo(lines: BilateralLine[], memberUserId: string): BilateralLine[] {
   return lines.filter(line => line.toUserId === memberUserId);
 }
+
+export type PairTotal = Pick<{ currency: string; amount: number }, 'currency' | 'amount'>;
+
+/**
+ * Whether a bilateral line is safe to act on: the pair's COMBINED total
+ * (all ledgers) must still be outstanding in the line's currency.
+ *
+ * Without this, a line inside an already-settled pair (e.g. a spent scope
+ * offset on one side netted by cash on the other) invites paying twice:
+ * recording the line would unbalance a zero total.
+ * Unknown totals (member missing) are NOT actionable — fail closed.
+ */
+export function isPairOutstanding(
+  totalsByCurrency: PairTotal[] | undefined,
+  currency: string,
+): boolean {
+  if (!totalsByCurrency) return false;
+  const entry = totalsByCurrency.find(total => total.currency === currency);
+  if (!entry) return false;
+  return Math.abs(entry.amount) >= CENT;
+}

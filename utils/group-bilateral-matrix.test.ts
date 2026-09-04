@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { computeBilateralLines, linesOwedBy, linesOwedTo } from './group-bilateral-matrix';
+import { computeBilateralLines, isPairOutstanding, linesOwedBy, linesOwedTo } from './group-bilateral-matrix';
 
 describe('computeBilateralLines', () => {
   it('nets two-way expenses between a pair', () => {
@@ -92,5 +92,20 @@ describe('computeBilateralLines', () => {
     ];
     expect(linesOwedBy(lines, 'a')).toEqual([lines[0]]);
     expect(linesOwedTo(lines, 'a')).toEqual([lines[1]]);
+  });
+});
+
+describe('isPairOutstanding', () => {
+  it('is actionable when the pair total is outstanding in the line currency', () => {
+    expect(isPairOutstanding([{ currency: 'USD', amount: -453.9 }], 'USD')).toBe(true);
+  });
+
+  it('is not actionable when the pair total is settled', () => {
+    expect(isPairOutstanding([{ currency: 'USD', amount: 0 }], 'USD')).toBe(false);
+  });
+
+  it('is not actionable for other currencies or unknown pairs', () => {
+    expect(isPairOutstanding([{ currency: 'EUR', amount: 5 }], 'USD')).toBe(false);
+    expect(isPairOutstanding(undefined, 'USD')).toBe(false);
   });
 });
