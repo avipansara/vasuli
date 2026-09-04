@@ -11,6 +11,7 @@ import { activityService } from '@/services/activity-service';
 import { calculateBalances } from '@/services/balance-utils';
 import type { GroupDetailReadModel } from '@/services/group-detail-read-model';
 import { applySettlementToGroupReadModel } from '@/services/group-detail-read-model';
+import { groupPairTotalsService, type GroupPairTotal } from '@/services/group-pair-totals-service';
 import { groupService } from '@/services/group-service';
 import { queryKeys } from '@/services/query-keys';
 import { settlementService } from '@/services/settlement-service';
@@ -24,6 +25,7 @@ import {
 } from '@/utils/group-settle-selection';
 import { formatCurrencyInput, normalizeCurrencyInput } from '@/utils/validation';
 import { formatCurrency, getCurrencySymbol, getPreferredCurrency } from '@/utils/currency';
+import { toSettleableBalance } from '@/utils/group-settle-pairs';
 import { useQueryClient } from '@tanstack/react-query';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { memo, useCallback, useEffect, useState } from 'react';
@@ -148,6 +150,26 @@ export default function GroupSettleScreen() {
   const [amount, setAmount] = useState('');
   const [settling, setSettling] = useState(false);
 
+  // Row balances are bilateral with the viewer (what the pair owes each
+  // other), not global group nets. Falls back to global when pair totals
+  // are unavailable (e.g. RPC not deployed yet).
+  const applyBilateralBalances = useCallback((
+    candidates: MemberWithBalance[],
+    pairTotals: GroupPairTotal[],
+  ): MemberWithBalance[] => {
+    const currency = getPreferredCurrency();
+    return candidates.map(member => ({
+      ...member,
+      balance: toSettleableBalance({
+        pairTotals,
+        memberUserId: member.userId,
+        viewerUserId: currentUserId,
+        preferredCurrency: currency,
+        fallbackGlobalBalance: member.balance,
+      }),
+    }));
+  }, [currentUserId]);
+
   const applyGroupDetail = useCallback((groupDetail: GroupDetailReadModel) => {
     const membersWithBalances = groupDetail.members
       .filter(member => member.userId !== currentUserId)
@@ -155,13 +177,17 @@ export default function GroupSettleScreen() {
         ...member,
         balance: groupDetail.balances.get(member.userId) || 0,
       }));
-    const defaultMember = getDefaultGroupSettleMember(membersWithBalances);
+    const cachedTotals = queryClient.getQueryData<GroupPairTotal[]>(
+      queryKeys.groups.pairTotals(currentUserId, id),
+    ) ?? [];
+    const displayMembers = applyBilateralBalances(membersWithBalances, cachedTotals);
+    const defaultMember = getDefaultGroupSettleMember(displayMembers);
 
     setGroup(groupDetail.group);
-    setMembers(membersWithBalances);
+    setMembers(displayMembers);
     setSelectedMember(defaultMember);
     setAmount(defaultMember ? getGroupSettleAmount(defaultMember.balance) : '');
-  }, [currentUserId]);
+  }, [currentUserId, id, queryClient, applyBilateralBalances]);
 
   const loadData = useCallback(async () => {
     try {
@@ -203,9 +229,19 @@ export default function GroupSettleScreen() {
           user: member.user || undefined,
           balance: balances.get(member.userId) || 0,
         }));
-      const defaultMember = getDefaultGroupSettleMember(membersWithBalances);
+      let pairTotals: GroupPairTotal[] = [];
+      try {
+        pairTotals = await queryClient.fetchQuery({
+          queryKey: queryKeys.groups.pairTotals(currentUserId, id),
+          queryFn: () => groupPairTotalsService.getByGroup(id),
+        });
+      } catch {
+        // Pre-RPC builds: fall back to global nets (previous behavior).
+      }
+      const displayMembers = applyBilateralBalances(membersWithBalances, pairTotals);
+      const defaultMember = getDefaultGroupSettleMember(displayMembers);
 
-      setMembers(membersWithBalances);
+      setMembers(displayMembers);
       setSelectedMember(defaultMember);
       setAmount(defaultMember ? getGroupSettleAmount(defaultMember.balance) : '');
     } catch (error) {
