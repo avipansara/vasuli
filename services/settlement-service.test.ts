@@ -1162,3 +1162,33 @@ describe('settlementService.reverse adapter', () => {
     await expect(settlementService.reverse('operation-3', 0)).rejects.toThrow(/invalid receipt/i);
   });
 });
+
+describe('buildCombinedSettlementPlan with bilateral group inputs', () => {
+  it('full-settles a bilateral group debt with a pair transfer', () => {
+    const plan = settlementModule.preview({
+      currentUserId: 'viewer',
+      friendId: 'friend',
+      currency: 'USD',
+      amount: 523.38,
+      directBalance: 0,
+      groupBalances: [{
+        groupId: 'trip-group',
+        groupName: 'Trip Group',
+        currency: 'USD',
+        amount: -523.38,
+        direction: 'you_owe',
+      }],
+    });
+
+    expect(plan.transfers).toHaveLength(1);
+    expect(plan.transfers[0]).toMatchObject({
+      groupId: 'trip-group',
+      fromUserId: 'viewer',
+      toUserId: 'friend',
+      currency: 'USD',
+      signedGroupBalanceDelta: 523.38,
+    });
+    const totalAllocated = plan.allocations.reduce((sum, allocation) => sum + allocation.amount, 0);
+    expect(totalAllocated).toBeCloseTo(523.38, 2);
+  });
+});
