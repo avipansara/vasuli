@@ -250,7 +250,7 @@ export default function GroupSettleScreen() {
     } finally {
       setLoading(false);
     }
-  }, [applyGroupDetail, currentUserId, id, queryClient]);
+  }, [applyGroupDetail, applyBilateralBalances, currentUserId, id, queryClient]);
 
   useEffect(() => {
     loadData();
