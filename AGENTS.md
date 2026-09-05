@@ -60,7 +60,9 @@ npm run precommit
 
 `npm run precommit` runs linting, Supabase type checking, and Vitest. When
 adding or changing behavior, add or update focused tests, especially for
-helpers, services, and Supabase Edge Functions. Use stable `testID` props for
+helpers, services, and Supabase Edge Functions. When adding a `queryKeys.*`
+entry, sweep every `invalidateQueries` site for the same entity so the new
+cache rides all existing mutation paths. Use stable `testID` props for
 important interactive UI when screen or device automation needs them.
 
 Keep production logs actionable: use `console.warn` for deprecations and
