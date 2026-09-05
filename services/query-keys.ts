@@ -7,6 +7,7 @@ export const queryKeys = {
   groups: {
     list: (userId: string) => ['groups', 'list', userId] as const,
     detail: (userId: string, groupId: string) => ['groups', 'detail', userId, groupId] as const,
+    pairTotals: (userId: string, groupId: string) => ['groups', 'pair-totals', userId, groupId] as const,
   },
   expenses: {
     list: (userId: string) => ['expenses', 'list', userId] as const,

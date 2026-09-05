@@ -257,6 +257,7 @@ export default function AddExpenseScreen() {
       const keys = {
         home: friendsHomeQueryKey,
         groupDetail: isGroup ? queryKeys.groups.detail(currentUserId, selectedGroupId) : undefined,
+        groupPairTotals: isGroup ? queryKeys.groups.pairTotals(currentUserId, selectedGroupId) : undefined,
         friendDetails: isGroup ? [] : friendDetailKeys,
         groups: queryKeys.groups.list(currentUserId),
         expenses: queryKeys.expenses.list(currentUserId),

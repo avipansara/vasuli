@@ -30,6 +30,7 @@ describe('expense deletion cache invalidation', () => {
       ['friends', 'home', 'current-user'],
       ['friends', 'detail', 'current-user'],
       ['groups', 'detail', 'current-user', 'group-1'],
+      ['groups', 'pair-totals', 'current-user', 'group-1'],
       ['groups', 'list', 'current-user'],
     ]);
   });

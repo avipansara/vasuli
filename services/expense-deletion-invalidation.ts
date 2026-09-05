@@ -45,6 +45,7 @@ export function getExpenseDeletionInvalidationKeys(
     ...(groupId
       ? [
         queryKeys.groups.detail(currentUserId, groupId),
+        queryKeys.groups.pairTotals(currentUserId, groupId),
         queryKeys.groups.list(currentUserId),
       ]
       : []),
