@@ -1,3 +1,15 @@
+## 2026-09-05
+
+- Fixed pair-facing group balances being computed from global group nets, which
+  overstated personal debts in multi-member groups and wrongly rejected full
+  settlements (`SETTLEMENT_TRANSFER_BALANCE_MISMATCH`). Balances, commit checks,
+  transfer validation, and reversal checks are now bilateral (pair-scoped).
+- Added a Balances tab on group detail with per-pair combined totals, including
+  settled-with-flows pairs, plus with-you captions on member rows and bilateral
+  amounts on the group settle screen.
+- Fixed balance caches (including the new pair totals) invalidating on every
+  settlement, reversal, and expense mutation, with refetch on focus.
+
 ## 2026-09-03
 
 - Added `npm run start:prod` for simulator Fast Refresh with credentials explicitly
