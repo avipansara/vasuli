@@ -73,6 +73,11 @@ export function useFriendDetailController({
     enabled: !!currentUserId && !!friendId,
   });
   useRealtime({
+    table: 'settlement_cancellations',
+    onChange: invalidateFriendDetail,
+    enabled: !!currentUserId && !!friendId,
+  });
+  useRealtime({
     table: 'settlements',
     filter: currentUserId ? `to_user_id=eq.${currentUserId}` : undefined,
     onChange: invalidateFriendDetail,
@@ -97,6 +102,9 @@ export function useFriendDetailController({
     expenses: query.data?.expenses ?? [],
     activity: query.data?.activity ?? [],
     groupBalances: query.data?.groupBalances ?? [],
+    scopeTransfers: query.data?.scopeTransfers ?? [],
+    cancellations: query.data?.cancellations ?? [],
+    settlementOperations: query.data?.settlementOperations ?? [],
     relationship: query.data?.relationship ?? null,
     friendDetailQueryKey,
     friendsHomeQueryKey,
@@ -108,6 +116,9 @@ export function useFriendDetailController({
     expenses: FriendDetailData['expenses'];
     activity: FriendDetailData['activity'];
     groupBalances: NonNullable<FriendDetailData['groupBalances']>;
+    scopeTransfers: NonNullable<FriendDetailData['scopeTransfers']>;
+    cancellations: NonNullable<FriendDetailData['cancellations']>;
+    settlementOperations: NonNullable<FriendDetailData['settlementOperations']>;
     relationship: FriendRelationshipProjection | null;
     friendDetailQueryKey: typeof friendDetailQueryKey;
     friendsHomeQueryKey: typeof friendsHomeQueryKey;

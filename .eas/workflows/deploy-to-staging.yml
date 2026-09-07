@@ -57,6 +57,3 @@ jobs:
     params:
       branch: staging
       platform: ios
-  deploy_website:
-    name: Deploy website
-    type: deploy

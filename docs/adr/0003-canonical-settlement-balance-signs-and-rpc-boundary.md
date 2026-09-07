@@ -68,6 +68,14 @@ The canonical invariant is:
 
 > `signedGroupBalanceDelta` is the change to the current user’s Group balance.
 
+> **Amended 2026-09-06 (ticket 09):** the durable convention is
+> from-user-relative — delta is the change to the FROM-user's Group
+> balance, inverse applied to direct (`viewer == from ? +delta :
+> -delta`). The actor-relative reading above broke agreement with every
+> stored row; see the Transfer-orientation correction below. No new
+> transfer rows can be written (frozen), so this amendment governs
+> readers and backfill only.
+
 For a current-user Group balance of `+20`, a transfer with delta `-20`
 produces a projected Group balance of `0` and applies an inverse `+20` change
 to the direct balance. Transfer signs must be oriented by the settlement
@@ -197,7 +205,52 @@ The initial production diagnosis was verified against the deployed Supabase
 function definitions and live rows in the development project. The local SQL
 migrations were used for comparison, not as proof of deployed behavior.
 
+### Reversal correction — 2026-09-05 (ticket 06)
+
+This records a correction, not a new decision. The reversal guard derived the
+post-operation balance from `SIGN` of the stored pre-balance, which fails for
+group-only cash that moves opposite to the combined sign, and it compared only
+the actor-oriented balance, rejecting the friend's own perspective. The live
+`reverse_settlement_operation` now derives the post-operation balance from the
+actual original cash direction relative to the operation actor and accepts
+either participant's own current balance (negated for the friend). Public
+signature, authorization, atomicity, retry receipts, and stale/later-activity
+guards are unchanged; scope transfers remain neutral with swapped participants
+and preserved deltas.
+
+### Transfer-orientation correction — 2026-09-06 (ticket 09)
+
+This records a correction, not a new decision. The canonical invariant above
+is stated actor-relative, but every durable artifact is from-user-relative:
+the committed rows, the group ledger engine, the pair totals, the validation
+priors, the 20260818390000 projections, and the frozen ticket-04 backfill
+conversion (which derives both cash legs from the from/to participants and
+the sign of the delta). Migration 20260819010000 re-oriented the home/groups
+readers to the operation actor, so a from-user-oriented row reads -31.00
+server-side where the row set proves 0/0, and reversal rows (swapped
+participants, preserved delta) double-count instead of cancelling. The live
+readers (`get_friend_home_relationships`, `get_groups_home_summaries`, the
+`commit_settlement_operation` allocation terms, `get_group_pair_totals`)
+now apply deltas participant-based — viewer == from ? +delta : -delta — and
+every transfer-touching reader skips converted operations via the backfill
+marker, so a future backfill cannot double-count. The commit-time trigger
+check and the now-unreachable client planner keep their frozen-path language
+until the transfer machinery retires with ADR-0004; transfer rows are never
+rewritten by this correction.
+
 Revisit this ADR if the project adopts a general ledger, if reversal becomes a
 variant of the commit lifecycle rather than a separate command, or if the
 settlement operation interface is split into multiple independent domain
 operation families.
+
+
+### ADR-0004 alignment, 2026-09-06
+
+The user-authorized rewrite of ADR-0004 now requires cancellation only with
+full payment of a nonzero overall balance. Earlier references here to frozen
+writes describe current implementation, not a permanent ban. References to
+retiring transfer machinery are superseded by ADR-0004's operation contract.
+The participant-based durable sign convention remains authoritative for
+existing records and any reused representation. Partial payments preserve
+opposing balances, naturally zero totals create no operation, and the
+reverse command remains available for whole-settlement Delete.

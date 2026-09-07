@@ -13,6 +13,7 @@ describe('friend relationship freshness contract', () => {
       'expense_splits',
       'settlements',
       'settlement_scope_transfers',
+      'settlement_cancellations',
       'groups',
       'group_members',
       'friendships',

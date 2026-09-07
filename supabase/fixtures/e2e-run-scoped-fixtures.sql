@@ -295,6 +295,15 @@ BEGIN
          OR (operation.actor_user_id = candidate.candidate_id
              AND operation.friend_user_id = v_actor_id)
     )
+    AND NOT EXISTS (
+      SELECT 1
+      FROM public.settlement_cancellations cancellation
+      JOIN public.settlement_operations operation ON operation.id = cancellation.operation_id
+      WHERE (operation.actor_user_id = v_actor_id
+             AND operation.friend_user_id = candidate.candidate_id)
+         OR (operation.actor_user_id = candidate.candidate_id
+             AND operation.friend_user_id = v_actor_id)
+    )
   ORDER BY candidate.created_at, candidate.friendship_id
   LIMIT 1;
   IF v_friend_id IS NULL THEN
@@ -582,6 +591,7 @@ DECLARE
   v_payment_intent_id uuid;
   v_receipt jsonb;
   v_operation_id uuid;
+  v_direct_expense_id uuid;
 BEGIN
   PERFORM public.e2e_fixture_require_development();
   v_actor_id := public.e2e_fixture_actor();
@@ -656,6 +666,11 @@ BEGIN
     substr(md5(v_marker || ':payment'), 21, 12)
   )::uuid;
 
+  -- Dedicated cancellation surface: the server owns the allocation plan.
+  -- The direct scope is zero here, so the full 12.00 payment allocates
+  -- in-group (friend pays actor) with no residual and therefore no
+  -- cancellation legs; p_transfers stays frozen-empty. Reversal restores
+  -- the 12.00 group balance.
   v_receipt := public.commit_settlement_operation(
     v_payment_intent_id,
     v_friend_id,
@@ -666,20 +681,14 @@ BEGIN
     now(),
     12.00,
     jsonb_build_array(jsonb_build_object(
-      'groupId', NULL,
+      'groupId', v_group_id,
       'fromUserId', v_friend_id,
       'toUserId', v_actor_id,
       'amount', 12.00,
       'currency', 'USD'
     )),
-    jsonb_build_array(jsonb_build_object(
-      'groupId', v_group_id,
-      'fromUserId', v_friend_id,
-      'toUserId', v_actor_id,
-      'currency', 'USD',
-      'signedGroupBalanceDelta', -12.00,
-      'note', 'E2E fixture settlement reversal'
-    ))
+    '[]'::jsonb,
+    '[]'::jsonb
   );
   v_operation_id := NULLIF(v_receipt->>'operationId', '')::uuid;
   IF v_operation_id IS NULL THEN
@@ -779,6 +788,12 @@ BEGIN
         )
         OR EXISTS (
           SELECT 1
+          FROM public.settlement_cancellations cancellation
+          WHERE cancellation.operation_id = operation.id
+            AND cancellation.group_id = run.group_id
+        )
+        OR EXISTS (
+          SELECT 1
           FROM public.settlements settlement
           WHERE settlement.operation_id = operation.id
             AND settlement.group_id = run.group_id
@@ -843,6 +858,8 @@ BEGIN
     WHERE operation_id = ANY(v_operation_ids);
     DELETE FROM public.settlement_scope_transfers
     WHERE operation_id = ANY(v_operation_ids);
+    DELETE FROM public.settlement_cancellations
+    WHERE operation_id = ANY(v_operation_ids);
     DELETE FROM public.settlements
     WHERE operation_id = ANY(v_operation_ids);
     DELETE FROM public.settlement_operations
@@ -906,8 +923,8 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.e2e_fixture_actor() FROM PUBLIC, anon, authenticated;
-REVOKE ALL ON FUNCTION public.e2e_fixture_require_development() FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.e2e_fixture_actor() FROM PUBLIC, anon, authenticated, service_role;
+REVOKE ALL ON FUNCTION public.e2e_fixture_require_development() FROM PUBLIC, anon, authenticated, service_role;
 REVOKE ALL ON FUNCTION public.configure_e2e_fixture_account(text) FROM PUBLIC, anon, authenticated, service_role;
 REVOKE ALL ON FUNCTION public.seed_e2e_outstanding_group(text, text, text) FROM PUBLIC, anon, service_role;
 REVOKE ALL ON FUNCTION public.seed_e2e_group_membership(text, text, text) FROM PUBLIC, anon, service_role;

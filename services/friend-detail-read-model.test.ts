@@ -214,4 +214,58 @@ describe('friend detail read model', () => {
 
     await expect(readModel.getDetail('current-user', 'friend-a')).rejects.toThrow('Read model unavailable');
   });
+
+  it('maps additive settlement operation metadata when the RPC exposes it', async () => {
+    const readModel = createFriendDetailReadModel({
+      rpc: async () => ({
+        data: {
+          friend: {
+            id: 'friend-a', name: 'Asha', isActive: true,
+            createdAt: '2026-08-16T10:00:00.000Z', balance: 0,
+          },
+          expenses: [],
+          settlements: [],
+          activities: [],
+          settlementOperations: [{
+            operationId: 'operation-9',
+            status: 'reversed',
+            createdAt: '2026-08-19T10:00:00.000Z',
+            reversedAt: '2026-08-20T10:00:00.000Z',
+            requestedPaymentAmount: 7,
+            currency: 'USD',
+          }],
+        },
+        error: null,
+      }),
+    });
+
+    await expect(readModel.getDetail('current-user', 'friend-a')).resolves.toMatchObject({
+      settlementOperations: [{
+        operationId: 'operation-9',
+        status: 'reversed',
+        requestedPaymentAmount: 7,
+        currency: 'USD',
+      }],
+    });
+  });
+
+  it('omits settlement operations when older RPC definitions lack them', async () => {
+    const readModel = createFriendDetailReadModel({
+      rpc: async () => ({
+        data: {
+          friend: {
+            id: 'friend-a', name: 'Asha', isActive: true,
+            createdAt: '2026-08-16T10:00:00.000Z', balance: 0,
+          },
+          expenses: [],
+          settlements: [],
+          activities: [],
+        },
+        error: null,
+      }),
+    });
+
+    const detail = await readModel.getDetail('current-user', 'friend-a');
+    expect(detail).not.toHaveProperty('settlementOperations');
+  });
 });

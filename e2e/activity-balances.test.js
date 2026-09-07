@@ -49,7 +49,7 @@ describe('Activity and balances', () => {
     await openGroups();
     await openGroupDetails(fixture.groupName);
     const escapedGroupNameForSummary = fixture.groupName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    await waitFor(element(by.label(new RegExp(`^${escapedGroupNameForSummary}, \\d+ members, All settled up, \\$0\\.00$`))))
+    await waitFor(element(by.label(new RegExp(`^${escapedGroupNameForSummary}, \\d+ members, Settled up in this group, \\$0\\.00$`))))
       .toBeVisible()
       .withTimeout(15000);
   });

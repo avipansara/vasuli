@@ -58,6 +58,8 @@ export interface ExpenseSplit {
 export interface Settlement {
   id: string;
   operationId?: string;
+  /** Source transfer ID for a historical backfill row; it is projection-neutral cash. */
+  backfilledTransferId?: string;
   groupId?: string;
   fromUserId: string;
   toUserId: string;
@@ -71,9 +73,10 @@ export interface Settlement {
 /**
  * A non-cash reclassification between the Group and direct ledgers.
  *
- * `signedGroupBalanceDelta` is always the change to the current user's Group
- * balance. The direct-ledger projection applies the inverse change so the
- * relationship total remains unchanged.
+ * signedGroupBalanceDelta is the change to the transfer from-user's Group
+ * balance (ticket 09 shared orientation, matching the backfill conversion
+ * and every balance reader). The direct-ledger projection applies the
+ * inverse change so the relationship total remains unchanged.
  */
 export interface SettlementScopeTransfer {
   id: string;
@@ -86,6 +89,28 @@ export interface SettlementScopeTransfer {
   note?: string;
   isReversal?: boolean;
   createdAt: number;
+}
+
+export interface SettlementCancellation {
+  id: string;
+  operationId: string;
+  groupId: string;
+  amount: number;
+  /** Immutable effect on the operation actor's group balance, when available. */
+  signedGroupBalanceDelta?: number;
+  currency: string;
+  note?: string;
+  isReversal?: boolean;
+  createdAt: number;
+  /**
+   * Settling pair attribution from the parent operation (exposed by the
+   * `get_friend_cancellations` / `get_group_cancellations` read RPCs).
+   * Cancellations still name the cleared scope and amount only — these
+   * columns let client resolvers scope nets to the operation pair for
+   * cancellation-only operations with no sibling rows or metadata.
+   */
+  actorUserId?: string;
+  friendUserId?: string;
 }
 
 export interface Balance {

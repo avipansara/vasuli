@@ -1,4 +1,6 @@
 import { AddMemberModal, MemberBilateralLines } from '@/components/group';
+import { GroupSettlementOperationActivity } from '@/components/groups/group-settlement-operation-activity';
+import { SettlementDeleteDialogs } from '@/components/settlements/settlement-delete-dialogs';
 import { ThemedText } from '@/components/themed-text';
 import { AsyncErrorState } from '@/components/ui/async-error-state';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -6,6 +8,7 @@ import { GroupDetailSkeleton } from '@/components/ui/skeleton';
 import { ThemedIconButton } from '@/components/ui/themed-icon-button';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useDebouncedQueryInvalidation } from '@/hooks/use-debounced-query-invalidation';
+import { useSettlementDeleteFlow } from '@/hooks/use-settlement-delete-flow';
 import { useRealtime } from '@/hooks/use-realtime';
 import { useRefetchOnFocus } from '@/hooks/use-refetch-on-focus';
 import { useThemeColors } from '@/hooks/use-theme-colors';
@@ -13,16 +16,20 @@ import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { createGroupDetailTraceId, logGroupDetailDiagnostic } from '@/lib/group-detail-diagnostics';
 import { areGroupBalancesSettled } from '@/services/group-balance';
 import { groupDetailMutationController } from '@/services/group-detail-mutation-controller';
-import type { GroupDetailReadModel, GroupExpenseView } from '@/services/group-detail-read-model';
+import type { GroupExpenseView } from '@/services/group-detail-read-model';
 import { groupDetailService } from '@/services/group-detail-service';
-import { friendSummaryService } from '@/services/friend-summary-service';
+import {
+  buildGroupSettlementOperationActivity,
+  canDeleteGroupOperation,
+  getGroupOperationParticipants,
+  getGroupSettlementDeleteRequest,
+} from '@/services/group-settlement-operation-view';
 import { createReactQueryCacheAdapter } from '@/services/query-cache-adapter';
 import { queryKeys } from '@/services/query-keys';
-import { CombinedSettlementError } from '@/services/settlement-service';
-import type { Expense, GroupMember, Settlement, User } from '@/types/database';
-import { formatCurrency } from '@/utils/currency';
-import { getPairCaptionForGroupMember } from '@/utils/group-pair-caption';
+import type { Expense, GroupMember, Settlement, SettlementCancellation, SettlementScopeTransfer, User } from '@/types/database';
+import { formatCurrency, getPreferredCurrency } from '@/utils/currency';
 import { groupPairTotalsService } from '@/services/group-pair-totals-service';
+import { getViewerPairBalance } from '@/utils/group-member-balance';
 import { getFirstName } from '@/utils/validation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -44,6 +51,8 @@ const CATEGORY_MAP: Record<string, { icon: any, lightBg: string, darkBg: string,
 const MIN_TOUCH_HIT_SLOP = { top: 8, right: 8, bottom: 8, left: 8 };
 const EMPTY_EXPENSES: GroupExpenseView[] = [];
 const EMPTY_SETTLEMENTS: Settlement[] = [];
+const EMPTY_SCOPE_TRANSFERS: SettlementScopeTransfer[] = [];
+const EMPTY_CANCELLATIONS: SettlementCancellation[] = [];
 
 function GroupDetailSwipeAction({
   translation,
@@ -94,20 +103,10 @@ export default function GroupDetailScreen() {
 
   const expenseSwipeableRefs = useRef<Map<string, SwipeableMethods>>(new Map());
   const memberSwipeableRefs = useRef<Map<string, SwipeableMethods>>(new Map());
+  const operationSwipeableRefs = useRef<Map<string, SwipeableMethods>>(new Map());
 
   // Scroll-driven collapsing header
-  const scrollY = useRef(new Animated.Value(0)).current;
-  const headerTitleOpacity = scrollY.interpolate({
-    inputRange: [40, 80],
-    outputRange: [0, 1],
-    extrapolate: 'clamp',
-  });
-  const headerTitleTranslateY = scrollY.interpolate({
-    inputRange: [40, 80],
-    outputRange: [10, 0],
-    extrapolate: 'clamp',
-  });
-
+  const [scrollY] = useState(() => new Animated.Value(0));
   const [memberModalVisible, setMemberModalVisible] = useState(false);
   const [expenseSearch, setExpenseSearch] = useState('');
   const [expandedMemberId, setExpandedMemberId] = useState<string | null>(null);
@@ -167,15 +166,12 @@ export default function GroupDetailScreen() {
   const settlements = groupDetail?.settlements ?? EMPTY_SETTLEMENTS;
   const members = groupDetail?.members ?? [];
   const balances = groupDetail?.balances ?? new Map<string, number>();
-  const scopeTransfers = groupDetail?.scopeTransfers ?? [];
+  const scopeTransfers = groupDetail?.scopeTransfers ?? EMPTY_SCOPE_TRANSFERS;
+  const cancellations = groupDetail?.cancellations ?? EMPTY_CANCELLATIONS;
+  const settlementOperations = groupDetail?.settlementOperations;
   const expenseSplits = useMemo(() => expenses.flatMap(expense => expense.splits), [expenses]);
   const availableUsers = groupDetail?.availableUsers ?? [];
   const friendshipStatus = groupDetail?.friendshipStatus ?? new Map();
-  const { data: homeSummaries = [] } = useQuery({
-    queryKey: friendsHomeQueryKey,
-    enabled: !!currentUserId,
-    queryFn: () => friendSummaryService.getHomeSummaries(currentUserId),
-  });
   // Combined (direct + group) pair totals for the Balances tab: the full
   // bilateral truth per pair, including settled-with-flows pairs.
   const pairTotalsQueryKey = useMemo(() => queryKeys.groups.pairTotals(currentUserId, id), [currentUserId, id]);
@@ -206,20 +202,6 @@ export default function GroupDetailScreen() {
     () => new Map((groupDetail?.members ?? []).map(member => [member.userId, member.user?.name ?? 'Unknown'] as const)),
     [groupDetail],
   );
-  // Bilateral pair position in THIS group (pot position stays the primary
-  // row value; this caption answers "with me" underneath it).
-  // NOTE: derived from groupDetail (stable query reference) so memo deps
-  // never change identity every render.
-  const pairCaptions = useMemo(() => {
-    const groupMembers = groupDetail?.members ?? [];
-    const map = new Map<string, { amount: number; currency: string; direction: 'you_owe' | 'you_are_owed' }>();
-    for (const member of groupMembers) {
-      if (member.userId === currentUserId) continue;
-      const caption = getPairCaptionForGroupMember(homeSummaries, id, member.userId);
-      if (caption) map.set(member.userId, caption);
-    }
-    return map;
-  }, [homeSummaries, groupDetail, id, currentUserId]);
   const isRefreshingCachedMissingGroup = groupDetail === null && isFetching;
   const loading = (isLoading || isRefreshingCachedMissingGroup) && !group;
   const loadError = error ? getFetchErrorMessage(error) : null;
@@ -232,16 +214,38 @@ export default function GroupDetailScreen() {
       expense.paidByUser?.name.toLocaleLowerCase().includes(search)
     ));
   }, [expenseSearch, expenses]);
-  const timelineItems = useMemo(() => [
-    ...filteredExpenses.map(expense => ({ type: 'expense' as const, date: expense.date, expense })),
-    ...settlements.map(settlement => ({ type: 'settlement' as const, date: settlement.date, settlement })),
-  ].sort((a, b) => b.date - a.date), [filteredExpenses, settlements]);
+  const timelineItems = useMemo(() => {
+    // ADR-0001: one activity per settlement operation affecting this group.
+    // Group-local cash and adjustments merge into a single entry; legacy
+    // payments without an operation ID keep their existing presentation.
+    // Receipt cancellations merge as cleared-balance details; cash stays
+    // counted once (group-local cash only).
+    const { operations, legacySettlements } = buildGroupSettlementOperationActivity({
+      settlements,
+      scopeTransfers,
+      cancellations,
+      operations: settlementOperations,
+      groupId: id,
+      currentUserId,
+    });
+    return [
+      ...filteredExpenses.map(expense => ({ type: 'expense' as const, date: expense.date, expense })),
+      ...operations.map(operation => ({ type: 'group_operation' as const, date: operation.originalDate, operation })),
+      ...legacySettlements.map(settlement => ({ type: 'settlement' as const, date: settlement.date, settlement })),
+    ].sort((a, b) => b.date - a.date);
+  }, [cancellations, filteredExpenses, settlements, scopeTransfers, settlementOperations, id, currentUserId]);
   const expenseItems = useMemo(
     () => filteredExpenses.map(expense => ({ type: 'expense' as const, date: expense.date, expense })),
     [filteredExpenses],
   );
   const displayItems = sectionTab === 'all' ? timelineItems : expenseItems;
   const avatarTextColor = colors.tint;
+
+  // Ticket 04 (ADR-0001): whole-operation Delete through the shared
+  // confirmation/results flow. Copy, authorized detail loading, pending,
+  // reused/stale/failure, and invalidation outcomes live in the hook; the
+  // mutation boundary stays settlementModule.reverse.
+  const settlementDeleteFlow = useSettlementDeleteFlow({ currentUserId, groupId: id, queryClient, refetch });
   const loadGroupData = useCallback(async () => {
     await refetch();
   }, [refetch]);
@@ -269,42 +273,25 @@ export default function GroupDetailScreen() {
     });
   }, [currentUserId, groupDetailTraceId, id, traceId]);
 
-  const handleReverseTransfer = useCallback((transfer: NonNullable<GroupDetailReadModel['scopeTransfers']>[number]) => {
-    if (!groupDetailMutationController.canReverseTransfer(transfer, currentUserId)) return;
-
-    Alert.alert(
-      'Reverse settlement?',
-      'This restores the balances affected by the settlement operation. The original history remains visible.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Reverse',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              const result = await groupDetailMutationController.reverseTransfer({
-                transfer,
-                currentUserId,
-                groupDetailKey: groupDetailQueryKey,
-                cache: queryCache,
-                queryClient,
-              });
-              if (result.status === 'ignored') return;
-              await queryClient.invalidateQueries({
-                queryKey: queryKeys.groups.pairTotals(currentUserId, id),
-              });
-              Alert.alert('Settlement reversed', 'The affected balances were restored.');
-            } catch (error) {
-              Alert.alert(
-                error instanceof CombinedSettlementError ? 'Unable to reverse' : 'Settlement reversal failed',
-                error instanceof Error ? error.message : 'The settlement could not be reversed.',
-              );
-            }
-          },
-        },
-      ],
-    );
-  }, [currentUserId, groupDetailQueryKey, queryCache, queryClient]);
+  // ADR-0001 + ticket 04: whole-operation Delete from Group detail through the
+  // shared confirmation/results flow. Either participant may delete; the shared
+  // confirmation warns that linked adjustments outside this group are undone
+  // too. Participant-only confirmation amounts load through the authorized
+  // Friend read inside the flow — never from the group-local view — and every
+  // Delete entry point for the operation stays disabled while pending.
+  const handleDeleteGroupOperation = useCallback((operationId: string) => {
+    const request = getGroupSettlementDeleteRequest({
+      operationId,
+      settlements,
+      scopeTransfers,
+      cancellations,
+      operations: settlementOperations,
+      groupId: id,
+      currentUserId,
+      namesById,
+    });
+    if (request) void settlementDeleteFlow.requestDelete(request);
+  }, [cancellations, currentUserId, id, namesById, settlementDeleteFlow, settlementOperations, scopeTransfers, settlements]);
 
   useEffect(() => {
     if (groupDetail === null && !isFetching && !error) {
@@ -339,6 +326,12 @@ export default function GroupDetailScreen() {
   });
   useRealtime({
     table: 'settlement_scope_transfers',
+    filter: id ? `group_id=eq.${id}` : undefined,
+    onChange: invalidateGroupDetail,
+    enabled: !!id,
+  });
+  useRealtime({
+    table: 'settlement_cancellations',
     filter: id ? `group_id=eq.${id}` : undefined,
     onChange: invalidateGroupDetail,
     enabled: !!id,
@@ -634,6 +627,30 @@ export default function GroupDetailScreen() {
     );
   }
 
+  function renderGroupOperation(projection: import('@/services/settlement-operation-projection').SettlementOperationProjection) {
+    const participants = getGroupOperationParticipants(projection, id);
+    const payerName = members.find(member => member.userId === participants?.fromUserId)?.user?.name || 'Someone';
+    const payeeName = members.find(member => member.userId === participants?.toUserId)?.user?.name || 'Someone';
+    return (
+      <GroupSettlementOperationActivity
+        projection={projection}
+        groupId={id}
+        currentUserId={currentUserId}
+        payerName={payerName}
+        payeeName={payeeName}
+        colors={colors as unknown as Record<string, string>}
+        friendDetailTheme={friendDetailTheme as unknown as Record<string, string>}
+        isDark={isDark}
+        formatDate={(timestamp) => new Date(timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+        canDelete={canDeleteGroupOperation(projection, id, currentUserId) && !settlementDeleteFlow.isDeletedLocally(projection.operationId)}
+        isDeleting={settlementDeleteFlow.isDeletePending(projection.operationId)}
+        isDeletedOverride={settlementDeleteFlow.isDeletedLocally(projection.operationId)}
+        onDelete={() => handleDeleteGroupOperation(projection.operationId)}
+        swipeableRefs={operationSwipeableRefs}
+      />
+    );
+  }
+
   function handleRemoveMember(member: GroupMember & { user?: User }) {
     if (removingMemberId) return;
 
@@ -715,12 +732,29 @@ export default function GroupDetailScreen() {
     { item }: { item: GroupMember & { user?: User } },
     opts?: { chevron?: { expanded: boolean; onToggle: () => void } },
   ) {
-    const balance = balances.get(item.userId) || 0;
-    const balanceColor = balance > 0
-      ? friendDetailTheme.positive
-      : balance < 0
+    const isViewerRelative = sectionTab === 'all';
+    const viewerPairBalance = item.userId === currentUserId ? null : getViewerPairBalance({
+      pairTotals,
+      memberUserId: item.userId,
+      viewerUserId: currentUserId,
+      preferredCurrency: getPreferredCurrency(),
+    });
+    const balance = isViewerRelative
+      ? viewerPairBalance?.signedAmount ?? 0
+      : balances.get(item.userId) || 0;
+    const hasViewerPair = isViewerRelative && item.userId !== currentUserId && viewerPairBalance !== null;
+    const pairTotalsLoading = isViewerRelative && isFetchingPairTotals && pairTotals.length === 0;
+    const balanceColor = isViewerRelative
+      ? balance > 0
         ? friendDetailTheme.negative
-        : friendDetailTheme.actionIcon;
+        : balance < 0
+          ? friendDetailTheme.positive
+          : friendDetailTheme.actionIcon
+      : balance > 0
+        ? friendDetailTheme.positive
+        : balance < 0
+          ? friendDetailTheme.negative
+          : friendDetailTheme.actionIcon;
     const currentMember = members.find(m => m.userId === currentUserId);
     const canRemove = currentMember?.role === 'admin' && item.userId !== currentUserId;
 
@@ -820,32 +854,28 @@ export default function GroupDetailScreen() {
               </TouchableOpacity>
             )}
             <View style={styles.balanceInfo}>
-            {balance !== 0 && (
+            {isViewerRelative && item.userId === currentUserId && (
+              <ThemedText style={[styles.settledLabel, { color: isDark ? '#94A3B8' : colors.textSecondary }]}>You</ThemedText>
+            )}
+            {(!isViewerRelative || hasViewerPair) && balance !== 0 && (
               <>
                 <ThemedText type='subtitle' style={[styles.memberBalanceAmount, { color: balanceColor }]}>
-                  {formatCurrency(Math.abs(balance))}
+                  {formatCurrency(Math.abs(balance), viewerPairBalance?.currency)}
                 </ThemedText>
                 <ThemedText style={[styles.balanceLabel, { color: isDark ? '#94A3B8' : colors.textSecondary }]}>
-                  {balance > 0 ? 'gets back' : 'owes'}
+                  {isViewerRelative ? (balance > 0 ? 'You owe' : 'Owes you') : (balance > 0 ? 'gets back' : 'owes')}
                 </ThemedText>
               </>
             )}
-            {balance === 0 && (
+            {isViewerRelative && item.userId !== currentUserId && !hasViewerPair && pairTotalsLoading && (
+              <ThemedText style={[styles.settledLabel, { color: isDark ? '#94A3B8' : colors.textSecondary }]}>Checking balance…</ThemedText>
+            )}
+            {isViewerRelative && item.userId !== currentUserId && !hasViewerPair && !pairTotalsLoading && (
+              <ThemedText style={[styles.settledLabel, { color: isDark ? '#94A3B8' : colors.textSecondary }]}>No balance</ThemedText>
+            )}
+            {((!isViewerRelative && balance === 0) || (isViewerRelative && item.userId !== currentUserId && hasViewerPair && balance === 0)) && (
               <ThemedText style={[styles.settledLabel, { color: isDark ? '#94A3B8' : colors.textSecondary }]}>settled</ThemedText>
             )}
-            {(() => {
-              const caption = pairCaptions.get(item.userId);
-              if (!caption || item.userId === currentUserId) return null;
-              return (
-                <ThemedText
-                  testID={`group-member-pair-balance-${item.userId}`}
-                  style={[styles.pairBalanceLabel, { color: isDark ? '#94A3B8' : colors.textSecondary }]}>
-                  {caption.direction === 'you_owe'
-                    ? `You owe ${formatCurrency(caption.amount, caption.currency)}`
-                    : `Owes you ${formatCurrency(caption.amount, caption.currency)}`}
-                </ThemedText>
-              );
-            })()}
           </View>
         </TouchableOpacity>
       </ReanimatedSwipeable>
@@ -924,12 +954,7 @@ export default function GroupDetailScreen() {
     : currentUserBalance < 0
       ? friendDetailTheme.negative
       : friendDetailTheme.actionIcon;
-  const balanceSurface = currentUserBalance > 0
-    ? friendDetailTheme.positiveSurface
-    : currentUserBalance < 0
-      ? friendDetailTheme.negativeSurface
-      : friendDetailTheme.settledSurface;
-  const balanceCopy = currentUserBalance > 0 ? 'You are owed' : currentUserBalance < 0 ? 'You owe' : 'All settled up';
+  const balanceCopy = currentUserBalance > 0 ? 'You are owed' : currentUserBalance < 0 ? 'You owe' : 'Settled up in this group';
   const balanceAccessibilityValue = `${balanceCopy}, ${formatCurrency(Math.abs(currentUserBalance))}`;
 
   return (
@@ -1022,7 +1047,7 @@ export default function GroupDetailScreen() {
                 ? 'YOU ARE OWED'
                 : currentUserBalance < 0
                   ? 'YOU OWE'
-                  : 'ALL SETTLED UP'}
+                  : 'SETTLED UP IN THIS GROUP'}
             </ThemedText>
 
             <ThemedText type='subtitle' style={[styles.summaryCardAmount, { color: isDark ? (currentUserBalance < 0 ? '#ffb3b0' : currentUserBalance > 0 ? '#4edea3' : '#94A3B8') : balanceColor }]}>
@@ -1151,44 +1176,6 @@ export default function GroupDetailScreen() {
         )}
 
         {/* Expenses Section */}
-        {scopeTransfers.length > 0 && (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <ThemedText type="subtitle" style={[styles.sectionTitle, { color: isDark ? '#F8FAFC' : colors.text }]}>Balance changes</ThemedText>
-              <ThemedText style={[styles.expenseCount, { color: isDark ? '#94A3B8' : colors.textSecondary }]}>{scopeTransfers.length}</ThemedText>
-            </View>
-            {scopeTransfers.map(transfer => {
-              const movedToFriendship = transfer.fromUserId === currentUserId;
-              return (
-                <View key={transfer.id} style={[styles.transferRow, cardStyle]}>
-                  <IconSymbol name="arrow.left.arrow.right" size={17} color={friendDetailTheme.actionIcon} />
-                  <View style={styles.transferCopy}>
-                    <ThemedText type="defaultSemiBold" style={{ color: colors.text }}>{transfer.isReversal ? 'Reversed balance offset' : movedToFriendship ? 'Moved to friendship balance' : 'Moved from friendship balance'}</ThemedText>
-                    <ThemedText style={{ color: colors.textSecondary }}>{formatCurrency(Math.abs(transfer.signedGroupBalanceDelta), transfer.currency)}</ThemedText>
-                  </View>
-                  {!transfer.isReversal && (transfer.fromUserId === currentUserId || transfer.toUserId === currentUserId) ? (
-                    <TouchableOpacity
-                      accessibilityRole="button"
-                      accessibilityLabel="Reverse settlement"
-                      hitSlop={8}
-                      onPress={() => handleReverseTransfer(transfer)}
-                      style={{
-                        backgroundColor: isDark ? 'rgba(239, 68, 68, 0.15)' : '#FEE2E2',
-                        paddingHorizontal: 8,
-                        paddingVertical: 4,
-                        borderRadius: 6,
-                      }}
-                    >
-                      <ThemedText style={{ color: isDark ? '#fca5a5' : colors.error, fontSize: 12, fontWeight: '700' }}>Reverse</ThemedText>
-                    </TouchableOpacity>
-                  ) : null}
-                </View>
-              );
-            })}
-          </View>
-        )}
-
-        {/* Expenses Section */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <ThemedText type="subtitle" style={[styles.sectionTitle, { color: isDark ? '#F8FAFC' : colors.text }]}>
@@ -1252,10 +1239,12 @@ export default function GroupDetailScreen() {
             </View>
           ) : (
             displayItems.map(item => (
-              <View key={item.type === 'expense' ? item.expense.id : item.settlement.id}>
+              <View key={item.type === 'expense' ? item.expense.id : item.type === 'group_operation' ? item.operation.operationId : item.settlement.id}>
                 {item.type === 'expense'
                   ? renderExpense({ item: item.expense })
-                  : renderSettlement({ item: item.settlement })}
+                  : item.type === 'group_operation'
+                    ? renderGroupOperation(item.operation)
+                    : renderSettlement({ item: item.settlement })}
               </View>
             ))
           )}
@@ -1271,6 +1260,8 @@ export default function GroupDetailScreen() {
         onSubmit={addMember}
         submitting={isAddingMember}
       />
+
+      <SettlementDeleteDialogs flow={settlementDeleteFlow} />
 
     </View>
   );
@@ -1607,11 +1598,6 @@ const styles = StyleSheet.create({
   settledLabel: {
     fontSize: 12,
     opacity: 0.6,
-  },
-  pairBalanceLabel: {
-    fontSize: 12,
-    fontWeight: '500',
-    marginTop: 2,
   },
   expandButton: {
     padding: 8,

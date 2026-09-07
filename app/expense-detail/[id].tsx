@@ -29,7 +29,7 @@ import {
 } from 'react-native';
 
 export default function ExpenseDetailScreen() {
-  const { gradients, colors, expenseDetail, isDark } = useThemeColors();
+  const { colors, expenseDetail, isDark } = useThemeColors();
   const { user } = useAuth();
   const { id } = useLocalSearchParams<{ id: string }>();
   const currentUserId = user?.id || '';

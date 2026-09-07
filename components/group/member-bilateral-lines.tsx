@@ -1,9 +1,11 @@
 import { ThemedText } from '@/components/themed-text';
 import { useThemeColors } from '@/hooks/use-theme-colors';
-import type { BilateralLine } from '@/utils/group-bilateral-matrix';
+import type { GroupPairTotal } from '@/services/group-pair-totals-service';
 import { formatCurrency } from '@/utils/currency';
 import { getFirstName } from '@/utils/validation';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+
+type BilateralLine = Pick<GroupPairTotal, 'fromUserId' | 'toUserId' | 'amount' | 'currency'>;
 
 type MemberBilateralLinesProps = {
   lines: BilateralLine[];

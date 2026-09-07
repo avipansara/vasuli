@@ -4,7 +4,7 @@ import { useEffect, useRef } from 'react';
 
 let nextRealtimeChannelId = 0;
 
-type TableName = 'expenses' | 'expense_splits' | 'settlements' | 'settlement_scope_transfers' | 'groups' | 'group_members' | 'friendships' | 'invitations' | 'users';
+type TableName = 'expenses' | 'expense_splits' | 'settlements' | 'settlement_scope_transfers' | 'settlement_cancellations' | 'groups' | 'group_members' | 'friendships' | 'invitations' | 'users';
 type EventType = 'INSERT' | 'UPDATE' | 'DELETE' | '*';
 
 interface UseRealtimeOptions {
@@ -125,6 +125,13 @@ export function useGroupExpensesRealtime(
     onChange: onExpenseChange,
     enabled: enabled && !!groupId,
   });
+
+  useRealtime({
+    table: 'settlement_cancellations',
+    filter: groupId ? `group_id=eq.${groupId}` : undefined,
+    onChange: onExpenseChange,
+    enabled: enabled && !!groupId,
+  });
 }
 
 export function useGroupsHomeRealtime(
@@ -168,6 +175,12 @@ export function useGroupsHomeRealtime(
 
   useRealtime({
     table: 'settlement_scope_transfers',
+    onChange: onGroupChange,
+    enabled: isEnabled,
+  });
+
+  useRealtime({
+    table: 'settlement_cancellations',
     onChange: onGroupChange,
     enabled: isEnabled,
   });

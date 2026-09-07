@@ -13,11 +13,11 @@ import { queryKeys } from '@/services/query-keys';
 import { useQuery } from '@tanstack/react-query';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useMemo } from 'react';
-import { ScrollView, StyleSheet, View, ActivityIndicator } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { useCurrency } from '@/contexts/currency-context';
 
 export default function SettlementDetailScreen() {
-  const { colors, settle, isDark } = useThemeColors();
+  const { colors, settle } = useThemeColors();
   const { formatCurrency } = useCurrency();
   const { user } = useAuth();
   const { id } = useLocalSearchParams<{ id: string }>();

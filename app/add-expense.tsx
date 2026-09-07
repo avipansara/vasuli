@@ -59,7 +59,7 @@ const SPLIT_METHODS = [
 
 
 export default function AddExpenseScreen() {
-  const { gradients, colors, settle, isDark } = useThemeColors();
+  const { colors, settle, isDark } = useThemeColors();
   const { user } = useAuth();
   const { groupId: preselectedGroupId, friendId: preselectedFriendId } = useLocalSearchParams<{ groupId?: string; friendId?: string }>();
   const currentUserId = user?.id || '';

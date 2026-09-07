@@ -79,158 +79,47 @@ const groupBalances: FriendGroupBalanceSummary[] = [
 ];
 
 describe('settlementModule.preview', () => {
-
-  it('transfers an opposing group balance before allocating the net payment', () => {
+  it('emits one cancellation per nonzero group residual on a full payment', () => {
     expect(settlementModule.preview({
-      currentUserId: 'current-user',
-      friendId: 'avee',
-      currency: 'USD',
-      amount: 7,
-      directBalance: 15,
-      groupBalances: [{
-        groupId: 'group-1',
-        groupName: 'Trip',
-        currency: 'USD',
-        amount: -8,
-        direction: 'you_owe',
-      }],
-    })).toEqual({
-      transfers: [{
-        groupId: 'group-1',
-        fromUserId: 'current-user',
-        toUserId: 'avee',
-        amount: 8,
-        currency: 'USD',
-        signedGroupBalanceDelta: 8,
-      }],
-      allocations: [{
-        groupId: undefined,
-        fromUserId: 'avee',
-        toUserId: 'current-user',
-        amount: 7,
-        currency: 'USD',
-      }],
-    });
+      currentUserId: 'current-user', friendId: 'friend-a', currency: 'USD', amount: 12,
+      directBalance: -22,
+      groupBalances: [{ groupId: 'trip', groupName: 'Trip', currency: 'USD', amount: 10, direction: 'you_are_owed' }],
+    }).cancellations).toEqual([{ groupId: 'trip', amount: 10, currency: 'USD' }]);
   });
 
-  it('transfers an opposing group balance when direct is opposite to the total', () => {
+  it('returns no writes for a naturally zero overall balance', () => {
     expect(settlementModule.preview({
-      currentUserId: 'current-user',
-      friendId: 'avee',
-      currency: 'USD',
-      amount: 5,
-      directBalance: -5,
-      groupBalances: [{
-        groupId: 'group-1',
-        groupName: 'Trip',
-        currency: 'USD',
-        amount: 10,
-        direction: 'you_are_owed',
-      }],
-    })).toEqual({
-      transfers: [{
-        groupId: 'group-1',
-        fromUserId: 'avee',
-        toUserId: 'current-user',
-        amount: 10,
-        currency: 'USD',
-        signedGroupBalanceDelta: -10,
-      }],
-      allocations: [{
-        groupId: undefined,
-        fromUserId: 'avee',
-        toUserId: 'current-user',
-        amount: 5,
-        currency: 'USD',
-      }],
-    });
-  });
-
-  it('transfers all scopes when the relationship is zero-net', () => {
-    expect(settlementModule.preview({
-      currentUserId: 'current-user',
-      friendId: 'avee',
-      currency: 'USD',
-      amount: 0,
+      currentUserId: 'current-user', friendId: 'friend-a', currency: 'USD', amount: 0,
       directBalance: 8,
-      groupBalances: [{
-        groupId: 'group-1',
-        groupName: 'Trip',
-        currency: 'USD',
-        amount: -8,
-        direction: 'you_owe',
-      }],
-    })).toEqual({
-      transfers: [{
-        groupId: 'group-1',
-        fromUserId: 'current-user',
-        toUserId: 'avee',
-        amount: 8,
-        currency: 'USD',
-        signedGroupBalanceDelta: 8,
-      }],
-      allocations: [],
-    });
+      groupBalances: [{ groupId: 'group-1', groupName: 'Test Group', currency: 'USD', amount: -8, direction: 'you_owe' }],
+    })).toEqual({ allocations: [], cancellations: [] });
   });
 
-  it('transfers every group scope when direct balance is empty but groups offset', () => {
-    const plan = settlementModule.preview({
-      currentUserId: 'current-user',
-      friendId: 'avee',
-      currency: 'USD',
-      amount: 2,
-      directBalance: 0,
-      groupBalances: [
-        { groupId: 'group-1', groupName: 'Trip', currency: 'USD', amount: 10, direction: 'you_are_owed' },
-        { groupId: 'group-2', groupName: 'Home', currency: 'USD', amount: -8, direction: 'you_owe' },
-      ],
-    });
-
-    expect(plan.transfers).toHaveLength(2);
-    expect(plan.transfers).toEqual(expect.arrayContaining([
-      {
-        groupId: 'group-1',
-        fromUserId: 'avee',
-        toUserId: 'current-user',
-        amount: 10,
-        currency: 'USD',
-        signedGroupBalanceDelta: -10,
-      },
-      {
-        groupId: 'group-2',
-        fromUserId: 'current-user',
-        toUserId: 'avee',
-        amount: 8,
-        currency: 'USD',
-        signedGroupBalanceDelta: 8,
-      },
-    ]));
-    expect(plan.allocations).toEqual([{
-      groupId: undefined,
-      fromUserId: 'avee',
-      toUserId: 'current-user',
-      amount: 2,
-      currency: 'USD',
-    }]);
+  it('allocates partial payment direct first and leaves opposing groups unchanged', () => {
+    expect(settlementModule.preview({
+      currentUserId: 'current-user', friendId: 'friend-a', currency: 'USD', amount: 3,
+      directBalance: -22,
+      groupBalances: [{ groupId: 'group-1', groupName: 'Test Group', currency: 'USD', amount: 10, direction: 'you_are_owed' }],
+    })).toMatchObject({ allocations: [{ groupId: undefined, amount: 3 }], cancellations: [] });
   });
 
   it('keeps opposing scopes unchanged for a partial payment', () => {
     expect(settlementModule.preview({
       currentUserId: 'current-user',
-      friendId: 'avee',
+      friendId: 'friend-a',
       currency: 'USD',
       amount: 20,
       directBalance: -20,
       groupBalances: [
-        { groupId: 'trip', groupName: 'Trip 2026', currency: 'USD', amount: 5, direction: 'you_are_owed' },
-        { groupId: 'roommates', groupName: 'Roommates', currency: 'USD', amount: -8, direction: 'you_owe' },
+        { groupId: 'trip', groupName: 'Test Group', currency: 'USD', amount: 5, direction: 'you_are_owed' },
+        { groupId: 'roommates', groupName: 'Test Group', currency: 'USD', amount: -8, direction: 'you_owe' },
       ],
     })).toEqual({
-      transfers: [],
+      cancellations: [],
       allocations: [{
         groupId: undefined,
         fromUserId: 'current-user',
-        toUserId: 'avee',
+        toUserId: 'friend-a',
         amount: 20,
         currency: 'USD',
       }],
@@ -252,7 +141,7 @@ describe('settlementModule.preview', () => {
         direction: 'you_are_owed',
       }],
     })).toEqual({
-      transfers: [],
+      cancellations: [],
       allocations: [{
         groupId: undefined,
         fromUserId: 'current-user',
@@ -263,43 +152,98 @@ describe('settlementModule.preview', () => {
     });
   });
 
-  it('offsets opposing scopes only when the full net payment settles every scope', () => {
+  it('adds exact cancellation entries for a full payment', () => {
+    expect(settlementModule.preview({
+        currentUserId: 'current-user',
+        friendId: 'friend-a',
+        currency: 'USD',
+        amount: 12,
+        directBalance: -22,
+        groupBalances: [
+          { groupId: 'trip', groupName: 'Test Group', currency: 'USD', amount: 10, direction: 'you_are_owed' },
+        ],
+      })).toMatchObject({
+        allocations: [{ groupId: undefined, amount: 12 }],
+        cancellations: [{
+          groupId: 'trip',
+          amount: 10,
+          currency: 'USD',
+        }],
+      });
+  });
+
+  it('emits a participant-free cancellation for a negative group balance', () => {
+    const plan = settlementModule.preview({
+      currentUserId: 'current-user',
+      friendId: 'friend-a',
+      currency: 'USD',
+      amount: 12,
+      directBalance: 22,
+      groupBalances: [{
+        groupId: 'trip', groupName: 'Test Group', currency: 'USD', amount: -10, direction: 'you_owe',
+      }],
+    });
+    expect(plan).toMatchObject({
+      allocations: [{ groupId: undefined, fromUserId: 'friend-a', toUserId: 'current-user', amount: 12 }],
+    });
+    expect(plan.cancellations).toEqual([{ groupId: 'trip', amount: 10, currency: 'USD' }]);
+  });
+
+  it('clears the remaining pair after a $3 partial payment', () => {
     expect(settlementModule.preview({
       currentUserId: 'current-user',
-      friendId: 'avee',
+      friendId: 'friend-a',
       currency: 'USD',
-      amount: 23,
-      directBalance: -20,
+      amount: 9,
+      directBalance: -19,
+      groupBalances: [{ groupId: 'trip', groupName: 'Trip', currency: 'USD', amount: 10, direction: 'you_are_owed' }],
+    })).toMatchObject({
+      allocations: [{ groupId: undefined, fromUserId: 'current-user', toUserId: 'friend-a', amount: 9 }],
+      cancellations: [{ groupId: 'trip', amount: 10, currency: 'USD' }],
+    });
+  });
+
+  it('allocates across multiple groups and cancels every residual scope on full payment', () => {
+    expect(settlementModule.preview({
+      currentUserId: 'current-user',
+      friendId: 'friend-a',
+      currency: 'USD',
+      amount: 5,
+      directBalance: -2,
       groupBalances: [
-        { groupId: 'trip', groupName: 'Trip 2026', currency: 'USD', amount: 5, direction: 'you_are_owed' },
-        { groupId: 'roommates', groupName: 'Roommates', currency: 'USD', amount: -8, direction: 'you_owe' },
+        { groupId: 'large-debt', groupName: 'Large', currency: 'USD', amount: -3, direction: 'you_owe' },
+        { groupId: 'small-debt', groupName: 'Small', currency: 'USD', amount: -1, direction: 'you_owe' },
+        { groupId: 'receivable', groupName: 'Receivable', currency: 'USD', amount: 1, direction: 'you_are_owed' },
       ],
-    })).toEqual({
-      transfers: [{
-        groupId: 'trip',
-        fromUserId: 'avee',
-        toUserId: 'current-user',
-        amount: 5,
-        currency: 'USD',
-        signedGroupBalanceDelta: -5,
-      }],
+    })).toMatchObject({
       allocations: [
-        {
-          groupId: undefined,
-          fromUserId: 'current-user',
-          toUserId: 'avee',
-          amount: 20,
-          currency: 'USD',
-        },
-        {
-          groupId: 'roommates',
-          fromUserId: 'current-user',
-          toUserId: 'avee',
-          amount: 3,
-          currency: 'USD',
-        },
+        { groupId: undefined, fromUserId: 'current-user', toUserId: 'friend-a', amount: 2 },
+        { groupId: 'small-debt', fromUserId: 'current-user', toUserId: 'friend-a', amount: 1 },
+        { groupId: 'large-debt', fromUserId: 'current-user', toUserId: 'friend-a', amount: 2 },
+      ],
+      cancellations: [
+        { groupId: 'receivable', amount: 1, currency: 'USD' },
+        { groupId: 'large-debt', amount: 1, currency: 'USD' },
       ],
     });
+  });
+
+  it('rejects amounts above the absolute overall balance', () => {
+    expect(() => settlementModule.preview({ currentUserId: 'current-user', friendId: 'friend-a', currency: 'USD', amount: 13, directBalance: -22, groupBalances: [{ groupId: 'group-1', groupName: 'Test Group', currency: 'USD', amount: 10, direction: 'you_are_owed' }] })).toThrow(/exceed/i);
+  });
+
+  it('uses group UUID order when outstanding amounts tie in cents', () => {
+    expect(settlementModule.preview({
+      currentUserId: 'current-user', friendId: 'friend-a', currency: 'USD', amount: 3,
+      directBalance: 0,
+      groupBalances: [
+        { groupId: 'zzz-group', groupName: 'Later', currency: 'USD', amount: 2.001, direction: 'you_are_owed' },
+        { groupId: 'aaa-group', groupName: 'Earlier', currency: 'USD', amount: 2.004, direction: 'you_are_owed' },
+      ],
+    }).allocations).toMatchObject([
+      { groupId: 'aaa-group', amount: 2 },
+      { groupId: 'zzz-group', amount: 1 },
+    ]);
   });
 
   it('accepts partial amounts with binary float cents like 19.99', () => {
@@ -317,7 +261,7 @@ describe('settlementModule.preview', () => {
         direction: 'you_are_owed',
       }],
     })).toEqual({
-      transfers: [],
+      cancellations: [],
       allocations: [{
         groupId: undefined,
         fromUserId: 'current-user',
@@ -416,6 +360,26 @@ describe('settlementModule.reverse', () => {
       friendId: 'friend-a',
       queryClient,
     })).rejects.toMatchObject({ code: 'stale_balance' });
+  });
+
+  it('maps a frozen-transfer rejection to invalid_input with user-safe copy', async () => {
+    rpc.mockResolvedValueOnce({
+      data: null,
+      error: { message: 'SETTLEMENT_TRANSFERS_FROZEN: p_transfers must be empty' },
+    });
+
+    const error = await settlementService.commit({
+      paymentIntentId: 'intent-frozen',
+      friendId: 'friend-a',
+      amount: 30,
+      currency: 'USD',
+      date: Date.parse('2026-08-18T03:00:00.000Z'),
+      expectedBalance: 30,
+      allocations: [],
+    }).then(() => null, (failure: unknown) => failure);
+
+    expect(error).toMatchObject({ code: 'invalid_input' });
+    expect(error instanceof Error ? error.message : String(error)).toMatch(/fresh confirmation/i);
   });
 
   it('passes a zero expected balance through to the RPC', async () => {
@@ -527,6 +491,7 @@ describe('settlementModule.commit', () => {
       mode: 'all_balances',
       affectedGroupIds: ['group-1'],
       transfers: [],
+      cancellations: [],
     });
 
     expect(rpc).toHaveBeenCalledTimes(1);
@@ -555,7 +520,7 @@ describe('settlementModule.commit', () => {
           currency: 'USD',
         },
       ],
-      p_transfers: [],
+      p_cancellations: [],
     });
   });
 
@@ -578,20 +543,11 @@ describe('settlementModule.commit', () => {
     expect(rpc).not.toHaveBeenCalled();
   });
 
-  it('uses scope transfers when direct and group balances point in opposite directions', async () => {
-    rpc.mockResolvedValueOnce({
-      data: {
-        paymentIntentId: 'intent-opposite',
-        reused: false,
-        committedAt: '2026-08-18T03:00:00.000Z',
-        totalAmount: 2,
-        currency: 'USD',
-        direction: 'friend_paid_you',
-        settlements: [],
-      },
-      error: null,
-    });
-
+  it('commits cancellation when direct and group balances point in opposite directions', async () => {
+    rpc.mockResolvedValueOnce({ data: {
+      paymentIntentId: 'intent-opposite', reused: false, committedAt: '2026-08-18T03:00:00.000Z',
+      totalAmount: 2, currency: 'USD', direction: 'friend_paid_you', settlements: [],
+    }, error: null });
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 
     await settlementModule.commit({
@@ -605,7 +561,39 @@ describe('settlementModule.commit', () => {
       directBalance: 10,
       groupBalances: [{
         groupId: 'group-1',
-        groupName: 'Trip',
+        groupName: 'Test Group',
+        currency: 'USD',
+        amount: -8,
+        direction: 'you_owe',
+      }],
+      friend,
+      currentUser,
+      queryClient,
+    });
+    expect(rpc).toHaveBeenCalledWith('commit_settlement_operation', expect.objectContaining({
+      p_cancellations: [{ groupId: 'group-1', amount: 8, currency: 'USD' }],
+    }));
+  });
+
+  it('sends no p_transfers alongside the cancellation payload', async () => {
+    rpc.mockResolvedValueOnce({ data: {
+      paymentIntentId: 'intent-no-transfers', reused: false, committedAt: '2026-08-18T03:00:00.000Z',
+      totalAmount: 2, currency: 'USD', direction: 'friend_paid_you', settlements: [],
+    }, error: null });
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+
+    await settlementModule.commit({
+      currentUserId: currentUser.id,
+      friendId: 'friend-a',
+      paymentIntentId: 'intent-no-transfers',
+      amount: 2,
+      currency: 'USD',
+      date: Date.parse('2026-08-18T03:00:00.000Z'),
+      expectedBalance: 2,
+      directBalance: 10,
+      groupBalances: [{
+        groupId: 'group-1',
+        groupName: 'Test Group',
         currency: 'USD',
         amount: -8,
         direction: 'you_owe',
@@ -615,23 +603,10 @@ describe('settlementModule.commit', () => {
       queryClient,
     });
 
-    expect(rpc).toHaveBeenCalledWith('commit_settlement_operation', expect.objectContaining({
-      p_allocations: [{
-        groupId: undefined,
-        fromUserId: 'friend-a',
-        toUserId: 'current-user',
-        amount: 2,
-        currency: 'USD',
-      }],
-      p_transfers: [{
-        groupId: 'group-1',
-        fromUserId: 'current-user',
-        toUserId: 'friend-a',
-        amount: 8,
-        currency: 'USD',
-        signedGroupBalanceDelta: 8,
-      }],
-    }));
+    expect(rpc).toHaveBeenCalledTimes(1);
+    const payload = rpc.mock.calls[0][1] as Record<string, unknown>;
+    expect(payload).not.toHaveProperty('p_transfers');
+    expect(payload).toHaveProperty('p_cancellations');
   });
 
   it('allocates a partial payment from the friend when the combined balance is positive', async () => {
@@ -853,24 +828,7 @@ describe('settlementModule.commit', () => {
     expect(logSettlementCreated).not.toHaveBeenCalled();
   });
 
-  it('commits a zero-net settlement through the transfer-only RPC', async () => {
-    rpc.mockResolvedValueOnce({
-      data: {
-        paymentIntentId: 'intent-zero-net',
-        reused: false,
-        committedAt: '2026-08-18T03:00:00.000Z',
-        totalAmount: 0,
-        currency: 'USD',
-        direction: 'you_paid_friend',
-        settlements: [],
-        operationId: 'operation-zero-net',
-        mode: 'all_balances',
-        affectedGroupIds: ['group-1'],
-        transfers: [],
-      },
-      error: null,
-    });
-
+  it('rejects a zero-net settlement instead of using the transfer-only RPC', async () => {
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 
     await expect(settlementModule.commit({
@@ -884,7 +842,7 @@ describe('settlementModule.commit', () => {
       directBalance: 8,
       groupBalances: [{
         groupId: 'group-1',
-        groupName: 'Trip',
+        groupName: 'Test Group',
         currency: 'USD',
         amount: -8,
         direction: 'you_owe',
@@ -892,38 +850,19 @@ describe('settlementModule.commit', () => {
       friend,
       currentUser,
       queryClient,
-    })).resolves.toMatchObject({
-      operationId: 'operation-zero-net',
-      totalAmount: 0,
-      affectedGroupIds: ['group-1'],
-    });
+    })).rejects.toMatchObject({ code: 'invalid_input' });
 
-    expect(rpc).toHaveBeenCalledWith('commit_zero_net_settlement_operation', expect.objectContaining({
-      p_payment_intent_id: 'intent-zero-net',
-      p_expected_balance: 0,
-      p_transfers: [expect.objectContaining({ groupId: 'group-1' })],
-    }));
+    expect(rpc).not.toHaveBeenCalled();
   });
 
-  it('commits a group-scoped settlement with the group mode', async () => {
-    rpc.mockResolvedValueOnce({
-      data: {
-        paymentIntentId: 'intent-group',
-        reused: false,
-        committedAt: '2026-08-18T03:00:00.000Z',
-        totalAmount: 20,
-        currency: 'USD',
-        direction: 'you_paid_friend',
-        settlements: [rawSettlement({ id: 'group-settlement', groupId: 'group-1', amount: 20 })],
-        mode: 'group',
-        affectedGroupIds: ['group-1'],
-        transfers: [],
-      },
-      error: null,
-    });
-
+  it('commits a group-mode full plan without transfers when the group is the only scope', async () => {
+    rpc.mockResolvedValueOnce({ data: {
+      paymentIntentId: 'intent-group', reused: false, committedAt: '2026-08-18T03:00:00.000Z',
+      totalAmount: 20, currency: 'USD', direction: 'you_paid_friend', settlements: [],
+    }, error: null });
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 
+    // A same-direction single group is recorded as an ordinary cash allocation.
     await settlementModule.commit({
       currentUserId: currentUser.id,
       friendId: 'friend-a',
@@ -935,7 +874,7 @@ describe('settlementModule.commit', () => {
       directBalance: 0,
       groupBalances: [{
         groupId: 'group-1',
-        groupName: 'Trip',
+        groupName: 'Test Group',
         currency: 'USD',
         amount: -20,
         direction: 'you_owe',
@@ -946,11 +885,25 @@ describe('settlementModule.commit', () => {
       currentUser,
       queryClient,
     });
-
-    expect(rpc).toHaveBeenCalledWith('commit_settlement_operation', expect.objectContaining({
-      p_mode: 'group',
+    expect(rpc).toHaveBeenCalledTimes(1);
+    expect(rpc).toHaveBeenCalledWith('commit_settlement_operation', {
+      p_payment_intent_id: 'intent-group',
+      p_friend_id: 'friend-a',
       p_group_id: 'group-1',
-    }));
+      p_mode: 'group',
+      p_amount: 20,
+      p_currency: 'USD',
+      p_date: '2026-08-18T03:00:00.000Z',
+      p_expected_balance: -20,
+      p_allocations: [{
+        groupId: 'group-1',
+        fromUserId: 'current-user',
+        toUserId: 'friend-a',
+        amount: 20,
+        currency: 'USD',
+      }],
+      p_cancellations: [],
+    });
   });
 
 });
@@ -1028,7 +981,7 @@ describe('settlementService.commit adapter', () => {
         amount: 30,
         currency: 'USD',
       }],
-      p_transfers: [],
+      p_cancellations: [],
     });
   });
 
@@ -1046,24 +999,7 @@ describe('settlementService.commit adapter', () => {
     })).rejects.toMatchObject({ code: 'transient' });
   });
 
-  it('uses the transfer-only RPC for a zero-net operation', async () => {
-    rpc.mockResolvedValueOnce({
-      data: {
-        paymentIntentId: 'intent-zero',
-        reused: false,
-        committedAt: '2026-08-18T03:00:00.000Z',
-        totalAmount: 0,
-        currency: 'USD',
-        direction: 'you_paid_friend',
-        settlements: [],
-        operationId: 'operation-zero',
-        mode: 'all_balances',
-        affectedGroupIds: ['group-1'],
-        transfers: [],
-      },
-      error: null,
-    });
-
+  it('rejects a zero amount before calling the database', async () => {
     await expect(settlementService.commit({
       paymentIntentId: 'intent-zero',
       friendId: 'friend-a',
@@ -1072,39 +1008,9 @@ describe('settlementService.commit adapter', () => {
       date: Date.parse('2026-08-18T03:00:00.000Z'),
       expectedBalance: 0,
       allocations: [],
-      transfers: [{
-        id: 't-1',
-        operationId: 'op-1',
-        groupId: 'group-1',
-        fromUserId: 'current-user',
-        toUserId: 'friend-a',
-        currency: 'USD',
-        signedGroupBalanceDelta: 8,
-        createdAt: 0,
-      }],
-    })).resolves.toMatchObject({
-      operationId: 'operation-zero',
-      totalAmount: 0,
-      affectedGroupIds: ['group-1'],
-    });
+    })).rejects.toMatchObject({ code: 'invalid_input' });
 
-    expect(rpc).toHaveBeenCalledWith('commit_zero_net_settlement_operation', {
-      p_payment_intent_id: 'intent-zero',
-      p_friend_id: 'friend-a',
-      p_currency: 'USD',
-      p_date: '2026-08-18T03:00:00.000Z',
-      p_expected_balance: 0,
-      p_transfers: [{
-        id: 't-1',
-        operationId: 'op-1',
-        groupId: 'group-1',
-        fromUserId: 'current-user',
-        toUserId: 'friend-a',
-        currency: 'USD',
-        signedGroupBalanceDelta: 8,
-        createdAt: 0,
-      }],
-    });
+    expect(rpc).not.toHaveBeenCalled();
   });
 });
 
@@ -1164,31 +1070,20 @@ describe('settlementService.reverse adapter', () => {
 });
 
 describe('buildCombinedSettlementPlan with bilateral group inputs', () => {
-  it('full-settles a bilateral group debt with a pair transfer', () => {
-    const plan = settlementModule.preview({
-      currentUserId: 'viewer',
-      friendId: 'friend',
-      currency: 'USD',
-      amount: 523.38,
-      directBalance: 0,
-      groupBalances: [{
-        groupId: 'trip-group',
-        groupName: 'Trip Group',
+  it('plans a full-settle bilateral group debt as a payment', () => {
+      expect(settlementModule.preview({
+        currentUserId: 'viewer',
+        friendId: 'friend',
         currency: 'USD',
-        amount: -523.38,
-        direction: 'you_owe',
-      }],
-    });
-
-    expect(plan.transfers).toHaveLength(1);
-    expect(plan.transfers[0]).toMatchObject({
-      groupId: 'trip-group',
-      fromUserId: 'viewer',
-      toUserId: 'friend',
-      currency: 'USD',
-      signedGroupBalanceDelta: 523.38,
-    });
-    const totalAllocated = plan.allocations.reduce((sum, allocation) => sum + allocation.amount, 0);
-    expect(totalAllocated).toBeCloseTo(523.38, 2);
+        amount: 523.38,
+        directBalance: 0,
+        groupBalances: [{
+          groupId: 'trip-group',
+          groupName: 'Test Group',
+          currency: 'USD',
+          amount: -523.38,
+          direction: 'you_owe',
+        }],
+      })).toMatchObject({ allocations: [{ groupId: 'trip-group', amount: 523.38 }], cancellations: [] });
   });
 });

@@ -70,6 +70,7 @@ type ExpenseSplitRow = {
 type SettlementRow = {
   id: string;
   operation_id: string | null;
+  backfilled_transfer_id?: string | null;
   group_id: string | null;
   from_user_id: string;
   to_user_id: string;
@@ -187,6 +188,7 @@ export function mapSettlementRow(row: SettlementRow, options?: { preserveNullGro
   return {
     id: row.id,
     operationId: optional(row.operation_id),
+    ...(row.backfilled_transfer_id ? { backfilledTransferId: row.backfilled_transfer_id } : {}),
     // create() and getByGroup() historically returned the raw nullable value.
     // Keep that behavior during this mechanical refactor even though the
     // domain type models an absent group as undefined.

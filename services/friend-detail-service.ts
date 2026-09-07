@@ -1,4 +1,9 @@
-import { ActivityType, type Expense, type SettlementScopeTransfer, type User } from '@/types/database';
+import { ActivityType, type Expense, type SettlementCancellation, type SettlementScopeTransfer, type User } from '@/types/database';
+import { moveBalanceTowardZero } from './group-balance';
+import type {
+  SettlementOperationProjection,
+  SettlementOperationStatusRecord,
+} from './settlement-operation-projection';
 import { friendDetailReadModel } from './friend-detail-read-model';
 
 export interface FriendWithBalance extends User {
@@ -42,6 +47,8 @@ export type FriendActivityItem =
     date: number;
     settlementId: string;
     operationId?: string;
+    backfilledTransferId?: string;
+    createdAt?: number;
     amount: number;
     currency: string;
     direction: FriendSettlementDirection;
@@ -80,7 +87,22 @@ export type FriendActivityItem =
     direction: FriendSettlementDirection;
     isReversal?: boolean;
     notes?: string;
+  }
+  | {
+    // ADR-0001: one settlement operation renders as one Friend activity.
+    // The projection carries the grouped cash/adjustment records; balance
+    // math still consumes the original plus compensating rows exactly as
+    // today.
+    id: string;
+    type: 'settlement_operation';
+    date: number;
+    operationId: string;
+    direction?: FriendSettlementDirection;
+    projection: SettlementOperationProjection;
+    groupNames?: Record<string, string>;
   };
+
+export type FriendSettlementOperationItem = Extract<FriendActivityItem, { type: 'settlement_operation' }>;
 
 export type FriendRelationshipTotal = {
   currency: string;
@@ -104,11 +126,17 @@ export interface FriendDetailData {
   activity: FriendActivityItem[];
   groupBalances?: FriendGroupBalanceSummary[];
   scopeTransfers?: SettlementScopeTransfer[];
+  cancellations?: SettlementCancellation[];
+  // Authoritative per-operation status for the settlement-operation
+  // projection. Absent until the read model exposes it; the Friend
+  // operation view falls back to explicit reversal links (see
+  // friend-settlement-operation-view.ts) and never to rendered text.
+  settlementOperations?: SettlementOperationStatusRecord[];
   relationship: FriendRelationshipProjection;
 }
 
 export function projectFriendRelationship(
-  detail: Pick<FriendDetailData, 'friend' | 'expenses' | 'activity' | 'groupBalances' | 'scopeTransfers'>
+  detail: Pick<FriendDetailData, 'friend' | 'expenses' | 'activity' | 'groupBalances' | 'scopeTransfers' | 'cancellations'>
 ): FriendRelationshipProjection {
   const scopeTransfers = detail.scopeTransfers ?? [];
   const transferDeltasByCurrency = new Map<string, number>();
@@ -128,11 +156,41 @@ export function projectFriendRelationship(
       (transferDeltasByGroup.get(transfer.groupId) ?? 0) + transfer.signedGroupBalanceDelta,
     );
   }
-  const groupBalances = (detail.groupBalances ?? []).map(summary => ({
-    ...summary,
-    amount: normalizeBalance(summary.amount + (transferDeltasByGroup.get(summary.groupId) ?? 0)),
-    direction: getBalanceDirection(summary.amount + (transferDeltasByGroup.get(summary.groupId) ?? 0)),
-  }));
+  // Balance cancellations clear the pair's outstanding in the named scope:
+  // each non-reversal row moves that group balance toward zero by its amount
+  // (reversals negate through the netting, mirroring the server helper). The
+  // signed amount removed from the group scopes is absorbed by the direct
+  // balance with the inverse leg, so the relationship total stays unchanged.
+  const cancellations = detail.cancellations ?? [];
+  const cancellationNetsByScope = new Map<string, { effect: number; legacy: number }>();
+  for (const cancellation of cancellations) {
+    const key = `${cancellation.groupId}|${cancellation.currency}`;
+    const prior = cancellationNetsByScope.get(key) ?? { effect: 0, legacy: 0 };
+    if (cancellation.signedGroupBalanceDelta === undefined) {
+      prior.legacy += cancellation.isReversal === true ? -cancellation.amount : cancellation.amount;
+    } else {
+      const oriented = cancellation.actorUserId === detail.friend.id
+        ? -cancellation.signedGroupBalanceDelta
+        : cancellation.signedGroupBalanceDelta;
+      prior.effect += cancellation.isReversal === true ? -oriented : oriented;
+    }
+    cancellationNetsByScope.set(key, prior);
+  }
+  const removedByCurrency = new Map<string, number>();
+  const groupBalances = (detail.groupBalances ?? []).map(summary => {
+    const transferAdjusted = summary.amount + (transferDeltasByGroup.get(summary.groupId) ?? 0);
+    const cancellation = cancellationNetsByScope.get(`${summary.groupId}|${summary.currency}`) ?? { effect: 0, legacy: 0 };
+    const cleared = moveBalanceTowardZero(transferAdjusted, Math.max(0, cancellation.legacy)) + cancellation.effect;
+    removedByCurrency.set(
+      summary.currency,
+      (removedByCurrency.get(summary.currency) ?? 0) + (transferAdjusted - cleared),
+    );
+    return {
+      ...summary,
+      amount: normalizeBalance(cleared),
+      direction: getBalanceDirection(cleared),
+    };
+  });
   const directCurrencies = new Set(
     detail.expenses
       .filter(expense => !expense.groupId)
@@ -147,7 +205,8 @@ export function projectFriendRelationship(
 
   const directCurrency = directCurrencies.size === 1 ? [...directCurrencies][0] : undefined;
   const directTransferDelta = directCurrency ? (transferDeltasByCurrency.get(directCurrency) ?? 0) : 0;
-  const directBalance = normalizeBalance(detail.friend.balance - directTransferDelta);
+  const directCancellationRemoved = directCurrency ? (removedByCurrency.get(directCurrency) ?? 0) : 0;
+  const directBalance = normalizeBalance(detail.friend.balance - directTransferDelta + directCancellationRemoved);
 
   const totals = new Map<string, number>();
   for (const summary of groupBalances) {
@@ -195,10 +254,12 @@ export function projectFriendRelationship(
     ...directCurrencies,
     ...groupBalances.map(summary => summary.currency),
     ...scopeTransfers.map(transfer => transfer.currency),
+    ...cancellations.map(cancellation => cancellation.currency),
   ]);
   const hasClearedScopes = directBalance !== 0
     || groupBalances.some(summary => summary.amount !== 0)
-    || scopeTransfers.length > 0;
+    || scopeTransfers.length > 0
+    || cancellations.length > 0;
   const zeroNetCurrency = outstandingTotals.length === 0
     && hasClearedScopes
     && relationshipCurrencies.size === 1

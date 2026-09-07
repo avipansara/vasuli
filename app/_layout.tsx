@@ -2,6 +2,7 @@ import { AnimatedSplash } from '@/components/ui/animated-splash';
 import { AppUpdatePrompt } from '@/components/ui/app-update-prompt';
 import { RouteErrorBoundary } from '@/components/ui/route-error-boundary';
 import { AuthProvider, useAuth } from '@/contexts/auth-context-otp';
+import { CurrencyProvider } from '@/contexts/currency-context';
 import { ThemeProvider as AppThemeProvider, useTheme } from '@/contexts/theme-context';
 import { useNotifications } from '@/hooks/use-notifications';
 import { buildInvitePath, parseInviteFromUrl } from '@/lib/invite-deeplink';
@@ -306,8 +307,6 @@ function RootLayoutNav() {
     </ThemeProvider>
   );
 }
-
-import { CurrencyProvider } from '@/contexts/currency-context';
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({

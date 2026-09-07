@@ -2,7 +2,12 @@ import type { ExpenseSplit } from '@/types/database';
 import { expenseService } from './expense-service';
 import { groupService } from './group-service';
 import { scopeTransferService } from './scope-transfer-service';
+import { settlementCancellationService } from './settlement-cancellation-service';
+import { settlementOperationMetadataService } from './settlement-operation-metadata-service';
 import { settlementService } from './settlement-service';
+import { resolveOperationPair } from './settlement-operation-projection';
+import { applySettlementCancellations, cancellationPairFromRow } from './group-balance';
+import type { CancellationPairResolver } from './group-balance';
 
 function groupSplitsByExpenseId(splits: ExpenseSplit[]): Map<string, ExpenseSplit[]> {
   const splitsByExpenseId = new Map<string, ExpenseSplit[]>();
@@ -31,10 +36,12 @@ export async function calculateGroupBalances(groupIds: string[]): Promise<Map<st
   );
   if (uniqueGroupIds.length === 0) return balances;
 
-  const [expenses, settlements, scopeTransfersByGroup] = await Promise.all([
+  const [expenses, settlements, scopeTransfersByGroup, cancellationsByGroup, operationsByGroup] = await Promise.all([
     expenseService.getByGroups(uniqueGroupIds),
     settlementService.getByGroups(uniqueGroupIds),
     Promise.all(uniqueGroupIds.map(groupId => scopeTransferService.getByGroup(groupId))),
+    Promise.all(uniqueGroupIds.map(groupId => settlementCancellationService.getByGroup(groupId))),
+    Promise.all(uniqueGroupIds.map(groupId => settlementOperationMetadataService.getByGroup(groupId))),
   ]);
   const splits = await expenseService.getSplitsForExpenses(expenses.map(expense => expense.id));
   const splitsByExpenseId = groupSplitsByExpenseId(splits);
@@ -80,9 +87,10 @@ export async function calculateGroupBalances(groupIds: string[]): Promise<Map<st
 
     const scopeTransfers = scopeTransfersByGroup[i];
     for (const transfer of scopeTransfers) {
-      // signedGroupBalanceDelta is the change to the transfer actor's group
-      // balance. Apply the signed delta to the sender and its inverse to the
-      // recipient.
+      // signedGroupBalanceDelta is the change to the transfer from-user's
+      // group balance (ticket 09 shared orientation, matching the backfill
+      // conversion and every balance reader). Apply the signed delta to
+      // the sender and its inverse to the recipient.
       groupBalances.set(
         transfer.fromUserId,
         (groupBalances.get(transfer.fromUserId) ?? 0) + transfer.signedGroupBalanceDelta,
@@ -92,6 +100,22 @@ export async function calculateGroupBalances(groupIds: string[]): Promise<Map<st
         (groupBalances.get(transfer.toUserId) ?? 0) - transfer.signedGroupBalanceDelta,
       );
     }
+
+    // Balance cancellations clear the operation pair's outstanding in this
+    // group. The pair resolves from operation metadata participants, then
+    // sibling cash/transfer rows of the same operation, then the pair
+    // carried on the cancellation row itself; the legacy transfer branch
+    // above is untouched.
+    const groupSettlements = settlements.filter(settlement => settlement.groupId === groupId);
+    const pairForCancellation: CancellationPairResolver = cancellation => resolveOperationPair(
+      cancellation.operationId,
+      {
+        operations: operationsByGroup[i],
+        settlements: groupSettlements,
+        transfers: scopeTransfers,
+      },
+    ) ?? cancellationPairFromRow(cancellation);
+    applySettlementCancellations(groupBalances, cancellationsByGroup[i], pairForCancellation);
   }
 
   return balances;

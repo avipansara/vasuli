@@ -150,4 +150,29 @@ describe('group detail read model', () => {
 
     expect(next).toEqual([{ ...blair, balance: 0, recentExpenses: [] }]);
   });
+
+  it('carries additive operation status without changing existing response fields', () => {
+    const model = buildGroupDetailReadModel({
+      currentUserId: alex.id,
+      group,
+      expenses: [expense()],
+      members,
+      users: [alex, blair],
+      userFriends: [],
+      friendships: [],
+      splits: [split('split-a', 'expense-1', alex.id, 15), split('split-b', 'expense-1', blair.id, 15)],
+      settlements: [settlement('settlement-1')],
+      settlementOperations: [
+        { operationId: 'operation-1', status: 'reversed', createdAt: 1, reversedAt: 2, currency: 'USD' },
+      ],
+    });
+
+    // Group-visible facts only: identity, lifecycle status, dates. Never a
+    // cross-scope cash total (no requestedPaymentAmount in group responses).
+    expect(model.settlementOperations).toEqual([
+      { operationId: 'operation-1', status: 'reversed', createdAt: 1, reversedAt: 2, currency: 'USD' },
+    ]);
+    expect(model.settlements).toHaveLength(1);
+    expect(model.expenses).toHaveLength(1);
+  });
 });

@@ -1,5 +1,6 @@
 ---
-status: accepted
+status: superseded
+superseded-by: 0004-settle-each-scope-where-it-lives.md
 date: 2026-08-18
 decision-makers: Varun Yadav, Vasuli maintainers
 consulted: Codex synthesis of the Vasuli settlement code and public Splitwise documentation
@@ -7,6 +8,10 @@ informed: Future Vasuli implementation agents and maintainers
 ---
 
 # Adopt Splitwise-style cross-scope settlement operations
+
+> **SUPERSEDED by [ADR-0004](0004-settle-each-scope-where-it-lives.md).**
+> Do not implement from this document — its transfer semantics no longer
+> govern new writes. Retained as historical context only.
 
 ## Context and Problem Statement
 
@@ -34,7 +39,7 @@ into the personal friendship ledger through expense simplification.
 
 References:
 
-- [Splitwise: fully settled friendship balances](https://kb.splitwise.com/balances-and-expenses/what-does-it-mean-if-im-fully-settled-up-with-a-friend)
+- [Splitwise: fully settled friendship balances](https://kb.splitwise.com/balances-and-expenses/what-does-it-mean-if-im-fully-settled-up-with-my-friend)
 - [Splitwise: friendship and group balances](https://feedback.splitwise.com/knowledgebase/articles/117962)
 
 ## Decision Drivers
@@ -242,6 +247,67 @@ the existing expense and payment model.
 
 ## More Information
 
+### Settlement presentation and deletion clarification, 2026-09-05
+
+Explicit scope-transfer records are an accounting requirement of the chosen
+settle-all model. They are not a requirement to present each record as a
+separate activity or independently deletable item. The earlier requirement
+to distinguish payments from transfers means that non-cash adjustments must
+never look like additional payments. It does not require users to learn the
+term "scope transfer".
+
+The presentation decision is one settlement activity per operation on each
+relevant detail screen. Lead with the actual payment and place linked balance
+adjustments in expandable details. An operation without a payment appears as
+"Balances cleared", with an explicit statement that no payment was made.
+Group activity retains the local explanation and audit history without
+revealing direct balances, other groups, or private payment amounts to
+non-participants. Group-only settlement creation remains group-only.
+
+The user-facing Delete action invokes the existing whole-operation reversal.
+Deleting an operation from a group view can therefore undo its linked changes
+outside that group; confirmation must explain that scope to the authorized
+participant. Original and compensating records remain intact. Presentation
+marks the original operation deleted and groups its reversal history instead
+of showing compensation as a second payment. Deletion undoes only that
+operation's effects and preserves later financial activity.
+
+This clarifies presentation and preserves the accepted accounting model,
+authorization, partial-payment rules, and separate reversal command in
+[ADR-0003](0003-canonical-settlement-balance-signs-and-rpc-boundary.md).
+Replacing the accounting mechanism or adopting per-record deletion remains
+outside this clarification.
+
+The linked Splitwise help page, checked on 2026-09-05, describes balancing
+entries with settled-up wording and a scale icon. It also states that deleting
+or editing a payment does not automatically update its balancing entries.
+Vasuli intentionally differs by undoing the whole operation together.
+"Splitwise-style" in the original decision describes net settlement behavior,
+not identical deletion semantics or a claim about Splitwise's private schema.
+
+Implementation and verification are specified in
+[One settlement activity with whole-operation Delete](../../.scratch/delete-settlement-label/spec.md).
+Affected areas are the Friend/Group activity read models and components,
+shared confirmation and mutation controllers, and their tests. Read metadata
+may need additive extension under existing visibility rules; mutation
+contracts and balance calculations remain unchanged. No new dependency is
+required. This clarification records intended behavior, not completed UI work.
+
+Verification must include authenticated database flows. The 2026-09-04
+bilateral-balance migration notes a pre-existing stale-guard limitation for
+transfer-bearing reversals; existing guards can also reject older operations
+after later balance changes. The spec records these as verification and
+release dependencies, not permission to alter reversal validation within the
+presentation change. Deployed behavior has not been verified by this review.
+
+- [ ] One operation produces one activity per relevant screen, with non-cash
+  details distinguishable from the actual payment.
+- [ ] Group history preserves local facts without exposing private information.
+- [ ] Whole-operation Delete has accurate confirmation, repeat-request handling,
+  and a persistent deleted state on the original activity.
+- [ ] Full-net, zero-net, partial-payment, and later-activity cases retain the
+  existing accounting results; original and compensating rows remain intact.
+
 ### Partial-payment clarification — 2026-08-19
 
 The implemented contract reserves scope transfers for full-net and zero-net
@@ -279,3 +345,11 @@ implementing the operation and read-model changes should include a lightweight
 Revisit this decision if Vasuli adds non-pair debt simplification, external
 payment providers, non-USD settlement execution, or requirements for a general
 ledger covering every financial event.
+
+### Supersession proposal — 2026-09-05 (accepted same day)
+
+[ADR-0004](0004-settle-each-scope-where-it-lives.md) replaces scope
+transfers with per-scope payments plus combined display. This ADR is now
+`superseded`: its transfer semantics stop governing new writes. Its
+problem analysis remains valid historical context. This note replaces the
+earlier proposal-only wording upon acceptance.

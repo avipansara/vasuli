@@ -1,6 +1,7 @@
-import type { Expense, ExpenseSplit, Group, GroupMember, Settlement, SettlementScopeTransfer, User } from '@/types/database';
-import { calculateGroupBalances } from './group-balance';
+import type { Expense, ExpenseSplit, Group, GroupMember, Settlement, SettlementCancellation, SettlementScopeTransfer, User } from '@/types/database';
+import { calculateGroupBalances, cancellationPairFromRow, type CancellationPairResolver } from './group-balance';
 import type { Friendship } from './friendship-service';
+import { resolveOperationPair, type SettlementOperationStatusRecord } from './settlement-operation-projection';
 
 export type FriendshipStatus = 'none' | 'pending_sent' | 'pending_received' | 'accepted';
 
@@ -26,6 +27,15 @@ export interface GroupDetailReadModel {
   friendshipStatus: Map<string, FriendshipStatus>;
   settlements: Settlement[];
   scopeTransfers: SettlementScopeTransfer[];
+  cancellations: SettlementCancellation[];
+  // ADR-0001: additive operation lifecycle metadata for the one-activity
+  // Group view. Group responses expose group-visible facts only (identity,
+  // status, dates, currency) — never a cross-scope cash total. Full
+  // confirmation amounts load only through the authorized participant read
+  // (group-detail settlement mutation). Absent until the read RPC exposes
+  // status; the Group operation view falls back to explicit local reversal
+  // links and never to rendered text.
+  settlementOperations?: SettlementOperationStatusRecord[];
 }
 
 export type GroupDetailReadModelInput = {
@@ -39,6 +49,8 @@ export type GroupDetailReadModelInput = {
   splits: ExpenseSplit[];
   settlements: Settlement[];
   scopeTransfers?: SettlementScopeTransfer[];
+  cancellations?: SettlementCancellation[];
+  settlementOperations?: SettlementOperationStatusRecord[];
 };
 
 export function buildFriendshipStatus(
@@ -80,12 +92,28 @@ function calculateGroupDetailBalances(
   members: GroupMemberView[],
   settlements: Settlement[],
   scopeTransfers: SettlementScopeTransfer[],
+  cancellations: SettlementCancellation[] = [],
+  settlementOperations: SettlementOperationStatusRecord[] = [],
+  pairForCancellation?: CancellationPairResolver,
 ): Map<string, number> {
+  // Balance cancellations clear the operation pair's outstanding in this
+  // group. The pair resolves from operation metadata participants, then
+  // sibling cash/transfer rows of the same operation, then the pair carried
+  // on the cancellation row itself; the legacy transfer branch inside the
+  // ledger engine is untouched. Callers that already know
+  // the pair (e.g. receipt effects for the committing pair) pass it
+  // explicitly instead of resolving.
+  const resolvedPairForCancellation: CancellationPairResolver = pairForCancellation ?? (cancellation => resolveOperationPair(
+    cancellation.operationId,
+    { operations: settlementOperations, settlements, transfers: scopeTransfers },
+  ) ?? cancellationPairFromRow(cancellation));
   const balances = calculateGroupBalances(
     expenses,
     expenses.flatMap(expense => expense.splits),
     settlements,
     scopeTransfers,
+    cancellations,
+    resolvedPairForCancellation,
   );
   for (const member of members) {
     if (!balances.has(member.userId)) balances.set(member.userId, 0);
@@ -114,11 +142,20 @@ export function buildGroupDetailReadModel(input: GroupDetailReadModelInput): Gro
     friendshipStatus: buildFriendshipStatus(input.currentUserId, input.friendships),
     settlements: input.settlements,
     scopeTransfers: input.scopeTransfers ?? [],
+    cancellations: input.cancellations ?? [],
+    ...(input.settlementOperations ? { settlementOperations: input.settlementOperations } : {}),
   };
 
   return {
     ...model,
-    balances: calculateGroupDetailBalances(model.expenses, model.members, model.settlements, model.scopeTransfers),
+    balances: calculateGroupDetailBalances(
+      model.expenses,
+      model.members,
+      model.settlements,
+      model.scopeTransfers,
+      model.cancellations,
+      model.settlementOperations ?? [],
+    ),
   };
 }
 
@@ -128,6 +165,8 @@ export function addExpenseToGroupReadModel(
   splits: ExpenseSplit[],
 ): GroupDetailReadModel {
   const scopeTransfers = model.scopeTransfers ?? [];
+  const cancellations = model.cancellations ?? [];
+  const settlementOperations = model.settlementOperations ?? [];
   const usersById = new Map(model.members.flatMap(member => member.user ? [[member.user.id, member.user] as const] : []));
   const nextExpenses = [
     createExpenseView(expense, splits, usersById),
@@ -136,8 +175,9 @@ export function addExpenseToGroupReadModel(
   return {
     ...model,
     expenses: nextExpenses,
-    balances: calculateGroupDetailBalances(nextExpenses, model.members, model.settlements, scopeTransfers),
+    balances: calculateGroupDetailBalances(nextExpenses, model.members, model.settlements, scopeTransfers, cancellations, settlementOperations),
     scopeTransfers,
+    cancellations,
   };
 }
 
@@ -146,14 +186,17 @@ export function applySettlementToGroupReadModel(
   settlement: Settlement,
 ): GroupDetailReadModel {
   const scopeTransfers = model.scopeTransfers ?? [];
+  const cancellations = model.cancellations ?? [];
+  const settlementOperations = model.settlementOperations ?? [];
   if (model.settlements.some(existing => existing.id === settlement.id)) return model;
 
   const settlements = [...model.settlements, settlement];
   return {
     ...model,
     settlements,
-    balances: calculateGroupDetailBalances(model.expenses, model.members, settlements, scopeTransfers),
+    balances: calculateGroupDetailBalances(model.expenses, model.members, settlements, scopeTransfers, cancellations, settlementOperations),
     scopeTransfers,
+    cancellations,
   };
 }
 
@@ -165,10 +208,32 @@ export function applyScopeTransferToGroupReadModel(
   if (existingTransfers.some(existing => existing.id === transfer.id)) return model;
 
   const scopeTransfers = [...existingTransfers, transfer];
+  const cancellations = model.cancellations ?? [];
+  const settlementOperations = model.settlementOperations ?? [];
   return {
     ...model,
     scopeTransfers,
-    balances: calculateGroupDetailBalances(model.expenses, model.members, model.settlements, scopeTransfers),
+    cancellations,
+    balances: calculateGroupDetailBalances(model.expenses, model.members, model.settlements, scopeTransfers, cancellations, settlementOperations),
+  };
+}
+
+export function applyCancellationToGroupReadModel(
+  model: GroupDetailReadModel,
+  cancellation: SettlementCancellation,
+  pairForCancellation?: CancellationPairResolver,
+): GroupDetailReadModel {
+  const existingCancellations = model.cancellations ?? [];
+  if (existingCancellations.some(existing => existing.id === cancellation.id)) return model;
+
+  const cancellations = [...existingCancellations, cancellation];
+  const scopeTransfers = model.scopeTransfers ?? [];
+  const settlementOperations = model.settlementOperations ?? [];
+  return {
+    ...model,
+    scopeTransfers,
+    cancellations,
+    balances: calculateGroupDetailBalances(model.expenses, model.members, model.settlements, scopeTransfers, cancellations, settlementOperations, pairForCancellation),
   };
 }
 
@@ -177,12 +242,15 @@ export function removeExpenseFromGroupReadModel(
   expenseId: string,
 ): GroupDetailReadModel {
   const scopeTransfers = model.scopeTransfers ?? [];
+  const cancellations = model.cancellations ?? [];
+  const settlementOperations = model.settlementOperations ?? [];
   const expenses = model.expenses.filter(expense => expense.id !== expenseId);
   return {
     ...model,
     expenses,
-    balances: calculateGroupDetailBalances(expenses, model.members, model.settlements, scopeTransfers),
+    balances: calculateGroupDetailBalances(expenses, model.members, model.settlements, scopeTransfers, cancellations, settlementOperations),
     scopeTransfers,
+    cancellations,
   };
 }
 

@@ -14,6 +14,8 @@ function detail(overrides: Partial<GroupDetailReadModel> = {}): GroupDetailReadM
     availableUsers: [],
     friendshipStatus: new Map(),
     settlements: [],
+    scopeTransfers: [],
+    cancellations: [],
     ...overrides,
   };
 }

@@ -5,6 +5,7 @@ export const FRIEND_RELATIONSHIP_REALTIME_TABLES = [
   'expense_splits',
   'settlements',
   'settlement_scope_transfers',
+  'settlement_cancellations',
   'groups',
   'group_members',
   'friendships',

@@ -69,6 +69,3 @@ jobs:
     params:
       branch: production
       platform: ios
-  deploy_website:
-    name: Deploy website
-    type: deploy

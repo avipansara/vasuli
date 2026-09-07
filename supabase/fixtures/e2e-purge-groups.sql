@@ -50,6 +50,12 @@ BEGIN
      )
      OR EXISTS (
        SELECT 1
+       FROM public.settlement_cancellations cancellation
+       WHERE cancellation.operation_id = operation.id
+         AND cancellation.group_id = ANY(v_group_ids)
+     )
+     OR EXISTS (
+       SELECT 1
        FROM public.settlements settlement
        WHERE settlement.operation_id = operation.id
          AND settlement.group_id = ANY(v_group_ids)
@@ -67,6 +73,9 @@ BEGIN
      WHERE operation_id = ANY(v_operation_ids);
 
     DELETE FROM public.settlement_scope_transfers
+     WHERE operation_id = ANY(v_operation_ids);
+
+    DELETE FROM public.settlement_cancellations
      WHERE operation_id = ANY(v_operation_ids);
 
     DELETE FROM public.settlements

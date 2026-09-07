@@ -1,5 +1,118 @@
+## 2026-09-07
+
+- Final pre-production cleanup verification: root `tsc --noEmit` is clean,
+  `npm run precommit` passes (84 Vitest files, 680 tests, 0 lint errors), and
+  `npx expo export` succeeds for both iOS and Android. The 4 remaining lint
+  warnings (guarded data-load effects in Friend/Group Settle Up and Add
+  Expense) were reviewed as benign with no render-loop risk. The npm audit
+  reports 25 transitive findings (5 high, 0 critical), all in Expo/Metro/Detox
+  build tooling with no production runtime exposure; no audit fix was applied
+  because the proposed changes force incompatible Expo downgrades.
+- Fixed the root type check after the Supabase type regeneration: the
+  settlement-cancellations migration contract now pins the required
+  `signed_group_balance_delta` column in the migration, the checked-in types,
+  and the compile-time probe.
+- Fixed `npx supabase test db` failing on `\ir ../fixtures/...` includes: the
+  harness executes each test file in a container where only that file is
+  visible, so `supabase/tests/e2e-run-scoped-fixtures.sql` now inlines
+  byte-identical copies of the run-scoped and purge-groups fixtures (installed
+  twice, preserving the re-run idempotency check). All 87 pgTAP assertions
+  execute and pass; a Vitest contract test fails if the inlined copies drift
+  from the fixture sources. The 8 NOTICE-based settlement regression files are
+  unchanged and still report their pre-existing "No plan found" TAP parse
+  noise with exit 0.
+- Pre-deploy database note: migrations `20260905100000` through
+  `20260906060000` are verified applied on the local database only. Apply them
+  to production with `supabase db push` (or the linked project flow) only
+  after confirming a current production backup; the production database was
+  not modified during this cleanup.
+
+- Aligned Friend and Group Settle Up screens with the same compact card layout,
+  amount controls, quick choices, theme treatment, and safe-area-aware actions.
+  Group settlement keeps its member radio selection and now presents it before
+  the amount it controls.
+- Removed friendship-only direct balance callouts from the Group summary card,
+  which now shows the group balance, member count, and Settle Up action only.
+- Changed Group member cards on the All tab to show each bilateral relationship
+  as `You owe`, `Owes you`, `settled`, or `No balance`; the Balances tab keeps
+  the full group and pair breakdown.
+
+## 2026-09-06
+
+- Ruled the freeze-vs-cancellation conflict (issue 17, option B): full-payment
+  cancellation is a transfer-free non-cash effect, not an exemption of the old
+  transfer path. The server full-settlement contract now builds
+  creditor-originated legs with strictly negative from-user-oriented signed
+  deltas and rejects absolute/positive deltas, so preview, commit validation,
+  and participant-based readers agree. Partial, overpayment, and naturally-zero
+  plans still carry no cancellation. A dedicated cancellation storage/RPC
+  surface remains follow-up work.
+
+- Restored the card-based Friend Settle Up layout in light and dark themes,
+  including the relationship summary, prominent amount entry, quick amount
+  choices, settlement preview, and safe-area-aware actions.
+
+- Revised the settlement specification: partial payments preserve opposing
+  balances, full overall payments clear included direct/group balances, and
+  naturally zero totals create no settlement. Whole-settlement Delete also
+  undoes associated cancellation. Rewrote unpublished ADR-0004 to match these
+  rules, capped payments at the current overall amount, and aligned the ADR
+  index, related decision note, and domain glossary. Implementation remains
+  pending.
+
+- Fixed the server home/groups relationship projections misreading scope
+  transfers (ticket 09): transfer deltas are from-user-oriented on disk, but
+  the readers applied them actor-oriented, so a transfer-bearing pair showed
+  -$31 server-side while the row set and the group page prove $0. The readers
+  now share the one participant-based orientation with the group ledger
+  engine, pair totals, validation priors, and the backfill conversion; the
+  same change makes reversal rows cancel to neutral instead of
+  double-counting. Converted transfers are now excludable by every
+  transfer-touching reader through the backfill marker, so a future backfill
+  cannot double-count; transfer-free pairs, signatures, auth, stale-balance
+  guards, and grants are unchanged. Verified with a failing-then-passing
+  server/client regression pair (dev-shaped -$15.50 decoy) locally in
+  rollback-only transactions; no hosted deployment.
+
 ## 2026-09-05
 
+- Blocked new scope-transfer writes at both boundaries (ADR-0004): the commit
+  RPCs reject any newly created operation carrying transfer legs with
+  `SETTLEMENT_TRANSFERS_FROZEN`, and settlement preview/commit planning
+  surfaces the same typed error before any write. Transfer-free payments,
+  idempotent retries, reads, and Delete of existing operations (including
+  transfer-bearing history) are unchanged.
+- Fixed balance-clearing receipts failing to load and group payments that run
+  opposite to the combined balance failing to delete: zero-net receipts now
+  build reliably for new and retried requests, and Delete derives the expected
+  balance from the original payment direction so opposing-sign group payments
+  reverse correctly. Either participant can delete with their own current
+  balance; stale, unauthorized, and later-activity rejections still leave all
+  rows unchanged.
+- Corrected the shared Delete flow to confirm through a cross-platform modal
+  (Alert buttons do not render on web), serialize the whole dialog with a
+  synchronous lock, honor real React Query refetch error results, and render
+  the local Deleted state on both screens when refresh fails. Copy, mutation
+  idempotency, and the `settlementModule.reverse` boundary are unchanged.
+- Added one shared whole-operation Delete confirmation flow for Friend,
+  Group payment, and balance-clearing entries: spec-exact `Delete settlement?`
+  / `Delete balance clearing?` copy with the original operation cash amount,
+  authorized details loaded before confirming (retryable error, never guessed),
+  `Already deleted` on reused receipts, `Balance changed` refresh-then-retry
+  for stale balances with no auto-loop, and `Unable to delete` permission /
+  offline / unexpected variants. Deletion still uses `settlementModule.reverse`
+  and refreshes Friend, Home, Group detail, and pair totals.
+- Implemented Friend detail one-activity-per-settlement presentation: each
+  operation renders once (`You paid Avee` / `Avee paid you`, or `Balances
+  cleared with Avee` with `No payment was made`), linked balance adjustments
+  fold into expandable `Balance details` (`Balance adjustment` + `No additional
+  payment`, group links kept, no per-adjustment Delete), legacy payments keep
+  existing presentation, deleted operations stay in place marked `Deleted` with
+  compensating rows folded into details and Delete hidden. Accounting, balance
+  math, and the `settlementModule.reverse` mutation boundary are unchanged.
+- Revised the settlement activity specification and clarified ADR-0001 to plan
+  one activity with whole-settlement Delete and balance adjustments in details;
+  implementation is pending and accounting behavior is unchanged.
 - Fixed pair-facing group balances being computed from global group nets, which
   overstated personal debts in multi-member groups and wrongly rejected full
   settlements (`SETTLEMENT_TRANSFER_BALANCE_MISMATCH`). Balances, commit checks,

@@ -4,6 +4,8 @@ import { groupService } from './group-service';
 import { settlementService } from './settlement-service';
 import { userService } from './user-service';
 import { scopeTransferService } from './scope-transfer-service';
+import { settlementCancellationService } from './settlement-cancellation-service';
+import { settlementOperationMetadataService } from './settlement-operation-metadata-service';
 import {
   buildGroupDetailReadModel,
   type GroupDetailReadModel,
@@ -18,6 +20,8 @@ export type GroupDetailDataSource = {
   getMembers(groupId: string): ReturnType<typeof groupService.getMembers>;
   getSettlements(groupId: string): ReturnType<typeof settlementService.getByGroup>;
   getScopeTransfers?(groupId: string): ReturnType<typeof scopeTransferService.getByGroup>;
+  getCancellations?(groupId: string): ReturnType<typeof settlementCancellationService.getByGroup>;
+  getSettlementOperations?(groupId: string): ReturnType<typeof settlementOperationMetadataService.getByGroup>;
   getUserFriends(userId: string): ReturnType<typeof userService.getUserFriends>;
   getFriendships(userId: string): ReturnType<typeof friendshipService.getAllFriendships>;
   getUsers(userIds: string[]): ReturnType<typeof userService.getByIds>;
@@ -30,6 +34,8 @@ const defaultDataSource: GroupDetailDataSource = {
   getMembers: groupService.getMembers,
   getSettlements: settlementService.getByGroup,
   getScopeTransfers: scopeTransferService.getByGroup,
+  getCancellations: settlementCancellationService.getByGroup,
+  getSettlementOperations: settlementOperationMetadataService.getByGroup,
   getUserFriends: userService.getUserFriends,
   getFriendships: friendshipService.getAllFriendships,
   getUsers: userService.getByIds,
@@ -67,11 +73,13 @@ export function createGroupDetailService(dataSource: GroupDetailDataSource = def
         return null;
       }
 
-      const [expenses, members, settlements, scopeTransfers, userFriends, friendships] = await Promise.all([
+      const [expenses, members, settlements, scopeTransfers, cancellations, settlementOperations, userFriends, friendships] = await Promise.all([
         dataSource.getExpenses(groupId),
         dataSource.getMembers(groupId),
         dataSource.getSettlements(groupId),
         dataSource.getScopeTransfers?.(groupId) ?? Promise.resolve([]),
+        dataSource.getCancellations?.(groupId) ?? Promise.resolve([]),
+        dataSource.getSettlementOperations?.(groupId) ?? Promise.resolve([]),
         dataSource.getUserFriends(currentUserId),
         dataSource.getFriendships(currentUserId),
       ]);
@@ -96,6 +104,8 @@ export function createGroupDetailService(dataSource: GroupDetailDataSource = def
         splits,
         settlements,
         scopeTransfers,
+        cancellations,
+        settlementOperations,
       });
 
       if (__DEV__) {
@@ -120,6 +130,7 @@ export function createGroupDetailService(dataSource: GroupDetailDataSource = def
             toUserId: settlement.toUserId,
           })),
           scopeTransferCount: scopeTransfers.length,
+          cancellationCount: cancellations.length,
           scopeTransfers: scopeTransfers.map(transfer => ({
             id: transfer.id,
             signedGroupBalanceDelta: transfer.signedGroupBalanceDelta,
