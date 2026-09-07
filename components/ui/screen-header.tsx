@@ -1,15 +1,8 @@
-import {
-    ACCENT_TEAL,
-    BG_ICON_DARK,
-    BG_ICON_LIGHT,
-    BORDER_ACCENT_DARK,
-    BORDER_ACCENT_LIGHT,
-} from '@/constants/theme';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import React from 'react';
 import { ActivityIndicator, Platform, StyleSheet, TouchableOpacity, View, ViewStyle } from 'react-native';
 import { ThemedText } from '../themed-text';
-import { IconSymbol, IconSymbolName } from './icon-symbol';
+import type { IconSymbolName } from './icon-symbol';
 import { ThemedIconButton } from './themed-icon-button';
 
 interface ScreenHeaderProps {

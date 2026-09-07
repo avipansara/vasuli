@@ -1,7 +1,8 @@
 import { FriendExpenseActivity } from '@/components/friends/friend-expense-activity';
 import { FriendExpenseActivityEvent } from '@/components/friends/friend-expense-activity-event';
-import { FriendScopeTransferActivity } from '@/components/friends/friend-scope-transfer-activity';
 import { FriendSettlementActivity } from '@/components/friends/friend-settlement-activity';
+import { FriendSettlementOperationActivity } from '@/components/friends/friend-settlement-operation-activity';
+import { SettlementDeleteDialogs } from '@/components/settlements/settlement-delete-dialogs';
 import { ThemedText } from '@/components/themed-text';
 import { AsyncErrorState } from '@/components/ui/async-error-state';
 import { IconSymbol, type IconSymbolName } from '@/components/ui/icon-symbol';
@@ -10,8 +11,10 @@ import { ThemedIconButton } from '@/components/ui/themed-icon-button';
 import { Gradients } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useFriendDetailController } from '@/hooks/use-friend-detail-controller';
+import { useSettlementDeleteFlow } from '@/hooks/use-settlement-delete-flow';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
+import { buildFriendSettlementOperationActivity } from '@/services/friend-settlement-operation-view';
 import {
   filterFriendActivity,
   friendDetailModule,
@@ -19,13 +22,12 @@ import {
   type FriendActivityFilter,
 } from '@/services/friend-detail-module';
 import { projectFriendRelationship, type FriendDetailData } from '@/services/friend-detail-service';
-import { CombinedSettlementError, settlementModule } from '@/services/settlement-service';
 import type { Expense, User } from '@/types/database';
 import { formatCurrency } from '@/utils/currency';
 import { getFirstName } from '@/utils/validation';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Animated, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
 import type { SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable';
 import Reanimated, {
@@ -64,7 +66,7 @@ export default function FriendDetailScreen() {
 
   // Animations
   const insets = useSafeAreaInsets();
-  const scrollY = useRef(new Animated.Value(0)).current;
+  const [scrollY] = useState(() => new Animated.Value(0));
 
   const headerTitleOpacity = scrollY.interpolate({
     inputRange: [40, 80],
@@ -93,6 +95,9 @@ export default function FriendDetailScreen() {
     expenses,
     activity,
     groupBalances,
+    scopeTransfers,
+    cancellations,
+    settlementOperations,
     relationship,
     friendDetailQueryKey,
     friendsHomeQueryKey,
@@ -101,7 +106,26 @@ export default function FriendDetailScreen() {
   const loading = isLoading && !friendDetail;
   const loadError = error ? getFetchErrorMessage(error) : null;
 
-  const filteredActivity = filterFriendActivity(activity, activityFilter);
+  // ADR-0001: one chronological activity per settlement operation. Cash
+  // allocations and linked balance adjustments from the same operation fold
+  // into a single entry; legacy payments without an operation ID keep their
+  // existing presentation. Receipt cancellations fold into the same operation
+  // as cleared-balance details; cleared scopes are named from the
+  // relationship group balances.
+  const settlementGroupNames = useMemo(
+    () => Object.fromEntries(groupBalances.map(summary => [summary.groupId, summary.groupName] as const)),
+    [groupBalances],
+  );
+  const operationActivity = useMemo(() => buildFriendSettlementOperationActivity({
+    activity: relationship?.activity ?? activity,
+    scopeTransfers,
+    cancellations,
+    operations: settlementOperations,
+    currentUserId,
+    friendId: id,
+    groupNames: settlementGroupNames,
+  }), [activity, cancellations, currentUserId, id, relationship?.activity, scopeTransfers, settlementGroupNames, settlementOperations]);
+  const filteredActivity = filterFriendActivity(operationActivity, activityFilter);
   const expenseActivityCount = filteredActivity.filter(item => item.type === 'expense' || item.type === 'group_expense').length;
   const updateActivityCount = filteredActivity.length - expenseActivityCount;
   const activityCountLabel = activityFilter === 'expenses'
@@ -125,6 +149,15 @@ export default function FriendDetailScreen() {
   const loadFriendData = useCallback(async () => {
     await refetch();
   }, [refetch]);
+
+  // ADR-0004 ticket 05: single Delete path. Whole-operation Delete goes
+  // through the shared confirmation/results flow; copy, authorized detail
+  // loading, pending, reused/stale/failure, and invalidation outcomes live
+  // in the hook. The mutation boundary stays settlementModule.reverse
+  // (`reverse_settlement_operation`), which has no Reverse UI call site on
+  // this surface. Legacy payments without an operation ID are readable
+  // only; scope-transfer records fold into their operation's details.
+  const settlementDeleteFlow = useSettlementDeleteFlow({ currentUserId, queryClient, refetch });
 
   const handleActivityFilterChange = useCallback((nextFilter: ActivityFilter) => {
     if (nextFilter === activityFilter) return;
@@ -242,61 +275,17 @@ export default function FriendDetailScreen() {
     );
   }
 
-  const handleReverseOperation = useCallback((operationId: string, currency: string) => {
-    Alert.alert(
-      'Reverse settlement?',
-      'This restores the balances affected by the settlement operation. The original history remains visible.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Reverse',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              if (__DEV__) {
-                console.log('[Settlement][reverse][friend-screen]', {
-                  operationId,
-                  currency,
-                  relationshipTotals: relationship?.totalsByCurrency ?? [],
-                  directBalance: relationship?.directBalance ?? null,
-                  groupBalances: relationship?.groupBalances ?? [],
-                });
-              }
-              const expectedBalance = relationship?.totalsByCurrency.find(total => total.currency === currency)?.amount;
-              await settlementModule.reverse({
-                operationId,
-                expectedBalance: expectedBalance ?? 0,
-                currentUserId,
-                friendId: id,
-                queryClient,
-              });
-              await refetch();
-              Alert.alert('Settlement reversed', 'The affected balances were restored.');
-            } catch (error) {
-              if (error instanceof CombinedSettlementError && error.code === 'stale_balance') {
-                Alert.alert('Balance changed', 'Refresh the Friend details before reversing this settlement.');
-                return;
-              }
-              if (error instanceof CombinedSettlementError) {
-                Alert.alert('Unable to reverse', error.message);
-                return;
-              }
-              Alert.alert('Unable to reverse', 'The settlement could not be reversed.');
-            }
-          },
-        },
-      ],
-    );
-  }, [currentUserId, id, queryClient, refetch, relationship?.totalsByCurrency]);
-
-  const handleReverseScopeTransfer = useCallback((item: Extract<FriendDetailData['activity'][number], { type: 'scope_transfer' }>) => {
-    handleReverseOperation(item.operationId, item.currency);
-  }, [handleReverseOperation]);
-
-  const handleReverseSettlement = useCallback((item: Extract<FriendDetailData['activity'][number], { type: 'settlement' }>) => {
-    if (!item.operationId) return;
-    handleReverseOperation(item.operationId, item.currency);
-  }, [handleReverseOperation]);
+  // Whole-operation Delete entry point (ADR-0004 ticket 05): the shared
+  // flow confirms with the original operation cash and deletes through
+  // settlementModule.reverse. One path serves backfilled and new rows alike.
+  const handleDeleteOperation = useCallback((operationId: string, currency: string) => {
+    void settlementDeleteFlow.requestDelete({
+      operationId,
+      currency,
+      friendId: id,
+      ...(friend?.name ? { friendName: friend.name } : {}),
+    });
+  }, [friend, id, settlementDeleteFlow]);
 
   const handleRemoveFriend = () => {
     if (isRemovingFriend) return;
@@ -426,7 +415,6 @@ export default function FriendDetailScreen() {
     )
   );
   const balance = combinedBalance;
-  const canClearZeroNet = Boolean(relationship.zeroNetCurrency);
   const groupBalanceCount = groupBalances.filter(summary => summary.direction !== 'settled').length;
   const isOwed = balance > 0;
   const isOwing = balance < 0;
@@ -435,18 +423,13 @@ export default function FriendDetailScreen() {
     : isOwing
       ? friendDetailTheme.negative
       : friendDetailTheme.actionIcon;
-  const balanceSurface = isOwed
-    ? friendDetailTheme.positiveSurface
-    : isOwing
-      ? friendDetailTheme.negativeSurface
-      : friendDetailTheme.settledSurface;
   const balanceCopy = hasCurrencyAmbiguity
     ? 'Multiple currencies'
     : isOwed
       ? `${getFirstName(friend.name)} owes you`
       : isOwing
         ? `You owe ${getFirstName(friend.name)}`
-        : 'All settled up';
+        : 'You are settled up overall';
   const balanceCardTitle = hasCurrencyAmbiguity
     ? 'MULTIPLE CURRENCIES'
     : isOwed
@@ -456,7 +439,9 @@ export default function FriendDetailScreen() {
         : 'ALL SETTLED UP';
   const balanceAccessibilityValue = hasCurrencyAmbiguity
     ? `${balanceCopy}, choose a currency to settle`
-    : `${balanceCopy}, ${formatCurrency(Math.abs(balance), relationship.settleableTotal?.currency ?? relationship.directCurrency)}`;
+    : balance === 0
+      ? balanceCopy
+      : `${balanceCopy}, ${formatCurrency(Math.abs(balance), relationship.settleableTotal?.currency ?? relationship.directCurrency)}`;
 
 
   return (
@@ -579,10 +564,10 @@ export default function FriendDetailScreen() {
             </ThemedText>
 
             <ThemedText style={[styles.summaryCardSubtitle, { color: isDark ? '#94A3B8' : colors.textSecondary }]}>
-              Direct ledger: {relationship.directBalance >= 0 ? '+' : ''}{formatCurrency(Math.abs(relationship.directBalance), relationship.directCurrency ?? 'USD')}
+              Direct balance: {relationship.directBalance >= 0 ? '+' : ''}{formatCurrency(Math.abs(relationship.directBalance), relationship.directCurrency ?? 'USD')}
             </ThemedText>
 
-            {((balance !== 0 && !hasCurrencyAmbiguity) || canClearZeroNet) && (
+            {balance !== 0 && !hasCurrencyAmbiguity && (
               <View style={styles.cardQuickActions}>
                 <TouchableOpacity
                   style={[styles.cardQuickActionButton, {
@@ -613,7 +598,7 @@ export default function FriendDetailScreen() {
               </ThemedText>
             </View>
             <ThemedText style={[styles.groupBalancesHint, { color: isDark ? '#94A3B8' : colors.textSecondary }]}>
-              Settle Up can apply payments and balance offsets across your shared ledgers.
+              Settle Up can apply payments across your direct and shared group balances.
             </ThemedText>
             {outstandingGroupBalances.map(summary => {
               const isOwedInGroup = summary.direction === 'you_are_owed';
@@ -757,31 +742,39 @@ export default function FriendDetailScreen() {
                           friendName={friend.name}
                           readOnly={item.type === 'group_expense'}
                         />
-                        : item.type === 'settlement'
-                          ? <FriendSettlementActivity
+                        : item.type === 'settlement_operation'
+                          ? <FriendSettlementOperationActivity
                             item={item}
                             friendName={friend.name}
                             colors={colors as Record<string, string>}
                             friendDetailTheme={friendDetailTheme as Record<string, string>}
                             isDark={isDark}
                             formatDate={formatDate}
-                            canReverse={Boolean(item.operationId) && !item.notes?.startsWith('Reversal of settlement operation')}
-                            onReverse={() => handleReverseSettlement(item)}
+                            canDelete={!item.projection.isDeleted && !settlementDeleteFlow.isDeletedLocally(item.operationId)}
+                            isDeleting={settlementDeleteFlow.isDeletePending(item.operationId)}
+                            isDeletedOverride={settlementDeleteFlow.isDeletedLocally(item.operationId)}
+                            onDelete={() => handleDeleteOperation(item.operationId, item.projection.currency ?? 'USD')}
+                            onOpenGroup={(groupId) => router.push(`/groups/${groupId}` as any)}
                             swipeableRefs={swipeableRefs}
                           />
-                          : item.type === 'scope_transfer'
-                            ? <FriendScopeTransferActivity
+                          : item.type === 'settlement'
+                            ? <FriendSettlementActivity
                               item={item}
                               friendName={friend.name}
                               colors={colors as Record<string, string>}
                               friendDetailTheme={friendDetailTheme as Record<string, string>}
                               isDark={isDark}
                               formatDate={formatDate}
-                              canReverse={item.fromUserId === currentUserId || item.toUserId === currentUserId}
-                              onReverse={() => handleReverseScopeTransfer(item)}
-                              swipeableRefs={swipeableRefs}
                             />
-                            : <FriendExpenseActivityEvent
+                            // ADR-0004 ticket 05: no transfer card exists.
+                            // buildFriendSettlementOperationActivity folds every
+                            // scope-transfer record into its operation's
+                            // details, so this branch is unreachable at
+                            // runtime and only narrows the union for the
+                            // expense-event branch below.
+                            : item.type === 'scope_transfer'
+                              ? null
+                              : <FriendExpenseActivityEvent
                               item={item}
                               currentUserId={currentUserId}
                               friendName={friend.name}
@@ -826,6 +819,7 @@ export default function FriendDetailScreen() {
         </TouchableOpacity>
       </View>
 
+      <SettlementDeleteDialogs flow={settlementDeleteFlow} />
 
     </View>
   );

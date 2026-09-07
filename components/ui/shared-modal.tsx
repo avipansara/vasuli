@@ -12,7 +12,6 @@ import {
   Platform,
   ScrollView,
   StyleSheet,
-  TouchableOpacity,
   View
 } from 'react-native';
 import { ThemedText } from '../themed-text';
@@ -66,8 +65,6 @@ export function SharedModal({
 
   const defaultIconBg = isDark ? BG_ICON_DARK : BG_ICON_LIGHT;
   const defaultIconColor = isDark ? ACCENT_TEAL : colors.tint;
-  const closeIconColor = '#EF4444';
-
   const headerContent = (
     <View style={styles.headerContent}>
       <View

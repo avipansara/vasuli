@@ -15,6 +15,7 @@ vi.mock('@/lib/supabase', () => ({
 import { friendSummaryService } from '@/services/friend-summary-service';
 import { projectFriendRelationship } from '@/services/friend-detail-service';
 import { createFriendDetailModule } from '@/services/friend-detail-module';
+import type { FriendExpenseWithSplit, FriendGroupBalanceSummary } from '@/services/friend-detail-service';
 
 describe('Friends home read model', () => {
   it('loads and maps the authenticated RPC projection into FriendSummary data', async () => {
@@ -111,7 +112,7 @@ describe('Friends home read model', () => {
       createdAt: 1,
       balance: 1449.12,
     };
-    const expenses = [{
+    const expenses: FriendExpenseWithSplit[] = [{
       id: 'direct-expense',
       description: 'Dinner',
       amount: 1449.12,
@@ -120,8 +121,11 @@ describe('Friends home read model', () => {
       date: 1,
       createdAt: 1,
       updatedAt: 1,
+      yourShare: 1449.12,
+      friendShare: 1449.12,
+      paidByName: 'Current user',
     }];
-    const groupBalances = [{
+    const groupBalances: FriendGroupBalanceSummary[] = [{
       groupId: 'group-1',
       groupName: 'Trip',
       currency: 'USD',

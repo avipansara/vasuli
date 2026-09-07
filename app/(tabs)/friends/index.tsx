@@ -105,6 +105,11 @@ export default function FriendsScreen() {
     enabled: !!currentUserId,
   });
   useRealtime({
+    table: 'settlement_cancellations',
+    onChange: invalidateFriends,
+    enabled: !!currentUserId,
+  });
+  useRealtime({
     table: 'settlements',
     filter: currentUserId ? `to_user_id=eq.${currentUserId}` : undefined,
     onChange: invalidateFriends,

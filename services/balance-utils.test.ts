@@ -11,6 +11,8 @@ const mocks = vi.hoisted(() => ({
   getUserSettlements: vi.fn(),
   getUserGroups: vi.fn(),
   getByGroupScopeTransfers: vi.fn(),
+  getByGroupCancellations: vi.fn(),
+  getByGroupOperations: vi.fn(),
 }));
 
 vi.mock('@/services/expense-service', () => ({
@@ -43,6 +45,18 @@ vi.mock('@/services/scope-transfer-service', () => ({
   },
 }));
 
+vi.mock('@/services/settlement-cancellation-service', () => ({
+  settlementCancellationService: {
+    getByGroup: mocks.getByGroupCancellations,
+  },
+}));
+
+vi.mock('@/services/settlement-operation-metadata-service', () => ({
+  settlementOperationMetadataService: {
+    getByGroup: mocks.getByGroupOperations,
+  },
+}));
+
 import { calculateBalances, calculateFriendBalance, calculateGroupBalances, getFriendRecentExpenses } from './balance-utils';
 
 describe('balance query batching', () => {
@@ -54,6 +68,8 @@ describe('balance query batching', () => {
     mocks.getUserSettlements.mockResolvedValue([]);
     mocks.getSplitsForExpenses.mockResolvedValue([]);
     mocks.getByGroupScopeTransfers.mockResolvedValue([]);
+    mocks.getByGroupCancellations.mockResolvedValue([]);
+    mocks.getByGroupOperations.mockResolvedValue([]);
   });
 
   it('loads all group splits in one batch query', async () => {

@@ -1,9 +1,9 @@
 import { supabase } from '@/lib/supabase';
-import type { Settlement, User } from '@/types/database';
+import type { Settlement, SettlementCancellation, User } from '@/types/database';
 import type { FriendGroupBalanceSummary } from './friend-detail-service';
-import { expenseService } from './expense-service';
 import { activityService } from './activity-service';
 import {
+  applyCancellationToGroupReadModel,
   applyScopeTransferToGroupReadModel,
   applySettlementToGroupReadModel,
   type GroupDetailReadModel,
@@ -57,6 +57,9 @@ function mapCombinedSettlementError(error: unknown): unknown {
     SETTLEMENT_TRANSFERS_REQUIRED: ['invalid_input', 'Choose the balances to clear.'],
     SETTLEMENT_TRANSFER_INVALID: ['invalid_input', 'The settlement transfer is invalid.'],
     SETTLEMENT_TRANSFER_BALANCE_MISMATCH: ['invalid_input', 'The settlement transfer no longer matches the Group balance.'],
+    // Stale or hand-built payloads that still send the frozen transfer table
+    // surface here; the plan needs a fresh confirmation, not a raw RPC error.
+    SETTLEMENT_TRANSFERS_FROZEN: ['invalid_input', 'This settlement needs a fresh confirmation. Refresh and try again.'],
     SETTLEMENT_OPERATION_INVALID: ['transient', 'The settlement operation could not be confirmed. Please retry.'],
     SETTLEMENT_OPERATION_NOT_FOUND: ['invalid_input', 'This settlement operation no longer exists.'],
     SETTLEMENT_REVERSAL_UNAUTHORIZED: ['unauthorized', 'Only the people in this settlement can reverse it.'],
@@ -92,16 +95,27 @@ export type CombinedSettlementScopeTransfer = {
   fromUserId: string;
   toUserId: string;
   currency: string;
-  /** Change to the current user's Group balance; direct balance applies -delta. */
+  /** signedGroupBalanceDelta is the change to the transfer from-user's Group balance (ticket 09 shared orientation); the direct-ledger projection applies the inverse (-delta). */
   signedGroupBalanceDelta: number;
   note?: string;
   isReversal?: boolean;
   createdAt: number;
 };
 
+/**
+ * A planned balance cancellation names the cleared scope and amount. The
+ * commit RPC captures the immutable signed effect from its settled snapshot.
+ * Sent as `p_cancellations`; never as `p_transfers`.
+ */
+export type PlannedSettlementCancellation = {
+  groupId: string;
+  amount: number;
+  currency: string;
+};
+
 export type CombinedSettlementPlan = {
   allocations: CombinedSettlementAllocation[];
-  transfers: CombinedSettlementScopeTransfer[];
+  cancellations: PlannedSettlementCancellation[];
 };
 
 export type CombinedSettlementReceipt = {
@@ -116,6 +130,7 @@ export type CombinedSettlementReceipt = {
   mode?: 'all_balances' | 'group';
   affectedGroupIds?: string[];
   transfers?: CombinedSettlementScopeTransfer[];
+  cancellations?: SettlementCancellation[];
 };
 
 export type CombinedSettlementCommitRequest = {
@@ -126,7 +141,7 @@ export type CombinedSettlementCommitRequest = {
   date: number;
   expectedBalance: number;
   allocations: CombinedSettlementAllocation[];
-  transfers?: CombinedSettlementScopeTransfer[];
+  cancellations?: PlannedSettlementCancellation[];
   mode?: 'all_balances' | 'group';
   groupId?: string;
 };
@@ -180,35 +195,9 @@ export const settlementModule = {
 
   async commit(params: SettlementModuleCommitParams): Promise<CombinedSettlementReceipt> {
     const plan = buildCombinedSettlementPlan(params);
-    if (__DEV__) {
-      console.log('[Settlement][plan]', {
-        friendId: params.friendId,
-        currency: params.currency,
-        amount: params.amount,
-        expectedBalance: params.expectedBalance,
-        directBalance: params.directBalance,
-        groupBalances: params.groupBalances.map(group => ({
-          groupId: group.groupId,
-          amount: group.amount,
-          currency: group.currency,
-          direction: group.direction,
-        })),
-        allocations: plan.allocations.map(allocation => ({
-          groupId: allocation.groupId ?? null,
-          fromUserId: allocation.fromUserId,
-          toUserId: allocation.toUserId,
-          amount: allocation.amount,
-        })),
-        transfers: plan.transfers.map(transfer => ({
-          groupId: transfer.groupId,
-          fromUserId: transfer.fromUserId,
-          toUserId: transfer.toUserId,
-          amount: Math.abs(transfer.signedGroupBalanceDelta),
-          signedGroupBalanceDelta: transfer.signedGroupBalanceDelta,
-        })),
-      });
+    if (plan.allocations.length === 0 && plan.cancellations.length === 0) {
+      throw new CombinedSettlementError('invalid_input', 'There is no outstanding balance to settle.');
     }
-
     const receipt = await settlementService.commit({
       paymentIntentId: params.paymentIntentId,
       friendId: params.friendId,
@@ -217,7 +206,7 @@ export const settlementModule = {
       date: params.date,
       expectedBalance: params.expectedBalance,
       allocations: plan.allocations,
-      ...(plan.transfers.length > 0 ? { transfers: plan.transfers } : {}),
+      ...(plan.cancellations.length > 0 ? { cancellations: plan.cancellations } : {}),
       mode: params.mode,
       groupId: params.groupId,
     });
@@ -260,17 +249,23 @@ export function buildCombinedSettlementPlan({
     .map(group => ({
       groupId: group.groupId,
       amount: normalizeAmount(group.amount),
-      lastActivityAt: group.lastActivityAt ?? 0,
     }))
     .filter(scope => scope.amount !== 0);
+  const orderedGroups = [...groups].sort(
+    (a, b) => toCents(Math.abs(a.amount)) - toCents(Math.abs(b.amount))
+      || a.groupId.localeCompare(b.groupId),
+  );
   const totalBalanceCents = toCents(directBalance) + groups.reduce(
     (total, scope) => total + toCents(scope.amount),
     0,
   );
   const totalBalance = totalBalanceCents / 100;
 
-  if (totalBalance === 0 && amount !== 0) {
-    throw new Error('Settlement amount cannot exceed the combined outstanding balance.');
+  if (totalBalance === 0) {
+    if (amount !== 0) {
+      throw new Error('Settlement amount cannot exceed the combined outstanding balance.');
+    }
+    return { allocations: [], cancellations: [] };
   }
   if (totalBalance !== 0 && toCents(amount) > Math.abs(totalBalanceCents)) {
     throw new Error('Settlement amount cannot exceed the combined outstanding balance.');
@@ -280,11 +275,11 @@ export function buildCombinedSettlementPlan({
   const isFullNetSettlement = toCents(amount) === Math.abs(totalBalanceCents);
   if (!isFullNetSettlement) {
     const paymentScopes = [
-      { groupId: undefined, amount: normalizeAmount(directBalance), lastActivityAt: Number.MIN_SAFE_INTEGER },
+      { groupId: undefined, amount: normalizeAmount(directBalance) },
       ...groups,
     ]
       .filter(scope => scope.amount !== 0 && Math.sign(scope.amount) === paymentDirection)
-      .sort((a, b) => a.groupId ? a.lastActivityAt - b.lastActivityAt : -Infinity);
+      .sort((a, b) => a.groupId === undefined ? -1 : b.groupId === undefined ? 1 : toCents(Math.abs(a.amount)) - toCents(Math.abs(b.amount)) || a.groupId.localeCompare(b.groupId));
 
     return {
       ...buildPaymentAllocations({
@@ -295,67 +290,40 @@ export function buildCombinedSettlementPlan({
         currency,
         paymentDirection,
       }),
-      transfers: [],
+      cancellations: [],
     };
   }
 
-  const directSign = Math.sign(directBalance);
-  const transferAllGroups = directBalance === 0 || totalBalance === 0;
-  const transferGroups = transferAllGroups || directSign !== paymentDirection
-    ? groups.filter(scope => transferAllGroups || Math.sign(scope.amount) !== directSign)
-    : groups.filter(scope => Math.sign(scope.amount) !== paymentDirection);
-  const transferredGroupIds = new Set(transferGroups.map(scope => scope.groupId));
-  const transfers = transferGroups.map(scope => ({
-    groupId: scope.groupId,
-    fromUserId: scope.amount > 0 ? friendId : currentUserId,
-    toUserId: scope.amount > 0 ? currentUserId : friendId,
-    amount: Math.abs(scope.amount),
-    currency,
-    signedGroupBalanceDelta: -scope.amount,
-  }));
-
-  const paymentScopes = directSign !== paymentDirection && directBalance !== 0
-    ? [
-        {
-          groupId: undefined,
-          amount: normalizeAmount(
-            directBalance - transfers.reduce((total, transfer) => total + transfer.signedGroupBalanceDelta, 0),
-          ),
-          lastActivityAt: Number.MIN_SAFE_INTEGER,
-        },
-        ...groups.filter(scope => !transferredGroupIds.has(scope.groupId)),
-      ]
-    : directBalance === 0
-      ? [
-          {
-            groupId: undefined,
-            amount: normalizeAmount(
-              directBalance - transfers.reduce((total, transfer) => total + transfer.signedGroupBalanceDelta, 0),
-            ),
-            lastActivityAt: Number.MIN_SAFE_INTEGER,
-          },
-          ...groups.filter(scope => !transferredGroupIds.has(scope.groupId)),
-        ]
-    : [
-        { groupId: undefined, amount: normalizeAmount(directBalance), lastActivityAt: Number.MIN_SAFE_INTEGER },
-        ...groups.filter(scope => !transferredGroupIds.has(scope.groupId)),
-      ];
-
-  if (paymentScopes.some(scope => Math.sign(scope.amount) !== paymentDirection)) {
-    throw new Error('Settlement transfer plan did not normalize the payment direction.');
-  }
-
-  return {
-    ...buildPaymentAllocations({
-      paymentScopes: [...paymentScopes].sort((a, b) => a.groupId ? a.lastActivityAt - b.lastActivityAt : -Infinity),
+  const paymentScopes = [
+    { groupId: undefined, amount: normalizeAmount(directBalance) },
+    ...groups,
+  ].filter(scope => scope.amount !== 0 && Math.sign(scope.amount) === paymentDirection)
+    .sort((a, b) => a.groupId === undefined ? -1 : b.groupId === undefined ? 1 : toCents(Math.abs(a.amount)) - toCents(Math.abs(b.amount)) || a.groupId.localeCompare(b.groupId));
+  const allocations = buildPaymentAllocations({
+      paymentScopes,
       amount,
       currentUserId,
       friendId,
       currency,
       paymentDirection,
-    }),
-    transfers,
-  };
+    });
+  const paidByGroup = new Map(allocations.allocations.map(item => [item.groupId, item.amount]));
+  // Dedicated cancellation surface: one entry per nonzero group residual,
+  // reusing the residual math above but emitting only the cleared scope and
+  // amount. The signed effect is captured by the commit RPC from the settled
+  // snapshot. Full-payment plans only; the
+  // partial branch returns above with `cancellations: []`.
+  const cancellations = orderedGroups.map(scope => {
+    const paid = paidByGroup.get(scope.groupId) ?? 0;
+    const residual = scope.amount + (scope.amount < 0 ? paid : -paid);
+    if (residual === 0) return null;
+    return {
+      groupId: scope.groupId,
+      amount: Math.abs(residual),
+      currency,
+    };
+  }).filter((cancellation): cancellation is NonNullable<typeof cancellation> => cancellation !== null);
+  return { ...allocations, cancellations };
 }
 
 function buildPaymentAllocations({
@@ -366,7 +334,7 @@ function buildPaymentAllocations({
   currency,
   paymentDirection,
 }: {
-  paymentScopes: { groupId?: string; amount: number; lastActivityAt: number }[];
+  paymentScopes: { groupId?: string; amount: number }[];
   amount: number;
   currentUserId: string;
   friendId: string;
@@ -438,10 +406,15 @@ async function applyReceiptEffects({
   const settledGroupIds = [...new Set(
     receipt.settlements.flatMap(settlement => settlement.groupId ? [settlement.groupId] : [])
   )];
+  // Cancellation-only scopes record no cash and no legacy transfers, so their
+  // groups must join the invalidation/projection set explicitly — otherwise a
+  // full settlement would leave cleared group, pair-total, and home caches
+  // stale while friend caches refresh.
   const affectedGroupIds = [...new Set([
     ...settledGroupIds,
     ...(receipt.affectedGroupIds ?? []),
     ...(receipt.transfers ?? []).map(transfer => transfer.groupId),
+    ...(receipt.cancellations ?? []).map(cancellation => cancellation.groupId),
   ])];
 
   await invalidateSafely(queryClient, [
@@ -469,6 +442,10 @@ async function applyReceiptEffects({
 
   for (const groupId of affectedGroupIds) {
     const groupSettlements = receipt.settlements.filter(settlement => settlement.groupId === groupId);
+    // Receipt cancellations always belong to this commit's operation between
+    // the committing pair, so the cache projection scopes them to that pair
+    // explicitly rather than resolving through possibly-stale metadata.
+    const receiptPair: [string, string] = [currentUserId, friend.id];
     try {
       queryClient.setQueryData<GroupDetailReadModel | null>(
         queryKeys.groups.detail(currentUserId, groupId),
@@ -477,12 +454,18 @@ async function applyReceiptEffects({
             (model, settlement) => model ? applySettlementToGroupReadModel(model, settlement) : model,
             current,
           );
-          return (receipt.transfers ?? [])
+          const withTransfers = (receipt.transfers ?? [])
             .filter(transfer => transfer.groupId === groupId)
             .reduce(
               (model, transfer) => model ? applyScopeTransferToGroupReadModel(model, transfer) : model,
               withSettlements,
-            );
+            ) as GroupDetailReadModel | null;
+          return (receipt.cancellations ?? [])
+            .filter(cancellation => cancellation.groupId === groupId)
+            .reduce(
+              (model, cancellation) => model ? applyCancellationToGroupReadModel(model, cancellation, () => receiptPair) : model,
+              withTransfers,
+            ) as GroupDetailReadModel | null;
         }
       );
     } catch (error) {
@@ -510,16 +493,11 @@ async function invalidateSafely(
 
 export const settlementService = {
   async commit(request: CombinedSettlementCommitRequest): Promise<CombinedSettlementReceipt> {
-    const { data, error } = request.amount === 0
-      ? await supabase.rpc('commit_zero_net_settlement_operation', {
-        p_payment_intent_id: request.paymentIntentId,
-        p_friend_id: request.friendId,
-        p_currency: request.currency,
-        p_date: new Date(request.date).toISOString(),
-        p_expected_balance: request.expectedBalance,
-        p_transfers: request.transfers ?? [],
-      })
-      : await supabase.rpc('commit_settlement_operation', {
+    if (!Number.isFinite(request.amount) || request.amount <= 0) {
+      throw new CombinedSettlementError('invalid_input', 'Enter an amount greater than zero.');
+    }
+
+    const { data, error } = await supabase.rpc('commit_settlement_operation', {
         p_payment_intent_id: request.paymentIntentId,
         p_friend_id: request.friendId,
         p_group_id: request.groupId ?? null,
@@ -529,12 +507,12 @@ export const settlementService = {
         p_date: new Date(request.date).toISOString(),
         p_expected_balance: request.expectedBalance,
         p_allocations: request.allocations,
-        p_transfers: request.transfers ?? [],
+        p_cancellations: request.cancellations ?? [],
       });
 
     if (error) {
       console.error('[Settlement][commit] RPC failed', {
-        rpc: request.amount === 0 ? 'commit_zero_net_settlement_operation' : 'commit_settlement_operation',
+        rpc: 'commit_settlement_operation',
         paymentIntentSuffix: request.paymentIntentId.slice(-8),
         friendId: request.friendId,
         amount: request.amount,
@@ -543,7 +521,7 @@ export const settlementService = {
         groupId: request.groupId ?? null,
         expectedBalance: request.expectedBalance,
         allocationCount: request.allocations.length,
-        transferCount: request.transfers?.length ?? 0,
+        cancellationCount: request.cancellations?.length ?? 0,
         error: {
           code: 'code' in error ? error.code : undefined,
           message: 'message' in error ? error.message : String(error),
@@ -682,6 +660,7 @@ function mapCombinedSettlementReceipt(data: unknown): CombinedSettlementReceipt 
     mode?: unknown;
     affectedGroupIds?: unknown;
     transfers?: unknown;
+    cancellations?: unknown;
   };
 
   if (
@@ -711,6 +690,9 @@ function mapCombinedSettlementReceipt(data: unknown): CombinedSettlementReceipt 
       : [...new Set(receipt.settlements.flatMap(settlement => settlement.groupId ? [settlement.groupId] : []))],
     transfers: Array.isArray(receipt.transfers)
       ? receipt.transfers.map(mapSettlementScopeTransfer)
+      : [],
+    cancellations: Array.isArray(receipt.cancellations)
+      ? receipt.cancellations.map(mapSettlementCancellation)
       : [],
   };
 }
@@ -771,6 +753,41 @@ function mapSettlementScopeTransfer(value: unknown): CombinedSettlementScopeTran
     signedGroupBalanceDelta: row.signedGroupBalanceDelta,
     note: typeof row.note === 'string' ? row.note : undefined,
     isReversal: row.isReversal === true,
+    createdAt: new Date(row.createdAt).getTime(),
+  };
+}
+
+function mapSettlementCancellation(value: unknown): SettlementCancellation {
+  if (!value || typeof value !== 'object') {
+    throw new Error('Settlement operation returned an invalid cancellation.');
+  }
+
+  const row = value as Record<string, unknown>;
+  if (
+    typeof row.id !== 'string'
+    || typeof row.operationId !== 'string'
+    || typeof row.groupId !== 'string'
+    || typeof row.amount !== 'number'
+    || typeof row.currency !== 'string'
+    || typeof row.createdAt !== 'string'
+  ) {
+    throw new Error('Settlement operation returned an invalid cancellation.');
+  }
+
+  return {
+    id: row.id,
+    operationId: row.operationId,
+    groupId: row.groupId,
+    amount: row.amount,
+    signedGroupBalanceDelta: typeof row.signedGroupBalanceDelta === 'number'
+      ? row.signedGroupBalanceDelta
+      : (row.isReversal === true ? -row.amount : row.amount),
+    currency: row.currency,
+    note: typeof row.note === 'string' ? row.note : undefined,
+    // Optional semantics: only a literal `true` on the wire sets the flag;
+    // absent/false collapses to `undefined` (matches SettlementCancellation).
+    isReversal: row.isReversal === true ? true : undefined,
+    // Wire `createdAt` arrives as a timestamptz string; the domain type uses epoch millis.
     createdAt: new Date(row.createdAt).getTime(),
   };
 }

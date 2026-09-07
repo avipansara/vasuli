@@ -10,7 +10,8 @@ vi.mock('@/lib/supabase', () => ({
 import { createFriendDetailModule } from '@/services/friend-detail-module';
 import { friendSummaryService } from '@/services/friend-summary-service';
 import { refreshFriendRelationshipSurfaces } from '@/services/friend-relationship-invalidation';
-import type { Expense, User } from '@/types/database';
+import type { User } from '@/types/database';
+import type { FriendExpenseWithSplit } from '@/services/friend-detail-service';
 
 const currentUserId = 'current-user';
 const friendId = 'friend-1';
@@ -28,7 +29,7 @@ const friend: User = {
   createdAt: 1,
 };
 
-const directExpense: Expense = {
+const directExpense: FriendExpenseWithSplit = {
   id: 'expense-1',
   description: 'Dinner',
   amount: 100,
@@ -37,6 +38,9 @@ const directExpense: Expense = {
   date: 1,
   createdAt: 1,
   updatedAt: 1,
+  yourShare: 100,
+  friendShare: 100,
+  paidByName: 'Current user',
 };
 
 function makeState(overrides: Partial<FixtureState> = {}): FixtureState {

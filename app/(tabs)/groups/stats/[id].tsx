@@ -10,6 +10,7 @@ import { groupDetailService } from '@/services/group-detail-service';
 import { exportGroupExpensesCsv } from '@/services/group-expense-csv';
 import { calculateGroupStats, type GroupBalanceStat, type GroupPayerStat } from '@/services/group-stats';
 import { queryKeys } from '@/services/query-keys';
+import { formatCurrency } from '@/utils/currency';
 import { useQuery } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -18,8 +19,6 @@ import { useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 const AVATAR_COLORS = ['#7C5CFC', '#22C55E', '#F59E0B', '#3B82F6', '#EC4899'];
-
-import { formatCurrency } from '@/utils/currency';
 
 function formatDateRange(expenses: { date: number }[]): string {
   if (expenses.length === 0) return 'No expenses yet';

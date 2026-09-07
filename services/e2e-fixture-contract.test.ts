@@ -18,6 +18,15 @@ const purgeGroupsFixtureSql = readFileSync(
 );
 const friendSettlementSpec = readFileSync(resolve(process.cwd(), 'e2e/friend-settle.test.js'), 'utf8');
 const settlementReversalSpec = readFileSync(resolve(process.cwd(), 'e2e/settlement-reversal.test.js'), 'utf8');
+const cancellationMigration = readFileSync(
+  resolve(process.cwd(), 'supabase/migrations/20260906060000_settlement_cancellations.sql'),
+  'utf8',
+);
+const cancellationService = readFileSync(
+  resolve(process.cwd(), 'services/settlement-cancellation-service.ts'),
+  'utf8',
+);
+const settlementsHelper = readFileSync(resolve(process.cwd(), 'e2e/helpers/settlements.js'), 'utf8');
 const purgeGroupsSql = purgeGroupsFixtureSql.slice(
   purgeGroupsFixtureSql.indexOf('CREATE OR REPLACE FUNCTION public.purge_e2e_groups'),
   purgeGroupsFixtureSql.indexOf('REVOKE EXECUTE ON FUNCTION public.purge_e2e_groups(text)'),
@@ -44,7 +53,21 @@ describe('run-scoped E2E fixture SQL contract', () => {
     expect(fixtureSql).toContain('RETURN jsonb_build_object');
     expect(fixtureSql).toContain('settlement_operation_id uuid');
     expect(fixtureSql).toContain('public.commit_settlement_operation(');
-    expect(fixtureSql).toContain("'signedGroupBalanceDelta', -12.00");
+    // Dedicated surface: the reversal seed allocates the full payment
+    // in-group (direct scope is zero, so no residual and no cancellation
+    // legs) with frozen-empty p_transfers. The retired signed transfer leg
+    // must not come back.
+    const reversalSeedStart = fixtureSql.indexOf(
+      'CREATE OR REPLACE FUNCTION public.seed_e2e_settlement_reversal',
+    );
+    const reversalSeedEnd = fixtureSql.indexOf(
+      'CREATE OR REPLACE FUNCTION public.purge_e2e_fixture_run',
+    );
+    const reversalSeedSql = fixtureSql.slice(reversalSeedStart, reversalSeedEnd);
+    expect(reversalSeedSql).toContain("'groupId', v_group_id,");
+    expect(reversalSeedSql).toContain("'[]'::jsonb,");
+    expect(reversalSeedSql).not.toContain('signedGroupBalanceDelta');
+    expect(fixtureSql).not.toContain("'signedGroupBalanceDelta', -12.00");
     expect(fixtureSql).toContain('v_ui_operation_ids uuid[]');
     expect(fixtureSql).toContain('operation.group_id = run.group_id');
     expect(fixtureSql).toContain('transfer.group_id = run.group_id');
@@ -100,11 +123,49 @@ describe('run-scoped E2E fixture SQL contract', () => {
     expect(friendSettlementSpec).toContain('await device.reloadReactNative();');
     expect(friendSettlementSpec).toContain("element(by.label('Updates')).tap();");
     expect(friendSettlementSpec).toContain('openGroupDetails(fixture.groupName)');
-    expect(friendSettlementSpec).toContain("element(by.text('Moved from friendship balance'))");
-    expect(friendSettlementSpec).toContain("element(by.text('USD 12.00'))");
+    // Ticket 05 one-activity presentation: Balance details with adjustments,
+    // legacy per-record wording asserted absent.
+    expect(friendSettlementSpec).toContain("element(by.text('Balance details'))");
+    expect(friendSettlementSpec).toContain("element(by.text('Balance adjustment'))");
+    expect(friendSettlementSpec).toContain("element(by.text('No additional payment'))");
+    expect(friendSettlementSpec).toContain('toBeNotVisible()');
+    expect(friendSettlementSpec).not.toContain('reverseLastSettlementOnFriendDetail');
     expect(settlementReversalSpec).toContain("afterEach(async () =>");
     expect(settlementReversalSpec).toContain("element(by.label('Updates')).tap();");
-    expect(settlementReversalSpec).toContain('reverseLastSettlementOnFriendDetail();');
+    expect(settlementReversalSpec).toContain('deleteFriendSettlementOperation(operationId)');
+  });
+
+  it('selects settlement operations via stable testIDs, never a11y copy', () => {
+    // Intended-operation selection uses operation-scoped testIDs (by.id).
+    // Exact accessibility announcements (Delete settlement, {amount}, {friend}
+    // / Delete balance clearing with {friend}) must never be E2E selectors.
+    expect(settlementsHelper).toContain('friend-settlement-operation-${operationId}');
+    expect(settlementsHelper).toContain('delete-settlement-operation-${operationId}');
+    expect(settlementsHelper).toContain('group-settlement-operation-${operationId}');
+    expect(settlementsHelper).toContain('delete-group-settlement-operation-${operationId}');
+    expect(settlementsHelper).toContain('friend-balance-details-toggle-${operationId}');
+    expect(settlementsHelper).toContain('group-balance-details-toggle-${operationId}');
+    expect(settlementsHelper).not.toContain("by.label('Reverse settlement')");
+    expect(settlementsHelper).not.toContain("by.label('Delete settlement,");
+    expect(settlementsHelper).not.toContain("by.label('Delete balance clearing");
+    expect(settlementsHelper).not.toContain('reverseLastSettlementOnFriendDetail');
+    // Visible confirmation/result copy is asserted, not selected on.
+    expect(settlementsHelper).toContain("element(by.text('Delete settlement?'))");
+    expect(settlementsHelper).toContain("element(by.text('Delete balance clearing?'))");
+    expect(settlementsHelper).toContain("element(by.text('Settlement deleted'))");
+    expect(settlementsHelper).toContain("element(by.text('Balance changed'))");
+    expect(settlementReversalSpec).toContain('friend-settlement-operation-${operationId}');
+    expect(settlementReversalSpec).toContain('group-settlement-operation-${operationId}');
+    expect(settlementReversalSpec).toContain("element(by.text('Deleted'))");
+    expect(settlementReversalSpec).not.toContain('reverseLastSettlementOnFriendDetail');
+    // Legacy labels may only appear in toBeNotVisible absence assertions —
+    // never as a tap/select target.
+    expect(settlementReversalSpec).not.toContain("by.label('Reverse settlement')).atIndex(0)");
+    expect(settlementReversalSpec).not.toContain("element(by.label('Reverse settlement')).tap()");
+    expect(settlementReversalSpec).not.toContain("by.label('Delete settlement,");
+    expect(friendSettlementSpec).not.toContain("by.label('Reverse settlement')");
+    expect(friendSettlementSpec).not.toContain("by.label('Delete settlement,");
+    expect(friendSettlementSpec).not.toContain("element(by.text('USD 12.00'))");
   });
 
   it('purges every fixture-backed spec by its exact test key', () => {
@@ -154,9 +215,11 @@ describe('run-scoped E2E fixture SQL contract', () => {
     expect(purgeGroupsSql).toContain('v_commitment_ids uuid[]');
     expect(purgeGroupsSql).toContain('operation.group_id = ANY(v_group_ids)');
     expect(purgeGroupsSql).toContain('transfer.group_id = ANY(v_group_ids)');
+    expect(purgeGroupsSql).toContain('cancellation.group_id = ANY(v_group_ids)');
     expect(purgeGroupsSql).toContain('settlement.group_id = ANY(v_group_ids)');
     expect(purgeGroupsSql).toContain('DELETE FROM public.settlement_operation_reversals');
     expect(purgeGroupsSql).toContain('DELETE FROM public.settlement_scope_transfers');
+    expect(purgeGroupsSql).toContain('DELETE FROM public.settlement_cancellations');
     expect(purgeGroupsSql).toContain('DELETE FROM public.settlements');
     expect(purgeGroupsSql).toContain('DELETE FROM public.settlement_operations');
     expect(purgeGroupsSql).toContain('DELETE FROM public.settlement_commitments');
@@ -164,15 +227,39 @@ describe('run-scoped E2E fixture SQL contract', () => {
 
     const reversalIndex = purgeGroupsSql.indexOf('DELETE FROM public.settlement_operation_reversals');
     const transferIndex = purgeGroupsSql.indexOf('DELETE FROM public.settlement_scope_transfers');
+    const cancellationIndex = purgeGroupsSql.indexOf('DELETE FROM public.settlement_cancellations');
     const settlementsIndex = purgeGroupsSql.indexOf('DELETE FROM public.settlements');
     const operationsIndex = purgeGroupsSql.indexOf('DELETE FROM public.settlement_operations');
     const commitmentsIndex = purgeGroupsSql.indexOf('DELETE FROM public.settlement_commitments');
     const groupsIndex = purgeGroupsSql.indexOf('DELETE FROM public.groups');
     expect(reversalIndex).toBeLessThan(transferIndex);
-    expect(transferIndex).toBeLessThan(settlementsIndex);
+    expect(transferIndex).toBeLessThan(cancellationIndex);
+    expect(cancellationIndex).toBeLessThan(settlementsIndex);
     expect(settlementsIndex).toBeLessThan(operationsIndex);
     expect(operationsIndex).toBeLessThan(commitmentsIndex);
     expect(commitmentsIndex).toBeLessThan(groupsIndex);
+  });
+
+  it('discovers and cleans cancellation rows in run-scoped fixtures', () => {
+    // Task 10 cancellation surface: clean-friend selection skips pairs with
+    // cancellation history, UI-operation discovery matches cancellation-linked
+    // operations, and the run purge deletes cancellation rows FK-safe between
+    // transfers and operations. Cancellations are never backfilled, so the
+    // mirror carries no converted-operation exclusion.
+    expect(fixtureSql).toContain('FROM public.settlement_cancellations cancellation');
+    expect(fixtureSql).toContain('cancellation.operation_id = operation.id');
+    expect(fixtureSql).toContain('cancellation.group_id = run.group_id');
+    expect(fixtureSql).toContain('DELETE FROM public.settlement_cancellations');
+
+    const purgeStart = fixtureSql.indexOf('CREATE OR REPLACE FUNCTION public.purge_e2e_fixture_run');
+    const purgeEnd = fixtureSql.indexOf('CREATE OR REPLACE FUNCTION public.purge_e2e_stale_fixture_runs');
+    const scopedPurgeSql = fixtureSql.slice(purgeStart, purgeEnd);
+    const scopedTransferIndex = scopedPurgeSql.indexOf('DELETE FROM public.settlement_scope_transfers');
+    const scopedCancellationIndex = scopedPurgeSql.indexOf('DELETE FROM public.settlement_cancellations');
+    const scopedOperationsIndex = scopedPurgeSql.indexOf('DELETE FROM public.settlement_operations');
+    expect(scopedTransferIndex).toBeGreaterThan(-1);
+    expect(scopedCancellationIndex).toBeGreaterThan(scopedTransferIndex);
+    expect(scopedOperationsIndex).toBeGreaterThan(scopedCancellationIndex);
   });
 
   it('grants only authenticated callers the fixture RPCs', () => {
@@ -195,5 +282,118 @@ describe('run-scoped E2E fixture SQL contract', () => {
     expect(setupSql).toContain('REPLACE_WITH_E2E_ACCOUNT_EMAIL');
     expect(setupSql).toContain('configure_e2e_fixture_account');
     expect(setupSql).toContain("environment, enabled");
+  });
+
+  it('exposes committed cancellations through participant-scoped reads', () => {
+    // Task 4 read surface: the pair-balance helper wires cancellation sums,
+    // the operation-metadata readers carry per-operation cancellations, group
+    // pair totals apply the same toward-zero math, and the friend/group RPCs
+    // mirror the scope-transfer authorization shape.
+    expect(cancellationMigration).toContain(
+      'CREATE OR REPLACE FUNCTION private.settlement_pair_scope_balance(',
+    );
+    expect(cancellationMigration).toContain('settlement_cancellations c');
+    expect(cancellationMigration).toContain('direct_cancellation_effect');
+    expect(cancellationMigration).toContain('group_cancellation_net');
+    expect(cancellationMigration).toContain(
+      'CREATE OR REPLACE FUNCTION public.get_friend_cancellations(p_friend_id UUID)',
+    );
+    expect(cancellationMigration).toContain(
+      'CREATE OR REPLACE FUNCTION public.get_group_cancellations(p_group_id UUID)',
+    );
+    expect(cancellationMigration).toContain(
+      'GRANT EXECUTE ON FUNCTION public.get_friend_cancellations(UUID) TO authenticated;',
+    );
+    expect(cancellationMigration).toContain(
+      'GRANT EXECUTE ON FUNCTION public.get_group_cancellations(UUID) TO authenticated;',
+    );
+    expect(cancellationMigration).toContain('original_to_user_id UUID, cancellations JSONB');
+    expect(cancellationMigration).toContain('local_to_user_id UUID,');
+    expect(cancellationMigration).toContain('cancellations JSONB');
+    expect(cancellationMigration).toContain('gcanc_net');
+    expect(cancellationMigration).toContain('dcanc_leg');
+    // Cash attribution stays cash-only: cancellation legs never feed the
+    // local payment amount or the committed cash totals.
+    expect(cancellationMigration).not.toContain('local_payment_amount +');
+    expect(cancellationMigration).not.toContain('requested_payment_amount +');
+  });
+
+  it('fetches cancellations with their immutable signed snapshot effect', () => {
+    expect(cancellationService).toContain("supabase.rpc('get_friend_cancellations'");
+    expect(cancellationService).toContain("supabase.rpc('get_group_cancellations'");
+    expect(cancellationService).toContain('p_friend_id: friendId');
+    expect(cancellationService).toContain('p_group_id: groupId');
+    expect(cancellationService).toContain('async getByFriend(friendId: string)');
+    expect(cancellationService).toContain('async getByGroup(groupId: string)');
+    expect(cancellationService).toContain('operation_id:');
+    expect(cancellationService).toContain('operationId: row.operation_id');
+    expect(cancellationService).toContain('groupId: row.group_id');
+    expect(cancellationService).toContain('isReversal: row.is_reversal');
+    expect(cancellationService).toContain('signedGroupBalanceDelta');
+    expect(cancellationService).not.toContain('fromUserId');
+  });
+
+  it('exposes the operation pair on cancellation reads for client scoping', () => {
+    // Fix round 1: the read RPCs carry the parent operation's settling pair
+    // so client resolvers scope cancellation-only operations; the service
+    // maps the columns while keeping the legacy shape for older rows.
+    expect(cancellationMigration).toContain('o.actor_user_id, o.friend_user_id');
+    expect(cancellationMigration).toContain('actor_user_id UUID,\n  friend_user_id UUID');
+    expect(cancellationService).toContain('actor_user_id?: string | null');
+    expect(cancellationService).toContain('actorUserId: row.actor_user_id');
+    expect(cancellationService).toContain('friendUserId: row.friend_user_id');
+    expect(cancellationService).not.toContain('fromUserId');
+  });
+
+  it('discovers and purges cancellation rows wherever transfer rows are handled', () => {
+    // Legacy group cleanup mirrors every transfer-table statement.
+    expect(purgeGroupsSql).toContain('cancellation.group_id = ANY(v_group_ids)');
+    expect(purgeGroupsSql).toContain('DELETE FROM public.settlement_cancellations');
+
+    // Run-scoped cleanup discovers cancellation-linked operations and
+    // deletes their cancellation rows with the operation.
+    expect(fixtureSql).toContain('cancellation.group_id = run.group_id');
+    expect(fixtureSql).toContain('DELETE FROM public.settlement_cancellations');
+
+    // FK-safe order: cancellations reference operations and groups, so
+    // their delete sits with the other operation-child deletes, before
+    // settlements, operations, and groups are removed.
+    const transferIndex = purgeGroupsSql.indexOf('DELETE FROM public.settlement_scope_transfers');
+    const cancellationIndex = purgeGroupsSql.indexOf('DELETE FROM public.settlement_cancellations');
+    const settlementsIndex = purgeGroupsSql.indexOf('DELETE FROM public.settlements');
+    const operationsIndex = purgeGroupsSql.indexOf('DELETE FROM public.settlement_operations');
+    const groupsIndex = purgeGroupsSql.indexOf('DELETE FROM public.groups');
+    expect(cancellationIndex).toBeGreaterThan(-1);
+    expect(transferIndex).toBeLessThan(cancellationIndex);
+    expect(cancellationIndex).toBeLessThan(settlementsIndex);
+    expect(settlementsIndex).toBeLessThan(operationsIndex);
+    expect(operationsIndex).toBeLessThan(groupsIndex);
+
+    // Converted (backfilled) rows keep their exclusion: the legacy
+    // settlement path still only matches rows without operation links,
+    // and cancellations always carry one, so they can never leak there.
+    expect(fixtureSql).toContain('settlement.operation_id IS NULL');
+    expect(fixtureSql).toContain('settlement.commitment_id IS NULL');
+  });
+
+  it('keeps the self-contained pgTAP regression test in sync with the fixture sources', () => {
+    // `supabase test db` executes each test file in a container where only
+    // that file is visible, so supabase/tests/e2e-run-scoped-fixtures.sql
+    // inlines byte-identical copies of the fixtures instead of \ir includes.
+    // If a fixture changes, re-apply the splice documented in the test file
+    // header until this passes again.
+    const regressionTest = readFileSync(
+      resolve(process.cwd(), 'supabase/tests/e2e-run-scoped-fixtures.sql'),
+      'utf8',
+    );
+    // Include lines start at column 0; the header comment may still name the
+    // retired `\ir` path, so only match line-leading meta-commands.
+    expect(regressionTest).not.toContain('\n\\ir ');
+    expect(regressionTest).toContain(fixtureSql);
+    expect(regressionTest).toContain(purgeGroupsFixtureSql);
+    // The run-scoped fixture is installed twice to prove re-runs preserve
+    // grants and revocations.
+    const installs = regressionTest.split(fixtureSql).length - 1;
+    expect(installs).toBe(2);
   });
 });

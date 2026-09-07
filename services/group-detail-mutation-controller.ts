@@ -1,7 +1,6 @@
 import { groupDetailGroupMutation } from './group-detail-group-mutation';
 import { groupDetailMemberMutation } from './group-detail-member-mutation';
 import { groupDetailMutationModule } from './group-detail-mutation';
-import { groupDetailSettlementMutation } from './group-detail-settlement-mutation';
 
 /**
  * Public mutation boundary for Group detail routes.
@@ -13,6 +12,5 @@ import { groupDetailSettlementMutation } from './group-detail-settlement-mutatio
 export const groupDetailMutationController = {
   ...groupDetailMutationModule,
   ...groupDetailMemberMutation,
-  ...groupDetailSettlementMutation,
   ...groupDetailGroupMutation,
 };

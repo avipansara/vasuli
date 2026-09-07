@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase';
 import { ActivityType, type User } from '@/types/database';
 import { projectFriendRelationship, type FriendActivityItem, type FriendDetailData } from './friend-detail-service';
+import type { SettlementOperationStatusRecord } from './settlement-operation-projection';
 
 type FriendDetailRpcClient = {
   rpc: (functionName: string, args: Record<string, string>) => Promise<{
@@ -44,6 +45,7 @@ type FriendDetailReadModelRow = {
   settlements: {
     id: string;
     operationId?: string;
+    backfilledTransferId?: string;
     groupId?: string;
     amount: number;
     currency: string;
@@ -55,6 +57,7 @@ type FriendDetailReadModelRow = {
   groupSettlements?: {
     id: string;
     operationId?: string;
+    backfilledTransferId?: string;
     groupId: string;
     groupName?: string;
     amount: number;
@@ -77,6 +80,22 @@ type FriendDetailReadModelRow = {
     date: string | number;
     isDeleted: boolean;
     isUpdated: boolean;
+  }[];
+  // Additive operation metadata for the settlement-operation projection
+  // (ADR-0001 presentation clarification). Older RPC definitions omit it;
+  // the Friend operation view falls back to explicit reversal links.
+  settlementOperations?: {
+    operationId: string;
+    status: 'committed' | 'reversed';
+    createdAt: string | number;
+    reversedAt?: string | number | null;
+    requestedPaymentAmount?: number;
+    currency?: string;
+    actorUserId?: string;
+    friendUserId?: string;
+    originalDate?: string | number | null;
+    originalFromUserId?: string | null;
+    originalToUserId?: string | null;
   }[];
 };
 
@@ -113,6 +132,26 @@ function mapExpense(expense: FriendDetailReadModelRow['expenses'][number]): Frie
   };
 }
 
+function mapSettlementOperations(
+  rows: FriendDetailReadModelRow['settlementOperations'],
+): SettlementOperationStatusRecord[] | undefined {
+  if (rows === undefined) return undefined;
+  return rows.map(row => ({
+    operationId: row.operationId,
+    status: row.status === 'reversed' ? 'reversed' : 'committed',
+    createdAt: toTimestamp(row.createdAt),
+    ...(row.reversedAt ? { reversedAt: toTimestamp(row.reversedAt) } : {}),
+    ...(typeof row.requestedPaymentAmount === 'number' ? { requestedPaymentAmount: row.requestedPaymentAmount } : {}),
+    ...(typeof row.currency === 'string' ? { currency: row.currency } : {}),
+    ...(row.originalDate ? { originalDate: toTimestamp(row.originalDate) } : {}),
+    ...(row.originalFromUserId && row.originalToUserId
+      ? { fromUserId: row.originalFromUserId, toUserId: row.originalToUserId }
+      : row.actorUserId && row.friendUserId
+        ? { fromUserId: row.actorUserId, toUserId: row.friendUserId }
+        : {}),
+  }));
+}
+
 function buildActivity(
   expenses: FriendDetailData['expenses'],
   groupExpenses: FriendDetailData['expenses'],
@@ -139,6 +178,8 @@ function buildActivity(
       date: toTimestamp(settlement.date),
       settlementId: settlement.id,
       operationId: settlement.operationId,
+      ...(settlement.backfilledTransferId ? { backfilledTransferId: settlement.backfilledTransferId } : {}),
+      createdAt: toTimestamp(settlement.createdAt),
       amount: settlement.amount,
       currency: settlement.currency,
       direction: settlement.direction,
@@ -151,6 +192,8 @@ function buildActivity(
       date: toTimestamp(settlement.date),
       settlementId: settlement.id,
       operationId: settlement.operationId,
+      ...(settlement.backfilledTransferId ? { backfilledTransferId: settlement.backfilledTransferId } : {}),
+      createdAt: toTimestamp(settlement.createdAt),
       amount: settlement.amount,
       currency: settlement.currency,
       direction: settlement.direction,
@@ -237,10 +280,12 @@ export function createFriendDetailReadModel(rpcClient: FriendDetailRpcClient = d
         });
       }
 
+      const settlementOperations = mapSettlementOperations(row.settlementOperations);
       const detail: Omit<FriendDetailData, 'relationship'> = {
         friend,
         expenses,
         activity: buildActivity(expenses, groupExpenses, settlements, groupSettlements, activities),
+        ...(settlementOperations !== undefined ? { settlementOperations } : {}),
       };
 
       return {

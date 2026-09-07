@@ -12,8 +12,11 @@ import { expenseService } from '@/services/expense-service';
 import { friendshipService } from '@/services/friendship-service';
 import { friendSummaryService } from '@/services/friend-summary-service';
 import type { PushNotificationData } from '@/services/notification-service';
-import type { SettlementScopeTransfer } from '@/types/database';
+import type { SettlementScopeTransfer, SettlementCancellation } from '@/types/database';
+import type { SettlementOperationStatusRecord } from './settlement-operation-projection';
 import { scopeTransferService } from './scope-transfer-service';
+import { settlementCancellationService } from './settlement-cancellation-service';
+import { settlementOperationMetadataService } from './settlement-operation-metadata-service';
 
 export type FriendDetailReadAdapter = {
   getDetail(currentUserId: string, friendId: string): Promise<FriendDetailData | null>;
@@ -29,6 +32,14 @@ export type FriendGroupBalanceAdapter = {
 
 export type FriendScopeTransferAdapter = {
   getByFriend(friendId: string): Promise<SettlementScopeTransfer[]>;
+};
+
+export type FriendCancellationAdapter = {
+  getByFriend(friendId: string): Promise<SettlementCancellation[]>;
+};
+
+export type FriendSettlementOperationMetadataAdapter = {
+  getByFriend(friendId: string): Promise<NonNullable<FriendDetailData['settlementOperations']>>;
 };
 
 export type FriendDetailActivityAdapter = {
@@ -59,6 +70,8 @@ export type FriendDetailModuleDependencies = {
   relationshipAdapter?: FriendRelationshipAdapter;
   groupBalanceAdapter?: FriendGroupBalanceAdapter;
   scopeTransferAdapter?: FriendScopeTransferAdapter;
+  cancellationAdapter?: FriendCancellationAdapter;
+  settlementOperationMetadataAdapter?: FriendSettlementOperationMetadataAdapter;
   activityAdapter?: FriendDetailActivityAdapter;
   expenseAdapter?: FriendDetailExpenseAdapter;
   friendshipAdapter?: FriendDetailFriendshipAdapter;
@@ -105,6 +118,24 @@ export function filterFriendActivity(
   return [...filtered].sort((a, b) => b.date - a.date);
 }
 
+/**
+ * Union read-model and authorized-adapter operation metadata by operation ID.
+ * The adapter carries the corrected ticket-01 lifecycle facts
+ * (status/reversed_at/requested amount/original payer/date), so it wins
+ * per operation; read-model entries for operations the adapter does not
+ * cover are preserved instead of being dropped by a wholesale replace.
+ */
+function mergeSettlementOperations(
+  readOperations: SettlementOperationStatusRecord[] | undefined,
+  adapterOperations: SettlementOperationStatusRecord[],
+): SettlementOperationStatusRecord[] | undefined {
+  if (adapterOperations.length === 0) return readOperations;
+  const merged = new Map<string, SettlementOperationStatusRecord>();
+  for (const record of readOperations ?? []) merged.set(record.operationId, record);
+  for (const record of adapterOperations) merged.set(record.operationId, record);
+  return [...merged.values()];
+}
+
 export function groupFriendActivityByMonth(activity: FriendActivityItem[]): FriendActivityMonth[] {
   const groups: FriendActivityMonth[] = [];
   const sorted = [...activity].sort((a, b) => b.date - a.date);
@@ -130,6 +161,8 @@ export function createFriendDetailModule(
   const readAdapter = dependencies.readAdapter ?? friendDetailReadModel;
   const groupBalanceAdapter = dependencies.groupBalanceAdapter;
   const scopeTransferAdapter = dependencies.scopeTransferAdapter;
+  const cancellationAdapter = dependencies.cancellationAdapter;
+  const operationMetadataAdapter = dependencies.settlementOperationMetadataAdapter;
   const activityAdapter = dependencies.activityAdapter ?? activityService;
   const expenseAdapter = dependencies.expenseAdapter ?? expenseService;
   const friendshipAdapter = dependencies.friendshipAdapter ?? friendshipService;
@@ -137,12 +170,15 @@ export function createFriendDetailModule(
   return {
     async getDetail(currentUserId, friendId) {
       const relationshipAdapter = dependencies.relationshipAdapter;
-      const [detail, groupBalances, scopeTransfers] = await Promise.all([
+      const [detail, groupBalances, scopeTransfers, cancellations, operationMetadata] = await Promise.all([
         readAdapter.getDetail(currentUserId, friendId),
         groupBalanceAdapter?.getSharedGroupBalances(currentUserId, friendId) ?? Promise.resolve([]),
         scopeTransferAdapter?.getByFriend(friendId) ?? Promise.resolve([]),
+        cancellationAdapter?.getByFriend(friendId) ?? Promise.resolve([]),
+        operationMetadataAdapter?.getByFriend(friendId) ?? Promise.resolve([]),
       ]);
       if (!detail) return null;
+      const mergedOperations = mergeSettlementOperations(detail.settlementOperations, operationMetadata);
       const relationship = relationshipAdapter
         ? {
             ...(await relationshipAdapter.getRelationship(currentUserId, friendId)),
@@ -154,13 +190,16 @@ export function createFriendDetailModule(
             ...detail,
             groupBalances,
             scopeTransfers,
+            cancellations,
           });
       return {
         ...detail,
+        ...(mergedOperations ? { settlementOperations: mergedOperations } : {}),
         // Return the same transfer-adjusted projection used to calculate the
         // relationship total so the summary card and group rows cannot drift.
         groupBalances: relationship.groupBalances,
         ...(scopeTransferAdapter ? { scopeTransfers } : {}),
+        ...(cancellationAdapter ? { cancellations } : {}),
         relationship,
       };
     },
@@ -205,6 +244,8 @@ export function createFriendDetailModule(
 export const friendDetailModule = createFriendDetailModule({
   groupBalanceAdapter: friendGroupBalanceService,
   scopeTransferAdapter: scopeTransferService,
+  cancellationAdapter: settlementCancellationService,
+  settlementOperationMetadataAdapter: settlementOperationMetadataService,
   // Settlement must use the same transfer-adjusted relationship projection as
   // Friends Home. The raw detail RPC intentionally excludes Group balances
   // from the direct ledger, so projecting from that payload alone can produce

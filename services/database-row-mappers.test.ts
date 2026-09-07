@@ -134,5 +134,6 @@ describe('database row mappers', () => {
     }).inviteeName).toBe('X');
     expect(mapSettlementRow(settlement).groupId).toBeUndefined();
     expect(mapSettlementRow(settlement, { preserveNullGroupId: true }).groupId).toBeNull();
+    expect(mapSettlementRow({ ...settlement, backfilled_transfer_id: 't-source' }).backfilledTransferId).toBe('t-source');
   });
 });

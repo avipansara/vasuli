@@ -12,7 +12,7 @@ const { exitCode, measurementDirectory, runE2E, usesRunScopedFixtures } = requir
   runE2E: (options: {
     args?: string[];
     env?: Record<string, string>;
-    runCommand?: (command: string, args: string[], env?: Record<string, string>) => { status: number; signal: string | null };
+    runCommand?: (command: string, args: string[], env?: Record<string, string>) => { status: number | null; signal: string | null };
     now?: () => number;
     timingFile?: string;
   }) => number;

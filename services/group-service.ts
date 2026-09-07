@@ -4,6 +4,7 @@ import { calculateGroupBalances, isGroupSettled, SETTLED_BALANCE_THRESHOLD } fro
 import { expenseService } from './expense-service';
 import { settlementService } from './settlement-service';
 import { scopeTransferService } from './scope-transfer-service';
+import { settlementCancellationService } from './settlement-cancellation-service';
 import { logGroupDetailDiagnostic } from '@/lib/group-detail-diagnostics';
 import { mapGroupMemberRow, mapGroupRow } from './database-row-mappers';
 
@@ -173,8 +174,9 @@ export const groupService = {
       settlementService.getByGroup(id),
     ]);
     const scopeTransfers = await scopeTransferService.getByGroup(id);
+    const cancellations = await settlementCancellationService.getByGroup(id);
 
-    if (!isGroupSettled(expenses, splits, settlements, scopeTransfers)) {
+    if (!isGroupSettled(expenses, splits, settlements, scopeTransfers, cancellations)) {
       throw new Error('Group cannot be deleted until all balances are settled.');
     }
 
@@ -232,7 +234,9 @@ export const groupService = {
       expenseService.getSplitsForExpenses(expenses.map(expense => expense.id)),
       settlementService.getByGroup(groupId),
     ]);
-    const balance = calculateGroupBalances(expenses, splits, settlements).get(userId) ?? 0;
+    const cancellations = await settlementCancellationService.getByGroup(groupId);
+    const scopeTransfers = await scopeTransferService.getByGroup(groupId);
+    const balance = calculateGroupBalances(expenses, splits, settlements, scopeTransfers, cancellations).get(userId) ?? 0;
 
     if (Math.abs(balance) >= SETTLED_BALANCE_THRESHOLD) {
       throw new Error('This member cannot be removed until their group balance is settled.');

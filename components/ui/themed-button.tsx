@@ -3,7 +3,7 @@ import { BTN_DISABLED_DARK, BTN_DISABLED_LIGHT } from '@/constants/theme';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
-import { ActivityIndicator, StyleSheet, TouchableOpacity, View, ViewStyle } from 'react-native';
+import { ActivityIndicator, StyleSheet, TouchableOpacity, View, type StyleProp, type ViewStyle } from 'react-native';
 import { ThemedText } from '../themed-text';
 
 interface ThemedButtonProps {
@@ -13,7 +13,7 @@ interface ThemedButtonProps {
   icon?: IconSymbolName;
   loading?: boolean;
   disabled?: boolean;
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
   badge?: string | number;
 }
 

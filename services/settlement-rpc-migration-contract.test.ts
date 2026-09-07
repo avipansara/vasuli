@@ -1,5 +1,9 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import type { Database } from '../types/supabase';
+
+type CancellationRow =
+  Database['public']['Tables']['settlement_cancellations']['Row'];
 
 const readMigration = (name: string) => readFileSync(
   new URL(`../supabase/migrations/${name}`, import.meta.url),
@@ -96,5 +100,154 @@ describe('settlement RPC migration contracts', () => {
     expect(migration).toContain('REVOKE ALL ON FUNCTION public.get_group_pair_totals(UUID) FROM PUBLIC, anon;');
     expect(migration).toContain('GRANT EXECUTE ON FUNCTION public.get_group_pair_totals(UUID) TO authenticated;');
     expect(migration).not.toContain('DROP TABLE');
+  });
+
+  it('qualifies the zero-net receipt variable so new and reused receipts succeed', () => {
+    const migration = readMigration('20260906000000_fix_zero_net_receipt_and_reversal_direction.sql');
+
+    expect(migration).toContain('CREATE OR REPLACE FUNCTION public.commit_zero_net_settlement_operation(');
+    expect(migration).toContain('v_operation_id UUID');
+    expect(migration).toContain('WHERE t.operation_id = v_operation_id AND NOT t.is_reversal');
+    expect(migration).not.toMatch(/WHERE t\.operation_id = operation_id(?!_)/);
+    expect(migration).toContain('REVOKE ALL ON FUNCTION public.commit_zero_net_settlement_operation(');
+    expect(migration).toContain(') TO authenticated;');
+    expect(migration).not.toContain('DROP TABLE');
+  });
+
+  it('derives reversal balances from actual cash direction and either-participant orientation', () => {
+    const migration = readMigration('20260906000000_fix_zero_net_receipt_and_reversal_direction.sql');
+
+    expect(migration).toContain('CREATE OR REPLACE FUNCTION public.reverse_settlement_operation(');
+    expect(migration).toContain('p_operation_id UUID');
+    expect(migration).toContain('p_expected_balance NUMERIC');
+    expect(migration).toContain('cash_effect_actor');
+    expect(migration).toContain('cash_has_rows');
+    expect(migration).toContain('caller_expected_after');
+    expect(migration).toContain('caller_current_balance');
+    expect(migration).toContain('is_actor');
+    expect(migration).not.toContain('SIGN(operation_row.expected_balance) * operation_row.requested_payment_amount');
+    expect(migration).toContain('REVOKE ALL ON FUNCTION public.reverse_settlement_operation(UUID, NUMERIC) FROM PUBLIC, anon, service_role;');
+    expect(migration).toContain('GRANT EXECUTE ON FUNCTION public.reverse_settlement_operation(UUID, NUMERIC) TO authenticated;');
+    // Preserves the neutral combined-balance and compensating-row contracts.
+    expect(migration).toContain('t.signed_group_balance_delta,');
+    expect(migration).not.toContain('-t.signed_group_balance_delta,');
+    expect(migration).not.toContain('DROP TABLE');
+    expect(migration).not.toContain('DROP FUNCTION IF EXISTS public.reverse_settlement_operation');
+  });
+
+  it('excludes backfill-marked rows from authorized operation cash metadata', () => {
+    const migration = readMigration('20260906050000_exclude_backfill_cash_from_operation_metadata.sql');
+    expect(migration).toContain('s.backfilled_transfer_id IS NULL');
+    expect(migration).toContain('CREATE OR REPLACE FUNCTION public.get_friend_settlement_operations');
+    expect(migration).toContain('CREATE OR REPLACE FUNCTION public.get_group_settlement_operations');
+    expect(migration).toContain('GRANT EXECUTE ON FUNCTION public.get_group_settlement_operations(UUID) TO authenticated;');
+  });
+
+  it('keeps the historical freeze version chain-safe for ticket 13', () => {
+    const migration = readMigration('20260906010000_reject_new_scope_transfers.sql');
+
+    expect(migration).toContain('to_regprocedure');
+    expect(migration).toContain("public.commit_settlement_operation(uuid,uuid,uuid,text,numeric,text,timestamptz,numeric,jsonb,jsonb)");
+    expect(migration).toContain("public.commit_zero_net_settlement_operation(uuid,uuid,text,timestamptz,numeric,jsonb)");
+    // The historical version has no function replacement or privilege changes.
+    expect(migration).not.toContain('DROP TABLE');
+    expect(migration).not.toContain('REVOKE ALL');
+    expect(migration).not.toContain('GRANT EXECUTE');
+    expect(migration).not.toContain('DROP FUNCTION');
+  });
+
+  it('enforces the additive atomic full-settlement contract', () => {
+    const migration = readMigration('20260906040000_atomic_full_settlement_contract.sql');
+    expect(migration).toContain('CREATE OR REPLACE FUNCTION private.settlement_user_write_lock(p_user_id UUID)');
+    expect(migration).toContain('CREATE OR REPLACE FUNCTION private.settlement_pair_write_lock(p_first_user_id UUID, p_second_user_id UUID)');
+    expect(migration).toContain('CREATE TRIGGER serialize_settlement_balance_write');
+    expect(migration).toContain('ON public.group_members');
+    expect(migration).toContain('ON public.settlement_scope_transfers');
+    expect(migration).not.toContain('settlement_balance_write_lock()');
+    expect(migration).toContain('CREATE OR REPLACE FUNCTION private.settlement_pair_scope_balance(');
+    expect(migration).toContain('CREATE OR REPLACE FUNCTION public.commit_settlement_operation(');
+    expect(migration).toContain('ORDER BY u.id FOR UPDATE');
+    expect(migration).toContain('SETTLEMENT_STALE_BALANCE');
+    expect(migration).toContain('SETTLEMENT_ALLOCATION_OVER_BALANCE');
+    expect(migration).toContain('SETTLEMENT_TRANSFERS_NOT_ALLOWED');
+    expect(migration).toContain('IF full_payment THEN');
+    expect(migration).toContain('requested_allocations <> expected_allocations');
+    expect(migration).toContain('requested_transfers <> expected_transfers');
+    expect(migration).toContain('Full friend settlement balance cancellation');
+    expect(migration).not.toContain('SETTLEMENT_TRANSFERS_FROZEN');
+    // Ticket 17 (option B): cancellation legs are transfer-free non-cash
+    // effects in the ticket-09 from-user orientation — creditor-originated
+    // with strictly negative signed deltas, matching the planner and the
+    // dev-proven -15.50 shape. Absolute/positive deltas are rejected.
+    expect(migration).toContain("'fromUserId', CASE WHEN residual_cents > 0 THEN app_user_id ELSE p_friend_id END");
+    expect(migration).toContain("'signedGroupBalanceDelta', (-ABS(residual_cents))::NUMERIC / 100");
+    expect(migration).toContain('OR transfer_delta IS NULL OR transfer_delta >= 0 OR');
+    expect(migration).not.toContain('SETTLEMENT_TRANSFERS_FROZEN');
+    expect(migration).not.toContain('DROP TABLE');
+    expect(migration).toContain('GRANT EXECUTE ON FUNCTION public.commit_settlement_operation(');
+    expect(migration).toContain('TO authenticated;');
+  });
+
+  it('mirrors the settlement_cancellations table columns and defaults in the checked-in supabase types', () => {
+    const migration = readMigration('20260906060000_settlement_cancellations.sql');
+    const supabaseTypes = readFileSync(
+      new URL('../types/supabase.ts', import.meta.url),
+      'utf8',
+    );
+
+    // Source-of-truth columns and defaults in the migration.
+    expect(migration).toContain('CREATE TABLE IF NOT EXISTS public.settlement_cancellations (');
+    expect(migration).toContain('operation_id UUID NOT NULL REFERENCES public.settlement_operations(id)');
+    expect(migration).toContain('group_id UUID NOT NULL REFERENCES public.groups(id)');
+    expect(migration).toContain('amount NUMERIC NOT NULL CHECK (amount > 0 AND amount = ROUND(amount, 2))');
+    expect(migration).toContain('signed_group_balance_delta NUMERIC NOT NULL CHECK (');
+    expect(migration).toContain("currency TEXT NOT NULL DEFAULT 'USD'");
+    expect(migration).toContain('note TEXT,');
+    expect(migration).toContain('is_reversal BOOLEAN NOT NULL DEFAULT false');
+    expect(migration).toContain('created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()');
+
+    // Checked-in manual mirror carries the same columns (see the inline
+    // source-migration comment on the table entry); currency/is_reversal/
+    // created_at stay optional on Insert per their DB defaults.
+    const entry = supabaseTypes.match(
+      /settlement_cancellations: \{[\s\S]*?Relationships: \[\]/,
+    )?.[0] ?? '';
+    expect(entry).not.toBe('');
+    for (const column of ['id', 'operation_id', 'group_id', 'amount', 'signed_group_balance_delta', 'currency', 'note', 'is_reversal', 'created_at']) {
+      expect(entry).toContain(column);
+    }
+    expect(entry).toContain('currency?: string');
+    expect(entry).toContain('is_reversal?: boolean');
+    expect(entry).toContain('created_at?: string');
+
+    // Compile-time pin: the table entry exists with the expected column types.
+    const probe: CancellationRow = {
+      id: 'id',
+      operation_id: 'operation',
+      group_id: 'group',
+      amount: 0,
+      signed_group_balance_delta: 0,
+      currency: 'USD',
+      note: null,
+      is_reversal: false,
+      created_at: 'now',
+    };
+    expect(probe.currency).toBe('USD');
+  });
+
+  it('commits cancellations through p_cancellations with frozen p_transfers and a cancellations receipt array', () => {
+    const migration = readMigration('20260906060000_settlement_cancellations.sql');
+
+    // New payload parameter on the 11-arg commit signature.
+    expect(migration).toContain("p_cancellations JSONB DEFAULT '[]'::jsonb");
+    // The scope-transfer table is frozen: any transfer payload is rejected.
+    expect(migration).toContain("IF jsonb_array_length(COALESCE(p_transfers, '[]'::jsonb)) > 0 THEN");
+    expect(migration).toContain("RAISE EXCEPTION 'SETTLEMENT_TRANSFERS_FROZEN';");
+    // Cancellations are persisted to the dedicated table and returned next
+    // to the legacy transfers array on the receipt.
+    expect(migration).toContain('INSERT INTO public.settlement_cancellations (operation_id, group_id, amount, currency, note)');
+    expect(migration).toContain('INTO cancellation_rows FROM public.settlement_cancellations c');
+    expect(migration).toContain('WHERE c.operation_id = v_operation_id AND NOT c.is_reversal;');
+    expect(migration).toContain("'cancellations', cancellation_rows");
   });
 });
