@@ -250,4 +250,18 @@ describe('settlement RPC migration contracts', () => {
     expect(migration).toContain('WHERE c.operation_id = v_operation_id AND NOT c.is_reversal;');
     expect(migration).toContain("'cancellations', cancellation_rows");
   });
+
+  it('excludes converted group legs from the reversal stale-balance guard', () => {
+    const migration = readMigration('20260907000000_fix_reversal_balance_backfill_exclusion.sql');
+
+    expect(migration).toContain('CREATE OR REPLACE FUNCTION public.reverse_settlement_operation(');
+    // The group-settlements leg of the guard skips converted (backfilled)
+    // rows, matching the friend/group readers that keep those legs
+    // activity-only; the direct-scope converted leg stays counted.
+    expect(migration).toContain('AND s.backfilled_transfer_id IS NULL');
+    expect(migration).toContain('INTO actor_current_balance;');
+    expect(migration).toContain('REVOKE ALL ON FUNCTION public.reverse_settlement_operation(UUID, NUMERIC)');
+    expect(migration).toContain('GRANT EXECUTE ON FUNCTION public.reverse_settlement_operation(UUID, NUMERIC) TO authenticated;');
+    expect(migration).not.toContain('DROP TABLE');
+  });
 });

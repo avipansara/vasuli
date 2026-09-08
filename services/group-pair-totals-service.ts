@@ -27,6 +27,26 @@ type GroupPairTotalRow = {
   amount: number;
 };
 
+export type GroupPairLine = Pick<GroupPairTotal, 'fromUserId' | 'toUserId' | 'amount' | 'currency'>;
+
+/**
+ * Group-scoped pair line: the group page settles group balances, so member
+ * rows must show the group component only — never the combined net that
+ * folds direct-ledger debt into the group. Direction derives from the
+ * group_amount sign (user_a perspective: positive means user_b owes user_a),
+ * matching the RPC's own orientation.
+ */
+export function toGroupScopedLine(total: GroupPairTotal): GroupPairLine {
+  const magnitude = Math.abs(total.groupAmount);
+  if (total.groupAmount > 0) {
+    return { fromUserId: total.userB, toUserId: total.userA, amount: magnitude, currency: total.currency };
+  }
+  if (total.groupAmount < 0) {
+    return { fromUserId: total.userA, toUserId: total.userB, amount: magnitude, currency: total.currency };
+  }
+  return { fromUserId: total.fromUserId, toUserId: total.toUserId, amount: 0, currency: total.currency };
+}
+
 function mapRow(row: GroupPairTotalRow): GroupPairTotal {
   return {
     userA: row.user_a,

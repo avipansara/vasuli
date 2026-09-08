@@ -1,5 +1,18 @@
 ## 2026-09-07
 
+- Fixed group member rows showing the combined pair net instead of the
+  group-only balance (e.g. $93.99 instead of $49.49 when $44.50 of it is a
+  direct-ledger debt). Member rows, bilateral lines, and Group Settle amounts
+  now derive direction and amount from the group component of the pair
+  totals; direct balances stay on the friend screens where they belong.
+
+- Fixed deleting transfer-bearing settlements: the reversal stale-balance
+  guard now ignores converted (backfilled) group legs, matching the
+  friend/group readers that keep those legs activity-only. Previously any
+  operation with converted legs failed deletion with `SETTLEMENT_STALE_BALANCE`
+  against the displayed balance. Covered by a self-contained SQL regression
+  and a migration contract test.
+
 - Final pre-production cleanup verification: root `tsc --noEmit` is clean,
   `npm run precommit` passes (84 Vitest files, 680 tests, 0 lint errors), and
   `npx expo export` succeeds for both iOS and Android. The 4 remaining lint
