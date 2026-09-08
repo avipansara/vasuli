@@ -1,4 +1,4 @@
-import { Colors, ExpenseDetailTheme, FriendDetailTheme, FriendsTheme, Gradients, SettleTheme } from '@/constants/theme';
+import { Colors, ExpenseDetailTheme, FriendDetailTheme, FriendsTheme, Gradients, InvitationsTheme, SettleTheme } from '@/constants/theme';
 import { useTheme } from '@/contexts/theme-context';
 
 export function useThemeColors() {
@@ -8,6 +8,7 @@ export function useThemeColors() {
   const expenseDetail = ExpenseDetailTheme[colorScheme];
   const friends = FriendsTheme[colorScheme];
   const friendDetail = FriendDetailTheme[colorScheme];
+  const invitations = InvitationsTheme[colorScheme];
   const settle = SettleTheme[colorScheme];
 
   return {
@@ -16,6 +17,7 @@ export function useThemeColors() {
     expenseDetail,
     friends,
     friendDetail,
+    invitations,
     settle,
     colorScheme,
     isDark,

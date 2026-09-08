@@ -116,4 +116,37 @@ describe('friendshipService', () => {
 
     expect(requests[0].requesterName).toBe('alex')
   })
+
+  it('includes the recipient profile name for sent requests', async () => {
+    mocks.getByIds.mockResolvedValue([{ id: 'user-b', name: 'Ben Recipient' }])
+
+    const requests = await friendshipService.getSentRequestsWithRecipients('user-a')
+
+    expect(requests).toEqual([expect.objectContaining({
+      id: 'fs-1',
+      recipientName: 'Ben Recipient',
+    })])
+    expect(mocks.getByIds).toHaveBeenCalledWith(['user-b'])
+  })
+
+  it('includes the recipient email when available', async () => {
+    mocks.getByIds.mockResolvedValue([{
+      id: 'user-b',
+      name: 'Ben Recipient',
+      email: 'ben@example.com',
+    }])
+
+    const requests = await friendshipService.getSentRequestsWithRecipients('user-a')
+
+    expect(requests[0].recipientEmail).toBe('ben@example.com')
+  })
+
+  it('does not show a sent request when the users are already friends', async () => {
+    mocks.getFriends.mockResolvedValue(['user-b'])
+
+    await expect(
+      friendshipService.getSentRequestsWithRecipients('user-a')
+    ).resolves.toEqual([])
+    expect(mocks.getByIds).not.toHaveBeenCalled()
+  })
 })

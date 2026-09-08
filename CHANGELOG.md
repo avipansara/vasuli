@@ -1,3 +1,20 @@
+## 2026-09-08
+
+- Fixed sent invitations missing name/email details: Add Friend now collects
+  an optional name, stores it trimmed, and the Sent tab shows both name and
+  email (never a blank row) via a tested display helper.
+- Fixed outgoing friend requests being invisible to the sender: the Sent tab
+  now lists pending requests sent to existing Vasuli users (with recipient
+  name/email and Cancel), with realtime updates for rows you sent.
+- Fixed stale "pending" invites lingering in Sent after the friendship formed
+  through another path: `getByInviter` now suppresses pending rows whose
+  invitee is already an accepted friend, mirroring the Received tab.
+  Accepted/declined history still shows. (Rows addressed to a mistyped email
+  can never link to an account; cancel those from Sent.)
+- Moved Invitations-screen colors into `InvitationsTheme` light/dark tokens
+  (`constants/theme.ts`, exposed via `useThemeColors`) instead of scattered
+  hex values.
+
 ## 2026-09-07
 
 - Fixed group member rows showing the combined pair net instead of the

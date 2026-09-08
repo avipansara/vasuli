@@ -22,8 +22,9 @@ const mocks = vi.hoisted(() => {
   const from = vi.fn()
   const getByEmail = vi.fn<() => Promise<any>>(() => Promise.resolve(null))
   const getByIds = vi.fn<() => Promise<any[]>>(() => Promise.resolve([]))
-  const getFriends = vi.fn(() => Promise.resolve([]))
+  const getFriends = vi.fn((): Promise<string[]> => Promise.resolve([]))
   const receivedOrder = vi.fn<() => Promise<{ data: any[]; error: any }>>(() => Promise.resolve({ data: [], error: null }))
+  const sentOrder = vi.fn<() => Promise<{ data: any[]; error: any }>>(() => Promise.resolve({ data: [], error: null }))
   const createFriendship = vi.fn(() => Promise.resolve({
     id: 'friendship-1',
     userId: 'inviter-uuid',
@@ -32,7 +33,7 @@ const mocks = vi.hoisted(() => {
     createdAt: Date.now(),
   }))
   const areFriends = vi.fn(() => Promise.resolve(false))
-  return { invoke, insertSelectSingle, deleteEq, from, getByEmail, getByIds, getFriends, receivedOrder, createFriendship, areFriends }
+  return { invoke, insertSelectSingle, deleteEq, from, getByEmail, getByIds, getFriends, receivedOrder, sentOrder, createFriendship, areFriends }
 })
 
 vi.mock('@/lib/supabase', () => ({
@@ -73,6 +74,7 @@ describe('invitationService.create', () => {
     mocks.getByIds.mockResolvedValue([])
     mocks.getFriends.mockResolvedValue([])
     mocks.receivedOrder.mockResolvedValue({ data: [], error: null })
+    mocks.sentOrder.mockResolvedValue({ data: [], error: null })
     mocks.areFriends.mockResolvedValue(false)
     mocks.from.mockImplementation((table: string) => {
       if (table !== 'invitations') {
@@ -92,6 +94,7 @@ describe('invitationService.create', () => {
             eq: () => ({
               order: mocks.receivedOrder,
             }),
+            order: mocks.sentOrder,
           }),
         }),
       }
@@ -224,4 +227,41 @@ describe('invitationService.create', () => {
       })
     )
   })
+
+  describe('getByInviter', () => {
+  it('hides a pending invitation when the invitee is already a friend', async () => {
+    mocks.sentOrder.mockResolvedValueOnce({ data: [inviteRow], error: null })
+    mocks.getByEmail.mockResolvedValueOnce({ id: 'invitee-uuid' })
+    mocks.getFriends.mockResolvedValueOnce(['invitee-uuid'])
+
+    await expect(invitationService.getByInviter('inviter-uuid')).resolves.toEqual([])
+  })
+
+  it('keeps a pending invitation when the invitee is not a friend', async () => {
+    mocks.sentOrder.mockResolvedValueOnce({ data: [inviteRow], error: null })
+    mocks.getByEmail.mockResolvedValueOnce({ id: 'invitee-uuid' })
+    mocks.getFriends.mockResolvedValueOnce([])
+
+    const invitations = await invitationService.getByInviter('inviter-uuid')
+
+    expect(invitations).toHaveLength(1)
+    expect(invitations[0].inviteeEmail).toBe('friend@example.com')
+  })
+
+  it('keeps accepted history even when the invitee is a friend', async () => {
+    mocks.sentOrder.mockResolvedValueOnce({
+      data: [{ ...inviteRow, status: 'accepted' }],
+      error: null,
+    })
+    mocks.getByEmail.mockResolvedValueOnce({ id: 'invitee-uuid' })
+    mocks.getFriends.mockResolvedValueOnce(['invitee-uuid'])
+
+    const invitations = await invitationService.getByInviter('inviter-uuid')
+
+    expect(invitations).toHaveLength(1)
+    expect(invitations[0].status).toBe('accepted')
+  })
 })
+
+})
+

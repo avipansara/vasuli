@@ -11,8 +11,9 @@ import { friendshipService } from '@/services/friendship-service';
 import { invitationService } from '@/services/invitation-service';
 import { queryKeys } from '@/services/query-keys';
 import { normalizeEmail } from '@/utils/validation';
+import { getSentInvitationDisplay } from '@/utils/invitation-display';
 import type { Invitation } from '@/types/database';
-import type { PendingFriendshipRequest } from '@/services/friendship-service';
+import type { PendingFriendshipRequest, SentFriendshipRequest } from '@/services/friendship-service';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -31,8 +32,16 @@ type InvitationWithDetails = Invitation & { inviterName?: string; inviteeName?: 
 
 type TabType = 'received' | 'sent';
 
+function formatInvitationDate(timestamp: number): string {
+  return new Date(timestamp).toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
+
 export default function InvitationsScreen() {
-  const { gradients, colors, isDark } = useThemeColors();
+  const { gradients, colors, invitations, isDark } = useThemeColors();
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>('received');
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -52,6 +61,10 @@ export default function InvitationsScreen() {
     () => queryKeys.invitations.friendRequests(userId || ''),
     [userId]
   );
+  const sentRequestsQueryKey = useMemo(
+    () => queryKeys.invitations.sentRequests(userId || ''),
+    [userId]
+  );
 
   const receivedInvitationsQuery = useQuery({
     queryKey: receivedInvitationsQueryKey,
@@ -68,17 +81,24 @@ export default function InvitationsScreen() {
     enabled: !!userId,
     queryFn: () => friendshipService.getPendingRequestsWithRequesters(userId!),
   });
+  const sentRequestsQuery = useQuery({
+    queryKey: sentRequestsQueryKey,
+    enabled: !!userId,
+    queryFn: () => friendshipService.getSentRequestsWithRecipients(userId!),
+  });
 
   const { refetch: refetchReceivedInvitations } = receivedInvitationsQuery;
   const { refetch: refetchSentInvitations } = sentInvitationsQuery;
   const { refetch: refetchFriendRequests } = friendRequestsQuery;
+  const { refetch: refetchSentRequests } = sentRequestsQuery;
 
   const receivedInvitations = receivedInvitationsQuery.data || [];
   const sentInvitations = sentInvitationsQuery.data || [];
   const receivedFriendRequests = friendRequestsQuery.data || [];
-  const loading = [receivedInvitationsQuery, sentInvitationsQuery, friendRequestsQuery]
+  const sentFriendRequests = sentRequestsQuery.data || [];
+  const loading = [receivedInvitationsQuery, sentInvitationsQuery, friendRequestsQuery, sentRequestsQuery]
     .some((query) => query.isLoading && !query.data);
-  const queryError = [receivedInvitationsQuery, sentInvitationsQuery, friendRequestsQuery]
+  const queryError = [receivedInvitationsQuery, sentInvitationsQuery, friendRequestsQuery, sentRequestsQuery]
     .find((query) => query.error)?.error;
   const loadError = queryError ? getFetchErrorMessage(queryError) : null;
   const noEmailForInvites = !normalizedEmail;
@@ -89,8 +109,9 @@ export default function InvitationsScreen() {
       refetchReceivedInvitations(),
       refetchSentInvitations(),
       refetchFriendRequests(),
+      refetchSentRequests(),
     ]);
-  }, [refetchFriendRequests, refetchReceivedInvitations, refetchSentInvitations, userId]);
+  }, [refetchFriendRequests, refetchReceivedInvitations, refetchSentInvitations, refetchSentRequests, userId]);
 
   const invalidateInvitationQueries = useCallback(() => {
     void queryClient.invalidateQueries({ queryKey: ['invitations'] });
@@ -111,6 +132,12 @@ export default function InvitationsScreen() {
   useRealtime({
     table: 'friendships',
     filter: userId ? `friend_id=eq.${userId}` : undefined,
+    onChange: invalidateInvitationQueries,
+    enabled: !!userId,
+  });
+  useRealtime({
+    table: 'friendships',
+    filter: userId ? `user_id=eq.${userId}` : undefined,
     onChange: invalidateInvitationQueries,
     enabled: !!userId,
   });
@@ -140,6 +167,32 @@ export default function InvitationsScreen() {
     } finally {
       setActionLoading(null);
     }
+  }, [loadInvitations]);
+
+  const handleCancelFriendRequest = useCallback(async (request: SentFriendshipRequest) => {
+    Alert.alert(
+      'Cancel Request',
+      `Cancel your friend request to ${request.recipientName}?`,
+      [
+        { text: 'No', style: 'cancel' },
+        {
+          text: 'Yes, Cancel',
+          style: 'destructive',
+          onPress: async () => {
+            setActionLoading(request.id);
+            try {
+              await friendshipService.decline(request.id);
+              loadInvitations();
+            } catch (error) {
+              console.error('Error cancelling friend request:', error);
+              Alert.alert('Error', 'Failed to cancel friend request');
+            } finally {
+              setActionLoading(null);
+            }
+          },
+        },
+      ]
+    );
   }, [loadInvitations]);
 
   const handleAccept = useCallback(async (invitation: InvitationWithDetails) => {
@@ -239,28 +292,28 @@ export default function InvitationsScreen() {
         intensity={isDark ? 20 : 40}
         tint={isDark ? 'dark' : 'light'}
         style={[styles.invitationCard, isExpired ? styles.expiredCard : '']}>
-        <View style={[styles.cardContent, !isDark && { backgroundColor: 'rgba(255,255,255,0.8)' }]}>
+        <View style={[styles.cardContent, { backgroundColor: colors.cardGlass }]}>
           <View style={styles.invitationHeader}>
             <View style={[styles.iconContainer, {
-              backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)',
+              backgroundColor: invitations.iconSurface,
             }]}>
               <IconSymbol
                 name="person.crop.circle.badge.plus"
                 size={24}
-                color={isDark ? '#2DD4BF' : colors.tint}
+                color={invitations.icon}
               />
             </View>
             <View style={styles.invitationInfo}>
-              <ThemedText style={[styles.inviterName, { color: colors.text }]}>
+              <ThemedText numberOfLines={1} style={[styles.inviterName, { color: colors.text }]}>
                 {item.inviterName?.trim() || 'A friend'}
               </ThemedText>
               <ThemedText style={[styles.invitationDate, { color: colors.textSecondary }]}>
-                {new Date(item.createdAt).toLocaleDateString()}
+                {formatInvitationDate(item.createdAt)}
               </ThemedText>
             </View>
             {isExpired && (
-              <View style={styles.expiredBadge}>
-                <ThemedText style={styles.expiredText}>Expired</ThemedText>
+              <View style={[styles.expiredBadge, { backgroundColor: invitations.expired }]}>
+                <ThemedText style={[styles.expiredText, { color: invitations.pendingText }]}>Expired</ThemedText>
               </View>
             )}
           </View>
@@ -271,22 +324,22 @@ export default function InvitationsScreen() {
                 onPress={() => handleAccept(item)}
                 disabled={isLoading}
                 style={[styles.actionButton, styles.acceptButton, {
-                  backgroundColor: isDark ? '#2DD4BF' : '#22C55E',
+                  backgroundColor: invitations.primaryAction,
                   opacity: isLoading ? 0.5 : 1,
                 }]}>
-                <IconSymbol name="checkmark" size={18} color="#0A0A0F" />
+                <IconSymbol name="checkmark" size={18} color={invitations.primaryActionText} />
                 <ThemedText style={styles.actionButtonText}>Accept</ThemedText>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => handleDecline(item)}
                 disabled={isLoading}
                 style={[styles.actionButton, styles.declineButton, {
-                  backgroundColor: isDark ? 'rgba(239, 68, 68, 0.2)' : 'rgba(239, 68, 68, 0.1)',
-                  borderColor: isDark ? 'rgba(239, 68, 68, 0.4)' : 'rgba(239, 68, 68, 0.3)',
+                  backgroundColor: invitations.dangerSurface,
+                  borderColor: invitations.dangerBorder,
                   opacity: isLoading ? 0.5 : 1,
                 }]}>
-                <IconSymbol name="xmark" size={18} color={isDark ? '#EF4444' : '#DC2626'} />
-                <ThemedText style={[styles.actionButtonText, { color: isDark ? '#EF4444' : '#DC2626' }]}>
+                <IconSymbol name="xmark" size={18} color={invitations.danger} />
+                <ThemedText style={[styles.actionButtonText, { color: invitations.danger }]}>
                   Decline
                 </ThemedText>
               </TouchableOpacity>
@@ -295,39 +348,47 @@ export default function InvitationsScreen() {
         </View>
       </BlurView>
     );
-  }, [actionLoading, colors, isDark, handleAccept, handleDecline]);
+  }, [actionLoading, colors, invitations, isDark, handleAccept, handleDecline]);
 
   const renderSentInvitation = useCallback(({ item }: { item: InvitationWithDetails }) => {
     const isLoading = actionLoading === item.id;
-    const statusColor = item.status === 'accepted' ? '#22C55E' : item.status === 'declined' ? '#EF4444' : '#F59E0B';
+    const statusColor = item.status === 'accepted' ? invitations.primaryAction : item.status === 'declined' ? invitations.danger : invitations.pending;
+    const display = getSentInvitationDisplay(item);
 
     return (
       <BlurView
         intensity={isDark ? 20 : 40}
         tint={isDark ? 'dark' : 'light'}
         style={styles.invitationCard}>
-        <View style={[styles.cardContent, !isDark && { backgroundColor: 'rgba(255,255,255,0.8)' }]}>
-          <View style={styles.invitationHeader}>
-            <View style={[styles.iconContainer, {
-              backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)',
+        <View style={[styles.cardContent, styles.sentCardContent, { backgroundColor: colors.cardGlass }]}>
+          <View style={[styles.invitationHeader, styles.sentInvitationHeader]}>
+            <View style={[styles.iconContainer, styles.compactIconContainer, {
+              backgroundColor: invitations.iconSurface,
             }]}>
               <IconSymbol
                 name="envelope"
                 size={24}
-                color={isDark ? '#2DD4BF' : colors.tint}
+                color={invitations.icon}
               />
             </View>
             <View style={styles.invitationInfo}>
-              <ThemedText style={[styles.inviterName, { color: colors.text }]}>
-                {item.inviteeName?.trim() || item.inviteeEmail}
-              </ThemedText>
-              <ThemedText style={[styles.invitationDate, { color: colors.textSecondary }]}>
-                {new Date(item.createdAt).toLocaleDateString()}
+              <ThemedText numberOfLines={1} style={[styles.inviterName, { color: colors.text }]}>
+                {display.title}
               </ThemedText>
             </View>
             <View style={[styles.statusBadge, { backgroundColor: statusColor }]}>
-              <ThemedText style={styles.statusText}>{item.status}</ThemedText>
+              <ThemedText style={[styles.statusText, { color: invitations.pendingText }]}>{item.status}</ThemedText>
             </View>
+          </View>
+          <View style={styles.sentInvitationMetadata}>
+            {display.subtitle && (
+              <ThemedText style={[styles.invitationEmail, { color: colors.textSecondary }]}>
+                {display.subtitle}
+              </ThemedText>
+            )}
+            <ThemedText style={[styles.invitationDate, { color: colors.textSecondary }]}>
+              {formatInvitationDate(item.createdAt)}
+            </ThemedText>
           </View>
 
           {item.status === 'pending' && (
@@ -336,12 +397,12 @@ export default function InvitationsScreen() {
                 onPress={() => handleResend(item)}
                 disabled={isLoading}
                 style={[styles.actionButton, {
-                  backgroundColor: isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(34, 197, 94, 0.1)',
-                  borderColor: isDark ? 'rgba(45, 212, 191, 0.4)' : 'rgba(34, 197, 94, 0.3)',
+                  backgroundColor: invitations.iconSurface,
+                  borderColor: invitations.iconBorder,
                   opacity: isLoading ? 0.5 : 1,
                 }]}>
-                <IconSymbol name="arrow.clockwise" size={18} color={isDark ? '#2DD4BF' : colors.tint} />
-                <ThemedText style={[styles.actionButtonText, { color: isDark ? '#2DD4BF' : colors.tint }]}>
+                <IconSymbol name="arrow.clockwise" size={18} color={invitations.icon} />
+                <ThemedText style={[styles.actionButtonText, { color: invitations.icon }]}>
                   Resend
                 </ThemedText>
               </TouchableOpacity>
@@ -349,12 +410,12 @@ export default function InvitationsScreen() {
                 onPress={() => handleCancel(item)}
                 disabled={isLoading}
                 style={[styles.actionButton, styles.declineButton, {
-                  backgroundColor: isDark ? 'rgba(239, 68, 68, 0.2)' : 'rgba(239, 68, 68, 0.1)',
-                  borderColor: isDark ? 'rgba(239, 68, 68, 0.4)' : 'rgba(239, 68, 68, 0.3)',
+                  backgroundColor: invitations.dangerSurface,
+                  borderColor: invitations.dangerBorder,
                   opacity: isLoading ? 0.5 : 1,
                 }]}>
-                <IconSymbol name="trash.fill" size={18} color={isDark ? '#EF4444' : '#DC2626'} />
-                <ThemedText style={[styles.actionButtonText, { color: isDark ? '#EF4444' : '#DC2626' }]}>
+                <IconSymbol name="trash.fill" size={18} color={invitations.danger} />
+                <ThemedText style={[styles.actionButtonText, { color: invitations.danger }]}>
                   Cancel
                 </ThemedText>
               </TouchableOpacity>
@@ -363,10 +424,11 @@ export default function InvitationsScreen() {
         </View>
       </BlurView>
     );
-  }, [actionLoading, colors, isDark, handleResend, handleCancel]);
+  }, [actionLoading, colors, invitations, isDark, handleResend, handleCancel]);
 
   const currentInvitations = activeTab === 'received' ? receivedInvitations : sentInvitations;
   const receivedCount = receivedInvitations.length + receivedFriendRequests.length;
+  const sentCount = sentInvitations.length + sentFriendRequests.length;
 
   return (
     <>
@@ -385,17 +447,17 @@ export default function InvitationsScreen() {
               activeTab === 'received' && styles.activeTab,
               {
                 backgroundColor: activeTab === 'received'
-                  ? (isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(34, 197, 94, 0.1)')
+                  ? invitations.activeTabSurface
                   : 'transparent',
                 borderBottomColor: activeTab === 'received'
-                  ? (isDark ? '#2DD4BF' : colors.tint)
+                  ? invitations.icon
                   : 'transparent',
               },
             ]}>
             <ThemedText style={[
               styles.tabText,
               activeTab === 'received' && styles.activeTabText,
-              activeTab === 'received' && { color: isDark ? '#2DD4BF' : colors.tint },
+              activeTab === 'received' && { color: invitations.icon },
               { color: colors.text },
             ]}>
               Received ({receivedCount})
@@ -408,20 +470,20 @@ export default function InvitationsScreen() {
               activeTab === 'sent' && styles.activeTab,
               {
                 backgroundColor: activeTab === 'sent'
-                  ? (isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(34, 197, 94, 0.1)')
+                  ? invitations.activeTabSurface
                   : 'transparent',
                 borderBottomColor: activeTab === 'sent'
-                  ? (isDark ? '#2DD4BF' : colors.tint)
+                  ? invitations.icon
                   : 'transparent',
               },
             ]}>
             <ThemedText style={[
               styles.tabText,
               activeTab === 'sent' && styles.activeTabText,
-              activeTab === 'sent' && { color: isDark ? '#2DD4BF' : colors.tint },
+              activeTab === 'sent' && { color: invitations.icon },
               { color: colors.text },
             ]}>
-              Sent ({sentInvitations.length})
+              Sent ({sentCount})
             </ThemedText>
           </TouchableOpacity>
         </View>
@@ -447,21 +509,21 @@ export default function InvitationsScreen() {
                   const isLoading = actionLoading === request.id;
                   return (
                     <BlurView key={request.id} intensity={isDark ? 20 : 40} tint={isDark ? 'dark' : 'light'} style={styles.invitationCard}>
-                      <View style={[styles.cardContent, !isDark && { backgroundColor: 'rgba(255,255,255,0.8)' }]}>
-                        <View style={styles.invitationHeader}>
-                          <View style={[styles.iconContainer, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)' }]}>
-                            <IconSymbol name="person.crop.circle.badge.plus" size={24} color={isDark ? '#2DD4BF' : colors.tint} />
+                      <View style={[styles.cardContent, { backgroundColor: colors.cardGlass }]}>
+                      <View style={styles.invitationHeader}>
+                          <View style={[styles.iconContainer, { backgroundColor: invitations.iconSurface }]}>
+                            <IconSymbol name="person.crop.circle.badge.plus" size={24} color={invitations.icon} />
                           </View>
                           <View style={styles.invitationInfo}>
-                            <ThemedText style={[styles.inviterName, { color: colors.text }]}>{request.requesterName}</ThemedText>
+                            <ThemedText numberOfLines={1} style={[styles.inviterName, { color: colors.text }]}>{request.requesterName}</ThemedText>
                             <ThemedText style={[styles.invitationDate, { color: colors.textSecondary }]}>wants to be your friend</ThemedText>
                           </View>
                         </View>
                         <View style={styles.actionButtons}>
-                          <TouchableOpacity onPress={() => handleDeclineFriendRequest(request)} disabled={isLoading} style={[styles.actionButton, styles.declineButton, { opacity: isLoading ? 0.5 : 1 }]}>
-                            <ThemedText style={[styles.actionButtonText, { color: isDark ? '#EF4444' : '#DC2626' }]}>Decline</ThemedText>
+                          <TouchableOpacity onPress={() => handleDeclineFriendRequest(request)} disabled={isLoading} style={[styles.actionButton, styles.declineButton, { backgroundColor: invitations.dangerSurface, borderColor: invitations.dangerBorder, opacity: isLoading ? 0.5 : 1 }]}>
+                            <ThemedText style={[styles.actionButtonText, { color: invitations.danger }]}>Decline</ThemedText>
                           </TouchableOpacity>
-                          <TouchableOpacity onPress={() => handleAcceptFriendRequest(request)} disabled={isLoading} style={[styles.actionButton, styles.acceptButton, { backgroundColor: isDark ? '#2DD4BF' : '#22C55E', opacity: isLoading ? 0.5 : 1 }]}>
+                          <TouchableOpacity onPress={() => handleAcceptFriendRequest(request)} disabled={isLoading} style={[styles.actionButton, styles.acceptButton, { backgroundColor: invitations.primaryAction, opacity: isLoading ? 0.5 : 1 }]}>
                             <ThemedText style={styles.actionButtonText}>Accept</ThemedText>
                           </TouchableOpacity>
                         </View>
@@ -471,13 +533,63 @@ export default function InvitationsScreen() {
                 })}
                 {receivedInvitations.length > 0 && <ThemedText style={[styles.sectionLabel, { color: colors.textSecondary }]}>App invitations</ThemedText>}
               </View>
+            ) : activeTab === 'sent' && sentFriendRequests.length > 0 ? (
+              <View>
+                {sentFriendRequests.map((request) => {
+                  const isLoading = actionLoading === request.id;
+                  const display = getSentInvitationDisplay({
+                    inviteeName: request.recipientName,
+                    inviteeEmail: request.recipientEmail,
+                  });
+                  return (
+                    <BlurView key={request.id} intensity={isDark ? 20 : 40} tint={isDark ? 'dark' : 'light'} style={styles.invitationCard}>
+                      <View style={[styles.cardContent, styles.sentCardContent, { backgroundColor: colors.cardGlass }]}>
+                        <View style={[styles.invitationHeader, styles.sentInvitationHeader]}>
+                          <View style={[styles.iconContainer, styles.compactIconContainer, { backgroundColor: invitations.iconSurface }]}>
+                            <IconSymbol name="person.crop.circle.badge.plus" size={24} color={invitations.icon} />
+                          </View>
+                          <View style={styles.invitationInfo}>
+                            <ThemedText numberOfLines={1} style={[styles.inviterName, { color: colors.text }]}>{display.title}</ThemedText>
+                          </View>
+                          <View style={[styles.statusBadge, { backgroundColor: invitations.pending }]}>
+                            <ThemedText style={[styles.statusText, { color: invitations.pendingText }]}>pending</ThemedText>
+                          </View>
+                        </View>
+                        <View style={styles.sentInvitationMetadata}>
+                          {display.subtitle && (
+                            <ThemedText style={[styles.invitationEmail, { color: colors.textSecondary }]}>
+                              {display.subtitle}
+                            </ThemedText>
+                          )}
+                          <ThemedText style={[styles.invitationDate, { color: colors.textSecondary }]}>
+                            {formatInvitationDate(request.createdAt)}
+                          </ThemedText>
+                        </View>
+                        <View style={[styles.cardFooter, { borderTopColor: invitations.divider }]}>
+                          <TouchableOpacity
+                            onPress={() => handleCancelFriendRequest(request)}
+                            disabled={isLoading}
+                            accessibilityRole="button"
+                            accessibilityLabel={`Cancel friend request to ${request.recipientName}`}
+                            style={[styles.actionButton, styles.cancelInvitationAction, { opacity: isLoading ? 0.5 : 1 }]}>
+                            <IconSymbol name="trash.fill" size={18} color={invitations.danger} />
+                            <ThemedText style={[styles.actionButtonText, { color: invitations.danger }]}>Cancel invitation</ThemedText>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    </BlurView>
+                  );
+                })}
+                {sentInvitations.length > 0 && <ThemedText style={[styles.sectionLabel, { color: colors.textSecondary }]}>Email invitations</ThemedText>}
+              </View>
             ) : null}
             ListEmptyComponent={
+              activeTab === 'sent' && sentFriendRequests.length > 0 ? null : (
               <View style={styles.emptyContainer}>
                 <IconSymbol
                   name={activeTab === 'received' ? 'envelope.open' : 'paperplane'}
                   size={64}
-                  color={isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(34, 197, 94, 0.3)'}
+                  color={invitations.emptyIcon}
                 />
                 <ThemedText style={[styles.emptyText, { color: colors.textSecondary }]}>
                   {activeTab === 'received'
@@ -489,6 +601,7 @@ export default function InvitationsScreen() {
                     : 'No invitations sent'}
                 </ThemedText>
               </View>
+              )
             }
           />
         )}
@@ -562,10 +675,18 @@ const styles = StyleSheet.create({
     padding: 16,
     backgroundColor: 'rgba(30, 41, 59, 0.6)',
   },
+  sentCardContent: {
+    paddingHorizontal: 12,
+    paddingTop: 12,
+    paddingBottom: 0,
+  },
   invitationHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginBottom: 12,
+  },
+  sentInvitationHeader: {
+    marginBottom: 0,
   },
   iconContainer: {
     width: 48,
@@ -575,8 +696,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: 12,
   },
+  compactIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+  },
   invitationInfo: {
     flex: 1,
+    minWidth: 0,
   },
   inviterName: {
     fontSize: 16,
@@ -586,12 +713,22 @@ const styles = StyleSheet.create({
   invitationDate: {
     fontSize: 14,
   },
+  invitationEmail: {
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  sentInvitationMetadata: {
+    gap: 0,
+    marginBottom: 4,
+  },
   sectionLabel: {
     fontSize: 13,
     fontWeight: '600',
     marginBottom: 10,
   },
   statusBadge: {
+    flexShrink: 0,
+    marginLeft: 12,
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 12,
@@ -599,29 +736,31 @@ const styles = StyleSheet.create({
   statusText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#FFF',
     textTransform: 'capitalize',
   },
   expiredBadge: {
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 12,
-    backgroundColor: '#6B7280',
   },
   expiredText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#FFF',
   },
   actionButtons: {
     flexDirection: 'row',
     gap: 8,
+  },
+  cardFooter: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    marginTop: 2,
   },
   actionButton: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    minHeight: 44,
     paddingVertical: 10,
     borderRadius: 12,
     gap: 6,
@@ -632,6 +771,14 @@ const styles = StyleSheet.create({
   },
   declineButton: {
     borderWidth: 1,
+  },
+  cancelInvitationAction: {
+    alignSelf: 'stretch',
+    borderWidth: 0,
+    flex: 0,
+    justifyContent: 'flex-start',
+    minHeight: 48,
+    paddingHorizontal: 4,
   },
   actionButtonText: {
     fontSize: 14,

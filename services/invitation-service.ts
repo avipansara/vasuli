@@ -94,6 +94,7 @@ export const invitationService = {
     const createdAt = new Date().toISOString();
     const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(); // 30 days
     const inviteeEmail = normalizeEmail(invitation.inviteeEmail) ?? '';
+    const storedInviteeName = invitation.inviteeName?.trim() || null;
 
     const { data, error } = await supabase
       .from('invitations')
@@ -101,7 +102,7 @@ export const invitationService = {
         inviter_id: invitation.inviterId,
         invitee_email: inviteeEmail,
         invitee_phone: invitation.inviteePhone || null,
-        invitee_name: invitation.inviteeName || null,
+        invitee_name: storedInviteeName,
         status: 'pending',
         created_at: createdAt,
         expires_at: expiresAt,
@@ -151,7 +152,41 @@ export const invitationService = {
 
     if (error) throw error;
 
-    return data.map(mapInvitationRow);
+    const rows = data ?? [];
+    // A pending row is stale once the invitee is already a friend (e.g. they
+    // connected through another path that never flipped the invitation).
+    // Hide those, mirroring getReceivedInvitations; accepted/declined history
+    // stays visible.
+    const pendingEmails = [
+      ...new Set(
+        rows
+          .filter((row) => row.status === 'pending')
+          .map((row) => normalizeEmail(String(row.invitee_email)))
+          .filter((email): email is string => !!email),
+      ),
+    ];
+    if (pendingEmails.length === 0) return rows.map(mapInvitationRow);
+
+    const { friendshipService } = await import('@/services/friendship-service');
+    const acceptedFriendIds = new Set(await friendshipService.getFriends(inviterId));
+    if (acceptedFriendIds.size === 0) return rows.map(mapInvitationRow);
+
+    const inviteeIds = new Map<string, string>();
+    await Promise.all(
+      pendingEmails.map(async (email) => {
+        const invitee = await userService.getByEmail(email);
+        if (invitee) inviteeIds.set(email, invitee.id);
+      }),
+    );
+
+    return rows
+      .filter((row) => {
+        if (row.status !== 'pending') return true;
+        const email = normalizeEmail(String(row.invitee_email));
+        const inviteeId = email ? inviteeIds.get(email) : undefined;
+        return !inviteeId || !acceptedFriendIds.has(inviteeId);
+      })
+      .map(mapInvitationRow);
   },
 
   async getByEmail(email: string): Promise<Invitation[]> {
