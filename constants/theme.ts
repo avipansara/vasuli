@@ -262,7 +262,7 @@ export const SettleTheme = {
   light: {
     heroBackground: '#FFFFFF',
     heroBorder: 'rgba(191, 201, 195, 0.3)',
-    pillBackground: '#E1E8FD',
+    pillBackground: '#D5E2DB',
     buttonBackground: '#003527',
     buttonText: '#ffffff',
     accentText: '#064E3B',

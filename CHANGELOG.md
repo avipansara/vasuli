@@ -1,3 +1,11 @@
+## 2026-09-08
+
+- Redesigned the Member Balances extended section UI to match the modern card design:
+  - Added "Member Balances" section header with dynamic status pill badge (`All settled` or `All settled except X`).
+  - Styled member balance cards with mint circular avatar, member name, role badge (`You • Admin`, `You`, `Admin`), breakdown subtitle, bold total balance amount and directional label, and circular chevron toggle.
+  - Redesigned the expanded bilateral breakdown with clean PENDING and SETTLED sub-sections, avatar indicators, "Remind all" action, directional relation copy, and pill "Record" settlement button.
+  - Added smooth accordion expanding and collapsing animation using `LayoutAnimation` and entrance fade/slide animation.
+
 ## 2026-09-07
 
 - Fixed group member rows showing the combined pair net instead of the

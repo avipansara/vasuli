@@ -15,11 +15,11 @@ import { createExpenseNotification, notificationService } from '@/services/notif
 import { createReactQueryCacheAdapter } from '@/services/query-cache-adapter';
 import { queryKeys } from '@/services/query-keys';
 import { userService } from '@/services/user-service';
+import { formatCurrency, getCurrencySymbol, getPreferredCurrency } from '@/utils/currency';
 import { filterFriendsForExpenseSearch } from '@/utils/friend-search';
 import { getGroupExpenseParticipant } from '@/utils/group-expense-participants';
 import { calculateExpenseSplits, getEvenSplitValues, getSplitProgress } from '@/utils/split-validation';
 import { normalizeCurrencyInput } from '@/utils/validation';
-import { formatCurrency, getCurrencySymbol, getPreferredCurrency } from '@/utils/currency';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -445,7 +445,7 @@ export default function AddExpenseScreen() {
                         accessibilityLabel={`Paid by ${payer.id === currentUserId ? 'you' : payer.name}`}
                         style={[styles.splitMethodButton, isSelected && styles.splitMethodButtonActive, {
                           backgroundColor: isSelected ? (settle.buttonBackground) : settle.pillBackground,
-                          borderColor: isSelected ? (settle.buttonBackground) : (colors.border),
+                          borderColor: isSelected ? (settle.buttonBackground) : settle.pillBackground,
                         }]}
                         onPress={() => setSelectedPayerId(payer.id)}>
                         <ThemedText style={[styles.splitMethodText, { color: isSelected ? (isDark ? '#003824' : '#ffffff') : (colors.text) }]}>

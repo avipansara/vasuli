@@ -35,10 +35,25 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Animated, Platform, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import {
+  Alert,
+  Animated,
+  LayoutAnimation,
+  Platform,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  UIManager,
+  View,
+} from 'react-native';
 import ReanimatedSwipeable, { type SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable';
 import type { SharedValue } from 'react-native-reanimated';
 import Reanimated, { useAnimatedStyle } from 'react-native-reanimated';
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 const CATEGORY_MAP: Record<string, { icon: any, lightBg: string, darkBg: string, lightColor: string, darkColor: string }> = {
   'Food': { icon: 'fork.knife', lightBg: '#FCE7F3', darkBg: 'rgba(236, 72, 153, 0.15)', lightColor: '#BE185D', darkColor: '#F472B6' },
@@ -110,6 +125,13 @@ export default function GroupDetailScreen() {
   const [memberModalVisible, setMemberModalVisible] = useState(false);
   const [expenseSearch, setExpenseSearch] = useState('');
   const [expandedMemberId, setExpandedMemberId] = useState<string | null>(null);
+  const toggleMemberExpanded = useCallback((memberUserId: string) => {
+    if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+      UIManager.setLayoutAnimationEnabledExperimental(true);
+    }
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setExpandedMemberId(current => (current === memberUserId ? null : memberUserId));
+  }, []);
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
   const { user } = useAuth();
   const currentUserId = user?.id || '';
@@ -166,6 +188,16 @@ export default function GroupDetailScreen() {
   const settlements = groupDetail?.settlements ?? EMPTY_SETTLEMENTS;
   const members = groupDetail?.members ?? [];
   const balances = groupDetail?.balances ?? new Map<string, number>();
+  const unsettledCount = useMemo(() => {
+    const mems = groupDetail?.members ?? [];
+    const bals = groupDetail?.balances;
+    return mems.filter(m => Math.abs(bals?.get(m.userId) || 0) >= 0.01).length;
+  }, [groupDetail?.members, groupDetail?.balances]);
+  const settledBadgeText = useMemo(() => {
+    if (unsettledCount === 0) return 'All settled';
+    if (unsettledCount === 1) return 'All settled except 1';
+    return `All settled except ${unsettledCount}`;
+  }, [unsettledCount]);
   const scopeTransfers = groupDetail?.scopeTransfers ?? EMPTY_SCOPE_TRANSFERS;
   const cancellations = groupDetail?.cancellations ?? EMPTY_CANCELLATIONS;
   const settlementOperations = groupDetail?.settlementOperations;
@@ -729,6 +761,155 @@ export default function GroupDetailScreen() {
     { item }: { item: GroupMember & { user?: User } },
     opts?: { chevron?: { expanded: boolean; onToggle: () => void } },
   ) {
+    if (opts?.chevron) {
+      const isCurrent = item.userId === currentUserId;
+      const isAdmin = item.role === 'admin';
+      const roleBadgeText =
+        isCurrent && isAdmin
+          ? 'You • Admin'
+          : isCurrent
+            ? 'You'
+            : isAdmin
+              ? 'Admin'
+              : null;
+
+      const memberBalance = balances.get(item.userId) || 0;
+      let totalBalanceDisplay = `${formatCurrency(0)}`;
+      let totalBalanceColor = isDark ? '#94A3B8' : '#64748B';
+      let totalBalanceLabel = 'settled up';
+
+      if (memberBalance > 0.005) {
+        totalBalanceDisplay = `+${formatCurrency(memberBalance)}`;
+        totalBalanceColor = isDark ? '#10B981' : '#047857';
+        totalBalanceLabel = 'gets back total';
+      } else if (memberBalance < -0.005) {
+        totalBalanceDisplay = `-${formatCurrency(Math.abs(memberBalance))}`;
+        totalBalanceColor = isDark ? '#F87171' : '#DC2626';
+        totalBalanceLabel = 'owes total';
+      }
+
+      return (
+        <TouchableOpacity
+          activeOpacity={0.75}
+          onPress={opts.chevron.onToggle}
+          style={[
+            styles.balanceMemberCard,
+            {
+              backgroundColor: colors.card,
+              borderColor: isDark ? 'rgba(255,255,255,0.08)' : '#F1F5F9',
+              shadowColor: isDark ? '#000000' : '#64748B',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: isDark ? 0.2 : 0.06,
+              shadowRadius: 6,
+              elevation: 2,
+            },
+          ]}>
+          {/* Avatar Circle */}
+          <View
+            style={[
+              styles.balanceMemberAvatar,
+              {
+                backgroundColor: isDark ? 'rgba(16, 185, 129, 0.15)' : '#E6F9F0',
+              },
+            ]}>
+            <Text
+              style={[
+                styles.balanceAvatarText,
+                { color: isDark ? '#10B981' : '#047857' },
+              ]}>
+              {item.user?.name.charAt(0).toUpperCase() || '?'}
+            </Text>
+          </View>
+
+          {/* Member Info */}
+          <View style={styles.balanceMemberInfo}>
+            <View style={styles.balanceMemberNameRow}>
+              <ThemedText
+                type="defaultSemiBold"
+                style={[
+                  styles.balanceMemberName,
+                  { color: isDark ? '#F8FAFC' : colors.text },
+                ]}
+                numberOfLines={1}>
+                {item.user?.name || 'Unknown'}
+              </ThemedText>
+              {roleBadgeText && (
+                <View
+                  style={[
+                    styles.balanceRoleBadge,
+                    {
+                      backgroundColor: isDark
+                        ? 'rgba(255, 255, 255, 0.08)'
+                        : '#E5E7EB',
+                    },
+                  ]}>
+                  <Text
+                    style={[
+                      styles.balanceRoleBadgeText,
+                      { color: isDark ? '#94A3B8' : '#4B5563' },
+                    ]}>
+                    {roleBadgeText}
+                  </Text>
+                </View>
+              )}
+            </View>
+            <ThemedText
+              style={[
+                styles.balanceMemberSubtitle,
+                { color: isDark ? '#94A3B8' : colors.textSecondary },
+              ]}>
+              {isCurrent ? 'Personal breakdown' : 'Member breakdown'}
+            </ThemedText>
+          </View>
+
+          {/* Balance Total & Label */}
+          <View style={styles.balanceAmountCol}>
+            <ThemedText
+              style={[
+                styles.balanceTotalAmount,
+                { color: totalBalanceColor },
+              ]}>
+              {totalBalanceDisplay}
+            </ThemedText>
+            <ThemedText
+              style={[
+                styles.balanceTotalLabel,
+                { color: isDark ? '#94A3B8' : colors.textSecondary },
+              ]}>
+              {totalBalanceLabel}
+            </ThemedText>
+          </View>
+
+          {/* Chevron Button */}
+          <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel={
+              opts.chevron.expanded ? 'Collapse pair debts' : 'Expand pair debts'
+            }
+            accessibilityState={{ expanded: opts.chevron.expanded }}
+            hitSlop={MIN_TOUCH_HIT_SLOP}
+            onPress={opts.chevron.onToggle}
+            style={[
+              styles.balanceChevronButton,
+              {
+                backgroundColor: isDark
+                  ? 'rgba(255, 255, 255, 0.06)'
+                  : '#F1F5F9',
+                borderColor: isDark
+                  ? 'rgba(255, 255, 255, 0.08)'
+                  : '#E2E8F0',
+              },
+            ]}>
+            <IconSymbol
+              size={16}
+              name={opts.chevron.expanded ? 'chevron.up' : 'chevron.down'}
+              color={isDark ? '#94A3B8' : '#64748B'}
+            />
+          </TouchableOpacity>
+        </TouchableOpacity>
+      );
+    }
+
     const isViewerRelative = sectionTab === 'all';
     const viewerPairBalance = item.userId === currentUserId ? null : getViewerPairBalance({
       pairTotals,
@@ -835,22 +1016,7 @@ export default function GroupDetailScreen() {
               <ThemedText type='defaultSemiBold' style={[styles.roleLabel, { color: isDark ? '#94A3B8' : colors.text }]}>Admin</ThemedText>
             )}
           </View>
-            {opts?.chevron && (
-              <TouchableOpacity
-                accessibilityRole="button"
-                accessibilityLabel={opts.chevron.expanded ? 'Collapse pair debts' : 'Expand pair debts'}
-                accessibilityState={{ expanded: opts.chevron.expanded }}
-                hitSlop={MIN_TOUCH_HIT_SLOP}
-                onPress={opts.chevron.onToggle}
-                style={styles.expandButton}>
-                <IconSymbol
-                  size={18}
-                  name={opts.chevron.expanded ? 'chevron.up' : 'chevron.down'}
-                  color={isDark ? '#94A3B8' : colors.textSecondary}
-                />
-              </TouchableOpacity>
-            )}
-            <View style={styles.balanceInfo}>
+          <View style={styles.balanceInfo}>
             {isViewerRelative && item.userId === currentUserId && (
               <ThemedText style={[styles.settledLabel, { color: isDark ? '#94A3B8' : colors.textSecondary }]}>You</ThemedText>
             )}
@@ -1142,18 +1308,34 @@ export default function GroupDetailScreen() {
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <ThemedText type="subtitle" style={[styles.sectionTitle, { color: isDark ? '#F8FAFC' : colors.text }]}>
-                Balances
+                Member Balances
               </ThemedText>
+              <View
+                style={[
+                  styles.settledBadge,
+                  {
+                    backgroundColor: isDark ? 'rgba(16, 185, 129, 0.15)' : '#E6F9F0',
+                    borderColor: isDark ? 'rgba(16, 185, 129, 0.25)' : 'transparent',
+                  },
+                ]}>
+                <Text
+                  style={[
+                    styles.settledBadgeText,
+                    { color: isDark ? '#10B981' : '#047857' },
+                  ]}>
+                  {settledBadgeText}
+                </Text>
+              </View>
             </View>
             {members.map(member => {
               const expanded = expandedMemberId === member.userId;
               const memberLines = linesForMember(member.userId);
               return (
-                <View key={member.id}>
+                <View key={member.id} style={styles.balancesMemberContainer}>
                   {renderMember({ item: member }, {
                     chevron: {
                       expanded,
-                      onToggle: () => setExpandedMemberId(current => current === member.userId ? null : member.userId),
+                      onToggle: () => toggleMemberExpanded(member.userId),
                     },
                   })}
                   {expanded && (
@@ -1162,6 +1344,8 @@ export default function GroupDetailScreen() {
                         lines={memberLines}
                         namesById={namesById}
                         currentUserId={currentUserId}
+                        memberUserId={member.userId}
+                        members={members}
                         onSettle={handleSettleLine}
                       />
                     </View>
@@ -1603,8 +1787,87 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   expandedLines: {
+    marginBottom: 8,
+  },
+  balancesMemberContainer: {
+    marginBottom: 8,
+  },
+  balanceMemberCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
     paddingHorizontal: 16,
-    paddingBottom: 12,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  balanceMemberAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  balanceAvatarText: {
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  balanceMemberInfo: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  balanceMemberNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  balanceMemberName: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  balanceRoleBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  balanceRoleBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  balanceMemberSubtitle: {
+    fontSize: 13,
+    marginTop: 2,
+  },
+  balanceAmountCol: {
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+    marginRight: 10,
+  },
+  balanceTotalAmount: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  balanceTotalLabel: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+  balanceChevronButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  settledBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  settledBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
   expenseCard: {
     flexDirection: 'row',
