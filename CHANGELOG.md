@@ -5,6 +5,10 @@
   - Styled member balance cards with mint circular avatar, member name, role badge (`You • Admin`, `You`, `Admin`), breakdown subtitle, bold total balance amount and directional label, and circular chevron toggle.
   - Redesigned the expanded bilateral breakdown with clean PENDING and SETTLED sub-sections, avatar indicators, "Remind all" action, directional relation copy, and pill "Record" settlement button.
   - Added smooth accordion expanding and collapsing animation using `LayoutAnimation` and entrance fade/slide animation.
+- Fixed the friend card swipe-to-delete action UI to match the group card style with solid red background (`#ef4444`), white trash icon, white text, centered content, and matching rounded corners and margins.
+- Fixed back navigation when opening friend details from a group member list:
+  - Passed `returnTo: /groups/${id}` parameter when tapping a member in the group member list (`all` tab).
+  - In `FriendDetailScreen`, added `handleBack` and a `beforeRemove` navigation listener to return directly to the caller group screen when `returnTo` is provided, retaining standard `router.back()` behavior when navigated from the friends list.
 
 ## 2026-09-07
 

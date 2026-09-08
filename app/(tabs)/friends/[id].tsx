@@ -26,7 +26,7 @@ import type { Expense, User } from '@/types/database';
 import { formatCurrency } from '@/utils/currency';
 import { getFirstName } from '@/utils/validation';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams, useNavigation } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Animated, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
 import type { SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable';
@@ -54,7 +54,32 @@ const ACTIVITY_FILTERS: { id: ActivityFilter; label: string; icon: IconSymbolNam
 ];
 
 export default function FriendDetailScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, returnTo } = useLocalSearchParams<{ id: string; returnTo?: string }>();
+  const navigation = useNavigation();
+  const isReturningRef = useRef(false);
+
+  const handleBack = useCallback(() => {
+    if (returnTo) {
+      isReturningRef.current = true;
+      router.replace(returnTo as any);
+    } else {
+      router.back();
+    }
+  }, [returnTo]);
+
+  useEffect(() => {
+    if (!returnTo) return;
+
+    const unsubscribe = navigation.addListener('beforeRemove', (e) => {
+      if (isReturningRef.current) return;
+      e.preventDefault();
+      isReturningRef.current = true;
+      router.replace(returnTo as any);
+    });
+
+    return unsubscribe;
+  }, [navigation, returnTo]);
+
   const { gradients, colors, settle, friendDetail: friendDetailTheme, isDark } = useThemeColors();
   const [activityFilter, setActivityFilter] = useState<ActivityFilter>('all');
   const [segmentedWidth, setSegmentedWidth] = useState(0);
@@ -141,10 +166,10 @@ export default function FriendDetailScreen() {
     if (friendDetail === undefined || isLoading) return;
     if (!friendDetail) {
       Alert.alert('Error', 'Friend not found');
-      router.back();
+      handleBack();
       return;
     }
-  }, [friendDetail, isLoading]);
+  }, [friendDetail, handleBack, isLoading]);
 
   const loadFriendData = useCallback(async () => {
     await refetch();
@@ -302,7 +327,7 @@ export default function FriendDetailScreen() {
             try {
               setIsRemovingFriend(true);
               await friendDetailModule.removeFriend(currentUserId, id);
-              router.back();
+              handleBack();
               Alert.alert('Success', `${friend?.name} has been removed from your friends`);
             } catch (error) {
               console.error('Error removing friend:', error);
@@ -353,7 +378,7 @@ export default function FriendDetailScreen() {
         <View style={styles.header}>
           <ThemedIconButton
             name="chevron.left"
-            onPress={() => router.back()}
+            onPress={handleBack}
             size={20}
             shape="circle"
             accessibilityLabel="Go back"
@@ -376,7 +401,7 @@ export default function FriendDetailScreen() {
         <View style={styles.header}>
           <ThemedIconButton
             name="chevron.left"
-            onPress={() => router.back()}
+            onPress={handleBack}
             size={20}
             shape="circle"
             accessibilityLabel="Go back"
@@ -450,7 +475,7 @@ export default function FriendDetailScreen() {
       <View style={styles.header}>
         <ThemedIconButton
           name="chevron.left"
-          onPress={() => router.back()}
+          onPress={handleBack}
           size={20}
           shape="circle"
           accessibilityLabel="Go back"

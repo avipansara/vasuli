@@ -35,13 +35,9 @@ function formatBreakdownAmount(currency: string, amount: number) {
 
 function FriendDeleteAction({
   translation,
-  backgroundColor,
-  iconColor,
   onDelete,
 }: {
   translation: SharedValue<number>;
-  backgroundColor: string;
-  iconColor: string;
   onDelete: () => void;
 }) {
   const actionStyle = useAnimatedStyle(() => ({
@@ -49,10 +45,14 @@ function FriendDeleteAction({
   }));
 
   return (
-    <Reanimated.View style={[styles.swipeActionRight, { backgroundColor }, actionStyle]}>
-      <TouchableOpacity onPress={onDelete} style={styles.swipeActionButton}>
-        <IconSymbol name="trash.fill" size={20} color={iconColor} />
-        <ThemedText style={[styles.swipeActionText, { color: iconColor }]}>Delete</ThemedText>
+    <Reanimated.View style={[styles.swipeActionRight, actionStyle]}>
+      <TouchableOpacity
+        onPress={onDelete}
+        style={styles.swipeActionButton}
+        accessibilityRole="button"
+        accessibilityLabel="Delete">
+        <IconSymbol name="trash.fill" size={20} color="#fff" />
+        <ThemedText style={styles.swipeActionText}>Delete</ThemedText>
       </TouchableOpacity>
     </Reanimated.View>
   );
@@ -169,14 +169,14 @@ function FriendCardInner({ friend, onPress, onDelete }: FriendCardProps) {
       renderRightActions={onDelete ? (_progress, translation) => (
         <FriendDeleteAction
           translation={translation}
-          backgroundColor={friendsTheme.dangerSurface}
-          iconColor={friendsTheme.onDanger}
           onDelete={() => onDelete(friend)}
         />
       ) : undefined}
       overshootRight={false}
       friction={2}
-      enableTrackpadTwoFingerGesture>
+      overshootFriction={8}
+      enableTrackpadTwoFingerGesture
+      containerStyle={{ overflow: 'visible' }}>
       <TouchableOpacity
         style={[styles.card, cardStyle]}
         onPress={() => onPress?.(friend)}
@@ -395,22 +395,23 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   swipeActionRight: {
+    backgroundColor: '#ef4444',
     justifyContent: 'center',
     alignItems: 'flex-end',
-    paddingRight: 16,
-    marginBottom: 10,
-    borderTopRightRadius: 16,
-    borderBottomRightRadius: 16,
+    width: 80,
+    borderRadius: 16,
+    marginBottom: 12,
   },
   swipeActionButton: {
     justifyContent: 'center',
     alignItems: 'center',
     width: 80,
     height: '100%',
+    gap: 4,
   },
   swipeActionText: {
+    color: '#fff',
     fontSize: 12,
     fontWeight: '600',
-    marginTop: 4,
   },
 });

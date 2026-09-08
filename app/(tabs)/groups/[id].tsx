@@ -954,7 +954,13 @@ export default function GroupDetailScreen() {
         containerStyle={{ overflow: 'visible' }}>
         <TouchableOpacity
           activeOpacity={0.72}
-          onPress={() => item.userId !== currentUserId && router.push(`/friends/${item.userId}` as any)}
+          onPress={() => {
+            if (item.userId === currentUserId) return;
+            router.push({
+              pathname: '/friends/[id]',
+              params: { id: item.userId, returnTo: `/groups/${id}` },
+            } as any);
+          }}
           style={[styles.memberCard, {
             backgroundColor: colors.card,
             borderWidth: 0,
