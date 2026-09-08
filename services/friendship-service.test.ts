@@ -88,12 +88,12 @@ describe('friendshipService', () => {
     expect(mocks.getByIds).toHaveBeenCalledWith(['user-a'])
   })
 
-  it('fails instead of returning an anonymous pending request', async () => {
+  it('skips requests whose requester profile cannot be loaded', async () => {
     mocks.getByIds.mockResolvedValue([])
 
     await expect(
       friendshipService.getPendingRequestsWithRequesters('user-b')
-    ).rejects.toThrow('Unable to load the profile for a pending friend request.')
+    ).resolves.toEqual([])
   })
 
   it('does not show a pending request when the users are already friends', async () => {
@@ -148,5 +148,13 @@ describe('friendshipService', () => {
       friendshipService.getSentRequestsWithRecipients('user-a')
     ).resolves.toEqual([])
     expect(mocks.getByIds).not.toHaveBeenCalled()
+  })
+
+  it('skips sent requests whose recipient profile cannot be loaded', async () => {
+    mocks.getByIds.mockResolvedValue([])
+
+    await expect(
+      friendshipService.getSentRequestsWithRecipients('user-a')
+    ).resolves.toEqual([])
   })
 })

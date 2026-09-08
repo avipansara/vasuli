@@ -25,6 +25,10 @@ const mocks = vi.hoisted(() => {
   const getFriends = vi.fn((): Promise<string[]> => Promise.resolve([]))
   const receivedOrder = vi.fn<() => Promise<{ data: any[]; error: any }>>(() => Promise.resolve({ data: [], error: null }))
   const sentOrder = vi.fn<() => Promise<{ data: any[]; error: any }>>(() => Promise.resolve({ data: [], error: null }))
+  const linkSingle = vi.fn<() => Promise<{ data: any; error: any }>>(() => Promise.resolve({ data: null, error: null }))
+  const linkLimit = vi.fn<() => Promise<{ data: any[]; error: any }>>(() => Promise.resolve({ data: [], error: null }))
+  const invitationSingle = vi.fn<() => Promise<{ data: any; error: any }>>(() => Promise.resolve({ data: null, error: { code: 'PGRST116' } }))
+  const updateEq = vi.fn(() => Promise.resolve({ error: null }))
   const createFriendship = vi.fn(() => Promise.resolve({
     id: 'friendship-1',
     userId: 'inviter-uuid',
@@ -33,7 +37,7 @@ const mocks = vi.hoisted(() => {
     createdAt: Date.now(),
   }))
   const areFriends = vi.fn(() => Promise.resolve(false))
-  return { invoke, insertSelectSingle, deleteEq, from, getByEmail, getByIds, getFriends, receivedOrder, sentOrder, createFriendship, areFriends }
+  return { invoke, insertSelectSingle, deleteEq, updateEq, from, getByEmail, getByIds, getFriends, receivedOrder, sentOrder, linkSingle, linkLimit, invitationSingle, createFriendship, areFriends }
 })
 
 vi.mock('@/lib/supabase', () => ({
@@ -75,6 +79,10 @@ describe('invitationService.create', () => {
     mocks.getFriends.mockResolvedValue([])
     mocks.receivedOrder.mockResolvedValue({ data: [], error: null })
     mocks.sentOrder.mockResolvedValue({ data: [], error: null })
+    mocks.linkSingle.mockResolvedValue({ data: null, error: null })
+    mocks.linkLimit.mockResolvedValue({ data: [], error: null })
+    mocks.invitationSingle.mockResolvedValue({ data: null, error: { code: 'PGRST116' } })
+    mocks.updateEq.mockResolvedValue({ error: null })
     mocks.areFriends.mockResolvedValue(false)
     mocks.from.mockImplementation((table: string) => {
       if (table !== 'invitations') {
@@ -86,15 +94,23 @@ describe('invitationService.create', () => {
             single: mocks.insertSelectSingle,
           }),
         }),
+        update: () => ({
+          eq: mocks.updateEq,
+        }),
         delete: () => ({
           eq: mocks.deleteEq,
         }),
         select: () => ({
           eq: () => ({
             eq: () => ({
+              eq: () => ({
+                order: () => ({ limit: mocks.linkLimit }),
+              }),
               order: mocks.receivedOrder,
             }),
             order: mocks.sentOrder,
+            maybeSingle: mocks.linkSingle,
+            single: mocks.invitationSingle,
           }),
         }),
       }
@@ -262,6 +278,146 @@ describe('invitationService.create', () => {
     expect(invitations[0].status).toBe('accepted')
   })
 })
+
+  describe('acceptInvitationFromLink', () => {
+    const linkRow = {
+      id: 'inv-1',
+      inviter_id: 'inviter-uuid',
+      invitee_email: 'friend@example.com',
+      status: 'pending',
+    }
+
+    it('accepts a matching pending invitation', async () => {
+      mocks.linkSingle.mockResolvedValueOnce({ data: linkRow, error: null })
+
+      const result = await invitationService.acceptInvitationFromLink({
+        invitationId: 'inv-1',
+        inviterId: 'inviter-uuid',
+        inviteeEmail: '  Friend@Example.com ',
+      })
+
+      expect(result).toEqual({ outcome: 'accepted' })
+      expect(mocks.updateEq).toHaveBeenCalledWith('id', 'inv-1')
+    })
+
+    it('reports already-accepted without writing', async () => {
+      mocks.linkSingle.mockResolvedValueOnce({
+        data: { ...linkRow, status: 'accepted' },
+        error: null,
+      })
+
+      const result = await invitationService.acceptInvitationFromLink({
+        invitationId: 'inv-1',
+        inviterId: 'inviter-uuid',
+        inviteeEmail: 'friend@example.com',
+      })
+
+      expect(result).toEqual({ outcome: 'already-accepted' })
+      expect(mocks.updateEq).not.toHaveBeenCalled()
+    })
+
+    it('reports declined without writing', async () => {
+      mocks.linkSingle.mockResolvedValueOnce({
+        data: { ...linkRow, status: 'declined' },
+        error: null,
+      })
+
+      const result = await invitationService.acceptInvitationFromLink({
+        invitationId: 'inv-1',
+        inviterId: 'inviter-uuid',
+        inviteeEmail: 'friend@example.com',
+      })
+
+      expect(result).toEqual({ outcome: 'declined' })
+      expect(mocks.updateEq).not.toHaveBeenCalled()
+    })
+
+    it('reports expired without writing', async () => {
+      mocks.linkSingle.mockResolvedValueOnce({
+        data: { ...linkRow, status: 'expired' },
+        error: null,
+      })
+
+      const result = await invitationService.acceptInvitationFromLink({
+        invitationId: 'inv-1',
+        inviterId: 'inviter-uuid',
+        inviteeEmail: 'friend@example.com',
+      })
+
+      expect(result).toEqual({ outcome: 'expired' })
+      expect(mocks.updateEq).not.toHaveBeenCalled()
+    })
+
+    it('reports invalid when the email does not match', async () => {
+      mocks.linkSingle.mockResolvedValueOnce({ data: linkRow, error: null })
+
+      const result = await invitationService.acceptInvitationFromLink({
+        invitationId: 'inv-1',
+        inviterId: 'inviter-uuid',
+        inviteeEmail: 'someone-else@example.com',
+      })
+
+      expect(result).toEqual({ outcome: 'invalid' })
+      expect(mocks.updateEq).not.toHaveBeenCalled()
+    })
+
+    it('reports invalid when the row is missing', async () => {
+      mocks.linkSingle.mockResolvedValueOnce({ data: null, error: null })
+
+      const result = await invitationService.acceptInvitationFromLink({
+        invitationId: 'inv-1',
+        inviterId: 'inviter-uuid',
+        inviteeEmail: 'friend@example.com',
+      })
+
+      expect(result).toEqual({ outcome: 'invalid' })
+      expect(mocks.updateEq).not.toHaveBeenCalled()
+    })
+
+    it('accepts the newest pending row when no invitation id is given', async () => {
+      mocks.linkLimit.mockResolvedValueOnce({
+        data: [{ id: 'inv-9', status: 'pending' }],
+        error: null,
+      })
+
+      const result = await invitationService.acceptInvitationFromLink({
+        inviterId: 'inviter-uuid',
+        inviteeEmail: 'friend@example.com',
+      })
+
+      expect(result).toEqual({ outcome: 'accepted' })
+      expect(mocks.updateEq).toHaveBeenCalledWith('id', 'inv-9')
+    })
+
+    it('reports invalid when no pending row exists and no id is given', async () => {
+      mocks.linkLimit.mockResolvedValueOnce({ data: [], error: null })
+
+      const result = await invitationService.acceptInvitationFromLink({
+        inviterId: 'inviter-uuid',
+        inviteeEmail: 'friend@example.com',
+      })
+
+      expect(result).toEqual({ outcome: 'invalid' })
+      expect(mocks.updateEq).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('getById', () => {
+    it('returns the mapped invitation', async () => {
+      mocks.invitationSingle.mockResolvedValueOnce({ data: inviteRow, error: null })
+
+      const invitation = await invitationService.getById('inv-row-id')
+
+      expect(invitation?.inviteeEmail).toBe('friend@example.com')
+      expect(invitation?.status).toBe('pending')
+    })
+
+    it('returns null when the row is missing', async () => {
+      mocks.invitationSingle.mockResolvedValueOnce({ data: null, error: { code: 'PGRST116' } })
+
+      await expect(invitationService.getById('missing')).resolves.toBeNull()
+    })
+  })
 
 })
 

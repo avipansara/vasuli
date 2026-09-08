@@ -198,6 +198,15 @@ export default function InvitationsScreen() {
   const handleAccept = useCallback(async (invitation: InvitationWithDetails) => {
     setActionLoading(invitation.id);
     try {
+      // Re-read at action time: the list may be stale (already handled or
+      // expired since it rendered).
+      const fresh = await invitationService.getById(invitation.id);
+      if (!fresh || fresh.status !== 'pending' || fresh.expiresAt < Date.now()) {
+        Alert.alert('No longer available', 'This invitation is no longer pending.');
+        loadInvitations();
+        return;
+      }
+
       await invitationService.updateStatus(invitation.id, 'accepted');
 
       // Create friendship
@@ -584,7 +593,8 @@ export default function InvitationsScreen() {
               </View>
             ) : null}
             ListEmptyComponent={
-              activeTab === 'sent' && sentFriendRequests.length > 0 ? null : (
+              (activeTab === 'received' && receivedFriendRequests.length > 0) ||
+              (activeTab === 'sent' && sentFriendRequests.length > 0) ? null : (
               <View style={styles.emptyContainer}>
                 <IconSymbol
                   name={activeTab === 'received' ? 'envelope.open' : 'paperplane'}
@@ -593,9 +603,7 @@ export default function InvitationsScreen() {
                 />
                 <ThemedText style={[styles.emptyText, { color: colors.textSecondary }]}>
                   {activeTab === 'received'
-                    ? receivedFriendRequests.length > 0
-                      ? 'No app invitations received'
-                      : noEmailForInvites
+                    ? noEmailForInvites
                       ? 'Friend invitations are sent to your email. Add an email in your profile so pending invites appear here.'
                       : 'No invitations received'
                     : 'No invitations sent'}

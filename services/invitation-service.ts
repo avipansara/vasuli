@@ -143,6 +143,21 @@ export const invitationService = {
     return mapInvitationRow(data);
   },
 
+  async getById(id: string): Promise<Invitation | null> {
+    const { data, error } = await supabase
+      .from('invitations')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') return null;
+      throw error;
+    }
+
+    return mapInvitationRow(data);
+  },
+
   async getByInviter(inviterId: string): Promise<Invitation[]> {
     const { data, error } = await supabase
       .from('invitations')
@@ -258,15 +273,19 @@ export const invitationService = {
   /**
    * Mark the invitation accepted when the invitee opens the email deep link and taps Accept.
    * Uses `invitationId` from the URL when present; otherwise finds the newest pending row for
-   * (inviterId, inviteeEmail). No-ops if invitee has no email or nothing matches.
+   * (inviterId, inviteeEmail).
+   *
+   * Returns an outcome instead of throwing so callers can distinguish a real
+   * accept from a stale, mismatched, or already-handled link. Only 'accepted'
+   * flips a row; every other outcome leaves the database untouched.
    */
   async acceptInvitationFromLink(params: {
     invitationId?: string | null;
     inviterId: string;
     inviteeEmail?: string | null;
-  }): Promise<void> {
+  }): Promise<{ outcome: 'accepted' | 'already-accepted' | 'declined' | 'expired' | 'invalid' }> {
     const email = normalizeEmail(params.inviteeEmail ?? undefined);
-    if (!email) return;
+    if (!email) return { outcome: 'invalid' };
 
     if (params.invitationId) {
       const { data, error } = await supabase
@@ -275,15 +294,17 @@ export const invitationService = {
         .eq('id', params.invitationId)
         .maybeSingle();
 
-      if (error || !data) return;
+      if (error || !data) return { outcome: 'invalid' };
 
-      if (data.inviter_id !== params.inviterId) return;
-      if (normalizeEmail(String(data.invitee_email)) !== email) return;
-      if (data.status === 'accepted' || data.status === 'declined') return;
-      if (data.status !== 'pending') return;
+      if (data.inviter_id !== params.inviterId) return { outcome: 'invalid' };
+      if (normalizeEmail(String(data.invitee_email)) !== email) return { outcome: 'invalid' };
+      if (data.status === 'accepted') return { outcome: 'already-accepted' };
+      if (data.status === 'declined') return { outcome: 'declined' };
+      if (data.status === 'expired') return { outcome: 'expired' };
+      if (data.status !== 'pending') return { outcome: 'invalid' };
 
       await this.updateStatus(data.id, 'accepted');
-      return;
+      return { outcome: 'accepted' };
     }
 
     const { data: rows, error } = await supabase
@@ -295,9 +316,10 @@ export const invitationService = {
       .order('created_at', { ascending: false })
       .limit(1);
 
-    if (error || !rows?.length) return;
+    if (error || !rows?.length) return { outcome: 'invalid' };
 
     await this.updateStatus(rows[0].id, 'accepted');
+    return { outcome: 'accepted' };
   },
 
   /** Pending invites for the signed-in user's email (email invites only). */

@@ -1,5 +1,16 @@
 ## 2026-09-08
 
+- Fixed the invite deep link reporting success when the accept was skipped:
+  `acceptInvitationFromLink` now returns an outcome
+  (`accepted`/`already-accepted`/`declined`/`expired`/`invalid`) and only
+  writes on a real accept; the invite screen blocks declined/expired/invalid
+  links instead of connecting anyway.
+- Fixed one unloadable profile blanking the whole Received/Sent tabs: pending
+  and sent request lookups now skip (and log) unresolvable rows.
+- Fixed accepting a stale invitation row: tab Accept re-reads the invitation
+  via a new `getById` and bails when it is no longer pending or has expired.
+- Fixed the Received tab stacking its empty illustration under request cards
+  when no email invites exist.
 - Fixed sent invitations missing name/email details: Add Friend now collects
   an optional name, stores it trimmed, and the Sent tab shows both name and
   email (never a blank row) via a tested display helper.

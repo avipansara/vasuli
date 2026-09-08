@@ -134,8 +134,8 @@ export const friendshipService = {
    * Get sent pending requests with the recipient's profile name.
    *
    * Mirrors getPendingRequestsWithRequesters so a sender can see what they
-   * sent. Fails loudly if a referenced profile cannot be loaded instead of
-   * presenting an anonymous row.
+   * sent. Rows whose profile cannot be loaded are skipped (and logged) so a
+   * single bad row cannot take down the whole invitations list.
    */
   async getSentRequestsWithRecipients(userId: string): Promise<SentFriendshipRequest[]> {
     const [requests, friendIds] = await Promise.all([
@@ -161,22 +161,26 @@ export const friendshipService = {
       .filter((recipientId) => !recipientNames.has(recipientId));
 
     if (missingRecipientIds.length > 0) {
-      throw new Error('Unable to load the profile for a sent friend request.');
+      console.error(
+        `Skipping ${missingRecipientIds.length} sent friend request(s) with unloadable profiles.`,
+      );
     }
 
-    return visibleRequests.map((request) => ({
-      ...request,
-      recipientName: recipientNames.get(request.friendId)!,
-      recipientEmail: recipientEmails.get(request.friendId),
-    }));
+    return visibleRequests
+      .filter((request) => recipientNames.has(request.friendId))
+      .map((request) => ({
+        ...request,
+        recipientName: recipientNames.get(request.friendId)!,
+        recipientEmail: recipientEmails.get(request.friendId),
+      }));
   },
 
   /**
    * Get pending requests with the requester's profile name.
    *
    * Friendships only store user IDs, so resolve the requester profiles in one
-   * batch and fail loudly if a referenced profile cannot be loaded. This keeps
-   * the UI from silently presenting an anonymous request.
+   * batch. Rows whose profile cannot be loaded are skipped (and logged) so a
+   * single bad row cannot take down the whole invitations list.
    */
   async getPendingRequestsWithRequesters(userId: string): Promise<PendingFriendshipRequest[]> {
     const [requests, friendIds] = await Promise.all([
@@ -199,13 +203,17 @@ export const friendshipService = {
       .filter((requesterId) => !requesterNames.has(requesterId));
 
     if (missingRequesterIds.length > 0) {
-      throw new Error('Unable to load the profile for a pending friend request.');
+      console.error(
+        `Skipping ${missingRequesterIds.length} pending friend request(s) with unloadable profiles.`,
+      );
     }
 
-    return visibleRequests.map((request) => ({
-      ...request,
-      requesterName: requesterNames.get(request.userId)!,
-    }));
+    return visibleRequests
+      .filter((request) => requesterNames.has(request.userId))
+      .map((request) => ({
+        ...request,
+        requesterName: requesterNames.get(request.userId)!,
+      }));
   },
 
   /**
