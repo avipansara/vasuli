@@ -1,14 +1,44 @@
 ## 2026-09-08
 
-- Redesigned the Member Balances extended section UI to match the modern card design:
-  - Added "Member Balances" section header with dynamic status pill badge (`All settled` or `All settled except X`).
-  - Styled member balance cards with mint circular avatar, member name, role badge (`You • Admin`, `You`, `Admin`), breakdown subtitle, bold total balance amount and directional label, and circular chevron toggle.
-  - Redesigned the expanded bilateral breakdown with clean PENDING and SETTLED sub-sections, avatar indicators, "Remind all" action, directional relation copy, and pill "Record" settlement button.
-  - Added smooth accordion expanding and collapsing animation using `LayoutAnimation` and entrance fade/slide animation.
-- Fixed the friend card swipe-to-delete action UI to match the group card style with solid red background (`#ef4444`), white trash icon, white text, centered content, and matching rounded corners and margins.
-- Fixed back navigation when opening friend details from a group member list:
-  - Passed `returnTo: /groups/${id}` parameter when tapping a member in the group member list (`all` tab).
-  - In `FriendDetailScreen`, added `handleBack` and a `beforeRemove` navigation listener to return directly to the caller group screen when `returnTo` is provided, retaining standard `router.back()` behavior when navigated from the friends list.
+- Release versioning is now tag-driven: merges to master no longer bump
+  `expo.version` in `app.json`. Pushing `vX.Y.Z` sets `app.json` to `X.Y.Z`
+  (transiently in the production build jobs so the binary matches the tag,
+  plus a sync-back commit to master), and non-semver tags fail the build.
+  Preview builds also no longer auto-increment remote build numbers; only
+  production tag builds do.
+- The EAS production workflow is now manual-only (`npm run deploy` fallback):
+  tag releases ship exclusively through GitHub Actions so a tag no longer
+  triggers a second build with a stale `app.json` and a double remote
+  build-number bump.
+- iOS E2E smoke no longer runs on pull requests (manual dispatch only);
+  simulator runs were too slow to gate PRs, which stay covered by
+  lint/typecheck/unit checks.
+
+- Fixed the invite deep link reporting success when the accept was skipped:
+  `acceptInvitationFromLink` now returns an outcome
+  (`accepted`/`already-accepted`/`declined`/`expired`/`invalid`) and only
+  writes on a real accept; the invite screen blocks declined/expired/invalid
+  links instead of connecting anyway.
+- Fixed one unloadable profile blanking the whole Received/Sent tabs: pending
+  and sent request lookups now skip (and log) unresolvable rows.
+- Fixed accepting a stale invitation row: tab Accept re-reads the invitation
+  via a new `getById` and bails when it is no longer pending or has expired.
+- Fixed the Received tab stacking its empty illustration under request cards
+  when no email invites exist.
+- Fixed sent invitations missing name/email details: Add Friend now collects
+  an optional name, stores it trimmed, and the Sent tab shows both name and
+  email (never a blank row) via a tested display helper.
+- Fixed outgoing friend requests being invisible to the sender: the Sent tab
+  now lists pending requests sent to existing Vasuli users (with recipient
+  name/email and Cancel), with realtime updates for rows you sent.
+- Fixed stale "pending" invites lingering in Sent after the friendship formed
+  through another path: `getByInviter` now suppresses pending rows whose
+  invitee is already an accepted friend, mirroring the Received tab.
+  Accepted/declined history still shows. (Rows addressed to a mistyped email
+  can never link to an account; cancel those from Sent.)
+- Moved Invitations-screen colors into `InvitationsTheme` light/dark tokens
+  (`constants/theme.ts`, exposed via `useThemeColors`) instead of scattered
+  hex values.
 
 ## 2026-09-07
 

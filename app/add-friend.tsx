@@ -30,6 +30,7 @@ export default function AddFriendScreen() {
   const { user } = useAuth();
   const currentUserId = user?.id ?? '';
   const [email, setEmail] = useState('');
+  const [name, setName] = useState('');
   const [lookupState, setLookupState] = useState<LookupState>('idle');
   const [matchedUser, setMatchedUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(false);
@@ -82,9 +83,11 @@ export default function AddFriendScreen() {
 
     setLoading(true);
     try {
+      const inviteeName = name.trim().replace(/\s+/g, ' ') || undefined;
       const result = await invitationService.sendRequestOrInvitation({
         inviterId: currentUserId,
         inviteeEmail: normalized,
+        inviteeName,
         inviterName: user?.name || 'A friend',
       });
       Alert.alert(
@@ -211,13 +214,26 @@ export default function AddFriendScreen() {
                       </View>
                     </View>
                     {lookupState === 'not-found' && (
-                      <ThemedButton
-                        label="Send invite"
-                        onPress={handlePrimaryAction}
-                        disabled={loading}
-                        loading={loading}
-                        style={{ marginTop: 12 }}
-                      />
+                      <>
+                        <ThemedInput
+                          value={name}
+                          onChangeText={setName}
+                          autoCapitalize="words"
+                          autoCorrect={false}
+                          returnKeyType="done"
+                          onSubmitEditing={Keyboard.dismiss}
+                          accessibilityLabel="Invitee name"
+                          placeholder="Their name (optional)"
+                          icon="person"
+                        />
+                        <ThemedButton
+                          label="Send invite"
+                          onPress={handlePrimaryAction}
+                          disabled={loading}
+                          loading={loading}
+                          style={{ marginTop: 12 }}
+                        />
+                      </>
                     )}
                   </>
                 )}

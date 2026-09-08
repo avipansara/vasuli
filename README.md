@@ -258,12 +258,9 @@ configuration only; do not commit account credentials.
 The repository keeps Detox verification in two GitHub Actions workflows. They
 are separate from the EAS build and release workflows below.
 
-- [`e2e-smoke.yml`](./.github/workflows/e2e-smoke.yml) runs on pull requests
-  that touch the app, native iOS project, E2E code, runner scripts, or their
-  lock/configuration inputs. This is the change boundary because it catches
-  native and user-flow regressions without making documentation-only or
-  unrelated repository pull requests wait for a simulator. It can also be
-  started with **Run workflow**.
+- [`e2e-smoke.yml`](./.github/workflows/e2e-smoke.yml) is manual-only
+  (**Run workflow**): simulator E2E is too slow to gate pull requests, which
+  stay covered by lint, typecheck, and unit checks.
 - [`e2e-full.yml`](./.github/workflows/e2e-full.yml) runs the serial full suite
   on weekday mornings and through **Run workflow**. It is intentionally not a
   job in general CI or a release build. Both workflows use `macos-26`, build
@@ -353,7 +350,7 @@ Clearing Metro is only needed for a stale local development server. `npx expo st
 
 ### Production Deployments
 
-Run `npm run deploy` to [deploy to production](https://docs.expo.dev/eas/workflows/examples/deploy-to-production/). This workflow runs on pushes to `master`, builds or reuses matching production binaries, and publishes production updates. Follow the [Prerequisites](https://docs.expo.dev/eas/workflows/examples/deploy-to-production/#prerequisites) to submit to the Apple and Google stores.
+Tag releases ship through GitHub Actions (`.github/workflows/production-build.yml` on `v*` tags): the tag sets `expo.version` in `app.json`, then production binaries build and auto-submit. `npm run deploy` remains as a manual-only EAS fallback that builds or reuses matching production binaries and publishes production updates. Follow the [Prerequisites](https://docs.expo.dev/eas/workflows/examples/deploy-to-production/#prerequisites) to submit to the Apple and Google stores.
 
 ## Hosting
 

@@ -48,6 +48,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Sync app.json version from tag
+        run: node scripts/sync-app-version-from-tag.cjs "${{ github.ref_name }}"
+
       - name: Setup EAS CLI
         uses: expo/expo-github-action@v8
         with:
@@ -76,6 +79,9 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Sync app.json version from tag
+        run: node scripts/sync-app-version-from-tag.cjs "${{ github.ref_name }}"
 
       - name: Setup EAS CLI
         uses: expo/expo-github-action@v8

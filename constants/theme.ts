@@ -99,6 +99,41 @@ export const Colors = {
   },
 };
 
+export const InvitationsTheme = {
+  light: {
+    iconSurface: 'rgba(34, 197, 94, 0.1)',
+    iconBorder: 'rgba(34, 197, 94, 0.3)',
+    activeTabSurface: 'rgba(34, 197, 94, 0.1)',
+    emptyIcon: 'rgba(34, 197, 94, 0.3)',
+    icon: ACCENT_GREEN,
+    primaryAction: '#22C55E',
+    primaryActionText: '#0A0A0F',
+    pending: '#F59E0B',
+    pendingText: '#FFFFFF',
+    danger: '#DC2626',
+    dangerSurface: 'rgba(239, 68, 68, 0.1)',
+    dangerBorder: 'rgba(239, 68, 68, 0.3)',
+    divider: BORDER_LIGHT,
+    expired: '#6B7280',
+  },
+  dark: {
+    iconSurface: 'rgba(45, 212, 191, 0.15)',
+    iconBorder: 'rgba(45, 212, 191, 0.4)',
+    activeTabSurface: 'rgba(45, 212, 191, 0.2)',
+    emptyIcon: 'rgba(45, 212, 191, 0.3)',
+    icon: ACCENT_TEAL,
+    primaryAction: ACCENT_TEAL,
+    primaryActionText: '#0A0A0F',
+    pending: '#F59E0B',
+    pendingText: '#FFFFFF',
+    danger: '#EF4444',
+    dangerSurface: 'rgba(239, 68, 68, 0.2)',
+    dangerBorder: 'rgba(239, 68, 68, 0.4)',
+    divider: BORDER_DARK,
+    expired: '#6B7280',
+  },
+};
+
 export const ExpenseDetailTheme = {
   light: {
     accent: ACCENT_GREEN,

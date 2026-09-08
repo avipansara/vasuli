@@ -24,6 +24,7 @@ export const queryKeys = {
     received: (userId: string, email: string) => ['invitations', 'received', userId, email] as const,
     sent: (userId: string) => ['invitations', 'sent', userId] as const,
     friendRequests: (userId: string) => ['invitations', 'friend-requests', userId] as const,
+    sentRequests: (userId: string) => ['invitations', 'sent-requests', userId] as const,
     pendingCount: (userId: string, email: string) => ['invitations', 'pending-count', userId, email] as const,
   },
   settlements: {

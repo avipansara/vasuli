@@ -82,8 +82,9 @@ describe('serial Detox suite contract', () => {
     }
 
     expect(smokeWorkflow).toContain('timeout-minutes: 40');
-    expect(smokeWorkflow).toContain('pull_request:');
-    expect(smokeWorkflow).toContain('paths:');
+    expect(smokeWorkflow).toContain('workflow_dispatch:');
+    expect(smokeWorkflow).not.toContain('pull_request:');
+    expect(fullWorkflow).not.toContain('pull_request:');
     expect(fullWorkflow).toContain('schedule:');
     expect(fullWorkflow).toContain('workflow_dispatch:');
     expect(read('.github/workflows/ci-validation.yml')).not.toContain('e2e:ios');
