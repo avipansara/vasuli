@@ -28,7 +28,7 @@ import { createReactQueryCacheAdapter } from '@/services/query-cache-adapter';
 import { queryKeys } from '@/services/query-keys';
 import type { Expense, GroupMember, Settlement, SettlementCancellation, SettlementScopeTransfer, User } from '@/types/database';
 import { formatCurrency, getPreferredCurrency } from '@/utils/currency';
-import { groupPairTotalsService } from '@/services/group-pair-totals-service';
+import { groupPairTotalsService, toGroupScopedLine } from '@/services/group-pair-totals-service';
 import { getViewerPairBalance } from '@/utils/group-member-balance';
 import { getFirstName } from '@/utils/validation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -187,12 +187,9 @@ export default function GroupDetailScreen() {
   });
   const linesForMember = useCallback((memberUserId: string) => pairTotals
     .filter(total => total.fromUserId === memberUserId || total.toUserId === memberUserId)
-    .map(total => ({
-      fromUserId: total.fromUserId,
-      toUserId: total.toUserId,
-      amount: total.amount,
-      currency: total.currency,
-    }))
+    // Group scope only: member rows must show the group component, never
+    // the combined net that folds direct-ledger debt into the group.
+    .map(total => ({ ...toGroupScopedLine(total) }))
     .sort((x, y) =>
       x.fromUserId.localeCompare(y.fromUserId)
       || x.toUserId.localeCompare(y.toUserId)

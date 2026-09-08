@@ -3,10 +3,11 @@ import type { GroupPairTotal } from '@/services/group-pair-totals-service';
 import { getViewerPairBalance } from './group-member-balance';
 
 const pair = (fromUserId: string, toUserId: string, amount: number, currency = 'USD'): GroupPairTotal => ({
+  // Group-scoped fixture: the combined from/to matches the group direction.
   userA: fromUserId,
   userB: toUserId,
   currency,
-  groupAmount: 0,
+  groupAmount: -amount,
   directAmount: 0,
   fromUserId,
   toUserId,
@@ -53,5 +54,25 @@ describe('getViewerPairBalance', () => {
       pairTotals: [pair('member', 'viewer', 0, 'USD'), pair('member', 'viewer', 12, 'EUR')],
       ...base,
     })).toMatchObject({ amount: 12, currency: 'EUR', signedAmount: -12 });
+  });
+
+  it('shows the group component, not the combined net, for mixed-scope pairs', () => {
+    // Mixed-scope shape: group 49.49 + direct 44.50 = 93.99 combined.
+    const mixed: GroupPairTotal = {
+      userA: 'member',
+      userB: 'viewer',
+      currency: 'USD',
+      groupAmount: -49.49,
+      directAmount: -44.5,
+      fromUserId: 'viewer',
+      toUserId: 'member',
+      amount: -93.99,
+    };
+    expect(getViewerPairBalance({
+      pairTotals: [mixed],
+      memberUserId: 'member',
+      viewerUserId: 'viewer',
+      preferredCurrency: 'USD',
+    })).toMatchObject({ amount: 49.49, currency: 'USD', signedAmount: -49.49 });
   });
 });
