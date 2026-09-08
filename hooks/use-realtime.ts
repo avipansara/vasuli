@@ -100,40 +100,6 @@ export function useRealtime({
   return channelRef.current;
 }
 
-export function useGroupExpensesRealtime(
-  groupId: string | undefined,
-  onExpenseChange: () => void,
-  enabled: boolean = true
-) {
-  useRealtime({
-    table: 'expenses',
-    filter: groupId ? `group_id=eq.${groupId}` : undefined,
-    onChange: onExpenseChange,
-    enabled: enabled && !!groupId,
-  });
-
-  useRealtime({
-    table: 'settlements',
-    filter: groupId ? `group_id=eq.${groupId}` : undefined,
-    onChange: onExpenseChange,
-    enabled: enabled && !!groupId,
-  });
-
-  useRealtime({
-    table: 'settlement_scope_transfers',
-    filter: groupId ? `group_id=eq.${groupId}` : undefined,
-    onChange: onExpenseChange,
-    enabled: enabled && !!groupId,
-  });
-
-  useRealtime({
-    table: 'settlement_cancellations',
-    filter: groupId ? `group_id=eq.${groupId}` : undefined,
-    onChange: onExpenseChange,
-    enabled: enabled && !!groupId,
-  });
-}
-
 export function useGroupsHomeRealtime(
   userId: string | undefined,
   onGroupChange: () => void,
@@ -186,21 +152,3 @@ export function useGroupsHomeRealtime(
   });
 }
 
-export function useFriendExpensesRealtime(
-  userId: string | undefined,
-  onExpenseChange: () => void,
-  enabled: boolean = true
-) {
-  useRealtime({
-    table: 'expense_splits',
-    filter: userId ? `user_id=eq.${userId}` : undefined,
-    onChange: onExpenseChange,
-    enabled: enabled && !!userId,
-  });
-
-  useRealtime({
-    table: 'settlements',
-    onChange: onExpenseChange,
-    enabled: enabled && !!userId,
-  });
-}

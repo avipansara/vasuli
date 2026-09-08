@@ -11,42 +11,34 @@ import { Platform } from 'react-native';
 
 // Primary accents
 export const ACCENT_TEAL = '#2DD4BF';
-export const ACCENT_GREEN = '#005E44'; // #0CCCA51FF
-export const ACCENT_PURPLE = '#A78BFA';
-export const ACCENT_YELLOW = '#FACC15';
+const ACCENT_GREEN = '#005E44';
 
 // Status colors
-export const SUCCESS_DARK = '#10b981';
-export const SUCCESS_LIGHT = '#005E44'; // #22C55E
-export const ERROR_COLOR = '#990000';
+const SUCCESS_LIGHT = '#005E44';
+const ERROR_COLOR = '#990000';
 
 // Dark mode backgrounds
-export const BG_DARK = '#05080e';
-export const BG_CARD_DARK = '#000000';
-export const BG_GLASS_DARK = 'rgba(5, 8, 14, 0.8)';
+const BG_DARK = '#05080e';
 export const BG_ICON_DARK = 'rgba(255, 255, 255, 0.08)';
-export const BG_ICON_SUCCESS_DARK = 'rgba(16, 185, 129, 0.15)';
 
 // Light mode backgrounds
-export const BG_LIGHT = '#F1F5F9';
-export const BG_CARD_LIGHT = '#FFFFFF';
+const BG_LIGHT = '#F1F5F9';
+const BG_CARD_LIGHT = '#FFFFFF';
 export const BG_ICON_LIGHT = 'rgba(34, 197, 94, 0.1)';
 
 // Borders
-export const BORDER_DARK = 'rgba(255, 255, 255, 0.08)';
-export const BORDER_LIGHT = '#E5E5E5';
+const BORDER_DARK = 'rgba(255, 255, 255, 0.08)';
+const BORDER_LIGHT = '#E5E5E5';
 export const BORDER_ACCENT_DARK = 'rgba(255, 255, 255, 0.12)';
 export const BORDER_ACCENT_LIGHT = 'rgba(34, 197, 94, 0.3)';
 
 // Text colors
-export const TEXT_DARK = '#f4f4f5';
-export const TEXT_LIGHT = '#1A1A1A';
-export const TEXT_SECONDARY_DARK = '#9CA3AF';
-export const TEXT_SECONDARY_LIGHT = '#6B7280';
+const TEXT_DARK = '#f4f4f5';
+const TEXT_LIGHT = '#1A1A1A';
+const TEXT_SECONDARY_DARK = '#9CA3AF';
+const TEXT_SECONDARY_LIGHT = '#6B7280';
 
 // Button backgrounds
-export const BTN_CLOSE_DARK = 'rgba(255, 255, 255, 0.1)';
-export const BTN_CLOSE_LIGHT = 'rgba(0, 0, 0, 0.05)';
 export const BTN_DISABLED_DARK = ['#1A1A24', '#12121A'] as const;
 export const BTN_DISABLED_LIGHT = ['#E5E5E5', '#D4D4D4'] as const;
 

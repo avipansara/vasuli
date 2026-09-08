@@ -207,11 +207,8 @@ export default function AddExpenseScreen() {
       : friends.filter(friend => selectedFriendIds.includes(friend.id));
     return [{ id: currentUserId, name: user?.name || 'You' }, ...participants.filter(person => person.id !== currentUserId)];
   }, [currentUserId, friends, groupMemberUsers, selectedFriendIds, splitType, user?.name]);
-  const selectedPayerName = payerOptions.find(person => person.id === selectedPayerId)?.name || 'You';
-
-  useEffect(() => {
-    if (!payerOptions.some(person => person.id === selectedPayerId)) setSelectedPayerId(currentUserId);
-  }, [currentUserId, payerOptions, selectedPayerId]);
+  const activePayerId = payerOptions.some(person => person.id === selectedPayerId) ? selectedPayerId : currentUserId;
+  const selectedPayerName = payerOptions.find(person => person.id === activePayerId)?.name || 'You';
   const formattedExpenseDate = formatDate(expenseDate);
 
   const handleHeaderBack = () => {
@@ -273,7 +270,7 @@ export default function AddExpenseScreen() {
         amount: amountNum,
         currency: getPreferredCurrency(),
         date: expenseDate.getTime(),
-        payerId: selectedPayerId,
+        payerId: activePayerId,
         currentUserId,
         currentUser: user!,
         splits,
@@ -436,7 +433,7 @@ export default function AddExpenseScreen() {
                 <ThemedText style={[styles.inputLabel, { color: colors.textSecondary }]}>Paid by</ThemedText>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.payerOptionsContainer}>
                   {payerOptions.map(payer => {
-                    const isSelected = payer.id === selectedPayerId;
+                    const isSelected = payer.id === activePayerId;
                     return (
                       <TouchableOpacity
                         key={payer.id}

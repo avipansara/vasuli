@@ -39,25 +39,6 @@ export async function setPreferredCurrency(currency: CurrencyCode): Promise<void
   currentPreferredCurrency = currency;
 }
 
-export const EXCHANGE_RATES: Record<CurrencyCode, number> = {
-  USD: 1.0,
-  GBP: 0.77,
-  INR: 83.33,
-};
-
-export function convertCurrency(amount: number, from: string, to: string): number {
-  const fromCode = (from || 'USD').toUpperCase() as CurrencyCode;
-  const toCode = (to || 'USD').toUpperCase() as CurrencyCode;
-
-  const rateFrom = EXCHANGE_RATES[fromCode] || 1.0;
-  const rateTo = EXCHANGE_RATES[toCode] || 1.0;
-
-  if (fromCode === toCode) return amount;
-
-  const amountInUSD = amount / rateFrom;
-  return amountInUSD * rateTo;
-}
-
 export function getCurrencySymbol(currencyCode: string = 'USD'): string {
   const code = (currencyCode || 'USD').toUpperCase() as CurrencyCode;
   return CURRENCY_SYMBOLS[code] || code;

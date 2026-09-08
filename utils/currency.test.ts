@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import {
-  convertCurrency,
   formatCurrency,
   fromCents,
   getCurrencySymbol,
@@ -31,18 +30,6 @@ describe('currency utilities', () => {
 
     it('formats with currency code fallback for unsupported currency', () => {
       expect(formatCurrency(10, 'EUR')).toBe('EUR 10.00');
-    });
-  });
-
-  describe('convertCurrency', () => {
-    it('returns the same amount when from and to currencies match', () => {
-      expect(convertCurrency(100, 'USD', 'USD')).toBe(100);
-      expect(convertCurrency(50, 'INR', 'inr')).toBe(50);
-    });
-
-    it('converts across different currencies using exchange rates', () => {
-      const converted = convertCurrency(100, 'USD', 'INR');
-      expect(converted).toBeCloseTo(8333, 0);
     });
   });
 
