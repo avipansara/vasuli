@@ -2,6 +2,7 @@ import type { Expense, ExpenseSplit, Group, GroupMember, Settlement, SettlementC
 import { calculateGroupBalances, cancellationPairFromRow, type CancellationPairResolver } from './group-balance';
 import type { Friendship } from './friendship-service';
 import { resolveOperationPair, type SettlementOperationStatusRecord } from './settlement-operation-projection';
+import { normalizeBalance } from '@/utils/currency';
 
 export type FriendshipStatus = 'none' | 'pending_sent' | 'pending_received' | 'accepted';
 
@@ -282,7 +283,7 @@ export function removeExpenseFromHomeFriends<T extends GroupHomeFriendView>(
     const nextBalance = friend.balance + balanceDelta;
     return {
       ...friend,
-      balance: Math.abs(nextBalance) < 0.01 ? 0 : nextBalance,
+      balance: normalizeBalance(nextBalance),
       recentExpenses: friend.recentExpenses?.filter(item => item.id !== expense.id),
     };
   });

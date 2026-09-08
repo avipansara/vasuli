@@ -1,6 +1,7 @@
 import { ThemedText } from '@/components/themed-text';
 import { AsyncErrorState } from '@/components/ui/async-error-state';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { UserAvatar } from '@/components/ui/user-avatar';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useCurrency } from '@/contexts/currency-context';
 import { useTheme } from '@/contexts/theme-context';
@@ -312,11 +313,13 @@ export default function ProfileScreen() {
         </View>
 
         <View style={[styles.profileCard, cardStyle]}>
-          <View style={[styles.avatarLarge, { backgroundColor: isDark ? '#064e3b' : 'rgba(34, 197, 94, 0.1)' }]}>
-            <ThemedText style={[styles.avatarLargeText, { color: isDark ? '#10b981' : colors.tint }]}>
-              {currentUser?.name?.charAt(0).toUpperCase() || 'U'}
-            </ThemedText>
-          </View>
+          <UserAvatar
+            name={currentUser?.name}
+            avatarUrl={currentUser?.avatar}
+            size={58}
+            variant="rounded"
+            style={{ marginRight: 14 }}
+          />
           <View style={styles.profileInfo}>
             <ThemedText type="subtitle" style={[styles.userName, { color: isDark ? '#f8fafc' : colors.text }]} numberOfLines={1}>
               {currentUser?.name || 'User'}

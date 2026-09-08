@@ -15,38 +15,7 @@ import type { Activity } from '@/types/database';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Animated, Keyboard, Platform, RefreshControl, SectionList, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
-
-function getTimePeriod(timestamp: number): string {
-  const now = new Date();
-  const date = new Date(timestamp);
-
-  // Strip time parts to compare calendar dates
-  const todayDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const targetDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-
-  const diffTime = todayDate.getTime() - targetDate.getTime();
-  const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
-
-  if (diffDays === 0) return 'Today';
-  if (diffDays === 1) return 'Yesterday';
-
-  // Get start of this week (Monday)
-  const currentDayOfWeek = now.getDay(); // 0 (Sunday) to 6 (Saturday)
-  const daysSinceMonday = currentDayOfWeek === 0 ? 6 : currentDayOfWeek - 1;
-  const mondayOfThisWeek = new Date(todayDate.getTime() - daysSinceMonday * 24 * 60 * 60 * 1000);
-
-  if (targetDate.getTime() >= mondayOfThisWeek.getTime()) {
-    return 'This Week';
-  }
-
-  // Get start of this month
-  const firstOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-  if (targetDate.getTime() >= firstOfThisMonth.getTime()) {
-    return 'This Month';
-  }
-
-  return 'Earlier';
-}
+import { getTimePeriod } from '@/utils/date';
 
 export default function ActivityScreen() {
   const { colors, friendDetail: friendDetailTheme, isDark } = useThemeColors();

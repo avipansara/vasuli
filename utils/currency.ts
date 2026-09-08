@@ -68,3 +68,26 @@ export function formatCurrency(amount: number, currencyCode?: string): string {
   const symbol = CURRENCY_SYMBOLS[code as CurrencyCode];
   return symbol ? `${symbol}${amount.toFixed(2)}` : `${code} ${amount.toFixed(2)}`;
 }
+
+/**
+ * Converts a dollar/currency amount to integer cents (or minor currency units).
+ */
+export function toCents(amount: number): number {
+  return Math.round(amount * 100);
+}
+
+/**
+ * Converts integer cents back to dollar/currency amount.
+ */
+export function fromCents(cents: number): number {
+  return cents / 100;
+}
+
+/**
+ * Normalizes balance floats to avoid sub-cent drift (-0.00 or floating precision errors).
+ * Any absolute value strictly less than 0.01 is normalized to 0.
+ */
+export function normalizeBalance(amount: number): number {
+  return Math.abs(amount) < 0.01 ? 0 : Number(amount.toFixed(2));
+}
+

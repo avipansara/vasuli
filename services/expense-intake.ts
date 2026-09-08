@@ -6,6 +6,7 @@ import {
 } from './group-detail-read-model';
 import type { QueryCacheAdapter, QueryCacheKey } from './query-cache-adapter';
 import type { Expense, User } from '@/types/database';
+import { normalizeBalance } from '@/utils/currency';
 
 export type ExpenseSplitInput = {
   userId: string;
@@ -83,7 +84,7 @@ function updateHomeFriends(
 
     return {
       ...friend,
-      balance: Math.abs(friend.balance + balanceDelta) < 0.01 ? 0 : friend.balance + balanceDelta,
+      balance: normalizeBalance(friend.balance + balanceDelta),
       recentExpenses: [
         { ...expense, amount: Math.abs(balanceDelta) },
         ...(friend.recentExpenses ?? []),
@@ -130,7 +131,7 @@ function updateFriendDetail(
     ...current,
     friend: {
       ...current.friend,
-      balance: Math.abs(current.friend.balance + balanceDelta) < 0.01 ? 0 : current.friend.balance + balanceDelta,
+      balance: normalizeBalance(current.friend.balance + balanceDelta),
     },
     expenses: [expenseWithSplit, ...current.expenses.filter(item => item.id !== expense.id)],
   };

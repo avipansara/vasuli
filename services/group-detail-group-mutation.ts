@@ -1,6 +1,6 @@
 import { areGroupBalancesSettled } from './group-balance';
 import { groupService } from './group-service';
-import type { QueryCacheAdapter, QueryCacheKey } from './query-cache-adapter';
+import { safelyInvalidate, type QueryCacheAdapter, type QueryCacheKey } from './query-cache-adapter';
 
 export type GroupDetailGroupMutationDependencies = {
   deleteGroup: typeof groupService.delete;
@@ -40,14 +40,6 @@ export function createGroupDetailGroupMutation(
       return { status: 'deleted' };
     },
   };
-}
-
-async function safelyInvalidate(cache: Pick<QueryCacheAdapter, 'invalidate'>, key: QueryCacheKey) {
-  try {
-    await cache.invalidate(key);
-  } catch (error) {
-    console.warn('Group cache invalidation failed after Group deletion:', error);
-  }
 }
 
 export const groupDetailGroupMutation = createGroupDetailGroupMutation();

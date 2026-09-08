@@ -85,7 +85,6 @@
           "cameraPermission": "Vasuli uses your camera to scan QR codes when adding friends. For example, you can scan a friend's QR code to quickly connect and start splitting expenses together."
         }
       ],
-      "expo-sqlite",
       "expo-web-browser",
       "expo-image",
       "@react-native-community/datetimepicker",

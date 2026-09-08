@@ -11,6 +11,7 @@ import {
 import { queryKeys } from './query-keys';
 import { getFriendRelationshipInvalidationKeys } from './friend-relationship-invalidation';
 import { mapSettlementRow } from './database-row-mappers';
+import { normalizeBalance, toCents } from '@/utils/currency';
 
 export type CombinedSettlementErrorCode =
   | 'invalid_input'
@@ -248,7 +249,7 @@ export function buildCombinedSettlementPlan({
     .filter(group => group.currency === currency && group.direction !== 'settled')
     .map(group => ({
       groupId: group.groupId,
-      amount: normalizeAmount(group.amount),
+      amount: normalizeBalance(group.amount),
     }))
     .filter(scope => scope.amount !== 0);
   const orderedGroups = [...groups].sort(
@@ -275,7 +276,7 @@ export function buildCombinedSettlementPlan({
   const isFullNetSettlement = toCents(amount) === Math.abs(totalBalanceCents);
   if (!isFullNetSettlement) {
     const paymentScopes = [
-      { groupId: undefined, amount: normalizeAmount(directBalance) },
+      { groupId: undefined, amount: normalizeBalance(directBalance) },
       ...groups,
     ]
       .filter(scope => scope.amount !== 0 && Math.sign(scope.amount) === paymentDirection)
@@ -295,7 +296,7 @@ export function buildCombinedSettlementPlan({
   }
 
   const paymentScopes = [
-    { groupId: undefined, amount: normalizeAmount(directBalance) },
+    { groupId: undefined, amount: normalizeBalance(directBalance) },
     ...groups,
   ].filter(scope => scope.amount !== 0 && Math.sign(scope.amount) === paymentDirection)
     .sort((a, b) => a.groupId === undefined ? -1 : b.groupId === undefined ? 1 : toCents(Math.abs(a.amount)) - toCents(Math.abs(b.amount)) || a.groupId.localeCompare(b.groupId));
@@ -363,14 +364,6 @@ function buildPaymentAllocations({
   }
 
   return { allocations };
-}
-
-function normalizeAmount(amount: number): number {
-  return Math.abs(amount) < 0.01 ? 0 : Number(amount.toFixed(2));
-}
-
-function toCents(amount: number): number {
-  return Math.round(amount * 100);
 }
 
 function isWholeCent(amount: number): boolean {

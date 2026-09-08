@@ -1,5 +1,4 @@
-import { AddMemberModal, MemberBilateralLines } from '@/components/group';
-import { GroupSettlementOperationActivity } from '@/components/groups/group-settlement-operation-activity';
+import { AddMemberModal, GroupSettlementOperationActivity, MemberBilateralLines } from '@/components/groups';
 import { SettlementDeleteDialogs } from '@/components/settlements/settlement-delete-dialogs';
 import { ThemedText } from '@/components/themed-text';
 import { AsyncErrorState } from '@/components/ui/async-error-state';
@@ -28,6 +27,7 @@ import { createReactQueryCacheAdapter } from '@/services/query-cache-adapter';
 import { queryKeys } from '@/services/query-keys';
 import type { Expense, GroupMember, Settlement, SettlementCancellation, SettlementScopeTransfer, User } from '@/types/database';
 import { formatCurrency, getPreferredCurrency } from '@/utils/currency';
+import { formatDate } from '@/utils/date';
 import { groupPairTotalsService, toGroupScopedLine } from '@/services/group-pair-totals-service';
 import { getViewerPairBalance } from '@/utils/group-member-balance';
 import { getFirstName } from '@/utils/validation';
@@ -556,8 +556,7 @@ export default function GroupDetailScreen() {
   }
 
   function renderExpense({ item }: { item: Expense & { paidByUser?: User } }) {
-    const date = new Date(item.date);
-    const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    const dateStr = formatDate(item.date);
     const categoryStyle = (item.category && CATEGORY_MAP[item.category])
       ? CATEGORY_MAP[item.category]
       : { icon: 'arrow.up.right', lightBg: '#F3F4F6', darkBg: 'rgba(156, 163, 175, 0.15)', lightColor: '#4B5563', darkColor: '#9CA3AF' };
@@ -638,7 +637,7 @@ export default function GroupDetailScreen() {
     const toUserName = members.find(member => member.userId === item.toUserId)?.user?.name || 'Someone';
     const fromUser = getFirstName(fromUserName);
     const toUser = getFirstName(toUserName);
-    const dateStr = new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    const dateStr = formatDate(item.date);
 
     return (
       <View style={[styles.transferRow, cardStyle]}>
@@ -670,7 +669,7 @@ export default function GroupDetailScreen() {
         colors={colors as unknown as Record<string, string>}
         friendDetailTheme={friendDetailTheme as unknown as Record<string, string>}
         isDark={isDark}
-        formatDate={(timestamp) => new Date(timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+        formatDate={formatDate}
         canDelete={canDeleteGroupOperation(projection, id, currentUserId) && !settlementDeleteFlow.isDeletedLocally(projection.operationId)}
         isDeleting={settlementDeleteFlow.isDeletePending(projection.operationId)}
         isDeletedOverride={settlementDeleteFlow.isDeletedLocally(projection.operationId)}

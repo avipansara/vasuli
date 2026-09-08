@@ -1,5 +1,29 @@
 ## 2026-09-08
 
+- Consolidated group components under `components/groups/`:
+  - Deleted orphaned and unused `components/group/member-card.tsx` and `components/group/expense-card.tsx`.
+  - Moved active `AddMemberModal` and `MemberBilateralLines` components into `components/groups/`.
+  - Re-exported all group components from `components/groups/index.ts` and removed redundant `components/group/` directory.
+  - Updated `app/(tabs)/groups/[id].tsx` to import cleanly from `@/components/groups`.
+- Optimized bundle and native dependency footprint:
+  - Removed unused `expo-sqlite` package from `package.json` and `package-lock.json`.
+  - Removed unused `"expo-sqlite"` config plugin entry from `app.json`.
+- Extracted and unified settlement operation activity card:
+  - Created shared `SettlementOperationCard` in `components/settlements/settlement-operation-card.tsx` to handle swipe-to-delete, status badges, details toggle, and balance adjustments.
+  - Refactored `FriendSettlementOperationActivity` and `GroupSettlementOperationActivity` into thin adapters delegating to `SettlementOperationCard`, de-duplicating ~600 lines of parallel styles, layout, and gesture handlers.
+  - Consolidated duplicate `hasMirroredCashPair` and `synthesizeReversedOperations` helpers into `services/settlement-operation-projection.ts`.
+  - Added `components/settlements/index.ts` for clean module exports.
+- Extracted reusable expense split calculators, selectors, and form breakdown:
+  - Created `components/expenses/expense-split-types.ts` defining shared `SplitType`, `SplitMethod`, `SPLIT_METHODS`, and `ExpenseParticipant`.
+  - Created `components/expenses/split-method-selector.tsx` rendering theme-aware, 44pt touch-target split method tabs for Equal, Unequal, Percentage, and Shares.
+  - Created `components/expenses/custom-split-breakdown.tsx` rendering live split progress summary, one-tap "Set equal amounts", and per-participant currency/percentage/shares inputs with live preview and stable `testID` contracts.
+  - Added `resolveExpenseSplits` helper in `utils/split-validation.ts` to unify split resolution across methods.
+- Extracted and consolidated shared utilities and UserAvatar component:
+  - Consolidated `toCents`, `fromCents`, and `normalizeBalance` into `utils/currency.ts` with dedicated unit test suite in `utils/currency.test.ts`. Replaced duplicated balance float epsilon logic (`Math.abs(x) < 0.01 ? 0 : Number(x.toFixed(2))`) across `settlement-service.ts`, `friend-detail-service.ts`, `friend-summary-service.ts`, `friend-group-balance-service.ts`, `group-detail-read-model.ts`, `expense-intake.ts`, `edit-expense/[id].tsx`, and `friends/[id].tsx`.
+  - Consolidated `safelyInvalidate` in `services/query-cache-adapter.ts` with unit tests, replacing identical private functions in `group-detail-mutation.ts`, `group-detail-member-mutation.ts`, and `group-detail-group-mutation.ts`.
+  - Created centralized `utils/date.ts` providing `formatDate` (supporting `'short'`, `'monthDay'`, `'monthYear'`, `'iso'`, `'isoUtc'`, `'time'`, `'dateTime'`, and custom `Intl.DateTimeFormatOptions`), `formatDateRange`, and `getTimePeriod` with test coverage in `utils/date.test.ts`. Adopted across screens and services including `activity-card.tsx`, `groups/[id].tsx`, `friends/[id].tsx`, `settlement-detail/[id].tsx`, `expense-detail/[id].tsx`, `groups/stats/[id].tsx`, `friend-detail-module.ts`, and `group-expense-csv.ts`.
+  - Created reusable `UserAvatar` in `components/ui/user-avatar.tsx` supporting initials, image URLs with graceful fallback, size presets (`sm`, `md`, `lg`, `xl`, or custom number), rounded/circular variants, theme-aware contrast styling, and full accessibility labels with unit tests in `components/ui/user-avatar.test.tsx`. Adopted across `friend-card.tsx`, `custom-split-breakdown.tsx`, `add-member-modal.tsx`, and `profile.tsx`.
+
 - Release versioning is now tag-driven: merges to master no longer bump
   `expo.version` in `app.json`. Pushing `vX.Y.Z` sets `app.json` to `X.Y.Z`
   (transiently in the production build jobs so the binary matches the tag,

@@ -8,6 +8,7 @@ import { scopeTransferService } from './scope-transfer-service';
 import { settlementCancellationService } from './settlement-cancellation-service';
 import { settlementOperationMetadataService } from './settlement-operation-metadata-service';
 import { resolveOperationPair } from './settlement-operation-projection';
+import { normalizeBalance } from '@/utils/currency';
 
 export type FriendGroupBalanceDataSource = {
   getUserGroups(userId: string): Promise<Group[]>;
@@ -114,7 +115,7 @@ export function createFriendGroupBalanceService(
             cancellationsForCurrency,
             pairForCancellation,
           ).get(friendId) ?? 0;
-          const amount = normalizeAmount(-friendGroupBalance);
+          const amount = normalizeBalance(-friendGroupBalance);
           /*
            * The sign is inverted because Group balances are stored from the
            * current user's perspective: a positive Friend balance means the
@@ -153,10 +154,6 @@ export function createFriendGroupBalanceService(
       });
     },
   };
-}
-
-function normalizeAmount(amount: number): number {
-  return Math.abs(amount) < 0.01 ? 0 : Number(amount.toFixed(2));
 }
 
 export const friendGroupBalanceService = createFriendGroupBalanceService();

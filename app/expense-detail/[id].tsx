@@ -16,6 +16,7 @@ import { getExpenseDeletionInvalidationKeys } from '@/services/expense-deletion-
 import { queryKeys } from '@/services/query-keys';
 import { userService } from '@/services/user-service';
 import { formatCurrency } from '@/utils/currency';
+import { formatDate } from '@/utils/date';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
@@ -204,8 +205,7 @@ export default function ExpenseDetailScreen() {
     );
   }
 
-  const date = new Date(expense.date);
-  const dateStr = date.toLocaleDateString('en-US', {
+  const dateStr = formatDate(expense.date, {
     month: 'short',
     day: 'numeric',
     year: 'numeric',

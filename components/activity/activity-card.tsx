@@ -4,6 +4,7 @@ import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getActivityHref } from '@/lib/activity-link';
 import type { Activity as DbActivity } from '@/types/database';
 import { formatCurrency } from '@/utils/currency';
+import { formatDate } from '@/utils/date';
 import { router } from 'expo-router';
 import { memo, useMemo } from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
@@ -26,17 +27,7 @@ interface ActivityCardProps {
 }
 
 function formatActivityDate(timestamp: number): string {
-  const date = new Date(timestamp);
-  const datePart = date.toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-  });
-  const timePart = date.toLocaleTimeString('en-US', {
-    hour: 'numeric',
-    minute: '2-digit',
-  });
-
-  return `${datePart} at ${timePart}`;
+  return formatDate(timestamp, 'dateTime');
 }
 
 function mapDbActivityToItem(activity: DbActivity): ActivityItem {

@@ -6,7 +6,7 @@ import {
   createMemberAddedNotification,
   notificationService,
 } from './notification-service';
-import type { QueryCacheAdapter, QueryCacheKey } from './query-cache-adapter';
+import { safelyInvalidate, type QueryCacheAdapter, type QueryCacheKey } from './query-cache-adapter';
 import { userService } from './user-service';
 import type { GroupMember, User } from '@/types/database';
 
@@ -163,17 +163,6 @@ async function safelyRunSideEffect(
     await effect();
   } catch (error) {
     console.error(message, error);
-  }
-}
-
-async function safelyInvalidate(
-  cache: Pick<QueryCacheAdapter, 'invalidate'>,
-  key: QueryCacheKey,
-): Promise<void> {
-  try {
-    await cache.invalidate(key);
-  } catch (error) {
-    console.warn('Group detail cache invalidation failed after member mutation:', error);
   }
 }
 

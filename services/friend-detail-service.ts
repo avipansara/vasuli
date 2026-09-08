@@ -5,6 +5,7 @@ import type {
   SettlementOperationStatusRecord,
 } from './settlement-operation-projection';
 import { friendDetailReadModel } from './friend-detail-read-model';
+import { normalizeBalance } from '@/utils/currency';
 
 export interface FriendWithBalance extends User {
   balance: number;
@@ -275,10 +276,6 @@ export function projectFriendRelationship(
     settleableTotal,
     zeroNetCurrency,
   };
-}
-
-function normalizeBalance(balance: number): number {
-  return Math.abs(balance) < 0.01 ? 0 : Number(balance.toFixed(2));
 }
 
 function getBalanceDirection(balance: number): FriendRelationshipTotal['direction'] {

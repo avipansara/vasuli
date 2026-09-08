@@ -17,21 +17,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { formatDateRange } from '@/utils/date';
 
 const AVATAR_COLORS = ['#7C5CFC', '#22C55E', '#F59E0B', '#3B82F6', '#EC4899'];
-
-function formatDateRange(expenses: { date: number }[]): string {
-  if (expenses.length === 0) return 'No expenses yet';
-
-  const dates = expenses.map(expense => expense.date).sort((a, b) => a - b);
-  const first = new Date(dates[0]);
-  const last = new Date(dates[dates.length - 1]);
-  const formatDate = (date: Date) => date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-
-  return first.toDateString() === last.toDateString()
-    ? formatDate(first)
-    : `${formatDate(first)} – ${formatDate(last)}`;
-}
 
 function Avatar({ name, uri, size = 34 }: { name: string; uri?: string; size?: number }) {
   const color = AVATAR_COLORS[name.charCodeAt(0) % AVATAR_COLORS.length];

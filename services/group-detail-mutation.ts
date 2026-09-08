@@ -10,7 +10,7 @@ import {
   removeExpenseFromHomeFriends,
   type GroupDetailReadModel,
 } from './group-detail-read-model';
-import type { QueryCacheAdapter, QueryCacheKey, QueryCacheSnapshot } from './query-cache-adapter';
+import { safelyInvalidate, type QueryCacheAdapter, type QueryCacheKey, type QueryCacheSnapshot } from './query-cache-adapter';
 import { userService } from './user-service';
 
 type HomeFriend = User & {
@@ -139,14 +139,6 @@ async function notifyExpenseParticipants(
     );
   } catch (error) {
     console.error('Expense deletion notification failed after mutation:', error);
-  }
-}
-
-async function safelyInvalidate(cache: QueryCacheAdapter, key: QueryCacheKey): Promise<void> {
-  try {
-    await cache.invalidate(key);
-  } catch (error) {
-    console.warn('Group detail cache invalidation failed after Expense deletion:', error);
   }
 }
 

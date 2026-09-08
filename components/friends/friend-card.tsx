@@ -1,5 +1,6 @@
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { UserAvatar } from '@/components/ui/user-avatar';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import type { FriendRelationshipProjection } from '@/services/friend-detail-service';
 import type { User } from '@/types/database';
@@ -131,7 +132,6 @@ function FriendCardInner({ friend, onPress, onDelete }: FriendCardProps) {
     return items;
   }, [friend.relationship]);
 
-  const avatarTextColor = colors.tint;
   const emailColor = colors.textSecondary;
   const branchTextColor = colors.textSecondary;
 
@@ -182,15 +182,12 @@ function FriendCardInner({ friend, onPress, onDelete }: FriendCardProps) {
         onPress={() => onPress?.(friend)}
         activeOpacity={0.7}>
         <View style={styles.topSection}>
-          <View
-            style={[
-              styles.avatar,
-              { backgroundColor: isDark ? '#064e3b' : friendsTheme.avatarSurface },
-            ]}>
-            <ThemedText type="title" style={[styles.avatarText, { color: isDark ? '#10b981' : avatarTextColor }]}>
-              {displayName.charAt(0).toUpperCase()}
-            </ThemedText>
-          </View>
+          <UserAvatar
+            name={displayName}
+            avatarUrl={friend.avatar}
+            size={44}
+            style={styles.avatar}
+          />
 
           <View style={styles.headerInfoContainer}>
             <View style={styles.mainInfo}>

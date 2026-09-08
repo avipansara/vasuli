@@ -15,6 +15,7 @@ import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useMemo } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { useCurrency } from '@/contexts/currency-context';
+import { formatDate } from '@/utils/date';
 
 export default function SettlementDetailScreen() {
   const { colors, settle } = useThemeColors();
@@ -104,7 +105,7 @@ export default function SettlementDetailScreen() {
   const payerName = isCurrentUserPayer ? 'You' : (fromUser?.name || 'Someone');
   const payeeName = isCurrentUserPayee ? 'you' : (toUser?.name || 'someone');
 
-  const formattedDate = new Date(settlement.date).toLocaleDateString(undefined, {
+  const formattedDate = formatDate(settlement.date, {
     year: 'numeric',
     month: 'long',
     day: 'numeric',

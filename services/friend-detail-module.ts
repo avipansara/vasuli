@@ -17,6 +17,7 @@ import type { SettlementOperationStatusRecord } from './settlement-operation-pro
 import { scopeTransferService } from './scope-transfer-service';
 import { settlementCancellationService } from './settlement-cancellation-service';
 import { settlementOperationMetadataService } from './settlement-operation-metadata-service';
+import { formatDate } from '@/utils/date';
 
 export type FriendDetailReadAdapter = {
   getDetail(currentUserId: string, friendId: string): Promise<FriendDetailData | null>;
@@ -142,7 +143,7 @@ export function groupFriendActivityByMonth(activity: FriendActivityItem[]): Frie
 
   for (const item of sorted) {
     const date = new Date(item.date);
-    const monthYear = date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    const monthYear = formatDate(date, 'monthYear');
     const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
     let group = groups.find(candidate => candidate.monthKey === monthKey);
     if (!group) {

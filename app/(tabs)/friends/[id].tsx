@@ -23,7 +23,8 @@ import {
 } from '@/services/friend-detail-module';
 import { projectFriendRelationship, type FriendDetailData } from '@/services/friend-detail-service';
 import type { Expense, User } from '@/types/database';
-import { formatCurrency } from '@/utils/currency';
+import { formatCurrency, normalizeBalance } from '@/utils/currency';
+import { formatDate } from '@/utils/date';
 import { getFirstName } from '@/utils/validation';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams, useNavigation } from 'expo-router';
@@ -246,7 +247,7 @@ export default function FriendDetailScreen() {
                   const nextBalance = homeFriend.balance + balanceDelta;
                   return {
                     ...homeFriend,
-                    balance: Math.abs(nextBalance) < 0.01 ? 0 : nextBalance,
+                    balance: normalizeBalance(nextBalance),
                     recentExpenses: homeFriend.recentExpenses?.filter(expense => expense.id !== expenseId),
                   };
                 }));
@@ -257,7 +258,7 @@ export default function FriendDetailScreen() {
                     ...current,
                     friend: {
                       ...current.friend,
-                      balance: Math.abs(current.friend.balance + balanceDelta) < 0.01 ? 0 : current.friend.balance + balanceDelta,
+                      balance: normalizeBalance(current.friend.balance + balanceDelta),
                     },
                     expenses: current.expenses.filter(expense => expense.id !== expenseId),
                     activity: current.activity.filter(activityItem => (
@@ -364,11 +365,6 @@ export default function FriendDetailScreen() {
       console.error('Error sending reminder:', error);
       Alert.alert('Error', 'Failed to send reminder');
     }
-  };
-
-  const formatDate = (timestamp: number) => {
-    const date = new Date(timestamp);
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
   if (loading) {

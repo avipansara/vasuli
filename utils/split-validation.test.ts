@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { calculateExpenseSplits, getEvenSplitValues, getSplitProgress } from './split-validation';
+import { calculateExpenseSplits, getEvenSplitValues, getSplitProgress, resolveExpenseSplits } from './split-validation';
 
 describe('split validation', () => {
   it('shows live exact amounts and the remaining balance', () => {
@@ -113,6 +113,44 @@ describe('split validation', () => {
     expect(calculateExpenseSplits(['you', 'friend'], 30, 'shares', { you: '0', friend: '0' })).toEqual({
       splits: null,
       error: 'Please enter at least one share',
+    });
+  });
+
+  describe('resolveExpenseSplits', () => {
+    it('selects amounts for unequal method', () => {
+      const result = resolveExpenseSplits(['you', 'friend'], 30, 'unequal', {
+        amounts: { you: '10', friend: '20' },
+        percentages: { you: '50', friend: '50' },
+        shares: { you: '1', friend: '1' },
+      });
+      expect(result.splits).toEqual([
+        { userId: 'you', amount: 10, splitType: 'exact' },
+        { userId: 'friend', amount: 20, splitType: 'exact' },
+      ]);
+    });
+
+    it('selects percentages for percentage method', () => {
+      const result = resolveExpenseSplits(['you', 'friend'], 100, 'percentage', {
+        amounts: { you: '10', friend: '20' },
+        percentages: { you: '40', friend: '60' },
+        shares: { you: '1', friend: '1' },
+      });
+      expect(result.splits).toEqual([
+        { userId: 'you', amount: 40, splitType: 'percentage', percentage: 40 },
+        { userId: 'friend', amount: 60, splitType: 'percentage', percentage: 60 },
+      ]);
+    });
+
+    it('selects shares for shares method', () => {
+      const result = resolveExpenseSplits(['you', 'friend'], 60, 'shares', {
+        amounts: { you: '10', friend: '20' },
+        percentages: { you: '40', friend: '60' },
+        shares: { you: '1', friend: '2' },
+      });
+      expect(result.splits).toEqual([
+        { userId: 'you', amount: 20, splitType: 'exact' },
+        { userId: 'friend', amount: 40, splitType: 'exact' },
+      ]);
     });
   });
 });

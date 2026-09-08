@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createQueryCacheAdapter, createReactQueryCacheAdapter } from './query-cache-adapter';
+import { createQueryCacheAdapter, createReactQueryCacheAdapter, safelyInvalidate } from './query-cache-adapter';
 import { QueryClient } from '@tanstack/react-query';
 
 describe('query cache adapter', () => {
@@ -53,4 +53,23 @@ describe('query cache adapter', () => {
 
     expect(queryClient.getQueryData(['home'])).toEqual({ balance: 10 });
   });
+
+  describe('safelyInvalidate', () => {
+    it('invalidates the key successfully', async () => {
+      const invalidate = vi.fn().mockResolvedValue(undefined);
+      await safelyInvalidate({ invalidate }, ['test-key']);
+      expect(invalidate).toHaveBeenCalledWith(['test-key']);
+    });
+
+    it('catches and logs error without throwing', async () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const error = new Error('network failure');
+      const invalidate = vi.fn().mockRejectedValue(error);
+
+      await expect(safelyInvalidate({ invalidate }, ['failing-key'])).resolves.toBeUndefined();
+      expect(warnSpy).toHaveBeenCalledWith('Cache invalidation failed:', error);
+      warnSpy.mockRestore();
+    });
+  });
 });
+

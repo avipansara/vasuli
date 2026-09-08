@@ -5,6 +5,7 @@ import type {
 } from './friend-detail-service';
 import {
   projectSettlementOperations,
+  synthesizeReversedOperations,
   type SettlementOperationProjection,
   type SettlementOperationStatusRecord,
 } from './settlement-operation-projection';
@@ -102,106 +103,6 @@ function transferRowForActivityItem(
     ...(item.isReversal !== undefined ? { isReversal: item.isReversal } : {}),
     createdAt: item.date,
   };
-}
-
-/**
- * Synthesize `reversed` operation records from explicit reversal links only.
- *
- * The Friend reads expose compensating rows (paired original + `is_reversal`
- * transfers, mirrored cash pairs) but no authoritative operation status yet.
- * A lone `is_reversal` row is never enough; deletion requires a paired
- * original plus its compensating row for the same operation. Explicit caller
- * metadata always wins. Rendered text and notes are never inspected.
- * Cancellation rows split the same way: a paired original plus compensating
- * cancellation marks the operation deleted.
- */
-function synthesizeReversedOperations(
-  settlements: Settlement[],
-  transfers: SettlementScopeTransfer[],
-  cancellations: SettlementCancellation[],
-  explicit: Map<string, SettlementOperationStatusRecord>,
-): SettlementOperationStatusRecord[] {
-  const operationIds = new Set<string>([
-    ...settlements.map(row => row.operationId).filter((value): value is string => Boolean(value)),
-    ...transfers.map(row => row.operationId),
-    ...cancellations.map(row => row.operationId),
-  ]);
-  const synthesized: SettlementOperationStatusRecord[] = [];
-
-  for (const operationId of operationIds) {
-    if (explicit.has(operationId)) continue;
-    const operationTransfers = transfers.filter(row => row.operationId === operationId);
-    const originalTransfers = operationTransfers.filter(row => row.isReversal !== true);
-    const reversalTransfers = operationTransfers.filter(row => row.isReversal === true);
-    if (originalTransfers.length > 0 && reversalTransfers.length > 0) {
-      const reversedAt = Math.max(...reversalTransfers.map(row => row.createdAt));
-      const first = [...originalTransfers].sort((a, b) => a.createdAt - b.createdAt)[0];
-      synthesized.push({
-        operationId,
-        status: 'reversed',
-        createdAt: Math.min(
-          ...originalTransfers.map(row => row.createdAt),
-          ...settlements.filter(row => row.operationId === operationId).map(row => row.createdAt),
-        ),
-        reversedAt,
-        currency: first.currency,
-      });
-      continue;
-    }
-
-    const operationCancellations = cancellations.filter(row => row.operationId === operationId);
-    const originalCancellations = operationCancellations.filter(row => row.isReversal !== true);
-    const reversalCancellations = operationCancellations.filter(row => row.isReversal === true);
-    if (originalCancellations.length > 0 && reversalCancellations.length > 0) {
-      const reversedAt = Math.max(...reversalCancellations.map(row => row.createdAt));
-      const first = [...originalCancellations].sort((a, b) => a.createdAt - b.createdAt)[0];
-      synthesized.push({
-        operationId,
-        status: 'reversed',
-        createdAt: Math.min(
-          ...originalCancellations.map(row => row.createdAt),
-          ...settlements.filter(row => row.operationId === operationId).map(row => row.createdAt),
-        ),
-        reversedAt,
-        currency: first.currency,
-      });
-      continue;
-    }
-
-    const operationSettlements = settlements.filter(row => row.operationId === operationId);
-    if (operationTransfers.length === 0 && hasMirroredCashPair(operationSettlements)) {
-      const timestamps = operationSettlements.map(row => row.createdAt);
-      synthesized.push({
-        operationId,
-        status: 'reversed',
-        createdAt: Math.min(...timestamps),
-        reversedAt: Math.max(...timestamps),
-        currency: operationSettlements[0].currency,
-      });
-    }
-  }
-
-  return synthesized;
-}
-
-/** Two cash rows for one operation with swapped participants and equal group/amount/currency imply compensation. */
-function hasMirroredCashPair(rows: Settlement[]): boolean {
-  for (let index = 0; index < rows.length; index += 1) {
-    for (let other = index + 1; other < rows.length; other += 1) {
-      const left = rows[index];
-      const right = rows[other];
-      if (
-        (left.groupId ?? '') === (right.groupId ?? '')
-        && left.currency === right.currency
-        && left.amount === right.amount
-        && left.fromUserId === right.toUserId
-        && left.toUserId === right.fromUserId
-      ) {
-        return true;
-      }
-    }
-  }
-  return false;
 }
 
 /**

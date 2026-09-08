@@ -2,6 +2,7 @@ import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { SharedModal } from '@/components/ui/shared-modal';
 import { ThemedInput } from '@/components/ui/themed-input';
+import { UserAvatar } from '@/components/ui/user-avatar';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { filterUsers } from '@/lib/filter-users';
 import type { User } from '@/types/database';
@@ -73,15 +74,15 @@ export function AddMemberModal({
             opacity: pressed ? 0.72 : 1,
           },
         ]}>
-        <View style={[styles.avatar, {
-          backgroundColor: selected
-            ? settle.avatarSelectedBackground
-            : settle.avatarUnselectedBackground,
-        }]}>
-          <ThemedText type='subtitle' style={[styles.avatarText, { color: selected ? settle.avatarText : colors.text }]}>
-            {initials || '?'}
-          </ThemedText>
-        </View>
+        <UserAvatar
+          name={item.name}
+          initials={initials || '?'}
+          avatarUrl={item.avatar}
+          size={44}
+          backgroundColor={selected ? settle.avatarSelectedBackground : settle.avatarUnselectedBackground}
+          textColor={selected ? settle.avatarText : colors.text}
+          style={styles.avatar}
+        />
         <View style={styles.userDetails}>
           <ThemedText type="defaultSemiBold" numberOfLines={1} style={{ color: selected ? settle.accentText : colors.text, fontSize: 16 }}>
             {item.name}

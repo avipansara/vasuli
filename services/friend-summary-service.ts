@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase';
 import type { FriendRelationshipProjection } from '@/services/friend-detail-service';
 import type { Expense, ExpenseSplit, Settlement, User } from '@/types/database';
+import { normalizeBalance } from '@/utils/currency';
 
 export interface FriendSummary extends User {
   balance: number;
@@ -78,12 +79,6 @@ function mapFriendHomeRow(row: FriendHomeRow): FriendHomeSummary {
     relationship: row.relationship,
     recentExpenses: (row.recent_expenses || []).map(mapFriendHomeExpense),
   };
-}
-
-const SETTLED_BALANCE_THRESHOLD = 0.01;
-
-function normalizeBalance(balance: number) {
-  return Math.abs(balance) < SETTLED_BALANCE_THRESHOLD ? 0 : balance;
 }
 
 export function calculateFriendSummaryTotals(

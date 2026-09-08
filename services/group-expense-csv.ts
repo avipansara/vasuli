@@ -1,4 +1,5 @@
 import type { GroupDetailReadModel, GroupExpenseView } from './group-detail-read-model';
+import { formatDate } from '@/utils/date';
 
 const CSV_BOM = '\uFEFF';
 const CSV_MIME_TYPE = 'text/csv';
@@ -23,14 +24,8 @@ export interface GroupExpenseCsvFile {
   fileName: string;
 }
 
-function formatDate(value: number): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '';
-
-  const year = date.getUTCFullYear();
-  const month = String(date.getUTCMonth() + 1).padStart(2, '0');
-  const day = String(date.getUTCDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+function formatCsvDate(value: number): string {
+  return formatDate(value, 'isoUtc');
 }
 
 function formatAmount(value: number): string {
@@ -65,15 +60,15 @@ function buildExpenseRow(
 ): string[] {
   return [
     expense.id,
-    formatDate(expense.date),
+    formatCsvDate(expense.date),
     expense.description,
     formatAmount(expense.amount),
     expense.currency,
     expense.paidByUser?.name || 'Unknown',
     expense.category || '',
     expense.notes || '',
-    formatDate(expense.createdAt),
-    formatDate(expense.updatedAt),
+    formatCsvDate(expense.createdAt),
+    formatCsvDate(expense.updatedAt),
     buildSplitDetails(expense),
   ];
 }
@@ -87,7 +82,7 @@ export function createGroupExpenseCsv(
     ...detail.expenses.map(expense => buildExpenseRow(expense)),
   ];
   const content = `${CSV_BOM}${rows.map(row => row.map(escapeCsvField).join(',')).join('\r\n')}\r\n`;
-  const date = formatDate(exportDate.getTime());
+  const date = formatCsvDate(exportDate.getTime());
 
   return {
     content,

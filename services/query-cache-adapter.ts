@@ -42,3 +42,20 @@ export function createReactQueryCacheAdapter(queryClient: QueryClient): QueryCac
     invalidate: key => queryClient.invalidateQueries({ queryKey: key as readonly unknown[] }),
   });
 }
+
+/**
+ * Safely invalidates a query cache key, catching and logging any errors
+ * rather than allowing invalidation failures to break optimistic mutations.
+ */
+export async function safelyInvalidate(
+  cache: Pick<QueryCacheAdapter, 'invalidate'>,
+  key: QueryCacheKey,
+  contextMessage = 'Cache invalidation failed:'
+): Promise<void> {
+  try {
+    await cache.invalidate(key);
+  } catch (error) {
+    console.warn(contextMessage, error);
+  }
+}
+

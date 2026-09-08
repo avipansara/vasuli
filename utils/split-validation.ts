@@ -1,3 +1,5 @@
+import { toCents } from './currency';
+
 export type SplitMethod = 'equal' | 'unequal' | 'percentage' | 'shares';
 
 export interface SplitProgress {
@@ -33,8 +35,6 @@ const parseSplitValue = (value: string | undefined): ParsedSplitValue => {
     isValid: Number.isFinite(parsed) && parsed >= 0,
   };
 };
-
-const toCents = (amount: number) => Math.round(amount * 100);
 
 const allocateCentsByWeight = (totalAmount: number, weights: number[]): number[] => {
   const totalCents = toCents(totalAmount);
@@ -212,4 +212,25 @@ export function getEvenSplitValues(userIds: string[], method: SplitMethod, total
     values[userIds[userIds.length - 1]] = Math.max(0, totalAmount - roundedTotal).toFixed(2);
   }
   return values;
+}
+
+export interface ExpenseSplitValues {
+  amounts?: Record<string, string>;
+  percentages?: Record<string, string>;
+  shares?: Record<string, string>;
+}
+
+export function resolveExpenseSplits(
+  userIds: string[],
+  totalAmount: number,
+  method: SplitMethod,
+  customValues: ExpenseSplitValues
+): SplitCalculationResult {
+  const values =
+    method === 'unequal'
+      ? (customValues.amounts ?? {})
+      : method === 'percentage'
+        ? (customValues.percentages ?? {})
+        : (customValues.shares ?? {});
+  return calculateExpenseSplits(userIds, totalAmount, method, values);
 }
