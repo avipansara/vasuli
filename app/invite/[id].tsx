@@ -79,12 +79,39 @@ export default function InviteScreen() {
         try {
             const invitationId = firstQueryParam(invitation);
 
-            await invitationService.acceptInvitationFromLink({
+            const result = await invitationService.acceptInvitationFromLink({
                 invitationId,
                 inviterId: inviter.id,
                 inviteeEmail: user.email,
             });
 
+            if (result.outcome === 'declined') {
+                Alert.alert(
+                    'Invitation declined',
+                    'This invitation was declined, so it can no longer be accepted.',
+                );
+                router.replace('/');
+                return;
+            }
+            if (result.outcome === 'expired') {
+                Alert.alert(
+                    'Invitation expired',
+                    'This invitation has expired. Ask your friend to send a new one.',
+                );
+                router.replace('/');
+                return;
+            }
+            if (result.outcome === 'invalid') {
+                Alert.alert(
+                    'Invalid invitation',
+                    'This invitation link is no longer valid.',
+                );
+                router.replace('/');
+                return;
+            }
+
+            // 'accepted' or 'already-accepted': make sure the friendship exists
+            // (createAccepted is idempotent) and only then report success.
             await friendshipService.createAccepted(user.id, inviter.id);
 
             await AsyncStorage.removeItem(PENDING_INVITE_PATH_KEY).catch(() => undefined);

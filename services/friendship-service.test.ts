@@ -88,12 +88,12 @@ describe('friendshipService', () => {
     expect(mocks.getByIds).toHaveBeenCalledWith(['user-a'])
   })
 
-  it('fails instead of returning an anonymous pending request', async () => {
+  it('skips requests whose requester profile cannot be loaded', async () => {
     mocks.getByIds.mockResolvedValue([])
 
     await expect(
       friendshipService.getPendingRequestsWithRequesters('user-b')
-    ).rejects.toThrow('Unable to load the profile for a pending friend request.')
+    ).resolves.toEqual([])
   })
 
   it('does not show a pending request when the users are already friends', async () => {
@@ -115,5 +115,46 @@ describe('friendshipService', () => {
     const requests = await friendshipService.getPendingRequestsWithRequesters('user-b')
 
     expect(requests[0].requesterName).toBe('alex')
+  })
+
+  it('includes the recipient profile name for sent requests', async () => {
+    mocks.getByIds.mockResolvedValue([{ id: 'user-b', name: 'Ben Recipient' }])
+
+    const requests = await friendshipService.getSentRequestsWithRecipients('user-a')
+
+    expect(requests).toEqual([expect.objectContaining({
+      id: 'fs-1',
+      recipientName: 'Ben Recipient',
+    })])
+    expect(mocks.getByIds).toHaveBeenCalledWith(['user-b'])
+  })
+
+  it('includes the recipient email when available', async () => {
+    mocks.getByIds.mockResolvedValue([{
+      id: 'user-b',
+      name: 'Ben Recipient',
+      email: 'ben@example.com',
+    }])
+
+    const requests = await friendshipService.getSentRequestsWithRecipients('user-a')
+
+    expect(requests[0].recipientEmail).toBe('ben@example.com')
+  })
+
+  it('does not show a sent request when the users are already friends', async () => {
+    mocks.getFriends.mockResolvedValue(['user-b'])
+
+    await expect(
+      friendshipService.getSentRequestsWithRecipients('user-a')
+    ).resolves.toEqual([])
+    expect(mocks.getByIds).not.toHaveBeenCalled()
+  })
+
+  it('skips sent requests whose recipient profile cannot be loaded', async () => {
+    mocks.getByIds.mockResolvedValue([])
+
+    await expect(
+      friendshipService.getSentRequestsWithRecipients('user-a')
+    ).resolves.toEqual([])
   })
 })
