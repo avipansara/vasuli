@@ -1,9 +1,10 @@
 name: Deploy to production
 
-on:
-  push:
-    tags: ['v*']
-
+# Manual-only fallback (run via `npm run deploy`). Tag releases are owned by
+# GitHub Actions (.github/workflows/production-build.yml), which syncs
+# app.json from the tag before building — this workflow checks out the tagged
+# commit as-is, so it must not trigger on tags or it would double-build with
+# a stale version and bump remote build numbers twice.
 jobs:
   fingerprint:
     name: Fingerprint

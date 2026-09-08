@@ -20,6 +20,7 @@ export default defineConfig({
       'lib/**/*.test.ts',
       'utils/**/*.test.ts',
       'services/**/*.test.ts',
+      'scripts/**/*.test.ts',
       'hooks/**/*.test.ts',
       'hooks/**/*.test.tsx',
       'components/**/*.test.tsx',

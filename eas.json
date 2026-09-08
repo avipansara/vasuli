@@ -26,7 +26,6 @@
     "preview": {
       "distribution": "store",
       "channel": "master",
-      "autoIncrement": true,
       "environment": "preview",
       "env": {
         "APP_ENV": "preview"

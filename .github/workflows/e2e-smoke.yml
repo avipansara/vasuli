@@ -1,38 +1,14 @@
 name: iOS E2E smoke
 
 on:
-  pull_request:
-    paths:
-      - 'app/**'
-      - 'components/**'
-      - 'contexts/**'
-      - 'hooks/**'
-      - 'lib/**'
-      - 'constants/**'
-      - 'services/**'
-      - 'utils/**'
-      - 'types/**'
-      - 'supabase/**'
-      - 'e2e/**'
-      - 'scripts/e2e-*.cjs'
-      - 'ios/**'
-      - 'app.json'
-      - 'app.config.ts'
-      - 'babel.config.js'
-      - 'metro.config.js'
-      - 'tsconfig.json'
-      - '.detoxrc.js'
-      - 'package.json'
-      - 'package-lock.json'
-      - '.github/workflows/e2e-smoke.yml'
   workflow_dispatch:
 
 permissions:
   contents: read
 
-# The smoke suite is a PR gate only for changes that can affect the native
-# app or its E2E contract. Docs-only changes stay on the existing validation
-# workflows. The shared development E2E account and
+# The smoke suite is manual-only (Run workflow): simulator E2E is too slow to
+# gate pull requests. PRs are covered by lint/typecheck/unit checks in
+# CI validation. The shared development E2E account and
 # simulator make serialization necessary across smoke and full workflows.
 concurrency:
   group: vasuli-ios-e2e-development
@@ -41,7 +17,6 @@ concurrency:
 jobs:
   smoke:
     name: Build once and run smoke suite
-    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: macos-26
     timeout-minutes: 40
     env:

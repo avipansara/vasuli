@@ -1,0 +1,61 @@
+name: Sync app version from tag
+
+# The tag is the source of truth for the marketing version: pushing vX.Y.Z
+# sets expo.version in app.json to X.Y.Z on master so the repo stays in sync.
+# Merges to master never touch the version. The production build jobs also
+# sync transiently from the tag before calling EAS, so the binary always
+# matches the tag even though the tagged commit still has the old version.
+#
+# Assumes tags are cut from master HEAD. The sync commit carries [skip ci]
+# so push-triggered validations ignore it (same loop prevention as before).
+
+on:
+  push:
+    tags: [ 'v*' ]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-app-version-from-tag
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    name: Sync app.json to tag version
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout master
+        uses: actions/checkout@v4
+        with:
+          ref: master
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Sync app.json version from tag
+        run: node scripts/sync-app-version-from-tag.cjs "${{ github.ref_name }}"
+
+      - name: Commit and push sync
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app.json
+          if git diff --cached --quiet; then
+            echo "app.json already matches ${{ github.ref_name }}."
+            exit 0
+          fi
+          git commit -m "chore(release): sync app.json to ${{ github.ref_name }} [skip ci]"
+          for attempt in 1 2 3; do
+            if git push origin HEAD:master; then
+              echo "Version sync pushed."
+              exit 0
+            fi
+            echo "Push rejected, rebasing onto latest master (attempt $attempt)..."
+            git pull --rebase origin master || break
+          done
+          echo "Failed to push version sync after retries." >&2
+          exit 1

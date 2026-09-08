@@ -1,5 +1,19 @@
 ## 2026-09-08
 
+- Release versioning is now tag-driven: merges to master no longer bump
+  `expo.version` in `app.json`. Pushing `vX.Y.Z` sets `app.json` to `X.Y.Z`
+  (transiently in the production build jobs so the binary matches the tag,
+  plus a sync-back commit to master), and non-semver tags fail the build.
+  Preview builds also no longer auto-increment remote build numbers; only
+  production tag builds do.
+- The EAS production workflow is now manual-only (`npm run deploy` fallback):
+  tag releases ship exclusively through GitHub Actions so a tag no longer
+  triggers a second build with a stale `app.json` and a double remote
+  build-number bump.
+- iOS E2E smoke no longer runs on pull requests (manual dispatch only);
+  simulator runs were too slow to gate PRs, which stay covered by
+  lint/typecheck/unit checks.
+
 - Fixed the invite deep link reporting success when the accept was skipped:
   `acceptInvitationFromLink` now returns an outcome
   (`accepted`/`already-accepted`/`declined`/`expired`/`invalid`) and only
