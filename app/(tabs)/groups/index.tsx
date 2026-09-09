@@ -7,6 +7,7 @@ import { ThemedIconButton } from '@/components/ui/themed-icon-button';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useDebouncedQueryInvalidation } from '@/hooks/use-debounced-query-invalidation';
 import { useGroupsHomeRealtime } from '@/hooks/use-realtime';
+import { usePendingInvitationsCount } from '@/hooks/use-pending-invitations';
 import { useRefetchOnFocus } from '@/hooks/use-refetch-on-focus';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
@@ -30,6 +31,7 @@ export default function GroupsScreen() {
   const queryClient = useQueryClient();
   const groupsQueryKey = useMemo(() => queryKeys.groups.list(currentUserId), [currentUserId]);
   const invalidateGroups = useDebouncedQueryInvalidation(groupsQueryKey, 500);
+  const { pendingInvitationCount } = usePendingInvitationsCount();
 
   // Animations
   const [fadeAnim] = useState(() => new Animated.Value(0));
@@ -178,14 +180,25 @@ export default function GroupsScreen() {
             </>
           )}
         </View>
-        <ThemedIconButton
-          name="plus"
-          size={20}
-          shape='square'
-          accessibilityLabel='Create Group'
-          accessibilityHint="Opens the form to create a new group"
-          onPress={() => router.push('/create-group')}
-        />
+        <View style={styles.headerButtons}>
+          <ThemedIconButton
+            name="bell"
+            size={20}
+            shape="square"
+            accessibilityLabel="Invitations"
+            accessibilityHint="View pending invitations and friend requests"
+            badge={pendingInvitationCount > 0 ? pendingInvitationCount : undefined}
+            onPress={() => router.push('/invitations')}
+          />
+          <ThemedIconButton
+            name="plus"
+            size={20}
+            shape='square'
+            accessibilityLabel='Create Group'
+            accessibilityHint="Opens the form to create a new group"
+            onPress={() => router.push('/create-group')}
+          />
+        </View>
       </View>
 
       {deletedGroups.length > 0 && (
@@ -256,6 +269,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: Platform.OS === 'ios' ? 60 : 54,
     marginBottom: 16,
+  },
+  headerButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
   },
   balanceSummaryRow: {
     flexDirection: 'row',

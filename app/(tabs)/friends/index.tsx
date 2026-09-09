@@ -7,6 +7,7 @@ import { FriendsListSkeleton } from '@/components/ui/skeleton';
 import { ThemedIconButton } from '@/components/ui/themed-icon-button';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useDebouncedQueryInvalidation } from '@/hooks/use-debounced-query-invalidation';
+import { usePendingInvitationsCount } from '@/hooks/use-pending-invitations';
 import { useRealtime } from '@/hooks/use-realtime';
 import { useRefetchOnFocus } from '@/hooks/use-refetch-on-focus';
 import { useThemeColors } from '@/hooks/use-theme-colors';
@@ -33,6 +34,7 @@ export default function FriendsScreen() {
   const currentUserId = user?.id || '';
   const friendsQueryKey = useMemo(() => queryKeys.friends.home(currentUserId), [currentUserId]);
   const invalidateFriends = useDebouncedQueryInvalidation(friendsQueryKey, 500);
+  const { pendingInvitationCount } = usePendingInvitationsCount();
 
   const {
     data: friends = [],
@@ -181,10 +183,19 @@ export default function FriendsScreen() {
         </View>
         <View style={styles.headerButtons}>
           <ThemedIconButton
+            name="bell"
+            size={20}
+            shape="square"
+            accessibilityLabel="Invitations"
+            accessibilityHint="View pending invitations and friend requests"
+            badge={pendingInvitationCount > 0 ? pendingInvitationCount : undefined}
+            onPress={() => router.push('/invitations')}
+          />
+          <ThemedIconButton
             name="person.badge.plus"
             size={20}
-            shape='square'
-            accessibilityLabel='Add Friend'
+            shape="square"
+            accessibilityLabel="Add Friend"
             onPress={() => router.push('/add-friend')}
           />
         </View>

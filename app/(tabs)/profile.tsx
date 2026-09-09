@@ -5,20 +5,15 @@ import { UserAvatar } from '@/components/ui/user-avatar';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useCurrency } from '@/contexts/currency-context';
 import { useTheme } from '@/contexts/theme-context';
-import { useRealtime } from '@/hooks/use-realtime';
-import { useRefetchOnFocus } from '@/hooks/use-refetch-on-focus';
+import { usePendingInvitationsCount } from '@/hooks/use-pending-invitations';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getAppVersionLabel } from '@/lib/app-version';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { calculateFriendSummaryTotals, friendSummaryService } from '@/services/friend-summary-service';
-import { friendshipService } from '@/services/friendship-service';
-import { invitationService } from '@/services/invitation-service';
 import { notificationService } from '@/services/notification-service';
 import { queryKeys } from '@/services/query-keys';
 import { userService } from '@/services/user-service';
 import { formatCurrency } from '@/utils/currency';
-import { getPendingInvitationCount } from '@/utils/invitation-count';
-import { normalizeEmail } from '@/utils/validation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -51,64 +46,9 @@ export default function ProfileScreen() {
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const currentUserId = currentUser?.id || '';
   const queryClient = useQueryClient();
-  const normalizedEmail = normalizeEmail(currentUser?.email) || '';
-  const pendingInvitationQueryKey = useMemo(
-    () => queryKeys.invitations.pendingCount(currentUserId, normalizedEmail),
-    [currentUserId, normalizedEmail]
-  );
   const friendsHomeQueryKey = useMemo(() => queryKeys.friends.home(currentUserId), [currentUserId]);
   const notificationsEnabled = notificationOverride ?? !!currentUser?.pushToken;
-
-  const pendingInvitationQuery = useQuery({
-    queryKey: pendingInvitationQueryKey,
-    enabled: !!currentUserId,
-    queryFn: async () => {
-      const [friendRequests, emailInvitations] = await Promise.all([
-        queryClient.fetchQuery({
-          queryKey: queryKeys.invitations.friendRequests(currentUserId),
-          queryFn: () => friendshipService.getPendingRequests(currentUserId),
-        }),
-        normalizedEmail
-          ? queryClient.fetchQuery({
-            queryKey: queryKeys.invitations.received(currentUserId, normalizedEmail),
-            queryFn: () => invitationService.getReceivedInvitations(normalizedEmail),
-          })
-          : Promise.resolve([]),
-      ]);
-      return getPendingInvitationCount(friendRequests.length, emailInvitations.length);
-    },
-  });
-  const {
-    data: pendingInvitationCountData,
-    isFetching: isFetchingPendingInvitations,
-    isStale: isPendingInvitationsStale,
-    refetch: refetchPendingInvitations,
-  } = pendingInvitationQuery;
-  const pendingInvitationCount = pendingInvitationCountData ?? 0;
-
-  useRefetchOnFocus({
-    enabled: !!currentUserId,
-    isFetching: isFetchingPendingInvitations,
-    isStale: isPendingInvitationsStale,
-    refetch: refetchPendingInvitations,
-  });
-
-  const invalidateInvitationCount = useCallback(() => {
-    void queryClient.invalidateQueries({ queryKey: ['invitations'] });
-  }, [queryClient]);
-
-  useRealtime({
-    table: 'invitations',
-    filter: normalizedEmail ? `invitee_email=eq.${normalizedEmail}` : undefined,
-    onChange: invalidateInvitationCount,
-    enabled: !!normalizedEmail,
-  });
-  useRealtime({
-    table: 'friendships',
-    filter: currentUserId ? `friend_id=eq.${currentUserId}` : undefined,
-    onChange: invalidateInvitationCount,
-    enabled: !!currentUserId,
-  });
+  const { pendingInvitationCount } = usePendingInvitationsCount();
 
   useEffect(() => {
     let cancelled = false;

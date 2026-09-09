@@ -1,3 +1,4 @@
+import { ThemedText } from '@/components/themed-text';
 import { IconSymbol, IconSymbolName } from '@/components/ui/icon-symbol';
 import {
   ACCENT_TEAL,
@@ -14,6 +15,7 @@ import {
   Platform,
   StyleSheet,
   TouchableOpacity,
+  View,
   ViewStyle,
 } from 'react-native';
 
@@ -33,6 +35,8 @@ export interface ThemedIconButtonProps {
   accessibilityHint?: string;
   hitSlop?: Insets;
   testID?: string;
+  badge?: number | boolean;
+  badgeColor?: string;
 }
 
 export function ThemedIconButton({
@@ -49,6 +53,8 @@ export function ThemedIconButton({
   accessibilityHint,
   hitSlop = MIN_TOUCH_HIT_SLOP,
   testID,
+  badge,
+  badgeColor,
 }: ThemedIconButtonProps) {
   const { colors, isDark } = useThemeColors();
   const isDisabled = disabled || loading;
@@ -81,6 +87,10 @@ export function ThemedIconButton({
   }
 
   const borderRadius = shape === 'circle' ? 20 : 12;
+  const hasNumericBadge = typeof badge === 'number' && badge > 0;
+  const hasDotBadge = typeof badge === 'boolean' && badge;
+  const showBadge = hasNumericBadge || hasDotBadge;
+  const defaultBadgeBg = isDark ? '#EF4444' : '#DC2626';
 
   return (
     <TouchableOpacity
@@ -112,6 +122,24 @@ export function ThemedIconButton({
       ) : (
         <IconSymbol name={name} size={size} color={iconColor} />
       )}
+      {showBadge && (
+        <View
+          style={[
+            styles.badge,
+            hasNumericBadge ? styles.badgePill : styles.badgeDot,
+            {
+              backgroundColor: badgeColor || defaultBadgeBg,
+              borderColor: isDark ? '#05080e' : '#F5F5F5',
+            },
+          ]}
+        >
+          {hasNumericBadge && (
+            <ThemedText style={styles.badgeText}>
+              {badge > 99 ? '99+' : badge}
+            </ThemedText>
+          )}
+        </View>
+      )}
     </TouchableOpacity>
   );
 }
@@ -120,8 +148,38 @@ const styles = StyleSheet.create({
   button: {
     alignItems: 'center',
     justifyContent: 'center',
+    position: 'relative',
     ...(Platform.OS === 'android' && {
       elevation: 0,
     }),
+  },
+  badge: {
+    position: 'absolute',
+    borderWidth: 1.5,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  badgeDot: {
+    top: -2,
+    right: -2,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  badgePill: {
+    top: -5,
+    right: -5,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    paddingHorizontal: 4,
+  },
+  badgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    lineHeight: 12,
+    textAlign: 'center',
   },
 });
