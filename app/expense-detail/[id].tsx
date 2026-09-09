@@ -11,8 +11,11 @@ import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { activityService } from '@/services/activity-service';
 import { expenseService } from '@/services/expense-service';
 import { groupService } from '@/services/group-service';
+import { buildFriendshipStatus } from '@/services/group-detail-read-model';
+import { friendshipService } from '@/services/friendship-service';
 import { createExpenseDeletedNotification, notificationService } from '@/services/notification-service';
 import { getExpenseDeletionInvalidationKeys } from '@/services/expense-deletion-invalidation';
+import { invalidateFriendRelationshipSurfaces } from '@/services/friend-relationship-invalidation';
 import { queryKeys } from '@/services/query-keys';
 import { userService } from '@/services/user-service';
 import { formatCurrency } from '@/utils/currency';
@@ -23,6 +26,7 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   Animated,
+  ActivityIndicator,
   ScrollView,
   StyleSheet,
   TouchableOpacity,
@@ -30,7 +34,7 @@ import {
 } from 'react-native';
 
 export default function ExpenseDetailScreen() {
-  const { colors, expenseDetail, isDark } = useThemeColors();
+  const { colors, expenseDetail, friends, isDark } = useThemeColors();
   const { user } = useAuth();
   const { id } = useLocalSearchParams<{ id: string }>();
   const currentUserId = user?.id || '';
@@ -50,16 +54,17 @@ export default function ExpenseDetailScreen() {
     refetch,
   } = useQuery({
     queryKey: expenseQueryKey,
-    enabled: !!id,
+    enabled: !!id && !!currentUserId,
     queryFn: async () => {
       const expenseData = await expenseService.getById(id);
       if (!expenseData) return null;
 
-      const [splitsData, payer, group, activities] = await Promise.all([
+      const [splitsData, payer, group, activities, friendships] = await Promise.all([
         expenseService.getSplits(id),
         userService.getById(expenseData.paidBy),
         expenseData.groupId ? groupService.getById(expenseData.groupId) : Promise.resolve(null),
         activityService.getByTarget(id),
+        friendshipService.getAllFriendships(currentUserId),
       ]);
       const splitUsers = await userService.getByIds(splitsData.map(split => split.userId));
       const usersById = new Map(splitUsers.map(user => [user.id, user]));
@@ -70,6 +75,7 @@ export default function ExpenseDetailScreen() {
         payer,
         group,
         activities,
+        friendshipStatus: buildFriendshipStatus(currentUserId, friendships),
       };
     },
   });
@@ -78,11 +84,40 @@ export default function ExpenseDetailScreen() {
   const payer = expenseQueryData?.payer ?? null;
   const group = expenseQueryData?.group ?? null;
   const activities = expenseQueryData?.activities ?? [];
+  const friendshipStatus = expenseQueryData?.friendshipStatus ?? new Map();
+  const [requestingFriendId, setRequestingFriendId] = useState<string | null>(null);
   const loading = isLoading;
   const loadError = error ? getFetchErrorMessage(error) : null;
 
+  const handleAddFriend = async (friendId: string) => {
+    if (
+      requestingFriendId
+      || (friendshipStatus.get(friendId) !== 'none' && friendshipStatus.get(friendId) !== undefined)
+    ) return;
+
+    try {
+      setRequestingFriendId(friendId);
+      await friendshipService.create(currentUserId, friendId);
+      queryClient.setQueryData(expenseQueryKey, (current: typeof expenseQueryData) => {
+        if (!current) return current;
+        const nextFriendshipStatus = new Map(current.friendshipStatus);
+        nextFriendshipStatus.set(friendId, 'pending_sent');
+        return { ...current, friendshipStatus: nextFriendshipStatus };
+      });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.invitations.sentRequests(currentUserId) }),
+        invalidateFriendRelationshipSurfaces(queryClient, currentUserId, friendId),
+      ]);
+    } catch (requestError) {
+      console.error('Error sending friend request:', requestError);
+      Alert.alert('Error', 'Failed to send friend request');
+    } finally {
+      setRequestingFriendId(null);
+    }
+  };
+
   useRefetchOnFocus({
-    enabled: !!id,
+    enabled: !!id && !!currentUserId,
     isFetching,
     isStale,
     refetch,
@@ -388,6 +423,37 @@ export default function ExpenseDetailScreen() {
                       <ThemedText numberOfLines={1} type="defaultSemiBold" style={[styles.splitName, { color: isDark ? '#f8fafc' : colors.text }]}>
                         {isCurrentUser ? 'You' : split.user?.name || 'Unknown'}
                       </ThemedText>
+                      {!isCurrentUser && split.user && (() => {
+                        const status = friendshipStatus.get(split.userId);
+                        if (status === 'accepted') return null;
+                        const isPending = status === 'pending_sent';
+                        const isReceived = status === 'pending_received';
+                        const isRequesting = requestingFriendId === split.userId;
+
+                        return (
+                          <TouchableOpacity
+                            accessibilityRole="button"
+                            accessibilityLabel={status === 'none' || status === undefined ? `Add ${split.user.name} as a friend` : isPending ? `Friend request sent to ${split.user.name}` : `Friend request received from ${split.user.name}`}
+                            accessibilityState={{ disabled: status !== 'none' && status !== undefined, busy: isRequesting }}
+                            disabled={isRequesting || (status !== 'none' && status !== undefined)}
+                            onPress={() => void handleAddFriend(split.userId)}
+                            style={[styles.friendAction, {
+                              backgroundColor: isPending || isReceived ? friends.settledSurface : friends.actionSurface,
+                              borderColor: friends.actionBorder,
+                              opacity: isRequesting ? 0.65 : 1,
+                            }]}
+                            testID={`expense-detail-add-friend-${split.userId}`}>
+                            {isRequesting ? (
+                              <ActivityIndicator size="small" color={friends.actionIcon} />
+                            ) : (
+                              <IconSymbol name={isPending || isReceived ? 'clock' : 'person.badge.plus'} size={13} color={friends.actionIcon} />
+                            )}
+                            <ThemedText style={[styles.friendActionText, { color: friends.actionIcon }]}>
+                              {status === 'none' || status === undefined ? 'Add friend' : isPending ? 'Request sent' : 'Request received'}
+                            </ThemedText>
+                          </TouchableOpacity>
+                        );
+                      })()}
                       <ThemedText style={[styles.splitType, { color: isDark ? '#9ba6b8' : colors.textSecondary }]}>
                         {splitMeta}
                       </ThemedText>
@@ -704,6 +770,19 @@ const styles = StyleSheet.create({
     minWidth: 0,
     fontSize: 15,
     fontWeight: '600',
+  },
+  friendAction: {
+    minHeight: 30,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 7,
+    borderWidth: 1,
+    borderRadius: 8,
+  },
+  friendActionText: {
+    fontSize: 10,
+    fontWeight: '700',
   },
   splitType: {
     width: 52,

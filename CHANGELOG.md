@@ -1,5 +1,6 @@
 ## 2026-09-09
 
+- Added inline friend-request actions for non-friend participants on expense details.
 - Notify the requester when a received friend request is accepted, with a link
   back to the new friendship.
 
