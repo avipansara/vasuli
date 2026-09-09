@@ -1,6 +1,7 @@
 ## 2026-09-09
 
 - Added inline friend-request actions for non-friend participants on expense details.
+- GitHub Releases are now created automatically for every pushed `v*` tag, with generated notes covering commits since the previous release.
 - Fixed the OTP resend countdown staying frozen after returning to the app by recalculating it from an absolute deadline.
 - Notify the requester when a received friend request is accepted, with a link
   back to the new friendship.
