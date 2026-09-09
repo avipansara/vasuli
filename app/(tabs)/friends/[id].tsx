@@ -128,6 +128,7 @@ export default function FriendDetailScreen() {
     friendDetailQueryKey,
     friendsHomeQueryKey,
     queryClient,
+    isFetching,
   } = useFriendDetailController({ currentUserId, friendId: id });
   const loading = isLoading && !friendDetail;
   const loadError = error ? getFetchErrorMessage(error) : null;
@@ -164,13 +165,11 @@ export default function FriendDetailScreen() {
   const outstandingGroupBalances = groupBalances.filter(summary => summary.direction !== 'settled');
 
   useEffect(() => {
-    if (friendDetail === undefined || isLoading) return;
-    if (!friendDetail) {
+    if (friendDetail === null && !isFetching && !error) {
       Alert.alert('Error', 'Friend not found');
       handleBack();
-      return;
     }
-  }, [friendDetail, handleBack, isLoading]);
+  }, [error, friendDetail, handleBack, isFetching]);
 
   const loadFriendData = useCallback(async () => {
     await refetch();

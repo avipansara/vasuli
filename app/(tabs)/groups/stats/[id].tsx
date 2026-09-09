@@ -17,6 +17,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { formatDateRange } from '@/utils/date';
 
 const AVATAR_COLORS = ['#7C5CFC', '#22C55E', '#F59E0B', '#3B82F6', '#EC4899'];
@@ -118,6 +119,7 @@ function BalanceColumn({ title, members, color, avatarById, surface, maxVisible 
 export default function GroupStatsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user } = useAuth();
+  const insets = useSafeAreaInsets();
   const { colors, gradients, friendDetail: theme, isDark } = useThemeColors();
   const [isExporting, setIsExporting] = useState(false);
   const [showAllContributors, setShowAllContributors] = useState(false);
@@ -210,7 +212,13 @@ export default function GroupStatsScreen() {
           </Pressable>
         )}
       />
-      <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.content}
+        contentContainerStyle={[
+          styles.contentContainer,
+          { paddingBottom: Math.max(insets.bottom, 16) + 100 },
+        ]}
+        showsVerticalScrollIndicator={false}>
         <View style={styles.groupIntro}>
           <GroupMark name={data.group.name} uri={data.group.imageUrl} />
           <View style={styles.groupIntroCopy}>

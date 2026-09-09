@@ -183,13 +183,13 @@ export async function submitExpense(input: SubmitExpenseInput): Promise<void> {
     }, input.splits);
 
     if (input.target.kind === 'group' && input.keys.groupDetail) {
-      input.cache.set<GroupDetailReadModel | null>(input.keys.groupDetail, current => current
+      input.cache.set<GroupDetailReadModel | null | undefined>(input.keys.groupDetail, current => current
         ? addExpenseToGroupReadModel(
           removeExpenseFromGroupReadModel(current, optimisticExpense.id),
           expense,
           buildCachedSplits(expense.id, input.splits),
         )
-        : null);
+        : current);
     }
     input.cache.set<HomeFriend[]>(input.keys.home, current => current?.map(friend => ({
       ...friend,
@@ -199,10 +199,10 @@ export async function submitExpense(input: SubmitExpenseInput): Promise<void> {
     })) ?? []);
     if (input.target.kind === 'friends') {
       input.keys.friendDetails?.forEach(key => {
-        input.cache.set<FriendDetailData | null>(key, current => current ? {
+        input.cache.set<FriendDetailData | null | undefined>(key, current => current ? {
           ...current,
           expenses: current.expenses.map(item => item.id === optimisticExpense.id ? { ...item, ...expense } : item),
-        } : null);
+        } : current);
       });
     }
 

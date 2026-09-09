@@ -40,6 +40,7 @@ import {
   Animated,
   LayoutAnimation,
   Platform,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -1245,7 +1246,11 @@ export default function GroupDetailScreen() {
         </View>
 
         {/* Tab / Action Tiles */}
-        <View style={styles.tabTilesRow}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.tabTilesRow}
+          style={styles.tabTilesScroll}>
           {tabItems.map(item => {
             const isTab = item.type === 'tab';
             const isSelected = isTab && sectionTab === item.id;
@@ -1253,6 +1258,7 @@ export default function GroupDetailScreen() {
             return (
               <TouchableOpacity
                 key={item.id}
+                testID={`group-tab-${item.id}`}
                 accessibilityRole="button"
                 accessibilityLabel={item.label}
                 accessibilityState={{ selected: isSelected }}
@@ -1278,7 +1284,7 @@ export default function GroupDetailScreen() {
               </TouchableOpacity>
             );
           })}
-        </View>
+        </ScrollView>
 
         {/* Members Section */}
         {(sectionTab === 'all') && (
@@ -1643,17 +1649,20 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
   },
+  tabTilesScroll: {
+    marginVertical: 12,
+  },
   tabTilesRow: {
     flexDirection: 'row',
     paddingHorizontal: 16,
-    gap: 12,
-    flex: 1,
-    marginVertical: 18,
+    paddingVertical: 8,
+    gap: 10,
+    alignItems: 'center',
   },
   tabTile: {
     flexDirection: 'row',
-    height: 36,
-    borderRadius: 16,
+    height: 38,
+    borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
     gap: 6,
@@ -1663,7 +1672,7 @@ const styles = StyleSheet.create({
     shadowRadius: 0,
     elevation: 4,
     borderColor: 'transparent',
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
   },
   tabTileActive: {
     elevation: 3,

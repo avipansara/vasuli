@@ -287,4 +287,55 @@ describe('submitExpense', () => {
       },
     });
   });
+
+  it('leaves unseeded friend detail cache keys undefined instead of setting them to null', async () => {
+    const cache = createCache();
+
+    await submitExpense({
+      target: { kind: 'friends', friendIds: ['user-2'] },
+      description: 'Lunch',
+      amount: 40,
+      currency: 'USD',
+      date: 1,
+      payerId: user.id,
+      currentUser: user,
+      currentUserId: user.id,
+      splits: [{ userId: 'user-1', amount: 20, splitType: 'equal' }, { userId: 'user-2', amount: 20, splitType: 'equal' }],
+      cache,
+      keys: { home: 'home', friendDetails: ['friend-detail-unseeded'], groups: 'groups', expenses: 'expenses', activity: 'activity' },
+      save: vi.fn(async () => expense({ id: 'friend-expense-2', groupId: undefined, description: 'Lunch' })),
+      navigateBack: vi.fn(),
+      logActivity: vi.fn(async () => undefined),
+      sendNotifications: vi.fn(async () => undefined),
+      warn: vi.fn(),
+    });
+
+    expect(cache.get('friend-detail-unseeded')).toBeUndefined();
+  });
+
+  it('leaves unseeded group detail cache keys undefined instead of setting them to null', async () => {
+    const cache = createCache();
+
+    await submitExpense({
+      target: { kind: 'group', groupId: group.id, memberIds: ['user-1', 'user-2'] },
+      description: 'Snacks',
+      amount: 20,
+      currency: 'USD',
+      date: 1,
+      payerId: user.id,
+      currentUser: user,
+      currentUserId: user.id,
+      splits: [{ userId: 'user-1', amount: 10, splitType: 'equal' }, { userId: 'user-2', amount: 10, splitType: 'equal' }],
+      group,
+      cache,
+      keys: { home: 'home', groupDetail: 'group-detail-unseeded', groups: 'groups', expenses: 'expenses', activity: 'activity' },
+      save: vi.fn(async () => expense({ id: 'group-expense-2', groupId: group.id, description: 'Snacks' })),
+      navigateBack: vi.fn(),
+      logActivity: vi.fn(async () => undefined),
+      sendNotifications: vi.fn(async () => undefined),
+      warn: vi.fn(),
+    });
+
+    expect(cache.get('group-detail-unseeded')).toBeUndefined();
+  });
 });

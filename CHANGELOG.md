@@ -1,3 +1,9 @@
+## 2026-09-09
+
+- Fixed friend detail showing a false “Friend not found” alert on the first open after adding an expense by preserving unseeded query cache entries instead of writing `null`, and guarding the route's missing-friend effect against active background refetches and network errors.
+- Fixed Group Stats screen scroll clearance by accounting for bottom safe-area insets and tab bar height in the scroll view container, and hid the floating add expense button on stats routes.
+- Fixed Group Detail section tabs (“All”, “Expenses”, “Balances”, “Stats”) overflowing screen bounds by wrapping them in a horizontally scrollable container, making the “Stats” action tile fully accessible and clickable on all screen sizes.
+
 ## 2026-09-08
 
 - Friend-request declines now retain a visible “Declined” outcome for the sender instead of silently disappearing. Recipients no longer see the request; senders can still cancel active pending requests or explicitly send one again from the declined card.
