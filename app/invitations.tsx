@@ -19,7 +19,12 @@ import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import type { PendingFriendshipRequest, SentFriendshipRequest } from '@/services/friendship-service';
 import { friendshipService } from '@/services/friendship-service';
 import { invitationService } from '@/services/invitation-service';
+import {
+  createInvitationAcceptedNotification,
+  notificationService,
+} from '@/services/notification-service';
 import { queryKeys } from '@/services/query-keys';
+import { userService } from '@/services/user-service';
 import type { Invitation } from '@/types/database';
 import { formatDate } from '@/utils/date';
 import { getSentInvitationDisplay } from '@/utils/invitation-display';
@@ -200,6 +205,25 @@ export default function InvitationsScreen() {
     setActionLoading(request.id);
     try {
       await friendshipService.accept(request.id);
+
+      // Acceptance must succeed even if the requester has no token or push
+      // delivery is temporarily unavailable.
+      try {
+        const requester = await userService.getById(request.userId);
+        if (requester?.pushToken) {
+          await notificationService.sendPushNotification(
+            requester.pushToken,
+            createInvitationAcceptedNotification(
+              user?.name?.trim() || 'Your friend',
+              undefined,
+              userId,
+            ),
+          );
+        }
+      } catch (pushError) {
+        console.error('Error sending friend request acceptance notification:', pushError);
+      }
+
       Alert.alert('Success', `You are now connected with ${getRequesterDisplayName(request)}`);
       await loadInvitations();
     } catch (error) {
@@ -208,7 +232,7 @@ export default function InvitationsScreen() {
     } finally {
       setActionLoading(null);
     }
-  }, [loadInvitations]);
+  }, [loadInvitations, user, userId]);
 
   const handleDeclineFriendRequest = useCallback(async (request: PendingFriendshipRequest) => {
     setActionLoading(request.id);

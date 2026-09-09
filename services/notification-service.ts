@@ -267,14 +267,15 @@ export const createInvitationNotification = (
 
 export const createInvitationAcceptedNotification = (
   accepterName: string,
-  groupName?: string
+  groupName?: string,
+  friendId?: string,
 ): PushNotificationData => ({
   type: 'invitation_accepted',
   title: '✅ Invitation Accepted',
   body: groupName
     ? `${accepterName} joined "${groupName}"`
     : `${accepterName} accepted your friend request`,
-  data: { accepterName, groupName },
+  data: { accepterName, groupName, friendId },
 });
 
 export const createSettlementNotification = (
