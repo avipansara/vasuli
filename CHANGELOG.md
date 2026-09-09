@@ -1,5 +1,7 @@
 ## 2026-09-08
 
+- Friend-request declines now retain a visible “Declined” outcome for the sender instead of silently disappearing. Recipients no longer see the request; senders can still cancel active pending requests or explicitly send one again from the declined card.
+
 - Consolidated group components under `components/groups/`:
   - Deleted orphaned and unused `components/group/member-card.tsx` and `components/group/expense-card.tsx`.
   - Moved active `AddMemberModal` and `MemberBilateralLines` components into `components/groups/`.

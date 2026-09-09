@@ -28,7 +28,7 @@ interface UserWithBalance extends User {
 }
 
 export default function FriendsScreen() {
-  const { colors, friends: friendsTheme } = useThemeColors();
+  const { colors, friends: friendsTheme, invitations } = useThemeColors();
   const [refreshing, setRefreshing] = useState(false);
   const { user } = useAuth();
   const currentUserId = user?.id || '';
@@ -186,9 +186,12 @@ export default function FriendsScreen() {
             name="bell"
             size={20}
             shape="square"
-            accessibilityLabel="Invitations"
+            accessibilityLabel={pendingInvitationCount > 0
+              ? `${pendingInvitationCount} pending invitation${pendingInvitationCount === 1 ? '' : 's'}`
+              : 'Invitations'}
             accessibilityHint="View pending invitations and friend requests"
             badge={pendingInvitationCount > 0 ? pendingInvitationCount : undefined}
+            badgeColor={invitations.danger}
             onPress={() => router.push('/invitations')}
           />
           <ThemedIconButton

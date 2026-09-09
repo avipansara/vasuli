@@ -10,13 +10,31 @@ const friendshipRow = {
 
 const mocks = vi.hoisted(() => {
   const single = vi.fn()
-  const updateEq = vi.fn()
+  const updateIdEq = vi.fn()
+  const updateStatusEq = vi.fn()
+  const updateSelect = vi.fn()
+  const reopenMaybeSingle = vi.fn()
+  const deleteIdEq = vi.fn()
+  const deleteStatusEq = vi.fn()
   const pendingStatusEq = vi.fn()
   const pendingFriendIdEq = vi.fn(() => ({ eq: pendingStatusEq }))
   const from = vi.fn()
   const getByIds = vi.fn()
   const getFriends = vi.fn()
-  return { single, updateEq, pendingStatusEq, pendingFriendIdEq, from, getByIds, getFriends }
+  return {
+    single,
+    updateIdEq,
+    updateStatusEq,
+    updateSelect,
+    reopenMaybeSingle,
+    deleteIdEq,
+    deleteStatusEq,
+    pendingStatusEq,
+    pendingFriendIdEq,
+    from,
+    getByIds,
+    getFriends,
+  }
 })
 
 vi.mock('@/lib/supabase', () => ({
@@ -39,7 +57,15 @@ describe('friendshipService', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.single.mockResolvedValue({ data: friendshipRow, error: null })
-    mocks.updateEq.mockResolvedValue({ error: null })
+    mocks.updateIdEq.mockImplementation(() => ({ eq: mocks.updateStatusEq }))
+    mocks.updateStatusEq.mockImplementation(() => ({
+      eq: mocks.updateStatusEq,
+      select: mocks.updateSelect,
+    }))
+    mocks.updateSelect.mockImplementation(() => ({ maybeSingle: mocks.reopenMaybeSingle }))
+    mocks.reopenMaybeSingle.mockResolvedValue({ data: null, error: null })
+    mocks.deleteIdEq.mockImplementation(() => ({ eq: mocks.deleteStatusEq }))
+    mocks.deleteStatusEq.mockResolvedValue({ error: null })
     mocks.pendingStatusEq.mockResolvedValue({ data: [friendshipRow], error: null })
     mocks.getByIds.mockResolvedValue([{ id: 'user-a', name: 'Alex Requester' }])
     mocks.getFriends.mockResolvedValue([])
@@ -54,7 +80,10 @@ describe('friendshipService', () => {
           }),
         }),
         update: () => ({
-          eq: mocks.updateEq,
+          eq: mocks.updateIdEq,
+        }),
+        delete: () => ({
+          eq: mocks.deleteIdEq,
         }),
         select: () => ({
           eq: mocks.pendingFriendIdEq,
@@ -72,10 +101,36 @@ describe('friendshipService', () => {
     expect(mocks.from).toHaveBeenCalledWith('friendships')
   })
 
+  it('reopens a declined request for the original sender', async () => {
+    mocks.reopenMaybeSingle.mockResolvedValue({
+      data: { ...friendshipRow, status: 'pending' },
+      error: null,
+    })
+
+    const friendship = await friendshipService.create('user-a', 'user-b')
+
+    expect(friendship.status).toBe('pending')
+    expect(mocks.updateIdEq).toHaveBeenCalledWith('user_id', 'user-a')
+    expect(mocks.updateStatusEq).toHaveBeenCalledWith('status', 'declined')
+    expect(mocks.single).not.toHaveBeenCalled()
+  })
+
   it('accept updates status to accepted', async () => {
     await friendshipService.accept('fs-1')
 
-    expect(mocks.updateEq).toHaveBeenCalledWith('id', 'fs-1')
+    expect(mocks.updateIdEq).toHaveBeenCalledWith('id', 'fs-1')
+  })
+
+  it('preserves a declined request outcome', async () => {
+    await friendshipService.decline('fs-1')
+
+    expect(mocks.updateStatusEq).toHaveBeenCalledWith('status', 'pending')
+  })
+
+  it('deletes a request only when its sender cancels it', async () => {
+    await friendshipService.cancel('fs-1')
+
+    expect(mocks.deleteStatusEq).toHaveBeenCalledWith('status', 'pending')
   })
 
   it('includes the requester profile name for pending requests', async () => {
@@ -86,6 +141,18 @@ describe('friendshipService', () => {
       requesterName: 'Alex Requester',
     })])
     expect(mocks.getByIds).toHaveBeenCalledWith(['user-a'])
+  })
+
+  it('includes the requester email when available', async () => {
+    mocks.getByIds.mockResolvedValue([{
+      id: 'user-a',
+      name: 'Alex Requester',
+      email: 'alex@example.com',
+    }])
+
+    const requests = await friendshipService.getPendingRequestsWithRequesters('user-b')
+
+    expect(requests[0].requesterEmail).toBe('alex@example.com')
   })
 
   it('skips requests whose requester profile cannot be loaded', async () => {
@@ -156,5 +223,30 @@ describe('friendshipService', () => {
     await expect(
       friendshipService.getSentRequestsWithRecipients('user-a')
     ).resolves.toEqual([])
+  })
+
+  it('keeps a declined sent request visible to its sender', async () => {
+    const pendingRequestsSpy = vi.spyOn(friendshipService, 'getSentRequests')
+      .mockResolvedValue([])
+    const declinedRequestsSpy = vi.spyOn(friendshipService, 'getDeclinedSentRequests')
+      .mockResolvedValue([{
+        id: 'fs-declined',
+        userId: 'user-a',
+        friendId: 'user-b',
+        status: 'declined',
+        createdAt: 1,
+      }])
+    mocks.getByIds.mockResolvedValue([{ id: 'user-b', name: 'Ben Recipient' }])
+
+    await expect(friendshipService.getSentRequestsWithRecipients('user-a')).resolves.toEqual([
+      expect.objectContaining({
+        id: 'fs-declined',
+        status: 'declined',
+        recipientName: 'Ben Recipient',
+      }),
+    ])
+
+    pendingRequestsSpy.mockRestore()
+    declinedRequestsSpy.mockRestore()
   })
 })

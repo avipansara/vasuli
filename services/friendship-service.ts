@@ -6,12 +6,13 @@ export interface Friendship {
   id: string;
   userId: string;
   friendId: string;
-  status: 'pending' | 'accepted' | 'blocked';
+  status: 'pending' | 'accepted' | 'declined' | 'blocked';
   createdAt: number;
 }
 
 export interface PendingFriendshipRequest extends Friendship {
   requesterName: string;
+  requesterEmail?: string;
 }
 
 export interface SentFriendshipRequest extends Friendship {
@@ -25,6 +26,21 @@ export const friendshipService = {
    */
   async create(userId: string, friendId: string): Promise<Friendship> {
     const createdAt = new Date().toISOString();
+
+    // A decline is an outcome, not a permanent block. Reuse that same row so
+    // the pair's unique constraint remains intact and the request becomes
+    // pending again for the recipient.
+    const { data: reopenedRequest, error: reopenError } = await supabase
+      .from('friendships')
+      .update({ status: 'pending', created_at: createdAt })
+      .eq('user_id', userId)
+      .eq('friend_id', friendId)
+      .eq('status', 'declined')
+      .select()
+      .maybeSingle();
+
+    if (reopenError) throw reopenError;
+    if (reopenedRequest) return mapFriendshipRow(reopenedRequest);
 
     const { data, error } = await supabase
       .from('friendships')
@@ -54,8 +70,19 @@ export const friendshipService = {
     if (error) throw error;
   },
 
-  /** Decline a pending friendship request. */
+  /** Preserve the request outcome for the sender without exposing it to the recipient. */
   async decline(friendshipId: string): Promise<void> {
+    const { error } = await supabase
+      .from('friendships')
+      .update({ status: 'declined' })
+      .eq('id', friendshipId)
+      .eq('status', 'pending');
+
+    if (error) throw error;
+  },
+
+  /** Withdraw a pending request that the sender no longer wants to keep open. */
+  async cancel(friendshipId: string): Promise<void> {
     const { error } = await supabase
       .from('friendships')
       .delete()
@@ -130,6 +157,19 @@ export const friendshipService = {
     return (data || []).map(mapFriendshipRow);
   },
 
+  /** Get declined requests sent by a user so the sender can see the outcome. */
+  async getDeclinedSentRequests(userId: string): Promise<Friendship[]> {
+    const { data, error } = await supabase
+      .from('friendships')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('status', 'declined');
+
+    if (error) throw error;
+
+    return (data || []).map(mapFriendshipRow);
+  },
+
   /**
    * Get sent pending requests with the recipient's profile name.
    *
@@ -138,12 +178,17 @@ export const friendshipService = {
    * single bad row cannot take down the whole invitations list.
    */
   async getSentRequestsWithRecipients(userId: string): Promise<SentFriendshipRequest[]> {
-    const [requests, friendIds] = await Promise.all([
+    const [pendingRequests, declinedRequests, friendIds] = await Promise.all([
       this.getSentRequests(userId),
+      this.getDeclinedSentRequests(userId),
       this.getFriends(userId),
     ]);
     const acceptedFriendIds = new Set(friendIds);
-    const visibleRequests = requests.filter((request) => !acceptedFriendIds.has(request.friendId));
+    const sentRequestsById = new Map(
+      [...pendingRequests, ...declinedRequests].map((request) => [request.id, request])
+    );
+    const visibleRequests = [...sentRequestsById.values()]
+      .filter((request) => !acceptedFriendIds.has(request.friendId));
     if (visibleRequests.length === 0) return [];
 
     const recipients = await userService.getByIds(visibleRequests.map((request) => request.friendId));
@@ -198,6 +243,9 @@ export const friendshipService = {
         requester.name?.trim() || requester.email?.split('@')[0] || requester.phone || 'Someone',
       ])
     );
+    const requesterEmails = new Map(
+      requesters.map((requester) => [requester.id, requester.email?.trim() || undefined])
+    );
     const missingRequesterIds = visibleRequests
       .map((request) => request.userId)
       .filter((requesterId) => !requesterNames.has(requesterId));
@@ -213,6 +261,7 @@ export const friendshipService = {
       .map((request) => ({
         ...request,
         requesterName: requesterNames.get(request.userId)!,
+        requesterEmail: requesterEmails.get(request.userId),
       }));
   },
 

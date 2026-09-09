@@ -67,7 +67,7 @@ export function usePendingInvitationsCount() {
 
   useRealtime({
     table: 'friendships',
-    filter: currentUserId ? `user_id_2=eq.${currentUserId}` : undefined,
+    filter: currentUserId ? `friend_id=eq.${currentUserId}` : undefined,
     onChange: invalidateInvitationCount,
     enabled: !!currentUserId,
   });

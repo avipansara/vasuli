@@ -22,7 +22,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Animated, FlatList, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 export default function GroupsScreen() {
-  const { colors, isDark } = useThemeColors();
+  const { colors, invitations, isDark } = useThemeColors();
   const [modalVisible, setModalVisible] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
   const [newGroupDescription, setNewGroupDescription] = useState('');
@@ -185,9 +185,12 @@ export default function GroupsScreen() {
             name="bell"
             size={20}
             shape="square"
-            accessibilityLabel="Invitations"
+            accessibilityLabel={pendingInvitationCount > 0
+              ? `${pendingInvitationCount} pending invitation${pendingInvitationCount === 1 ? '' : 's'}`
+              : 'Invitations'}
             accessibilityHint="View pending invitations and friend requests"
             badge={pendingInvitationCount > 0 ? pendingInvitationCount : undefined}
+            badgeColor={invitations.danger}
             onPress={() => router.push('/invitations')}
           />
           <ThemedIconButton

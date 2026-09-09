@@ -110,7 +110,7 @@ type FriendshipRow = {
   id: string;
   user_id: string;
   friend_id: string;
-  status: 'pending' | 'accepted' | 'blocked';
+  status: 'pending' | 'accepted' | 'declined' | 'blocked';
   created_at: string;
 };
 

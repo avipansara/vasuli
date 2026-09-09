@@ -55,6 +55,12 @@ type SentListItem =
   | { type: 'friend_request'; id: string; data: SentFriendshipRequest }
   | { type: 'email_invitation'; id: string; data: InvitationWithDetails };
 
+function getRequesterDisplayName(request: PendingFriendshipRequest): string {
+  return request.requesterName?.trim()
+    || request.requesterEmail?.split('@')[0]
+    || 'Someone';
+}
+
 export default function InvitationsScreen() {
   const { gradients, colors, invitations, isDark } = useThemeColors();
   const { user } = useAuth();
@@ -194,7 +200,7 @@ export default function InvitationsScreen() {
     setActionLoading(request.id);
     try {
       await friendshipService.accept(request.id);
-      Alert.alert('Success', `You are now connected with ${request.requesterName}`);
+      Alert.alert('Success', `You are now connected with ${getRequesterDisplayName(request)}`);
       await loadInvitations();
     } catch (error) {
       console.error('Error accepting friend request:', error);
@@ -229,7 +235,7 @@ export default function InvitationsScreen() {
           onPress: async () => {
             setActionLoading(request.id);
             try {
-              await friendshipService.decline(request.id);
+              await friendshipService.cancel(request.id);
               await loadInvitations();
             } catch (error) {
               console.error('Error cancelling friend request:', error);
@@ -242,6 +248,33 @@ export default function InvitationsScreen() {
       ]
     );
   }, [loadInvitations]);
+
+  const handleResendFriendRequest = useCallback((request: SentFriendshipRequest) => {
+    if (!userId) return;
+
+    Alert.alert(
+      'Send request again?',
+      `Send a new friend request to ${request.recipientName}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Send',
+          onPress: async () => {
+            setActionLoading(request.id);
+            try {
+              await friendshipService.create(userId, request.friendId);
+              await loadInvitations();
+            } catch (error) {
+              console.error('Error resending friend request:', error);
+              Alert.alert('Error', 'Failed to resend friend request');
+            } finally {
+              setActionLoading(null);
+            }
+          },
+        },
+      ],
+    );
+  }, [loadInvitations, userId]);
 
   const handleAccept = useCallback(async (invitation: InvitationWithDetails) => {
     setActionLoading(invitation.id);
@@ -437,20 +470,24 @@ export default function InvitationsScreen() {
       if (item.type === 'friend_request') {
         const req = item.data;
         const isLoading = actionLoading === req.id;
+        const requesterName = getRequesterDisplayName(req);
+        const requestMetadata = `Wants to be your friend · ${formatDate(req.createdAt, 'monthDay')}`;
 
         return (
           <View style={[styles.card, cardSurfaceStyle]}>
             <View style={styles.cardHeader}>
-              <UserAvatar name={req.requesterName} size="md" />
+              <UserAvatar name={requesterName} size="md" />
               <View style={styles.cardTextContainer}>
                 <ThemedText type="defaultSemiBold" numberOfLines={1} style={styles.cardTitle}>
-                  {req.requesterName}
+                  {requesterName}
                 </ThemedText>
-                <ThemedText style={[styles.cardSubtitle, { color: colors.textSecondary }]}>
-                  wants to be your friend
-                </ThemedText>
-                <ThemedText style={[styles.cardDate, { color: colors.textSecondary }]}>
-                  {formatDate(req.createdAt, 'monthDay')}
+                {req.requesterEmail ? (
+                  <ThemedText numberOfLines={1} style={[styles.cardSubtitle, { color: colors.textSecondary }]}>
+                    {req.requesterEmail}
+                  </ThemedText>
+                ) : null}
+                <ThemedText numberOfLines={1} style={[styles.cardDate, { color: colors.textSecondary }]}>
+                  {requestMetadata}
                 </ThemedText>
               </View>
               <View style={[styles.statusBadge, styles.statusBadgePending]}>
@@ -466,7 +503,7 @@ export default function InvitationsScreen() {
                 disabled={isLoading}
                 activeOpacity={0.7}
                 accessibilityRole="button"
-                accessibilityLabel={`Decline friend request from ${req.requesterName}`}
+                accessibilityLabel={`Decline friend request from ${requesterName}`}
                 accessibilityState={{ disabled: isLoading, busy: isLoading }}
                 style={[
                   styles.actionButton,
@@ -495,7 +532,7 @@ export default function InvitationsScreen() {
                 disabled={isLoading}
                 activeOpacity={0.7}
                 accessibilityRole="button"
-                accessibilityLabel={`Accept friend request from ${req.requesterName}`}
+                accessibilityLabel={`Accept friend request from ${requesterName}`}
                 accessibilityState={{ disabled: isLoading, busy: isLoading }}
                 style={[
                   styles.actionButton,
@@ -662,12 +699,17 @@ export default function InvitationsScreen() {
       if (item.type === 'friend_request') {
         const req = item.data;
         const isLoading = actionLoading === req.id;
+        const isPending = req.status === 'pending';
 
         return (
-          <View style={[styles.card, cardSurfaceStyle]}>
-            <View style={styles.cardHeader}>
-              <UserAvatar name={req.recipientName} size="md" />
-              <View style={styles.cardTextContainer}>
+          <View style={[
+            styles.card,
+            styles.sentFriendRequestCard,
+            cardSurfaceStyle,
+          ]}>
+            <View style={[styles.cardHeader, styles.compactCardHeader]}>
+              <UserAvatar name={req.recipientName} size={36} />
+              <View style={[styles.cardTextContainer, styles.compactCardTextContainer]}>
                 <ThemedText type="defaultSemiBold" numberOfLines={1} style={styles.cardTitle}>
                   {req.recipientName}
                 </ThemedText>
@@ -675,41 +717,53 @@ export default function InvitationsScreen() {
                   {req.recipientEmail || 'Friend request sent'}
                 </ThemedText>
                 <ThemedText style={[styles.cardDate, { color: colors.textSecondary }]}>
-                  {formatDate(req.createdAt, 'monthDay')}
+                  {isPending ? formatDate(req.createdAt, 'short') : `Declined · ${formatDate(req.createdAt, 'short')}`}
                 </ThemedText>
               </View>
-              <View style={[styles.statusBadge, styles.statusBadgePending]}>
-                <ThemedText style={[styles.statusBadgeText, styles.statusTextPending]}>
-                  Pending
+              <View style={[
+                styles.statusBadge,
+                {
+                  backgroundColor: isPending ? invitations.pendingSurface : invitations.dangerSurface,
+                  borderColor: isPending ? invitations.pendingBorder : invitations.dangerBorder,
+                },
+              ]}>
+                <ThemedText style={[styles.statusBadgeText, { color: isPending ? invitations.pendingText : invitations.danger }]}>
+                  {isPending ? 'Pending' : 'Declined'}
                 </ThemedText>
               </View>
             </View>
 
-            <View style={styles.cardActions}>
+            <View style={[styles.cancelInvitationFooter, { borderTopColor: invitations.divider }]}>
               <TouchableOpacity
-                onPress={() => handleCancelFriendRequest(req)}
+                onPress={() => isPending
+                  ? handleCancelFriendRequest(req)
+                  : handleResendFriendRequest(req)}
                 disabled={isLoading}
                 activeOpacity={0.7}
                 accessibilityRole="button"
-                accessibilityLabel={`Cancel friend request to ${req.recipientName}`}
+                accessibilityLabel={isPending
+                  ? `Cancel invitation to ${req.recipientName}`
+                  : `Send friend request again to ${req.recipientName}`}
                 accessibilityState={{ disabled: isLoading, busy: isLoading }}
                 style={[
                   styles.actionButton,
-                  styles.actionButtonSecondary,
                   {
-                    backgroundColor: invitations.dangerSurface,
-                    borderColor: invitations.dangerBorder,
                     opacity: isLoading ? 0.5 : 1,
                   },
+                  styles.cancelInvitationAction,
                 ]}
               >
                 {isLoading ? (
-                  <ActivityIndicator size="small" color={invitations.danger} />
+                  <ActivityIndicator size="small" color={isPending ? invitations.danger : invitations.icon} />
                 ) : (
                   <>
-                    <IconSymbol name="trash.fill" size={15} color={invitations.danger} />
-                    <ThemedText style={[styles.actionText, { color: invitations.danger }]}>
-                      Cancel request
+                    <IconSymbol
+                      name={isPending ? 'trash.fill' : 'arrow.clockwise'}
+                      size={15}
+                      color={isPending ? invitations.danger : invitations.icon}
+                    />
+                    <ThemedText style={[styles.actionText, { color: isPending ? invitations.danger : invitations.icon }]}>
+                      {isPending ? 'Cancel invitation' : 'Send again'}
                     </ThemedText>
                   </>
                 )}
@@ -841,10 +895,12 @@ export default function InvitationsScreen() {
       colors.tint,
       handleCancel,
       handleCancelFriendRequest,
+      handleResendFriendRequest,
       handleResend,
       invitations.danger,
       invitations.dangerBorder,
       invitations.dangerSurface,
+      invitations.icon,
       isDark,
     ]
   );
@@ -1125,6 +1181,11 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 1,
   },
+  sentFriendRequestCard: {
+    paddingHorizontal: 10,
+    paddingTop: 10,
+    paddingBottom: 0,
+  },
   cardExpired: {
     opacity: 0.6,
   },
@@ -1133,9 +1194,15 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     gap: 12,
   },
+  compactCardHeader: {
+    gap: 8,
+  },
   cardTextContainer: {
     flex: 1,
     gap: 3,
+  },
+  compactCardTextContainer: {
+    gap: 0,
   },
   cardTitle: {
     fontSize: 16,
@@ -1194,6 +1261,10 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: 'rgba(150, 150, 150, 0.15)',
   },
+  cancelInvitationFooter: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    marginTop: 2,
+  },
   actionButton: {
     flex: 1,
     minHeight: 44,
@@ -1213,6 +1284,14 @@ const styles = StyleSheet.create({
   },
   actionButtonSecondary: {
     borderWidth: 1,
+  },
+  cancelInvitationAction: {
+    alignSelf: 'stretch',
+    borderWidth: 0,
+    flex: 0,
+    justifyContent: 'flex-start',
+    minHeight: 44,
+    paddingHorizontal: 4,
   },
   actionText: {
     fontSize: 14,

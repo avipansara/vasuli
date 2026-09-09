@@ -133,7 +133,7 @@ CREATE TABLE public.friendships (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
   friend_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
-  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'blocked')),
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'declined', 'blocked')),
   created_at TIMESTAMPTZ DEFAULT NOW(),
   UNIQUE(user_id, friend_id),
   CHECK (user_id != friend_id)
