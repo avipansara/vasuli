@@ -6,6 +6,10 @@ import { useThemeColors } from '@/hooks/use-theme-colors';
 import { PENDING_INVITE_PATH_KEY } from '@/lib/invite-deeplink';
 import { otpService } from '@/services/otp-service';
 import {
+  createOtpResendDeadline,
+  getOtpResendSeconds,
+} from '@/utils/otp-resend-timer';
+import {
   isEmailValid,
   normalizeEmail,
   normalizePersonName,
@@ -16,6 +20,7 @@ import { Link, router, type Href } from 'expo-router';
 import { useEffect, useRef, useState, type ComponentProps } from 'react';
 import {
   Alert,
+  AppState,
   Animated,
   Keyboard,
   KeyboardAvoidingView,
@@ -84,7 +89,9 @@ export function OTPAuthScreen({ variant }: { variant: OTPAuthVariant }) {
   const [otp, setOtp] = useState(EMPTY_OTP);
   const otpInputs = useRef<(TextInput | null)[]>([]);
   const [loading, setLoading] = useState(false);
-  const [resendTimer, setResendTimer] = useState(0);
+  const [resendDeadline, setResendDeadline] = useState<number | null>(null);
+  const [currentTime, setCurrentTime] = useState(() => Date.now());
+  const resendTimer = getOtpResendSeconds(resendDeadline, currentTime);
   const [fadeAnim] = useState(() => new Animated.Value(0));
   const [slideAnim] = useState(() => new Animated.Value(30));
   const [floatAnim] = useState(() => new Animated.Value(0));
@@ -147,10 +154,19 @@ export function OTPAuthScreen({ variant }: { variant: OTPAuthVariant }) {
     };
   }, [fadeAnim, slideAnim, floatAnim, pulseAnim, isSignUp]);
   useEffect(() => {
-    if (resendTimer <= 0) return;
-    const timer = setTimeout(() => setResendTimer(resendTimer - 1), 1000);
-    return () => clearTimeout(timer);
-  }, [resendTimer]);
+    if (resendDeadline === null) return;
+
+    const timer = setInterval(() => setCurrentTime(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [resendDeadline]);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', nextState => {
+      if (nextState === 'active') setCurrentTime(Date.now());
+    });
+
+    return () => subscription.remove();
+  }, []);
 
   const normalizedName = normalizePersonName(name);
   const isContactValid = isSignUp
@@ -184,7 +200,9 @@ export function OTPAuthScreen({ variant }: { variant: OTPAuthVariant }) {
       const result = await sendCode(email);
       if (result.success) {
         setStep('otp');
-        setResendTimer(60);
+        const deadline = createOtpResendDeadline();
+        setResendDeadline(deadline);
+        setCurrentTime(deadline - 60_000);
         setTimeout(() => otpInputs.current[0]?.focus(), 100);
       } else Alert.alert('Error', result.error || 'Failed to send code');
     } catch {
@@ -278,7 +296,9 @@ export function OTPAuthScreen({ variant }: { variant: OTPAuthVariant }) {
         isSignUp ? normalizedName || undefined : undefined,
       );
       if (result.success) {
-        setResendTimer(60);
+        const deadline = createOtpResendDeadline();
+        setResendDeadline(deadline);
+        setCurrentTime(deadline - 60_000);
         setOtp(EMPTY_OTP);
         Alert.alert('Success', 'New code sent!');
       } else Alert.alert('Error', result.error || 'Failed to resend code');
