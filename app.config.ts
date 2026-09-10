@@ -18,10 +18,23 @@ export default ({ config }: ConfigContext): ExpoConfig => {
 
   const package_ = bundleIdentifier;
   const plugins = config.plugins ?? [];
+  // PostHog's Expo plugin handles Hermes source-map upload for EAS Build when
+  // credentials are present (phase-two Error Tracking). Native symbol upload
+  // and session replay stay disabled in phase one.
+  const posthogPlugin: ExpoConfig['plugins'] = [
+    [
+      'posthog-react-native/expo',
+      {
+        uploadNativeSymbols: false,
+        skipOnConflict: true,
+      },
+    ],
+  ];
+  const pluginsWithPostHog = [...plugins, ...posthogPlugin];
   const productionPlugins = isDev || isPreview
-    ? plugins
+    ? pluginsWithPostHog
     : [
-        ...plugins,
+        ...pluginsWithPostHog,
         [
           'expo-build-properties',
           {

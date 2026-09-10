@@ -67,11 +67,14 @@ describe('expenseService.create auth bridge', () => {
       },
     })
     mocks.linkAuthUserToProfile.mockResolvedValue({
-      id: 'current-user-id',
-      name: 'Current User',
-      email: 'current@example.com',
-      isActive: true,
-      createdAt: 1,
+      user: {
+        id: 'current-user-id',
+        name: 'Current User',
+        email: 'current@example.com',
+        isActive: true,
+        createdAt: 1,
+      },
+      created: false,
     })
     mocks.expenseSingle.mockResolvedValue({
       data: {
@@ -157,11 +160,14 @@ describe('expenseService.create auth bridge', () => {
       },
     })
     mocks.linkAuthUserToProfile.mockResolvedValueOnce({
-      id: 'other-public-user-id',
-      name: 'Other User',
-      email: 'other@example.com',
-      isActive: true,
-      createdAt: 1,
+      user: {
+        id: 'other-public-user-id',
+        name: 'Other User',
+        email: 'other@example.com',
+        isActive: true,
+        createdAt: 1,
+      },
+      created: false,
     })
 
     await expect(expenseService.create({

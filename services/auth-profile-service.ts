@@ -57,7 +57,13 @@ async function createProfile(params: Required<Pick<LinkAuthUserParams, 'authUser
   return mapUserRow(data);
 }
 
-export async function linkAuthUserToProfile(params: LinkAuthUserParams): Promise<User> {
+export type LinkAuthUserResult = {
+  user: User;
+  /** True only when a new application profile was inserted. */
+  created: boolean;
+};
+
+export async function linkAuthUserToProfile(params: LinkAuthUserParams): Promise<LinkAuthUserResult> {
   const email = normalizeEmail(params.email);
 
   if (!email) {
@@ -68,15 +74,18 @@ export async function linkAuthUserToProfile(params: LinkAuthUserParams): Promise
 
   if (existingProfile) {
     if (existingProfile.auth_user_id === params.authUserId) {
-      return mapUserRow(existingProfile);
+      return { user: mapUserRow(existingProfile), created: false };
     }
 
-    return attachAuthUserId(existingProfile.id, params.authUserId);
+    return { user: await attachAuthUserId(existingProfile.id, params.authUserId), created: false };
   }
 
-  return createProfile({
-    authUserId: params.authUserId,
-    email,
-    name: getDisplayName(params.name, email),
-  });
+  return {
+    user: await createProfile({
+      authUserId: params.authUserId,
+      email,
+      name: getDisplayName(params.name, email),
+    }),
+    created: true,
+  };
 }

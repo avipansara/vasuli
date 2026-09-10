@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { markAccountCreated } from '@/lib/analytics/account-created-flag';
 import { ensureAppReviewDemoData } from '@/services/app-review-demo-service';
 import { linkAuthUserToProfile } from '@/services/auth-profile-service';
 import { normalizeEmail } from '@/utils/validation';
@@ -211,11 +212,12 @@ export async function verifySignUpCode(params: {
       return { success: false, error: authError?.message || 'Invalid verification code' };
     }
 
-    const profile = await linkAuthUserToProfile({
+    const { user: profile, created } = await linkAuthUserToProfile({
       authUserId: data.user.id,
       email,
       name,
     });
+    if (created) await markAccountCreated(profile.id);
     const user = createAppUserFromProfile(profile);
     await AsyncStorage.removeItem('pending_signup');
 
@@ -289,11 +291,12 @@ export async function verifySignInCode(params: {
           return { success: false, error: 'Failed to establish test session' };
         }
 
-        const profile = await linkAuthUserToProfile({
+        const { user: profile, created } = await linkAuthUserToProfile({
           authUserId: sessionData.user.id,
           email,
           name: sessionData.user.user_metadata?.name || 'Test Account',
         });
+        if (created) await markAccountCreated(profile.id);
 
         try {
           await ensureAppReviewDemoData(profile);
@@ -324,10 +327,11 @@ export async function verifySignInCode(params: {
       return { success: false, error: authError?.message || 'Invalid verification code' };
     }
 
-    const profile = await linkAuthUserToProfile({
+    const { user: profile, created } = await linkAuthUserToProfile({
       authUserId: data.user.id,
       email,
     });
+    if (created) await markAccountCreated(profile.id);
     const user = createAppUserFromProfile(profile);
     await AsyncStorage.removeItem('pending_signin');
 
@@ -460,11 +464,12 @@ export async function syncSupabaseAuthSessionToAppProfile(expectedEmail?: string
     return null;
   }
 
-  const profile = await linkAuthUserToProfile({
+  const { user: profile, created } = await linkAuthUserToProfile({
     authUserId: authUser.id,
     email,
     name: typeof authUser.user_metadata?.name === 'string' ? authUser.user_metadata.name : undefined,
   });
+  if (created) await markAccountCreated(profile.id);
   return createAppUserFromProfile(profile);
 }
 

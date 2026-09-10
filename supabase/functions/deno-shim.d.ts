@@ -39,6 +39,16 @@ declare module "https://esm.sh/@supabase/supabase-js@2" {
   interface SupabaseClient {
     auth: SupabaseAuth;
     rpc(name: string, args: Record<string, unknown>): Promise<{ error: Error | null }>;
+    from(table: string): {
+      upsert(values: Record<string, unknown>): Promise<{ error: Error | null }>;
+      select(columns?: string): {
+        order(column: string, options?: { ascending?: boolean }): {
+          limit(count: number): Promise<{ data: Array<Record<string, unknown>> | null; error: Error | null }>;
+        };
+      };
+      delete(): { eq(column: string, value: string): Promise<{ error: Error | null }> };
+      update(values: Record<string, unknown>): { eq(column: string, value: string): Promise<{ error: Error | null }> };
+    };
   }
 
   export function createClient(

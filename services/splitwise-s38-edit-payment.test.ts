@@ -57,7 +57,7 @@ const supabase = vi.hoisted(() => ({
 
 vi.mock('@/lib/supabase', () => ({ supabase }));
 vi.mock('@/services/auth-profile-service', () => ({
-  linkAuthUserToProfile: vi.fn().mockResolvedValue({ id: 'alice' }),
+  linkAuthUserToProfile: vi.fn().mockResolvedValue({ user: { id: 'alice' }, created: false }),
 }));
 vi.mock('@/services/settlement-service', () => ({
   settlementService: {

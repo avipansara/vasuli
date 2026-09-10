@@ -13,6 +13,7 @@ import {
   BORDER_ACCENT_LIGHT,
 } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context-otp';
+import { useAnalytics } from '@/contexts/analytics-context';
 import { useRealtime } from '@/hooks/use-realtime';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
@@ -29,6 +30,7 @@ import type { Invitation } from '@/types/database';
 import { formatDate } from '@/utils/date';
 import { getSentInvitationDisplay } from '@/utils/invitation-display';
 import { normalizeEmail } from '@/utils/validation';
+import { trackInviteAccepted } from '@/lib/analytics/track';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, Stack } from 'expo-router';
@@ -69,6 +71,7 @@ function getRequesterDisplayName(request: PendingFriendshipRequest): string {
 export default function InvitationsScreen() {
   const { gradients, colors, invitations, isDark } = useThemeColors();
   const { user } = useAuth();
+  const { service: analytics } = useAnalytics();
   const [activeTab, setActiveTab] = useState<TabType>('received');
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -205,6 +208,7 @@ export default function InvitationsScreen() {
     setActionLoading(request.id);
     try {
       await friendshipService.accept(request.id);
+      trackInviteAccepted(analytics, 'friend_request');
 
       // Acceptance must succeed even if the requester has no token or push
       // delivery is temporarily unavailable.
@@ -232,7 +236,7 @@ export default function InvitationsScreen() {
     } finally {
       setActionLoading(null);
     }
-  }, [loadInvitations, user, userId]);
+  }, [analytics, loadInvitations, user, userId]);
 
   const handleDeclineFriendRequest = useCallback(async (request: PendingFriendshipRequest) => {
     setActionLoading(request.id);
@@ -315,6 +319,7 @@ export default function InvitationsScreen() {
       if (userId) {
         await friendshipService.createAccepted(userId, invitation.inviterId);
       }
+      trackInviteAccepted(analytics, 'email');
 
       Alert.alert('Success', 'Invitation accepted!');
       await loadInvitations();
@@ -324,7 +329,7 @@ export default function InvitationsScreen() {
     } finally {
       setActionLoading(null);
     }
-  }, [userId, loadInvitations]);
+  }, [analytics, userId, loadInvitations]);
 
   const handleDecline = useCallback(async (invitation: InvitationWithDetails) => {
     Alert.alert(

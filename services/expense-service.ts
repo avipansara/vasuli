@@ -11,11 +11,15 @@ async function prepareExpenseWriteSession(expectedAppUserId: string): Promise<vo
     throw new Error('A Supabase Auth session is required to create expenses.');
   }
 
-  const profile = await linkAuthUserToProfile({
+  const { user: profile, created } = await linkAuthUserToProfile({
     authUserId: authUser.id,
     email: authUser.email,
     name: typeof authUser.user_metadata?.name === 'string' ? authUser.user_metadata.name : undefined,
   });
+  if (created) {
+    const { markAccountCreated } = await import('@/lib/analytics/account-created-flag');
+    await markAccountCreated(profile.id);
+  }
 
   if (profile.id !== expectedAppUserId) {
     throw new Error('Supabase Auth session does not match the current app user.');

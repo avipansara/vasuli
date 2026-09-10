@@ -2,9 +2,11 @@ import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { GenericSkeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/auth-context-otp';
+import { useAnalytics } from '@/contexts/analytics-context';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { PENDING_INVITE_PATH_KEY, buildInvitePath } from '@/lib/invite-deeplink';
 import { friendshipService } from '@/services/friendship-service';
+import { trackInviteAccepted } from '@/lib/analytics/track';
 import { invitationService } from '@/services/invitation-service';
 import { userService } from '@/services/user-service';
 import type { User } from '@/types/database';
@@ -25,6 +27,7 @@ export default function InviteScreen() {
     const invitation = params.invitation;
     const { gradients, colors, isDark } = useThemeColors();
     const { user } = useAuth();
+    const { service: analytics } = useAnalytics();
 
     const [inviter, setInviter] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
@@ -113,6 +116,12 @@ export default function InviteScreen() {
             // 'accepted' or 'already-accepted': make sure the friendship exists
             // (createAccepted is idempotent) and only then report success.
             await friendshipService.createAccepted(user.id, inviter.id);
+
+            // Only a fresh accept counts as joining; already-accepted links
+            // were measured when first accepted.
+            if (result.outcome === 'accepted') {
+                trackInviteAccepted(analytics, 'email');
+            }
 
             await AsyncStorage.removeItem(PENDING_INVITE_PATH_KEY).catch(() => undefined);
             Alert.alert('Success', `You are now connected with ${inviter.name}`);

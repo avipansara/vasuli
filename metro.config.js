@@ -1,7 +1,9 @@
 const path = require('node:path');
-const { getDefaultConfig } = require('expo/metro-config');
+const { getPostHogExpoConfig } = require('posthog-react-native/metro');
 
-const config = getDefaultConfig(__dirname);
+// Derive through PostHog's helper so source-map support is wired for EAS
+// Build uploads (phase two); Vasuli's custom behavior is reapplied below.
+const config = getPostHogExpoConfig(__dirname);
 
 if (process.env.VASULI_PRODUCTION_METRO === '1') {
   // SDK 57's virtual env module merges .env files over process.env during HMR,

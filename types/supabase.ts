@@ -789,8 +789,10 @@ export type Database = {
           created_at: string
           email: string | null
           id: string
+          is_active: boolean
           name: string
           phone: string | null
+          push_token: string | null
         }
         Insert: {
           auth_user_id?: string | null
@@ -798,8 +800,10 @@ export type Database = {
           created_at?: string
           email?: string | null
           id?: string
+          is_active?: boolean
           name: string
           phone?: string | null
+          push_token?: string | null
         }
         Update: {
           auth_user_id?: string | null
@@ -807,8 +811,10 @@ export type Database = {
           created_at?: string
           email?: string | null
           id?: string
+          is_active?: boolean
           name?: string
           phone?: string | null
+          push_token?: string | null
         }
         Relationships: []
       }
@@ -1228,4 +1234,3 @@ export const Constants = {
     Enums: {},
   },
 } as const
-

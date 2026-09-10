@@ -5,6 +5,7 @@ import { KeyboardAwareScroll } from '@/components/ui/keyboard-aware-scroll';
 import { NavigationHeader } from '@/components/ui/screen-header';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/auth-context-otp';
+import { useAnalytics } from '@/contexts/analytics-context';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { activityService } from '@/services/activity-service';
@@ -19,6 +20,7 @@ import { getCurrencySymbol, normalizeBalance } from '@/utils/currency';
 import { formatDate } from '@/utils/date';
 import { getGroupExpenseParticipant } from '@/utils/group-expense-participants';
 import { getEvenSplitValues, getSplitProgress, resolveExpenseSplits } from '@/utils/split-validation';
+import { trackExpenseUpdated } from '@/lib/analytics/track';
 import {
   CustomSplitBreakdown,
   ExpenseParticipant,
@@ -50,6 +52,7 @@ type EditableSplit = Pick<ExpenseSplit, 'userId' | 'amount' | 'splitType' | 'per
 export default function EditExpenseScreen() {
   const { gradients, colors, settle, isDark } = useThemeColors();
   const { user } = useAuth();
+  const { service: analytics } = useAnalytics();
   const { id } = useLocalSearchParams<{ id: string }>();
   const currentUserId = user?.id || '';
   const queryClient = useQueryClient();
@@ -307,6 +310,10 @@ export default function EditExpenseScreen() {
         date: expenseDate.getTime(),
         groupId: splitType === SplitType.GROUP ? selectedGroupId : undefined,
       }, splits);
+      trackExpenseUpdated(analytics, {
+        groupId: updatedExpense.groupId,
+        currency: updatedExpense.currency,
+      });
 
       const affectedFriendIds = Array.from(new Set([
         ...originalSplits.map(split => split.userId),

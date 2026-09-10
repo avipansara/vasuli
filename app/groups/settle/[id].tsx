@@ -5,6 +5,7 @@ import { KeyboardAwareScroll } from '@/components/ui/keyboard-aware-scroll';
 import { NavigationHeader } from '@/components/ui/screen-header';
 import { GenericSkeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/auth-context-otp';
+import { useAnalytics } from '@/contexts/analytics-context';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { calculateBalances } from '@/services/balance-utils';
@@ -15,6 +16,7 @@ import { groupPairTotalsService, type GroupPairTotal } from '@/services/group-pa
 import { groupService } from '@/services/group-service';
 import { queryKeys } from '@/services/query-keys';
 import { CombinedSettlementError, createPaymentIntentId } from '@/services/settlement-service';
+import { trackSettlementCancelled, trackSettlementCreated, trackSettlementCreationFailed, trackSettlementStarted } from '@/lib/analytics/track';
 import { userService } from '@/services/user-service';
 import type { Group, GroupMember, User } from '@/types/database';
 import {
@@ -144,6 +146,7 @@ export default function GroupSettleScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
+  const { service: analytics } = useAnalytics();
   const { colors, settle, isDark } = useThemeColors();
   const currentUserId = user?.id || '';
   const queryClient = useQueryClient();
@@ -267,6 +270,18 @@ export default function GroupSettleScreen() {
     loadData();
   }, [loadData]);
 
+  // One `settlement started` per form attempt (mount) once the actionable
+  // form is available. No raw group ID leaves the device.
+  const settlementStartedRef = useRef(false);
+  useEffect(() => {
+    if (loading || loadError || settlementStartedRef.current) return;
+    settlementStartedRef.current = true;
+    trackSettlementStarted(analytics, {
+      groupId: typeof id === 'string' ? id : undefined,
+      memberCount: members.length + 1 || undefined,
+    });
+  }, [analytics, id, loading, loadError, members.length]);
+
   const handleSelectMember = useCallback((member: MemberWithBalance) => {
     setSelectedMember(member);
     setAmount(getGroupSettleAmount(member.balance));
@@ -365,6 +380,18 @@ export default function GroupSettleScreen() {
       });
 
       paymentIntentIdRef.current = null;
+      trackSettlementCreated(analytics, {
+        groupId: typeof id === 'string' ? id : undefined,
+        memberCount: members.length + 1 || undefined,
+        currency,
+      });
+      if (!receipt.reused && (receipt.cancellations?.length ?? 0) > 0) {
+        trackSettlementCancelled(analytics, {
+          groupId: typeof id === 'string' ? id : undefined,
+          memberCount: members.length + 1 || undefined,
+          currency: receipt.currency ?? currency,
+        });
+      }
       if (receipt.reused) {
         Alert.alert('Already recorded', `Settled ${formatCurrency(amountNum)} with ${selectedMember.user?.name}`);
       } else {
@@ -372,6 +399,12 @@ export default function GroupSettleScreen() {
       }
       router.back();
     } catch (error) {
+      trackSettlementCreationFailed(analytics, {
+        groupId: typeof id === 'string' ? id : undefined,
+        memberCount: members.length + 1 || undefined,
+        currency,
+        error,
+      });
       console.error('Error settling up:', error);
       if (error instanceof CombinedSettlementError && error.code === 'stale_balance') {
         Alert.alert('Balance changed', 'Refresh and try again.', [

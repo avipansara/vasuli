@@ -5,6 +5,7 @@ import { NavigationHeader } from '@/components/ui/screen-header';
 import { ExpenseDetailSkeleton } from '@/components/ui/skeleton';
 import { ThemedIconButton } from '@/components/ui/themed-icon-button';
 import { useAuth } from '@/contexts/auth-context-otp';
+import { useAnalytics } from '@/contexts/analytics-context';
 import { useRefetchOnFocus } from '@/hooks/use-refetch-on-focus';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
@@ -15,6 +16,7 @@ import { buildFriendshipStatus } from '@/services/group-detail-read-model';
 import { friendshipService } from '@/services/friendship-service';
 import { createExpenseDeletedNotification, notificationService } from '@/services/notification-service';
 import { getExpenseDeletionInvalidationKeys } from '@/services/expense-deletion-invalidation';
+import { trackExpenseDeleted } from '@/lib/analytics/track';
 import { invalidateFriendRelationshipSurfaces } from '@/services/friend-relationship-invalidation';
 import { queryKeys } from '@/services/query-keys';
 import { userService } from '@/services/user-service';
@@ -36,6 +38,7 @@ import {
 export default function ExpenseDetailScreen() {
   const { colors, expenseDetail, friends, isDark } = useThemeColors();
   const { user } = useAuth();
+  const { service: analytics } = useAnalytics();
   const { id } = useLocalSearchParams<{ id: string }>();
   const currentUserId = user?.id || '';
 
@@ -160,6 +163,10 @@ export default function ExpenseDetailScreen() {
             try {
               setIsDeleting(true);
               await expenseService.delete(id, currentUserId, user?.name || 'Unknown');
+              trackExpenseDeleted(analytics, {
+                groupId: expense?.groupId,
+                currency: expense?.currency,
+              });
               const otherParticipantIds = splits
                 .map(split => split.userId)
                 .filter((userId, index) => splits[index].amount > 0)

@@ -5,10 +5,12 @@ import { KeyboardAwareScroll } from '@/components/ui/keyboard-aware-scroll';
 import { NavigationHeader } from '@/components/ui/screen-header';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/auth-context-otp';
+import { useAnalytics } from '@/contexts/analytics-context';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { friendDetailModule } from '@/services/friend-detail-module';
 import { createPaymentIntentId, settlementModule } from '@/services/settlement-service';
+import { trackSettlementCancelled, trackSettlementCreated, trackSettlementCreationFailed, trackSettlementStarted } from '@/lib/analytics/track';
 import type { FriendRelationshipProjection } from '@/services/friend-detail-service';
 import type { User } from '@/types/database';
 import { formatCurrency } from '@/utils/currency';
@@ -31,6 +33,7 @@ export default function FriendSettleScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
+  const { service: analytics } = useAnalytics();
   const { colors } = useThemeColors();
   const currentUserId = user?.id || '';
   const queryClient = useQueryClient();
@@ -69,6 +72,15 @@ export default function FriendSettleScreen() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // One `settlement started` per form attempt (mount) once actionable.
+  // Friend settlements carry no group context.
+  const settlementStartedRef = useRef(false);
+  useEffect(() => {
+    if (loading || loadError || settlementStartedRef.current) return;
+    settlementStartedRef.current = true;
+    trackSettlementStarted(analytics, {});
+  }, [analytics, loading, loadError]);
 
   if (loading) {
     return (
@@ -135,6 +147,7 @@ function FriendSettleContent({
   bottomInset: number;
 }) {
   const { settle, isDark } = useThemeColors();
+  const { service: analytics } = useAnalytics();
 
   const settlementCurrency = relationship?.settleableTotal?.currency ?? relationship?.zeroNetCurrency;
 
@@ -161,12 +174,17 @@ function FriendSettleContent({
         queryClient,
       });
       paymentIntentIdRef.current = null;
+      trackSettlementCreated(analytics, { currency: receipt.currency ?? settlementCurrency });
+      if (!receipt.reused && (receipt.cancellations?.length ?? 0) > 0) {
+        trackSettlementCancelled(analytics, { currency: receipt.currency ?? settlementCurrency });
+      }
       return {
         totalAmount: receipt.totalAmount,
         currency: receipt.currency,
         reused: receipt.reused,
       };
     } catch (error) {
+      trackSettlementCreationFailed(analytics, { currency: settlementCurrency, error });
       console.error('[Settlement][friend-screen] settlement commit failed', {
         friendId: friend.id,
         currency: settlementCurrency,

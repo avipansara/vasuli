@@ -2,6 +2,7 @@ import { AnimatedSplash } from '@/components/ui/animated-splash';
 import { AppUpdatePrompt } from '@/components/ui/app-update-prompt';
 import { RouteErrorBoundary } from '@/components/ui/route-error-boundary';
 import { AuthProvider, useAuth } from '@/contexts/auth-context-otp';
+import { AnalyticsProvider } from '@/contexts/analytics-context';
 import { CurrencyProvider } from '@/contexts/currency-context';
 import { ThemeProvider as AppThemeProvider, useTheme } from '@/contexts/theme-context';
 import { useNotifications } from '@/hooks/use-notifications';
@@ -332,7 +333,9 @@ export default function RootLayout() {
         <AppThemeProvider>
           <CurrencyProvider>
             <AuthProvider>
-              <RootLayoutNav />
+              <AnalyticsProvider>
+                <RootLayoutNav />
+              </AnalyticsProvider>
             </AuthProvider>
           </CurrencyProvider>
         </AppThemeProvider>

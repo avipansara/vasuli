@@ -84,8 +84,9 @@ describe('linkAuthUserToProfile', () => {
       name: 'Ignored Name',
     })
 
-    expect(result.id).toBe('existing-public-user-id')
-    expect(result.email).toBe('existing@example.com')
+    expect(result.user.id).toBe('existing-public-user-id')
+    expect(result.user.email).toBe('existing@example.com')
+    expect(result.created).toBe(false)
     expect(mocks.insertSingle).not.toHaveBeenCalled()
   })
 
@@ -101,8 +102,9 @@ describe('linkAuthUserToProfile', () => {
       name: 'New User',
     })
 
-    expect(result.id).toBe('new-public-user-id')
-    expect(result.name).toBe('New User')
+    expect(result.user.id).toBe('new-public-user-id')
+    expect(result.user.name).toBe('New User')
+    expect(result.created).toBe(true)
     expect(mocks.updateSingle).not.toHaveBeenCalled()
   })
 

@@ -1,5 +1,27 @@
 ## 2026-09-09
 
+- Fixed `account created` attribution: the pending marker is now bound to the created user ID and consumed only for that identity, so account switching can no longer credit one person's creation event to another. Legacy unattributable markers are dropped.
+- Fixed activation reporting: accepting a friend request or email invitation no longer emits `group joined`. That event is reserved for actual group membership, so the activation funnel is not falsely advanced.
+- Added privacy-safe authenticated-session, expense-correction, and settlement-correction analytics, plus PostHog dashboard views for weekly reach, session retention, expense edits/deletions, and settlement reversals/cancellations.
+- Fixed analytics deletion during account removal by moving PostHog cleanup to the authenticated server flow and retaining failed deletions in a service-role-only retry queue. The migrations also correct UUID handling in account deletion and formalize the user notification/status columns expected by the app. Deploy the new `20260909*` migrations, the updated account-deletion function and the retry processor, then schedule the processor before release.
+- Added comparable invitation conversion data across email invites and friend requests, covered every acceptance path, categorized settlement failures, and limited weekly-active reporting to successful product actions.
+- Kept generated iOS and Android marketing/runtime versions synchronized with `app.json` during release-tag updates so local release builds and analytics report the correct version.
+- Fixed approved PostHog events being dropped before delivery because the
+  outbound privacy filter expected a top-level `distinct_id` that the SDK's
+  `before_send` event does not expose; the filter and regression tests now use
+  the real `CaptureEvent` shape and preserve its timestamp.
+- Fixed analytics staying disabled in release bundles: the config resolver read variables through an alias that Expo's build-time inliner cannot see, so the API key silently vanished. Defaults are now built from direct `process.env.EXPO_PUBLIC_*` accesses (documented in-code as a hard constraint), restoring delivery in preview/production builds.
+- Added an opt-in analytics debug switch (`EXPO_PUBLIC_POSTHOG_DEBUG=true`, local only) that logs every gate decision, accepted event, SDK opt-out state, flush outcome, and PostHog HTTP request for verifying delivery from release builds without dev tools.
+- Flush analytics on app background (best-effort) so small queues below the batch threshold don't sit unsent; debug builds flush immediately after each capture for instant verification.
+- Wait for PostHog SDK readiness before identify/opt-in (bounded 5s): SDK operations issued during storage init were silently deferred while opt-out read back `true`, dropping early-session events with no error.
+- Added a `preview-simulator` EAS build profile (preview environment, simulator binary) so product analytics can be verified end-to-end on the iOS simulator, where dev-server bundles intentionally stay silent.
+- Closed an analytics environment leak: dev-served bundles (including `start:prod`) now never send events regardless of any preview/production label, so dev workflows cannot pollute metrics; `start:prod` also forces the production app label for consistency. Covered by a dedicated regression test.
+- Fixed analytics crashing startup on binaries without the new native modules: `expo-crypto` is now loaded lazily in `lib/analytics/identity.ts` (hashing is only ever needed in preview/production builds) and identity failures degrade gracefully, so a missing native module can never break app launch. After adding native dependencies, rebuild the development client (`npx expo run:ios` for simulator) instead of using Expo Go.
+- Implemented phase-one PostHog product analytics behind a typed service boundary: authenticated-only capture in preview/production (dev/test stay no-ops), pseudonymous user/group IDs, outbound privacy filtering, device-level opt-out in Profile settings, all 17 spec events wired across auth/groups/expenses/invites/settlements, privacy-policy disclosure, Expo plugin plus Metro source-map support, and server-side analytics deletion with durable retries (`persons/bulk_delete` across preview/production project IDs). Configure per-environment `EXPO_PUBLIC_POSTHOG_*` values via EAS; production sends nothing until the production project is confirmed and authorized.
+- Revised the PostHog product analytics specification for Expo's supported
+  integration, authenticated-only capture, pseudonymous identity, environment
+  isolation, SDK-owned offline delivery, privacy controls, and phased error
+  tracking, and published the canonical spec to the local issue tracker.
 - Added inline friend-request actions for non-friend participants on expense details.
 - GitHub Releases are now created automatically for every pushed `v*` tag, with generated notes covering commits since the previous release.
 - Fixed the OTP resend countdown staying frozen after returning to the app by recalculating it from an absolute deadline.

@@ -28,6 +28,9 @@ try {
   for (const [key, value] of Object.entries(production)) {
     if (key.startsWith('EXPO_PUBLIC_')) env[key] = value;
   }
+  // The bundle acts on production data, so its release label must say
+  // production even though .env carries the preview app label.
+  env.EXPO_PUBLIC_APP_ENV = 'production';
   env.APP_ENV = 'production';
   env.EXPO_NO_DOTENV = '1';
   env.EXPO_NO_CLIENT_ENV_VARS = '0';

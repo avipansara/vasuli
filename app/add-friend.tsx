@@ -5,9 +5,11 @@ import { ThemedInput } from '@/components/ui/themed-input';
 import { KeyboardAwareScroll } from '@/components/ui/keyboard-aware-scroll';
 import { NavigationHeader } from '@/components/ui/screen-header';
 import { useAuth } from '@/contexts/auth-context-otp';
+import { useAnalytics } from '@/contexts/analytics-context';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { buildInvitePath } from '@/lib/invite-deeplink';
 import { invitationService } from '@/services/invitation-service';
+import { trackInviteSent } from '@/lib/analytics/track';
 import { userService } from '@/services/user-service';
 import type { User } from '@/types/database';
 import { isEmailValid, normalizeEmail } from '@/utils/validation';
@@ -28,6 +30,7 @@ type LookupState = 'idle' | 'checking' | 'found' | 'not-found' | 'error';
 export default function AddFriendScreen() {
   const { colors, isDark } = useThemeColors();
   const { user } = useAuth();
+  const { service: analytics } = useAnalytics();
   const currentUserId = user?.id ?? '';
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
@@ -90,6 +93,7 @@ export default function AddFriendScreen() {
         inviteeName,
         inviterName: user?.name || 'A friend',
       });
+      trackInviteSent(analytics, result.type === 'friend_request' ? 'friend_request' : 'email');
       Alert.alert(
         result.type === 'friend_request' ? 'Friend request sent' : 'Invite sent',
         result.type === 'friend_request'

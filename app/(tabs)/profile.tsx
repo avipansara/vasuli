@@ -3,6 +3,7 @@ import { AsyncErrorState } from '@/components/ui/async-error-state';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { UserAvatar } from '@/components/ui/user-avatar';
 import { useAuth } from '@/contexts/auth-context-otp';
+import { useAnalytics } from '@/contexts/analytics-context';
 import { useCurrency } from '@/contexts/currency-context';
 import { useTheme } from '@/contexts/theme-context';
 import { usePendingInvitationsCount } from '@/hooks/use-pending-invitations';
@@ -36,12 +37,18 @@ type SettingsItem = {
   value?: boolean;
   onToggle?: (value: boolean) => void;
   badge?: number;
+  disabled?: boolean;
 };
 
 export default function ProfileScreen() {
   const { isDark, colors } = useThemeColors();
   const { toggleTheme } = useTheme();
   const { user: currentUser, signOut, refreshUser } = useAuth();
+  const {
+    isEnabled: analyticsEnabled,
+    isLoading: analyticsLoading,
+    setEnabled: setAnalyticsEnabled,
+  } = useAnalytics();
   const [notificationOverride, setNotificationOverride] = useState<boolean | null>(null);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const currentUserId = currentUser?.id || '';
@@ -206,6 +213,15 @@ export default function ProfileScreen() {
 
   const { changeCurrency, currencySymbol } = useCurrency();
 
+  async function handleToggleAnalytics(value: boolean) {
+    try {
+      await setAnalyticsEnabled(value);
+    } catch (error) {
+      console.error('Error toggling analytics:', error);
+      Alert.alert('Error', 'Failed to update analytics settings');
+    }
+  }
+
   const handleSelectCurrency = () => {
     Alert.alert(
       'Select Currency',
@@ -225,6 +241,7 @@ export default function ProfileScreen() {
     // { icon: 'figure.skateboarding', title: 'Loading Playground', onPress: () => setPlaygroundVisible(true) },
     { icon: 'dollarsign.circle.fill', title: `Currency (${currencySymbol})`, onPress: handleSelectCurrency },
     { icon: 'bell.fill', title: 'Notifications', hasSwitch: true, value: notificationsEnabled, onToggle: handleToggleNotifications },
+    { icon: 'chart.bar.fill', title: 'Product Analytics', hasSwitch: true, value: analyticsEnabled, onToggle: handleToggleAnalytics, disabled: analyticsLoading },
     { icon: 'moon.fill', title: 'Dark Mode', hasSwitch: true, value: isDark, onToggle: toggleTheme },
     { icon: 'lock.shield.fill', title: 'Privacy Policy', onPress: () => router.push('/privacy-policy') },
     { icon: 'doc.text.fill', title: 'Terms & Conditions', onPress: () => router.push('/terms-conditions') },
@@ -365,6 +382,8 @@ export default function ProfileScreen() {
                   <Switch
                     value={item.value}
                     onValueChange={item.onToggle}
+                    disabled={item.disabled}
+                    accessibilityLabel={item.title}
                     trackColor={{ false: isDark ? '#2a3441' : '#D4D4D4', true: isDark ? 'rgba(16, 185, 129, 0.4)' : 'rgba(34, 197, 94, 0.4)' }}
                     thumbColor={item.value ? (isDark ? '#10b981' : colors.tint) : (isDark ? '#64748b' : '#999')}
                   />

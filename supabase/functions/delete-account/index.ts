@@ -1,9 +1,13 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+import { buildDistinctIdInput, parseProjectIdList, posthogDeleteUrl } from './deletion.ts';
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
 const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
 const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+const posthogPersonalApiKey = Deno.env.get('POSTHOG_PERSONAL_API_KEY') ?? '';
+const posthogHost = Deno.env.get('POSTHOG_HOST') ?? 'https://us.i.posthog.com';
+const posthogProjectIds = parseProjectIdList(Deno.env.get('POSTHOG_PROJECT_ID') ?? '');
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -15,6 +19,30 @@ function jsonResponse(body: Record<string, unknown>, status: number): Response {
     status,
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   });
+}
+
+async function deriveDistinctId(userUuid: string): Promise<string> {
+  const bytes = await crypto.subtle.digest(
+    'SHA-256',
+    new TextEncoder().encode(buildDistinctIdInput(userUuid)),
+  );
+  return Array.from(new Uint8Array(bytes), byte => byte.toString(16).padStart(2, '0')).join('');
+}
+
+async function requestPostHogDeletion(distinctId: string): Promise<boolean> {
+  if (!posthogPersonalApiKey || posthogProjectIds.length === 0) return false;
+  for (const projectId of posthogProjectIds) {
+    const response = await fetch(posthogDeleteUrl(posthogHost, projectId), {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${posthogPersonalApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ distinct_ids: [distinctId], delete_events: true, delete_recordings: false }),
+    });
+    if (!response.ok) return false;
+  }
+  return true;
 }
 
 serve(async (req: Request) => {
@@ -65,6 +93,23 @@ serve(async (req: Request) => {
       }
       console.error('delete-account database cleanup failed:', cleanupError);
       return jsonResponse({ error: 'Account cleanup failed' }, 500);
+    }
+
+    // The balance/cleanup RPC has succeeded, so this account deletion is no
+    // longer rejectable for outstanding balances. Delete analytics while the
+    // request is still authenticated; outages are retained for server retry.
+    const distinctId = await deriveDistinctId(userData.user.id);
+    let analyticsDeleted = false;
+    try {
+      analyticsDeleted = await requestPostHogDeletion(distinctId);
+    } catch (analyticsError) {
+      console.error('delete-account PostHog deletion failed:', analyticsError);
+    }
+    if (!analyticsDeleted) {
+      const { error: retryError } = await adminClient
+        .from('analytics_deletion_retries')
+        .upsert({ distinct_id: distinctId, last_attempt_at: new Date().toISOString() });
+      if (retryError) console.error('delete-account analytics retry record failed:', retryError);
     }
 
     const { error: deleteAuthError } = await adminClient.auth.admin.deleteUser(userData.user.id);

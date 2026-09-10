@@ -17,7 +17,7 @@ export default function PrivacyPolicyScreen() {
         showsVerticalScrollIndicator={false}>
         
         <ThemedText style={[styles.lastUpdated, { color: colors.textSecondary }]}>
-          Last updated: January 16, 2026
+          Last updated: September 9, 2026
         </ThemedText>
 
         <Section title="Introduction">
@@ -66,6 +66,18 @@ export default function PrivacyPolicyScreen() {
           <BulletPoint text="With service providers who assist in our operations" color={colors.textSecondary} />
           <BulletPoint text="If required by law or to protect our rights" color={colors.textSecondary} />
           <BulletPoint text="In connection with a merger or acquisition" color={colors.textSecondary} />
+        </Section>
+
+        <Section title="Product Analytics">
+          <ThemedText style={[styles.paragraph, { color: colors.textSecondary }]}>
+            We use PostHog to understand how Vasuli is used so we can fix friction and improve the product. Analytics collection starts only after you sign in, is disabled while you are signed out, and never blocks expenses, invitations, balances, or settlements if analytics is unavailable.
+          </ThemedText>
+          <BulletPoint text="Events measured: authenticated app sessions, account creation, group creation and joins, invitations sent and accepted, expense form starts, creation, updates, deletion and categorized failures, settlement starts, completions, reversals, cancellations and categorized failures, and group views." color={colors.textSecondary} />
+          <BulletPoint text="Identifiers are pseudonymous: your account and group identifiers are replaced on-device with one-way hashes before sending. Your name, email, phone number, expense descriptions, exact amounts, and authentication data are never included." color={colors.textSecondary} />
+          <BulletPoint text="Limited context is attached to events: platform, app version, group-size bucket (never exact membership), expense input method, currency code, failure category, and release information (build, channel, update). Automatic location lookup is disabled and session replay is off." color={colors.textSecondary} />
+          <BulletPoint text="Data region: analytics events are processed in PostHog's US region. Retention follows the retention period configured for our PostHog project and is reviewed at least annually." color={colors.textSecondary} />
+          <BulletPoint text="Opt-out: you can disable product analytics on a device at any time from Profile → Settings → Product Analytics. Your choice is stored on that device and survives sign-out and sign-in." color={colors.textSecondary} />
+          <BulletPoint text="Deletion: deleting your Vasuli account also requests deletion of its identified analytics data. If the request cannot be completed immediately, it is retried through an authorized server-side path." color={colors.textSecondary} />
         </Section>
 
         <Section title="Your Rights">

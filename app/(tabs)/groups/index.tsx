@@ -5,6 +5,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { GroupsListSkeleton } from '@/components/ui/skeleton';
 import { ThemedIconButton } from '@/components/ui/themed-icon-button';
 import { useAuth } from '@/contexts/auth-context-otp';
+import { useAnalytics } from '@/contexts/analytics-context';
 import { useDebouncedQueryInvalidation } from '@/hooks/use-debounced-query-invalidation';
 import { useGroupsHomeRealtime } from '@/hooks/use-realtime';
 import { usePendingInvitationsCount } from '@/hooks/use-pending-invitations';
@@ -12,6 +13,7 @@ import { useRefetchOnFocus } from '@/hooks/use-refetch-on-focus';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { groupService } from '@/services/group-service';
+import { trackGroupCreated } from '@/lib/analytics/track';
 import { queryKeys } from '@/services/query-keys';
 import { userService } from '@/services/user-service';
 import type { Group, GroupWithMembers } from '@/types/database';
@@ -27,6 +29,7 @@ export default function GroupsScreen() {
   const [newGroupName, setNewGroupName] = useState('');
   const [newGroupDescription, setNewGroupDescription] = useState('');
   const { user } = useAuth();
+  const { service: analytics } = useAnalytics();
   const currentUserId = user?.id || '';
   const queryClient = useQueryClient();
   const groupsQueryKey = useMemo(() => queryKeys.groups.list(currentUserId), [currentUserId]);
@@ -129,6 +132,7 @@ export default function GroupsScreen() {
 
       await groupService.addMember(group.id, currentUserId, 'admin');
 
+      trackGroupCreated(analytics, { groupId: group.id, memberCount: 1 });
       setNewGroupName('');
       setNewGroupDescription('');
       setModalVisible(false);

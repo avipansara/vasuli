@@ -1,4 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
+import type { AnalyticsService } from '@/services/analytics-service';
+import { trackSettlementReversed } from '@/lib/analytics/track';
 import {
   SETTLEMENT_ALREADY_DELETED_COPY,
   SETTLEMENT_DELETE_LOAD_ERROR_COPY,
@@ -75,6 +77,7 @@ export type SettlementDeleteDialogState =
 
 type UseSettlementDeleteFlowParams = {
   currentUserId: string;
+  analytics?: AnalyticsService;
   /** Group entry screen. Scopes exact detail/pair-total invalidation; prefixes cover the rest. */
   groupId?: string;
   queryClient: SettlementDeleteQueryClient;
@@ -109,7 +112,7 @@ type UseSettlementDeleteFlowParams = {
  *   loop; other failures keep the entry with retry where appropriate.
  */
 export function useSettlementDeleteFlow(params: UseSettlementDeleteFlowParams) {
-  const { currentUserId, groupId, queryClient, refetch, getDetail, reverse } = params;
+  const { currentUserId, analytics, groupId, queryClient, refetch, getDetail, reverse } = params;
   const [pendingOperationId, setPendingOperationId] = useState<string | null>(null);
   const [locallyDeletedIds, setLocallyDeletedIds] = useState<readonly string[]>([]);
   const [dialog, setDialog] = useState<SettlementDeleteDialogState | null>(null);
@@ -180,6 +183,12 @@ export function useSettlementDeleteFlow(params: UseSettlementDeleteFlowParams) {
       if (receipt.reused) {
         await showAlreadyDeleted(operationId);
         return;
+      }
+      if (analytics) {
+        trackSettlementReversed(analytics, {
+          groupId,
+          currency: details.currency,
+        });
       }
       const refreshed = await runRefetch(refetch);
       if (lockRef.current !== operationId) return;
@@ -297,7 +306,7 @@ export function useSettlementDeleteFlow(params: UseSettlementDeleteFlowParams) {
         },
       });
     }
-  }, [currentUserId, groupId, markLocallyDeleted, queryClient, refetch, reverse, setDialogState, showAlreadyDeleted]);
+  }, [analytics, currentUserId, groupId, markLocallyDeleted, queryClient, refetch, reverse, setDialogState, showAlreadyDeleted]);
 
   const startLoad = useCallback(async (request: SettlementDeleteRequest, acquire: boolean) => {
     const { operationId } = request;

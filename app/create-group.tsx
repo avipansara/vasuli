@@ -4,7 +4,9 @@ import { KeyboardAwareScroll } from '@/components/ui/keyboard-aware-scroll';
 import { NavigationHeader, HeaderActionButton } from '@/components/ui/screen-header';
 import { ThemedInput } from '@/components/ui/themed-input';
 import { useAuth } from '@/contexts/auth-context-otp';
+import { useAnalytics } from '@/contexts/analytics-context';
 import { useThemeColors } from '@/hooks/use-theme-colors';
+import { trackGroupCreated } from '@/lib/analytics/track';
 import { groupService } from '@/services/group-service';
 import { queryKeys } from '@/services/query-keys';
 import { router } from 'expo-router';
@@ -34,6 +36,7 @@ const GROUP_ICONS = [
 export default function CreateGroupScreen() {
   const { colors, isDark } = useThemeColors();
   const { user } = useAuth();
+  const { service: analytics } = useAnalytics();
   const currentUserId = user?.id || '';
   const queryClient = useQueryClient();
 
@@ -83,6 +86,7 @@ export default function CreateGroupScreen() {
       console.log('[CreateGroup] Adding creator as admin member');
       await groupService.addMember(newGroup.id, currentUserId, 'admin');
       console.log('[CreateGroup] Creator added successfully');
+      trackGroupCreated(analytics, { groupId: newGroup.id, memberCount: 1 });
 
       await queryClient.invalidateQueries({
         queryKey: queryKeys.groups.list(currentUserId),

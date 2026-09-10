@@ -6,6 +6,7 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { GroupDetailSkeleton } from '@/components/ui/skeleton';
 import { ThemedIconButton } from '@/components/ui/themed-icon-button';
 import { useAuth } from '@/contexts/auth-context-otp';
+import { useAnalytics } from '@/contexts/analytics-context';
 import { useDebouncedQueryInvalidation } from '@/hooks/use-debounced-query-invalidation';
 import { useSettlementDeleteFlow } from '@/hooks/use-settlement-delete-flow';
 import { useRealtime } from '@/hooks/use-realtime';
@@ -31,9 +32,10 @@ import { formatDate } from '@/utils/date';
 import { groupPairTotalsService, toGroupScopedLine } from '@/services/group-pair-totals-service';
 import { getViewerPairBalance } from '@/utils/group-member-balance';
 import { getFirstName } from '@/utils/validation';
+import { trackExpenseDeleted } from '@/lib/analytics/track';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
@@ -135,6 +137,7 @@ export default function GroupDetailScreen() {
   }, []);
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
   const { user } = useAuth();
+  const { service: analytics } = useAnalytics();
   const currentUserId = user?.id || '';
   const queryClient = useQueryClient();
   const friendsHomeQueryKey = useMemo(() => queryKeys.friends.home(currentUserId), [currentUserId]);
@@ -189,6 +192,24 @@ export default function GroupDetailScreen() {
   const settlements = groupDetail?.settlements ?? EMPTY_SETTLEMENTS;
   const members = groupDetail?.members ?? [];
   const balances = groupDetail?.balances ?? new Map<string, number>();
+
+  // `group viewed` at most once per screen focus. Never includes route
+  // parameters or the raw group ID — only the pseudonymous group key.
+  // Member count is read from a ref so late-loading members cannot re-fire
+  // the event within the same focus.
+  const memberCountRef = useRef<number | undefined>(undefined);
+  useEffect(() => {
+    memberCountRef.current = members.length || undefined;
+  }, [members.length]);
+  useFocusEffect(
+    useCallback(() => {
+      if (typeof id !== 'string' || !id) return;
+      const memberCount = memberCountRef.current;
+      void import('@/lib/analytics/track').then(({ trackGroupViewed }) => {
+        trackGroupViewed(analytics, { groupId: id, memberCount });
+      });
+    }, [analytics, id]),
+  );
   const unsettledCount = useMemo(() => {
     const mems = groupDetail?.members ?? [];
     const bals = groupDetail?.balances;
@@ -275,7 +296,7 @@ export default function GroupDetailScreen() {
   // confirmation/results flow. Copy, authorized detail loading, pending,
   // reused/stale/failure, and invalidation outcomes live in the hook; the
   // mutation boundary stays settlementModule.reverse.
-  const settlementDeleteFlow = useSettlementDeleteFlow({ currentUserId, groupId: id, queryClient, refetch });
+  const settlementDeleteFlow = useSettlementDeleteFlow({ currentUserId, analytics, groupId: id, queryClient, refetch });
   const loadGroupData = useCallback(async () => {
     await refetch();
   }, [refetch]);
@@ -515,6 +536,10 @@ export default function GroupDetailScreen() {
                 groupDetailKey: groupDetailQueryKey,
                 friendsHomeKey: friendsHomeQueryKey,
                 cache: queryCache,
+              });
+              trackExpenseDeleted(analytics, {
+                groupId: expenseToDelete?.groupId ?? id,
+                currency: expenseToDelete?.currency,
               });
             } catch (error) {
               console.error('Error deleting expense:', error);

@@ -10,6 +10,7 @@ import { FriendDetailSkeleton } from '@/components/ui/skeleton';
 import { ThemedIconButton } from '@/components/ui/themed-icon-button';
 import { Gradients } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context-otp';
+import { useAnalytics } from '@/contexts/analytics-context';
 import { useFriendDetailController } from '@/hooks/use-friend-detail-controller';
 import { useSettlementDeleteFlow } from '@/hooks/use-settlement-delete-flow';
 import { useThemeColors } from '@/hooks/use-theme-colors';
@@ -26,6 +27,7 @@ import type { Expense, User } from '@/types/database';
 import { formatCurrency, normalizeBalance } from '@/utils/currency';
 import { formatDate } from '@/utils/date';
 import { getFirstName } from '@/utils/validation';
+import { trackExpenseDeleted } from '@/lib/analytics/track';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams, useNavigation } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -87,6 +89,7 @@ export default function FriendDetailScreen() {
   const [isRemovingFriend, setIsRemovingFriend] = useState(false);
   const [deletingExpenseId, setDeletingExpenseId] = useState<string | null>(null);
   const { user } = useAuth();
+  const { service: analytics } = useAnalytics();
   const currentUserId = user?.id || '';
   const swipeableRefs = useRef<Map<string, SwipeableMethods>>(new Map());
 
@@ -182,7 +185,7 @@ export default function FriendDetailScreen() {
   // (`reverse_settlement_operation`), which has no Reverse UI call site on
   // this surface. Legacy payments without an operation ID are readable
   // only; scope-transfer records fold into their operation's details.
-  const settlementDeleteFlow = useSettlementDeleteFlow({ currentUserId, queryClient, refetch });
+  const settlementDeleteFlow = useSettlementDeleteFlow({ currentUserId, analytics, queryClient, refetch });
 
   const handleActivityFilterChange = useCallback((nextFilter: ActivityFilter) => {
     if (nextFilter === activityFilter) return;
@@ -278,6 +281,10 @@ export default function FriendDetailScreen() {
                 description: expenseToDelete?.description,
                 amount: expenseToDelete?.amount,
                 friendPushToken: friend?.pushToken,
+              });
+              trackExpenseDeleted(analytics, {
+                groupId: expenseToDelete?.groupId,
+                currency: expenseToDelete?.currency,
               });
 
               queryClient.invalidateQueries({ queryKey: friendDetailQueryKey });

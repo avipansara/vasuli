@@ -285,7 +285,9 @@ describe('useSettlementDeleteFlow dialog serialization', () => {
   it('successful deletion with refresh failure stays successful and marks deleted locally', async () => {
     const reverse = vi.fn(async () => successReceipt(false));
     const refetch = vi.fn(async () => ({ data: null, error: new Error('refresh down'), isError: true }));
-    renderProbe(baseParams({ reverse, refetch }));
+    const track = vi.fn(async () => true);
+    const analytics = { track } as unknown as NonNullable<FlowParams['analytics']>;
+    renderProbe(baseParams({ analytics, reverse, refetch }));
 
     await act(async () => {
       await holder.current!.requestDelete(reqA);
@@ -304,6 +306,12 @@ describe('useSettlementDeleteFlow dialog serialization', () => {
     expect(screen.getByTestId('settlement-delete-dialog-body').textContent).toMatch(/could not be refreshed/i);
     expect(holder.current!.isDeletedLocally('op-1')).toBe(true);
     expect(reverse).toHaveBeenCalledTimes(1);
+    await waitFor(() => {
+      expect(track).toHaveBeenCalledWith(
+        'settlement reversed',
+        expect.objectContaining({ currency_code: 'USD' }),
+      );
+    });
   });
 
   it('stale rejection requires a new confirmation and ends the loop on the second rejection', async () => {
@@ -379,7 +387,9 @@ describe('useSettlementDeleteFlow dialog serialization', () => {
   it('reused receipts show Already deleted and refresh activity', async () => {
     const reverse = vi.fn(async () => successReceipt(true));
     const refetch = vi.fn(async () => ({ data: null, error: null }));
-    renderProbe(baseParams({ reverse, refetch }));
+    const track = vi.fn(async () => true);
+    const analytics = { track } as unknown as NonNullable<FlowParams['analytics']>;
+    renderProbe(baseParams({ analytics, reverse, refetch }));
 
     await act(async () => {
       await holder.current!.requestDelete(reqA);
@@ -394,6 +404,7 @@ describe('useSettlementDeleteFlow dialog serialization', () => {
     });
     expect(refetch).toHaveBeenCalled();
     expect(holder.current!.isDeletedLocally('op-1')).toBe(true);
+    expect(track).not.toHaveBeenCalled();
   });
 
   it('confirmation names every cleared balance undone by the Delete', async () => {

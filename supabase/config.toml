@@ -13,3 +13,7 @@ verify_jwt = false
 
 [functions.delete-account]
 verify_jwt = true
+
+# Invoked only by a trusted external scheduler with the service-role secret.
+[functions.process-analytics-deletion-retries]
+verify_jwt = false

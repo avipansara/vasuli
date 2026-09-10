@@ -146,11 +146,14 @@ describe('otpService App Review account', () => {
     })
     mocks.addEventListener.mockReturnValue({ remove: mocks.removeEventListener })
     mocks.linkAuthUserToProfile.mockResolvedValue({
-      id: 'existing-public-user-id',
-      name: 'Existing User',
-      email: 'existing@example.com',
-      isActive: true,
-      createdAt: 1,
+      user: {
+        id: 'existing-public-user-id',
+        name: 'Existing User',
+        email: 'existing@example.com',
+        isActive: true,
+        createdAt: 1,
+      },
+      created: false,
     })
     mocks.usersSingle.mockResolvedValue({ data: reviewerUser, error: null })
     mocks.usersInsertSingle.mockResolvedValue({ data: reviewerUser, error: null })
@@ -286,11 +289,14 @@ describe('otpService App Review account', () => {
     })
 
     mocks.linkAuthUserToProfile.mockResolvedValueOnce({
-      id: 'apple-reviewer-user-id',
-      name: 'Apple Reviewer',
-      email: 'reviewer@example.test',
-      isActive: true,
-      createdAt: 1,
+      user: {
+        id: 'apple-reviewer-user-id',
+        name: 'Apple Reviewer',
+        email: 'reviewer@example.test',
+        isActive: true,
+        createdAt: 1,
+      },
+      created: false,
     })
 
     const result = await otpService.verifySignInCode({
@@ -451,11 +457,14 @@ describe('otpService App Review account', () => {
       error: null,
     })
     mocks.linkAuthUserToProfile.mockResolvedValueOnce({
-      id: 'new-public-user-id',
-      name: 'New User',
-      email: 'new@example.com',
-      isActive: true,
-      createdAt: 1,
+      user: {
+        id: 'new-public-user-id',
+        name: 'New User',
+        email: 'new@example.com',
+        isActive: true,
+        createdAt: 1,
+      },
+      created: true,
     })
 
     const result = await otpService.verifySignUpCode({

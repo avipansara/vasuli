@@ -5,6 +5,7 @@ import { KeyboardAwareScroll } from '@/components/ui/keyboard-aware-scroll';
 import { NavigationHeader } from '@/components/ui/screen-header';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/auth-context-otp';
+import { useAnalytics } from '@/contexts/analytics-context';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { activityService } from '@/services/activity-service';
@@ -12,6 +13,11 @@ import { submitExpense } from '@/services/expense-intake';
 import { expenseService } from '@/services/expense-service';
 import { groupService } from '@/services/group-service';
 import { createExpenseNotification, notificationService } from '@/services/notification-service';
+import {
+  trackExpenseCreated,
+  trackExpenseCreationFailed,
+  trackExpenseStarted,
+} from '@/lib/analytics/track';
 import { createReactQueryCacheAdapter } from '@/services/query-cache-adapter';
 import { queryKeys } from '@/services/query-keys';
 import { userService } from '@/services/user-service';
@@ -50,6 +56,7 @@ import {
 export default function AddExpenseScreen() {
   const { colors, settle, isDark } = useThemeColors();
   const { user } = useAuth();
+  const { service: analytics } = useAnalytics();
   const { groupId: preselectedGroupId, friendId: preselectedFriendId } = useLocalSearchParams<{ groupId?: string; friendId?: string }>();
   const currentUserId = user?.id || '';
   const queryClient = useQueryClient();
@@ -176,6 +183,16 @@ export default function AddExpenseScreen() {
       }),
     ]).start();
   }, [dataLoading, fadeAnim, slideAnim]);
+
+  // One `expense started` per form attempt (mount): renders, focus changes,
+  // validation retries, and picker returns do not start new attempts.
+  const expenseStartedRef = useRef(false);
+  useEffect(() => {
+    if (dataLoading || dataLoadError || expenseStartedRef.current) return;
+    expenseStartedRef.current = true;
+    const groupId = splitType === SplitType.GROUP ? selectedGroupId || undefined : undefined;
+    trackExpenseStarted(analytics, { groupId });
+  }, [analytics, dataLoading, dataLoadError, selectedGroupId, splitType]);
 
   const loadData = useCallback(async () => {
     await Promise.all([groupsQuery.refetch(), friendsQuery.refetch()]);
@@ -311,8 +328,18 @@ export default function AddExpenseScreen() {
         },
         warn: error => console.warn('Expense follow-up failed:', error),
       });
+
+      trackExpenseCreated(analytics, {
+        groupId: isGroup ? selectedGroupId : undefined,
+        memberCount: participantIds.length || undefined,
+        currency: getPreferredCurrency(),
+      });
     } catch (error) {
       console.error('Error creating expense:', error);
+      trackExpenseCreationFailed(analytics, {
+        groupId: splitType === SplitType.GROUP ? selectedGroupId || undefined : undefined,
+        error,
+      });
       Alert.alert('Error', 'Failed to create expense');
     } finally {
       setLoading(false);
