@@ -9,6 +9,8 @@ import { friendshipService } from '@/services/friendship-service';
 import { trackInviteAccepted } from '@/lib/analytics/track';
 import { invitationService } from '@/services/invitation-service';
 import { userService } from '@/services/user-service';
+import { invalidateFriendRelationshipSurfaces } from '@/services/friend-relationship-invalidation';
+import { useQueryClient } from '@tanstack/react-query';
 import type { User } from '@/types/database';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -28,6 +30,7 @@ export default function InviteScreen() {
     const { gradients, colors, isDark } = useThemeColors();
     const { user } = useAuth();
     const { service: analytics } = useAnalytics();
+    const queryClient = useQueryClient();
 
     const [inviter, setInviter] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
@@ -67,7 +70,7 @@ export default function InviteScreen() {
         if (!user) {
             Alert.alert(
                 'Sign in required',
-                'Sign in with the email address your friend invited so we can link your accounts.',
+                'Sign in with your account so we can link you with your friend.',
             );
             return;
         }
@@ -82,46 +85,45 @@ export default function InviteScreen() {
         try {
             const invitationId = firstQueryParam(invitation);
 
-            const result = await invitationService.acceptInvitationFromLink({
-                invitationId,
-                inviterId: inviter.id,
-                inviteeEmail: user.email,
-            });
+            // Attempt formal invitation acceptance if present
+            let isFormalInvite = false;
+            try {
+                const result = await invitationService.acceptInvitationFromLink({
+                    invitationId,
+                    inviterId: inviter.id,
+                    inviteeEmail: user.email,
+                });
 
-            if (result.outcome === 'declined') {
-                Alert.alert(
-                    'Invitation declined',
-                    'This invitation was declined, so it can no longer be accepted.',
-                );
-                router.replace('/');
-                return;
-            }
-            if (result.outcome === 'expired') {
-                Alert.alert(
-                    'Invitation expired',
-                    'This invitation has expired. Ask your friend to send a new one.',
-                );
-                router.replace('/');
-                return;
-            }
-            if (result.outcome === 'invalid') {
-                Alert.alert(
-                    'Invalid invitation',
-                    'This invitation link is no longer valid.',
-                );
-                router.replace('/');
-                return;
+                if (result.outcome === 'declined') {
+                    Alert.alert(
+                        'Invitation declined',
+                        'This invitation was declined, so it can no longer be accepted.',
+                    );
+                    router.replace('/');
+                    return;
+                }
+                if (result.outcome === 'expired') {
+                    Alert.alert(
+                        'Invitation expired',
+                        'This invitation has expired. Ask your friend to send a new one.',
+                    );
+                    router.replace('/');
+                    return;
+                }
+                if (result.outcome === 'accepted') {
+                    isFormalInvite = true;
+                }
+            } catch (inviteErr) {
+                console.warn('[InviteScreen] Formal invite lookup skipped:', inviteErr);
             }
 
-            // 'accepted' or 'already-accepted': make sure the friendship exists
-            // (createAccepted is idempotent) and only then report success.
+            // Always establish bidirectional friendship
             await friendshipService.createAccepted(user.id, inviter.id);
 
-            // Only a fresh accept counts as joining; already-accepted links
-            // were measured when first accepted.
-            if (result.outcome === 'accepted') {
-                trackInviteAccepted(analytics, 'email');
-            }
+            // Invalidate query caches across app
+            await invalidateFriendRelationshipSurfaces(queryClient, user.id, inviter.id);
+
+            trackInviteAccepted(analytics, isFormalInvite ? 'email' : 'link');
 
             await AsyncStorage.removeItem(PENDING_INVITE_PATH_KEY).catch(() => undefined);
             Alert.alert('Success', `You are now connected with ${inviter.name}`);

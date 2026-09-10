@@ -21,6 +21,11 @@ const mocks = vi.hoisted(() => {
   const from = vi.fn()
   const getByIds = vi.fn()
   const getFriends = vi.fn()
+  const selectOr = vi.fn()
+  const selectMaybeSingle = vi.fn()
+  const insertMock = vi.fn()
+  const insertMockResult = { error: null }
+  const updateOr = vi.fn()
   return {
     single,
     updateIdEq,
@@ -34,6 +39,11 @@ const mocks = vi.hoisted(() => {
     from,
     getByIds,
     getFriends,
+    selectOr,
+    selectMaybeSingle,
+    insertMock,
+    insertMockResult,
+    updateOr,
   }
 })
 
@@ -67,6 +77,11 @@ describe('friendshipService', () => {
     mocks.deleteIdEq.mockImplementation(() => ({ eq: mocks.deleteStatusEq }))
     mocks.deleteStatusEq.mockResolvedValue({ error: null })
     mocks.pendingStatusEq.mockResolvedValue({ data: [friendshipRow], error: null })
+    mocks.selectOr.mockImplementation(() => ({ maybeSingle: mocks.selectMaybeSingle }))
+    mocks.selectMaybeSingle.mockResolvedValue({ data: null, error: null })
+    mocks.insertMock.mockReturnValue({ error: null })
+    mocks.insertMockResult.error = null
+    mocks.updateOr.mockResolvedValue({ error: null })
     mocks.getByIds.mockResolvedValue([{ id: 'user-a', name: 'Alex Requester' }])
     mocks.getFriends.mockResolvedValue([])
     mocks.from.mockImplementation((table: string) => {
@@ -74,19 +89,25 @@ describe('friendshipService', () => {
         return {}
       }
       return {
-        insert: () => ({
-          select: () => ({
-            single: mocks.single,
-          }),
-        }),
+        insert: (...args: unknown[]) => {
+          mocks.insertMock(...args)
+          return {
+            select: () => ({
+              single: mocks.single,
+            }),
+            ...mocks.insertMockResult,
+          }
+        },
         update: () => ({
           eq: mocks.updateIdEq,
+          or: mocks.updateOr,
         }),
         delete: () => ({
           eq: mocks.deleteIdEq,
         }),
         select: () => ({
           eq: mocks.pendingFriendIdEq,
+          or: mocks.selectOr,
         }),
       }
     })
@@ -248,5 +269,55 @@ describe('friendshipService', () => {
 
     pendingRequestsSpy.mockRestore()
     declinedRequestsSpy.mockRestore()
+  })
+
+  describe('createAccepted', () => {
+    it('inserts accepted friendship when no relationship exists', async () => {
+      mocks.selectMaybeSingle.mockResolvedValue({ data: null, error: null })
+
+      await friendshipService.createAccepted('user-a', 'user-b')
+
+      expect(mocks.insertMock).toHaveBeenCalledWith(expect.objectContaining({
+        user_id: 'user-a',
+        friend_id: 'user-b',
+        status: 'accepted',
+      }))
+    })
+
+    it('updates existing pending or declined row to accepted', async () => {
+      mocks.selectMaybeSingle.mockResolvedValue({
+        data: { id: 'fs-pending', status: 'pending' },
+        error: null,
+      })
+
+      await friendshipService.createAccepted('user-a', 'user-b')
+
+      expect(mocks.updateIdEq).toHaveBeenCalledWith('id', 'fs-pending')
+      expect(mocks.insertMock).not.toHaveBeenCalled()
+    })
+
+    it('does nothing when friendship is already accepted', async () => {
+      mocks.selectMaybeSingle.mockResolvedValue({
+        data: { id: 'fs-accepted', status: 'accepted' },
+        error: null,
+      })
+
+      await friendshipService.createAccepted('user-a', 'user-b')
+
+      expect(mocks.updateIdEq).not.toHaveBeenCalled()
+      expect(mocks.insertMock).not.toHaveBeenCalled()
+    })
+
+    it('falls back to updating status when insert hits unique constraint 23505', async () => {
+      mocks.selectMaybeSingle.mockResolvedValue({ data: null, error: null })
+      mocks.insertMock.mockReturnValue({
+        error: { code: '23505', message: 'duplicate key' },
+      })
+      mocks.insertMockResult.error = { code: '23505', message: 'duplicate key' } as any
+
+      await friendshipService.createAccepted('user-a', 'user-b')
+
+      expect(mocks.updateOr).toHaveBeenCalled()
+    })
   })
 })

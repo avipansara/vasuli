@@ -1,3 +1,11 @@
+## 2026-09-10
+
+- Added a personal QR code generator (`MyQRCodeModal` and `QRCode` component) accessible from Add Friend, Profile settings, and the QR Scanner overlay, allowing users to instantly generate and share their personal invite code and link with friends.
+- Fixed friend invitation link acceptance: links opened on Android/iOS (direct links, QR code links, or shared URLs) now connect users as friends immediately even when no prior email invitation row existed, preventing false "Invalid invitation" alerts on test builds.
+- Fixed QR code scanner to properly parse invite URLs (deep link schemes, web URLs, and UUIDs) and immediately establish bidirectional friendship in Supabase with full query cache invalidation so friends appear instantly on the Friends list without "Friend not found" errors.
+- Hardened `friendshipService.createAccepted` to gracefully handle existing pending or declined requests in either direction, as well as concurrent duplicate key violations (`23505`).
+- Fixed uncaught error `Cannot find native module 'ExpoCrypto'` on development clients and Expo Go: `lib/analytics/identity.ts` now catches native module absence and falls back seamlessly to an RFC 6234 standard pure JavaScript SHA-256 implementation, eliminating red-screen crashes on builds where `expo-crypto` has not been natively compiled.
+
 ## 2026-09-09
 
 - Fixed `account created` attribution: the pending marker is now bound to the created user ID and consumed only for that identity, so account switching can no longer credit one person's creation event to another. Legacy unattributable markers are dropped.

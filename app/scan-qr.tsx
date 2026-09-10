@@ -1,8 +1,14 @@
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { NavigationHeader } from '@/components/ui/screen-header';
+import { MyQRCodeModal } from '@/components/friends/my-qr-code-modal';
+import { useAuth } from '@/contexts/auth-context-otp';
 import { useThemeColors } from '@/hooks/use-theme-colors';
+import { parseInviteFromUrl } from '@/lib/invite-deeplink';
+import { friendshipService } from '@/services/friendship-service';
+import { invalidateFriendRelationshipSurfaces } from '@/services/friend-relationship-invalidation';
 import { userService } from '@/services/user-service';
+import { useQueryClient } from '@tanstack/react-query';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
@@ -17,18 +23,25 @@ import {
 
 export default function ScanQRScreen() {
   const { colors, isDark } = useThemeColors();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [permission, requestPermission] = useCameraPermissions();
   const [scanned, setScanned] = useState(false);
+  const [showMyCode, setShowMyCode] = useState(false);
 
   const handleBarCodeScanned = async ({ data }: { data: string }) => {
     if (scanned) return;
     setScanned(true);
 
-    // Parse the invite link: vasuli://invite/USER_ID
-    const match = data.match(/vasuli:\/\/invite\/(.+)/);
+    const parsed = parseInviteFromUrl(data);
+    const friendId = parsed?.inviterId;
 
-    if (match && match[1]) {
-      const friendId = match[1];
+    if (friendId) {
+      if (user?.id && friendId === user.id) {
+        Alert.alert('Notice', 'This is your own QR code.');
+        setScanned(false);
+        return;
+      }
 
       try {
         // Check if user exists
@@ -46,9 +59,25 @@ export default function ScanQRScreen() {
               },
               {
                 text: 'Add Friend',
-                onPress: () => {
-                  router.back();
-                  router.push(`/friends/${friendId}` as any);
+                onPress: async () => {
+                  try {
+                    if (user?.id) {
+                      await friendshipService.createAccepted(user.id, friendId);
+                      await invalidateFriendRelationshipSurfaces(queryClient, user.id, friendId);
+                    }
+                    Alert.alert('Connected!', `You and ${friend.name} are now friends.`, [
+                      {
+                        text: 'Done',
+                        onPress: () => {
+                          router.back();
+                          router.push(`/friends/${friendId}` as any);
+                        },
+                      },
+                    ]);
+                  } catch (addErr: any) {
+                    Alert.alert('Error', addErr?.message || 'Failed to connect with user');
+                    setScanned(false);
+                  }
                 },
               },
             ]
@@ -148,8 +177,24 @@ export default function ScanQRScreen() {
           <ThemedText style={styles.instructionsText}>
             Point your camera at a friend&apos;s QR code
           </ThemedText>
+
+          <TouchableOpacity
+            onPress={() => setShowMyCode(true)}
+            style={styles.showMyCodeButton}
+            activeOpacity={0.8}
+            accessibilityLabel="Show my QR code"
+          >
+            <IconSymbol name="qrcode" size={20} color="#fff" />
+            <ThemedText style={styles.showMyCodeText}>Show My Code</ThemedText>
+          </TouchableOpacity>
         </View>
       </View>
+
+      <MyQRCodeModal
+        visible={showMyCode}
+        onClose={() => setShowMyCode(false)}
+        user={user}
+      />
     </View>
   );
 }
@@ -245,6 +290,23 @@ const styles = StyleSheet.create({
     fontSize: 16,
     textAlign: 'center',
     opacity: 0.9,
+  },
+  showMyCodeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 24,
+    marginTop: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.35)',
+  },
+  showMyCodeText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '600',
   },
   permissionContainer: {
     flex: 1,

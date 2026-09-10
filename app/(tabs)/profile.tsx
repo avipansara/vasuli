@@ -2,6 +2,7 @@ import { ThemedText } from '@/components/themed-text';
 import { AsyncErrorState } from '@/components/ui/async-error-state';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { UserAvatar } from '@/components/ui/user-avatar';
+import { MyQRCodeModal } from '@/components/friends/my-qr-code-modal';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useAnalytics } from '@/contexts/analytics-context';
 import { useCurrency } from '@/contexts/currency-context';
@@ -51,6 +52,7 @@ export default function ProfileScreen() {
   } = useAnalytics();
   const [notificationOverride, setNotificationOverride] = useState<boolean | null>(null);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+  const [showMyQR, setShowMyQR] = useState(false);
   const currentUserId = currentUser?.id || '';
   const queryClient = useQueryClient();
   const friendsHomeQueryKey = useMemo(() => queryKeys.friends.home(currentUserId), [currentUserId]);
@@ -238,6 +240,7 @@ export default function ProfileScreen() {
   const settingsItems: SettingsItem[] = [
     { icon: 'envelope.badge', title: 'Invitations', badge: pendingInvitationCount, onPress: () => router.push('/invitations') },
     { icon: 'person.badge.plus', title: 'Invite a Friend', onPress: () => router.push('/add-friend') },
+    { icon: 'qrcode', title: 'My QR Code', onPress: () => setShowMyQR(true) },
     // { icon: 'figure.skateboarding', title: 'Loading Playground', onPress: () => setPlaygroundVisible(true) },
     { icon: 'dollarsign.circle.fill', title: `Currency (${currencySymbol})`, onPress: handleSelectCurrency },
     { icon: 'bell.fill', title: 'Notifications', hasSwitch: true, value: notificationsEnabled, onToggle: handleToggleNotifications },
@@ -424,6 +427,12 @@ export default function ProfileScreen() {
           {getAppVersionLabel()}
         </ThemedText>
       </ScrollView>
+
+      <MyQRCodeModal
+        visible={showMyQR}
+        onClose={() => setShowMyQR(false)}
+        user={currentUser}
+      />
     </View>
   );
 }

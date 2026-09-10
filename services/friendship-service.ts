@@ -311,17 +311,37 @@ export const friendshipService = {
 
   /**
    * Create bidirectional friendship (both users become friends immediately)
-   * Used when accepting invitations
+   * Used when accepting invitations, deep links, or QR codes
    */
   async createAccepted(userId: string, friendId: string): Promise<void> {
     const createdAt = new Date().toISOString();
 
-    // Check if friendship already exists
-    const existing = await this.areFriends(userId, friendId);
-    if (existing) return;
+    // Check if a friendship row already exists in either direction
+    const { data: existingRow, error: findError } = await supabase
+      .from('friendships')
+      .select('id, status')
+      .or(`and(user_id.eq.${userId},friend_id.eq.${friendId}),and(user_id.eq.${friendId},friend_id.eq.${userId})`)
+      .maybeSingle();
+
+    if (findError && findError.code !== 'PGRST116') {
+      console.warn('Error checking existing friendship:', findError);
+    }
+
+    if (existingRow) {
+      if (existingRow.status === 'accepted') {
+        return;
+      }
+      const { error: updateError } = await supabase
+        .from('friendships')
+        .update({ status: 'accepted' })
+        .eq('id', existingRow.id);
+
+      if (updateError) throw updateError;
+      return;
+    }
 
     // Create friendship
-    const { error } = await supabase
+    const { error: insertError } = await supabase
       .from('friendships')
       .insert({
         user_id: userId,
@@ -330,6 +350,15 @@ export const friendshipService = {
         created_at: createdAt,
       });
 
-    if (error) throw error;
+    if (insertError) {
+      if (insertError.code === '23505') {
+        await supabase
+          .from('friendships')
+          .update({ status: 'accepted' })
+          .or(`and(user_id.eq.${userId},friend_id.eq.${friendId}),and(user_id.eq.${friendId},friend_id.eq.${userId})`);
+        return;
+      }
+      throw insertError;
+    }
   },
 };

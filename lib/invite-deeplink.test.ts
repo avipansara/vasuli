@@ -43,11 +43,28 @@ describe('parseInviteFromUrl', () => {
     expect(parseInviteFromUrl('https://example.com/home')).toBeNull()
   })
 
-  it('returns null on parse errors', () => {
+  it('returns inviterId directly when string is a UUID', () => {
+    const uuid = '8470a257-22d7-4632-9c1a-5ff7b5a83a1b'
+    expect(parseInviteFromUrl(uuid)).toEqual({
+      inviterId: uuid,
+    })
+    expect(parseMock).not.toHaveBeenCalled()
+  })
+
+  it('returns null on parse errors without invite path', () => {
     parseMock.mockImplementation(() => {
       throw new Error('bad url')
     })
     expect(parseInviteFromUrl('x')).toBeNull()
+  })
+
+  it('recovers inviterId on parse errors if raw string contains /invite/', () => {
+    parseMock.mockImplementation(() => {
+      throw new Error('bad url')
+    })
+    expect(parseInviteFromUrl('custom-scheme://invite/user-999')).toEqual({
+      inviterId: 'user-999',
+    })
   })
 })
 

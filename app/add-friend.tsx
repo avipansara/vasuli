@@ -4,6 +4,7 @@ import { ThemedButton } from '@/components/ui/themed-button';
 import { ThemedInput } from '@/components/ui/themed-input';
 import { KeyboardAwareScroll } from '@/components/ui/keyboard-aware-scroll';
 import { NavigationHeader } from '@/components/ui/screen-header';
+import { MyQRCodeModal } from '@/components/friends/my-qr-code-modal';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useAnalytics } from '@/contexts/analytics-context';
 import { useThemeColors } from '@/hooks/use-theme-colors';
@@ -37,6 +38,7 @@ export default function AddFriendScreen() {
   const [lookupState, setLookupState] = useState<LookupState>('idle');
   const [matchedUser, setMatchedUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(false);
+  const [showMyQR, setShowMyQR] = useState(false);
 
   const validEmail = isEmailValid(email);
 
@@ -266,6 +268,16 @@ export default function AddFriendScreen() {
               </View>
               <IconSymbol name="chevron.right" size={18} color={colors.textSecondary} />
             </TouchableOpacity>
+            <TouchableOpacity style={[styles.optionRow, cardStyle]} onPress={() => setShowMyQR(true)} accessibilityLabel="My QR code">
+              <View style={[styles.optionIcon, { backgroundColor: iconBoxBg }]}>
+                <IconSymbol name="qrcode" size={21} color={iconBoxColor} />
+              </View>
+              <View style={styles.optionCopy}>
+                <ThemedText selectable style={[styles.optionTitle, { color: colors.text }]}>My QR code</ThemedText>
+                <ThemedText selectable style={[styles.optionSubtitle, { color: colors.textSecondary }]}>Show your code for others to scan</ThemedText>
+              </View>
+              <IconSymbol name="chevron.right" size={18} color={colors.textSecondary} />
+            </TouchableOpacity>
           </View>
 
           <View style={[styles.privacyCard, cardStyle]}>
@@ -274,6 +286,12 @@ export default function AddFriendScreen() {
           </View>
         </View>
       </KeyboardAwareScroll>
+
+      <MyQRCodeModal
+        visible={showMyQR}
+        onClose={() => setShowMyQR(false)}
+        user={user}
+      />
     </View>
   );
 }
