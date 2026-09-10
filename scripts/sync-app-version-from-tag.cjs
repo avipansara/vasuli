@@ -45,16 +45,68 @@ function syncAppVersion(appJsonPath, version) {
   return true;
 }
 
+function replaceVersion(filePath, pattern, version, label) {
+  if (!fs.existsSync(filePath)) return false;
+  const raw = fs.readFileSync(filePath, 'utf8');
+  const match = pattern.exec(raw);
+  if (!match) throw new Error(`could not find ${label} in ${path.relative(path.dirname(filePath), filePath)}`);
+  if (match[2] === version) return false;
+  fs.writeFileSync(filePath, raw.replace(match[0], `${match[1]}${version}${match[3]}`));
+  console.log(`sync-app-version: ${label} ${match[2]} -> ${version}`);
+  return true;
+}
+
+function syncNativeVersions(root, version) {
+  const targets = [
+    [
+      path.join(root, 'ios/Vasuli/Info.plist'),
+      /(\<key\>CFBundleShortVersionString\<\/key\>\s*\<string\>)(\d+\.\d+\.\d+)(\<\/string\>)/,
+      'iOS marketing version',
+    ],
+    [
+      path.join(root, 'ios/Vasuli/Supporting/Expo.plist'),
+      /(\<key\>EXUpdatesRuntimeVersion\<\/key\>\s*\<string\>)(\d+\.\d+\.\d+)(\<\/string\>)/,
+      'iOS runtime version',
+    ],
+    [
+      path.join(root, 'android/app/build.gradle'),
+      /(versionName\s+")(\d+\.\d+\.\d+)(")/,
+      'Android marketing version',
+    ],
+    [
+      path.join(root, 'android/app/src/main/res/values/strings.xml'),
+      /(\<string name="expo_runtime_version"\>)(\d+\.\d+\.\d+)(\<\/string\>)/,
+      'Android runtime version',
+    ],
+  ];
+
+  return targets.reduce(
+    (changed, [filePath, pattern, label]) =>
+      replaceVersion(filePath, pattern, version, label) || changed,
+    false,
+  );
+}
+
+function syncProjectVersions(root, version) {
+  const appChanged = syncAppVersion(path.join(root, 'app.json'), version);
+  const nativeChanged = syncNativeVersions(root, version);
+  return appChanged || nativeChanged;
+}
+
 if (require.main === module) {
   const root = path.resolve(__dirname, '..');
-  const appJsonPath = process.env.APP_JSON_PATH || path.join(root, 'app.json');
   const tag = process.argv[2] || process.env.GITHUB_REF_NAME || '';
   try {
-    syncAppVersion(appJsonPath, resolveVersion(tag));
+    const version = resolveVersion(tag);
+    if (process.env.APP_JSON_PATH) {
+      syncAppVersion(process.env.APP_JSON_PATH, version);
+    } else {
+      syncProjectVersions(root, version);
+    }
   } catch (error) {
     console.error(`sync-app-version: ${(error && error.message) || error}`);
     process.exit(1);
   }
 }
 
-module.exports = { resolveVersion, syncAppVersion };
+module.exports = { resolveVersion, syncAppVersion, syncNativeVersions, syncProjectVersions };
