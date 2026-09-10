@@ -59,12 +59,12 @@ export function MyQRCodeModal({ visible, onClose, user }: MyQRCodeModalProps) {
             style={[
               styles.avatar,
               {
-                backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)',
-                borderColor: isDark ? '#2DD4BF' : '#16a34a',
+                backgroundColor: isDark ? '#064e3b' : 'rgba(34, 197, 94, 0.12)',
+                borderColor: isDark ? 'rgba(16, 185, 129, 0.35)' : 'rgba(34, 197, 94, 0.25)',
               },
             ]}
           >
-            <ThemedText style={[styles.avatarText, { color: isDark ? '#2DD4BF' : '#16a34a' }]}>
+            <ThemedText style={[styles.avatarText, { color: isDark ? '#10b981' : colors.accent }]}>
               {initial}
             </ThemedText>
           </View>
@@ -91,7 +91,7 @@ export function MyQRCodeModal({ visible, onClose, user }: MyQRCodeModalProps) {
           <QRCode
             value={inviteUrl}
             size={220}
-            color="#0F172A"
+            color="#05080E"
             backgroundColor="#ffffff"
           />
         </View>
@@ -104,23 +104,24 @@ export function MyQRCodeModal({ visible, onClose, user }: MyQRCodeModalProps) {
         <TouchableOpacity
           onPress={handleShare}
           activeOpacity={0.8}
+          accessibilityRole="button"
+          accessibilityLabel="Share invite link"
           style={[
             styles.shareButton,
             {
-              backgroundColor: isDark ? 'rgba(45, 212, 191, 0.18)' : 'rgba(15, 76, 58, 0.1)',
-              borderColor: isDark ? 'rgba(45, 212, 191, 0.4)' : 'rgba(15, 76, 58, 0.25)',
+              backgroundColor: colors.accent,
             },
           ]}
         >
           <IconSymbol
             name="square.and.arrow.up"
             size={20}
-            color={isDark ? '#2DD4BF' : '#0F4C3A'}
+            color="#FFFFFF"
           />
           <ThemedText
             style={[
               styles.shareButtonText,
-              { color: isDark ? '#2DD4BF' : '#0F4C3A' },
+              { color: '#FFFFFF' },
             ]}
           >
             Share Invite Link
@@ -144,8 +145,8 @@ const styles = StyleSheet.create({
   avatar: {
     width: 68,
     height: 68,
-    borderRadius: 34,
-    borderWidth: 2,
+    borderRadius: 20,
+    borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 4,
@@ -188,9 +189,9 @@ const styles = StyleSheet.create({
     gap: 10,
     minHeight: 52,
     paddingHorizontal: 28,
-    borderRadius: 16,
-    borderWidth: 1,
+    borderRadius: 14,
     marginTop: 8,
+    width: '100%',
   },
   shareButtonText: {
     fontSize: 16,

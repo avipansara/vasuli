@@ -69,7 +69,7 @@ function getRequesterDisplayName(request: PendingFriendshipRequest): string {
 }
 
 export default function InvitationsScreen() {
-  const { gradients, colors, invitations, isDark } = useThemeColors();
+  const { gradients, colors, invitations, settle, isDark } = useThemeColors();
   const { user } = useAuth();
   const { service: analytics } = useAnalytics();
   const [activeTab, setActiveTab] = useState<TabType>('received');
@@ -477,9 +477,24 @@ export default function InvitationsScreen() {
   }, [sentFriendRequests, sentInvitations]);
 
   const cardSurfaceStyle = useMemo(
-    () => ({
-      backgroundColor: isDark ? 'rgba(15, 23, 42, 0.72)' : '#FFFFFF',
-      borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : colors.border,
+    () => (isDark ? {
+      backgroundColor: '#000000',
+      borderColor: 'rgba(255, 255, 255, 0.08)',
+      borderWidth: 1,
+      shadowColor: '#64748b',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.15,
+      shadowRadius: 4,
+      elevation: 4,
+    } : {
+      backgroundColor: '#FFFFFF',
+      borderColor: colors.border,
+      borderWidth: 1,
+      shadowColor: '#475569',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.06,
+      shadowRadius: 6,
+      elevation: 2,
     }),
     [colors.border, isDark]
   );
@@ -505,7 +520,7 @@ export default function InvitationsScreen() {
         return (
           <View style={[styles.card, cardSurfaceStyle]}>
             <View style={styles.cardHeader}>
-              <UserAvatar name={requesterName} size="md" />
+              <UserAvatar name={requesterName} size="md" style={styles.avatar} />
               <View style={styles.cardTextContainer}>
                 <ThemedText type="defaultSemiBold" numberOfLines={1} style={styles.cardTitle}>
                   {requesterName}
@@ -567,7 +582,7 @@ export default function InvitationsScreen() {
                   styles.actionButton,
                   styles.actionButtonPrimary,
                   {
-                    backgroundColor: isDark ? '#0D9488' : '#0F4C3A',
+                    backgroundColor: colors.accent,
                     opacity: isLoading ? 0.5 : 1,
                   },
                 ]}
@@ -606,7 +621,7 @@ export default function InvitationsScreen() {
           ]}
         >
           <View style={styles.cardHeader}>
-            <UserAvatar name={displayName} size="md" />
+            <UserAvatar name={displayName} size="md" style={styles.avatar} />
             <View style={styles.cardTextContainer}>
               <ThemedText type="defaultSemiBold" numberOfLines={1} style={styles.cardTitle}>
                 {displayName}
@@ -677,7 +692,7 @@ export default function InvitationsScreen() {
                   styles.actionButton,
                   styles.actionButtonPrimary,
                   {
-                    backgroundColor: isDark ? '#0D9488' : '#0F4C3A',
+                    backgroundColor: colors.accent,
                     opacity: isLoading ? 0.5 : 1,
                   },
                 ]}
@@ -737,7 +752,7 @@ export default function InvitationsScreen() {
             cardSurfaceStyle,
           ]}>
             <View style={[styles.cardHeader, styles.compactCardHeader]}>
-              <UserAvatar name={req.recipientName} size={36} />
+              <UserAvatar name={req.recipientName} size={36} style={styles.avatarCompact} />
               <View style={[styles.cardTextContainer, styles.compactCardTextContainer]}>
                 <ThemedText type="defaultSemiBold" numberOfLines={1} style={styles.cardTitle}>
                   {req.recipientName}
@@ -825,7 +840,7 @@ export default function InvitationsScreen() {
       return (
         <View style={[styles.card, cardSurfaceStyle]}>
           <View style={styles.cardHeader}>
-            <UserAvatar name={display.title} size="md" />
+            <UserAvatar name={display.title} size="md" style={styles.avatar} />
             <View style={styles.cardTextContainer}>
               <ThemedText type="defaultSemiBold" numberOfLines={1} style={styles.cardTitle}>
                 {display.title}
@@ -864,18 +879,18 @@ export default function InvitationsScreen() {
                 ]}
               >
                 {isLoading ? (
-                  <ActivityIndicator size="small" color={isDark ? ACCENT_TEAL : colors.tint} />
+                  <ActivityIndicator size="small" color={colors.accent} />
                 ) : (
                   <>
                     <IconSymbol
                       name="arrow.clockwise"
                       size={16}
-                      color={isDark ? ACCENT_TEAL : colors.tint}
+                      color={colors.accent}
                     />
                     <ThemedText
                       style={[
                         styles.actionText,
-                        { color: isDark ? ACCENT_TEAL : colors.tint },
+                        { color: colors.accent },
                       ]}
                     >
                       Resend
@@ -947,8 +962,8 @@ export default function InvitationsScreen() {
           style={[
             styles.tabContainer,
             {
-              backgroundColor: isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.05)',
-              borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)',
+              backgroundColor: colors.card,
+              borderColor: colors.border,
             },
           ]}
         >
@@ -963,8 +978,8 @@ export default function InvitationsScreen() {
               activeTab === 'received' && [
                 styles.tabPillActive,
                 {
-                  backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-                  borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.06)',
+                  backgroundColor: settle.buttonBackground,
+                  borderColor: settle.buttonBackground,
                 },
               ],
             ]}
@@ -973,7 +988,10 @@ export default function InvitationsScreen() {
               type={activeTab === 'received' ? 'defaultSemiBold' : 'default'}
               style={[
                 styles.tabLabel,
-                { color: activeTab === 'received' ? (isDark ? '#F8FAFC' : colors.text) : colors.textSecondary },
+                {
+                  color: activeTab === 'received' ? settle.buttonText : colors.textSecondary,
+                  fontWeight: activeTab === 'received' ? '700' : '500',
+                },
               ]}
             >
               Received
@@ -984,12 +1002,8 @@ export default function InvitationsScreen() {
                 {
                   backgroundColor:
                     activeTab === 'received'
-                      ? isDark
-                        ? '#0D9488'
-                        : '#0F4C3A'
-                      : isDark
-                        ? 'rgba(255, 255, 255, 0.1)'
-                        : 'rgba(0, 0, 0, 0.08)',
+                      ? (isDark ? 'rgba(0, 56, 36, 0.25)' : 'rgba(255, 255, 255, 0.25)')
+                      : (isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)'),
                 },
               ]}
             >
@@ -999,7 +1013,7 @@ export default function InvitationsScreen() {
                   {
                     color:
                       activeTab === 'received'
-                        ? '#FFFFFF'
+                        ? settle.buttonText
                         : colors.textSecondary,
                   },
                 ]}
@@ -1020,8 +1034,8 @@ export default function InvitationsScreen() {
               activeTab === 'sent' && [
                 styles.tabPillActive,
                 {
-                  backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-                  borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.06)',
+                  backgroundColor: settle.buttonBackground,
+                  borderColor: settle.buttonBackground,
                 },
               ],
             ]}
@@ -1030,7 +1044,10 @@ export default function InvitationsScreen() {
               type={activeTab === 'sent' ? 'defaultSemiBold' : 'default'}
               style={[
                 styles.tabLabel,
-                { color: activeTab === 'sent' ? (isDark ? '#F8FAFC' : colors.text) : colors.textSecondary },
+                {
+                  color: activeTab === 'sent' ? settle.buttonText : colors.textSecondary,
+                  fontWeight: activeTab === 'sent' ? '700' : '500',
+                },
               ]}
             >
               Sent
@@ -1041,12 +1058,8 @@ export default function InvitationsScreen() {
                 {
                   backgroundColor:
                     activeTab === 'sent'
-                      ? isDark
-                        ? '#0D9488'
-                        : '#0F4C3A'
-                      : isDark
-                        ? 'rgba(255, 255, 255, 0.1)'
-                        : 'rgba(0, 0, 0, 0.08)',
+                      ? (isDark ? 'rgba(0, 56, 36, 0.25)' : 'rgba(255, 255, 255, 0.25)')
+                      : (isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)'),
                 },
               ]}
             >
@@ -1056,7 +1069,7 @@ export default function InvitationsScreen() {
                   {
                     color:
                       activeTab === 'sent'
-                        ? '#FFFFFF'
+                        ? settle.buttonText
                         : colors.textSecondary,
                   },
                 ]}
@@ -1328,5 +1341,11 @@ const styles = StyleSheet.create({
   },
   actionTextPrimary: {
     color: '#FFFFFF',
+  },
+  avatar: {
+    borderRadius: 14,
+  },
+  avatarCompact: {
+    borderRadius: 10,
   },
 });

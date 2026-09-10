@@ -2,35 +2,44 @@
 name: Vasuli
 description: A warm, legible shared tab for recording expenses and settling up with friends.
 colors:
-  accent-teal: "#2DD4BF"
+  accent-mint: "#10B981"
   accent-green: "#005E44"
-  accent-green-dark: "#10B981"
+  accent-teal: "#2DD4BF"
+  positive-dark: "#4EDEA3"
+  positive-light: "#005E44"
+  negative-dark: "#FFB4AB"
+  negative-light: "#990000"
   light-background: "#F1F5F9"
   light-card: "#FFFFFF"
-  dark-background: "#040914"
-  dark-card: "#0F172A"
-  dark-surface: "#131B2E"
+  dark-background: "#05080E"
+  dark-card: "#000000"
+  dark-surface-glass: "rgba(15, 23, 42, 0.6)"
   light-text: "#1A1A1A"
   dark-text: "#F8FAFC"
   light-secondary: "#374151"
   dark-secondary: "#9BA6B8"
   light-border: "#E5E5E5"
-  dark-border: "#2A3441"
+  dark-border: "rgba(255, 255, 255, 0.08)"
   success: "#10B981"
   error-dark: "#FFB4AB"
 typography:
   display:
     fontFamily: "Manrope, system-ui, sans-serif"
-    fontSize: "30px"
-    fontWeight: 700
-    lineHeight: 1.2
+    fontSize: "36px"
+    fontWeight: 800
+    lineHeight: 1.15
     letterSpacing: "-0.5px"
   title:
     fontFamily: "Manrope, system-ui, sans-serif"
     fontSize: "24px"
     fontWeight: 700
-    lineHeight: 1.17
+    lineHeight: 1.2
     letterSpacing: "-0.3px"
+  subtitle:
+    fontFamily: "Manrope, system-ui, sans-serif"
+    fontSize: "17px"
+    fontWeight: 600
+    lineHeight: 1.3
   body:
     fontFamily: "Manrope, system-ui, sans-serif"
     fontSize: "14px"
@@ -41,12 +50,15 @@ typography:
     fontSize: "12px"
     fontWeight: 700
     lineHeight: 1.5
-    letterSpacing: "0.5px"
+    letterSpacing: "1px"
 rounded:
+  xs: "4px"
   sm: "8px"
   md: "12px"
   lg: "16px"
-  xl: "24px"
+  input: "20px"
+  hero: "24px"
+  pill: "9999px"
 spacing:
   xs: "4px"
   sm: "8px"
@@ -56,26 +68,32 @@ spacing:
   screen: "20px"
 components:
   button-primary:
-    backgroundColor: "{colors.accent-green-dark}"
-    textColor: "{colors.dark-background}"
+    backgroundColor: "{colors.accent-mint}"
+    textColor: "#FFFFFF"
     rounded: "{rounded.md}"
-    height: "56px"
+    height: "52px"
     padding: "0 16px"
   button-secondary:
-    backgroundColor: "{colors.light-background}"
-    textColor: "{colors.accent-green}"
+    backgroundColor: "transparent"
+    textColor: "{colors.accent-mint}"
+    borderColor: "{colors.dark-border}"
     rounded: "{rounded.md}"
     height: "44px"
     padding: "0 16px"
   card:
-    backgroundColor: "{colors.light-card}"
-    rounded: "{rounded.md}"
+    backgroundColor: "{colors.dark-card}"
+    borderColor: "{colors.dark-border}"
+    rounded: "{rounded.lg}"
     padding: "16px"
-  input:
-    backgroundColor: "{colors.light-card}"
-    textColor: "{colors.light-text}"
-    rounded: "{rounded.md}"
-    height: "56px"
+  hero-card:
+    backgroundColor: "{colors.dark-card}"
+    rounded: "{rounded.hero}"
+    padding: "24px 16px"
+  input-amount:
+    backgroundColor: "{colors.dark-card}"
+    borderColor: "{colors.dark-border}"
+    rounded: "{rounded.input}"
+    height: "104px"
 
 ---
 
@@ -85,176 +103,144 @@ components:
 
 **Creative North Star: "The Warm Shared Tab"**
 
-Vasuli treats expense tracking as a social coordination moment, not a finance
-dashboard. The visual system is compact, friendly, and trustworthy: Manrope
-keeps the interface approachable, while restrained teal and green accents make
-actions and balance states easy to recognize.
+Vasuli treats expense tracking as a calm, social coordination moment rather than an intimidating finance dashboard. The visual system is compact, friendly, and trustworthy: Manrope keeps typography approachable and legible, while restrained mint, teal, and green accents make primary actions and balance states effortless to distinguish at a glance.
 
-The app uses native mobile navigation and interaction patterns, with soft tonal
-surfaces rather than heavy decoration. Light mode is cool and open; dark mode
-is deep navy with muted blue-gray text and bright green/teal action accents.
+The app is built mobile-first using native navigation and interaction patterns, featuring subtle tonal layering, pitch-black dark mode surfaces (`#000000`), deep navy space backgrounds (`#05080e`), and diffuse elevation rather than stark borders or loud gradients.
 
 **Key Characteristics:**
 
-- Warm, social utility with calm financial presentation.
-- Compact mobile-first spacing and large, reachable actions.
-- Light and dark themes treated as first-class states.
-- Color supports balance meaning but never carries it alone.
+- Warm, social utility with calm, trustworthy financial presentation.
+- Mobile-first ergonomic touch targets (at least 44pt).
+- Light and dark themes treated as first-class, intentional states.
+- Pitch-black cards with subtle hairline borders in dark mode; crisp white surfaces in light mode.
+- Color supports balance direction but never carries financial meaning alone.
+
+---
 
 ## Colors
 
-The palette pairs a deep green brand anchor with a brighter teal/green action
-accent, then uses cool slate surfaces to keep money interactions legible.
+The palette pairs a deep green anchor in light mode with an active mint in dark mode, balanced by calm slate neutrals to keep currency values clear.
 
-### Primary
+### Primary Accents
 
-- **Shared-tab green** (`#005E44`): light-mode primary actions and brand anchor.
-- **Active mint** (`#10B981`): dark-mode actions, positive balances, and selected
-  controls.
-- **Signal teal** (`#2DD4BF`): dark-mode emphasis and secondary action detail.
+- **Active Mint** (`#10B981`): dark-mode primary actions, positive balances, selected tab highlights.
+- **Brand Green** (`#005E44`): light-mode primary actions, icons, and brand anchor.
+- **Signal Teal** (`#2DD4BF`): secondary emphasis, glows, and badge accents.
 
-### Neutral
+### Balances & Financial Semantics
 
-- **Cool paper** (`#F1F5F9`): light-mode screen background.
-- **White surface** (`#FFFFFF`): light-mode cards and inputs.
-- **Deep night** (`#040914`): dark-mode screen background.
-- **Slate surface** (`#0F172A` / `#131B2E`): dark cards, fields, and panels.
-- **Ink** (`#1A1A1A` / `#F8FAFC`): primary text in light/dark mode.
-- **Muted slate** (`#374151` / `#9BA6B8`): supporting text and metadata.
-- **Outline** (`#E5E5E5` / `#2A3441`): borders and dividers.
+- **Positive (You are owed / Lent)**:
+  - Dark: `#4EDEA3` / `#45DFA4`
+  - Light: `#005E44` / `#16A34A`
+- **Negative (You owe / Borrowed)**:
+  - Dark: `#FFB4AB` / `#FFB3B0` (calm coral red)
+  - Light: `#990000` / `#DC2626` / `#A83639`
+- **Settled / Zero**:
+  - Dark: `#9BA6B8`
+  - Light: `#6B7280`
+
+### Neutral Surfaces & Backgrounds
+
+- **Deep Night Background** (`#05080E`): dark-mode screen container background.
+- **Cool Paper Background** (`#F1F5F9`): light-mode screen container background.
+- **Card Surfaces**:
+  - Dark: Pitch black `#000000` with subtle border `rgba(255, 255, 255, 0.08)`, or liquid glass `rgba(15, 23, 42, 0.6)`.
+  - Light: Clean white `#FFFFFF` with `#E5E5E5` border.
+- **Typography & Icons**:
+  - Primary Text: `#F8FAFC` (dark) / `#1A1A1A` (light).
+  - Secondary Text: `#9BA6B8` (dark) / `#374151` or `#6B7280` (light).
+- **Hairline Borders**:
+  - Dark: `rgba(255, 255, 255, 0.08)`
+  - Light: `#E5E5E5`
 
 ### Named Rules
 
-**The Calm Money Rule.** Use accent color to clarify the next action or balance
-direction; do not flood a screen with competing saturated surfaces.
+**The Calm Money Rule.** Use accent color to clarify the next action or balance direction; never flood a screen with competing saturated surfaces.
 
-**The Two-Theme Rule.** Every new surface, state, placeholder, border, and icon
-must be intentionally readable in both light and dark appearance.
+**The Two-Theme Rule.** Every surface, state, placeholder, border, and icon must be intentionally tested and readable in both light and dark appearance.
+
+---
 
 ## Typography
 
-**Display Font:** Manrope (with system sans fallback)
-**Body Font:** Manrope (with system sans fallback)
-**Label Font:** Manrope SemiBold
-
-**Character:** Manrope is rounded, contemporary, and social without becoming
-  playful at the expense of financial clarity.
+**Display & Body Font:** Manrope (with system sans fallback)
+**Numerics:** Tabular figures (`fontVariant: ['tabular-nums']`) for all monetary amounts to ensure vertical alignment.
 
 ### Hierarchy
 
-- **Display** (700, 30px, 36px): home balance and major screen headings.
-- **Title** (700, 24px, 28px): detail-level section or entity names.
-- **Subtitle** (600, 16px): navigation titles and supporting headings.
-- **Body** (400, 14px, 20px): descriptions, metadata, and explanatory copy.
-- **Label** (700, 12–13px, uppercase with light tracking): form labels and
-  compact section headings.
+- **Display Balance** (800, 36–44px, line-height 1.15): Hero balance amounts in Friend and Group detail screens.
+- **Section Title** (700, 20–24px, line-height 1.2): Detail screen headers, entity names, modal titles.
+- **Card Title** (600–700, 16–17px, line-height 1.3): Friend names, expense titles, invitation cards.
+- **Body & Subtitle** (400–500, 13–14px, line-height 1.43): Descriptions, metadata, timestamps.
+- **Eyebrow / Form Label** (700, 12px, uppercase with 1px tracking): Form labels, category markers, compact section titles.
 
-**The Legible Numbers Rule.** Amounts and balance labels must remain visually
-  dominant enough to scan quickly, but never use decoration that makes currency
-  values harder to compare.
+**The Legible Numbers Rule.** Currency symbols and numeric amounts must remain visually dominant and clear, without decoration that makes comparisons difficult.
 
-## Layout
+---
 
-Vasuli is mobile-first. Screens use a full-height safe-area-aware container,
-20px horizontal screen padding, and compact vertical rhythm built from 8px,
-12px, 16px, and 24px steps. Content may use a centered `maxWidth` around 600px
-for web and tablet inspection without stretching phone layouts.
+## Shapes & Radii
 
-Primary actions remain reachable near the bottom or in the navigation header.
-Lists use FlatList where content can grow; detail flows use keyboard-aware
-scrolling and preserve room for the keyboard and home indicator.
+- **Hero Balance & Summary Cards:** `24px` radius (`rounded.hero`).
+- **Settle Interactive Input Fields:** `20px` radius (`rounded.input`).
+- **Standard Content Cards:** `16px` radius (`rounded.lg`).
+- **Buttons & Quick Chips:** `12–16px` radius (`rounded.md` / `rounded.lg`).
+- **Avatars (Squircles):**
+  - Standard List (44x44): `14px` radius
+  - Compact Stack (34x34): `10px` radius
+  - Profile / Modal / QR (48–68px): `20–24px` radius
+- **Pills & Circular Badges:** `9999px` or matching circular half-height.
+
+---
 
 ## Elevation & Depth
 
-The system uses tonal layering first and soft shadows second. Cards are
-distinguished by surface contrast, a subtle border, and a low, diffuse shadow;
-avoid hard offset shadows or decorative glow as the default. Dark mode should
-use deeper surfaces and restrained borders rather than inverted white cards.
+Vasuli avoids heavy, harsh drop shadows in favor of tonal surface contrast and soft, diffuse ambient elevation:
 
-### Shadow Vocabulary
+- **Hero Balance Card Elevation:**
+  - Dark: `shadowColor: '#64748b'`, `shadowOffset: { width: 0, height: 4 }`, `shadowRadius: 4`, `shadowOpacity: 0.15`, `elevation: 4`.
+  - Light: `shadowColor: '#475569'`, `shadowOffset: { width: 0, height: 8 }`, `shadowRadius: 18`, `shadowOpacity: 0.15`, `elevation: 8`.
+- **Standard Card Elevation:**
+  - Dark: Pitch black surface with `rgba(255, 255, 255, 0.08)` border; 0 or low elevation.
+  - Light: White surface with `#E5E5E5` border; `shadowOffset: { width: 0, height: 2 }`, `shadowOpacity: 0.04`, `shadowRadius: 6`, `elevation: 1`.
 
-- **Card lift:** soft offset shadow with low opacity for interactive cards and
-  panels.
-- **Primary action:** slightly stronger soft shadow on the main submit/record
-  action.
-- **Dark surfaces:** use tonal contrast and low-opacity black shadow; never a
-  bright shadow around the entire screen.
+---
 
-## Shapes
+## Flagship Components
 
-The form language is soft but controlled: 8px for small fields and avatars,
-12–16px for cards, buttons, and controls, and 24px for hero amount surfaces or
-large profile surfaces. Borders are 1px and low contrast. Touch targets should
-be at least 44pt on iOS and 48dp on Android where practical.
+### 1. Hero Balance Summary Card (Friend & Group Detail)
+- Card container with `borderRadius: 24`, `paddingVertical: 24`, `paddingHorizontal: 16`.
+- Pitch black `#000000` surface in dark mode with `borderWidth: 0`.
+- Large tabular balance amount in `#4EDEA3` (owed to you) or `#FFB4AB` (you owe).
+- Horizontal action icon row (Settle Up pill button, action icons in 40x40 circular surfaces).
 
-## Components
+### 2. Settle Up Interactive Screen
+- **Profile / Relationship Summary Card:** `borderRadius: 20`, displays friend avatar (48x48, `borderRadius: 24`), name, and combined net relationship balance.
+- **Hero Amount Input Field:** `borderRadius: 20`, `minHeight: 104`, centered currency symbol (22px bold) and large tabular input (40px bold).
+- **Quick Percentage Chips:** 44px min height, `borderRadius: 12`, for "50%" and "Full Balance" instant settlement shortcuts.
+- **Breakdown Card:** `borderRadius: 16`, 1px subtle border, itemized rows for Direct, Group, and Cleared scopes.
+- **Bottom Action Bar:** Full-width primary action button (`minHeight: 52`, `borderRadius: 12`) with safe-area bottom inset padding.
 
-### Buttons
+### 3. Segmented Tab & Filter Controls
+- Outer container: `borderRadius: 14`, padded with 4px, background `rgba(255, 255, 255, 0.06)` (dark) / `rgba(0, 0, 0, 0.05)` (light).
+- Tab pills: `borderRadius: 10`, active tab styled with card surface and subtle elevation.
 
-- **Shape:** 12px radius, 44–56px height depending on context.
-- **Primary:** green/mint filled surface with dark readable text in dark mode
-  and white text in light mode.
-- **Secondary / Ghost:** tonal card or transparent surface with a themed border
-  and accent text.
-- **States:** selected and disabled states must change surface, contrast, and
-  accessibility state; never rely on color alone.
+### 4. Friend & Member Cards
+- `borderRadius: 16`, 44x44 squircle avatar with `borderRadius: 14`.
+- 17px bold title, 13px secondary text, sub-balance branching tree indicator with `friendsTheme.branch`.
 
-### Chips and Segmented Controls
-
-- Use compact pill-like controls only for split methods, filters, and other
-  short mutually exclusive choices.
-- Selected controls use the active mint/green surface and an on-accent text
-  color; unselected controls use the current card surface and secondary text.
-
-### Cards and Containers
-
-- Use tonal surfaces from `constants/theme.ts` and theme-aware borders.
-- Keep internal padding generally between 12px and 20px.
-- Reserve stronger shadows for elevated actions or focused cards.
-
-### Inputs and Fields
-
-- Use `ThemedInput` or a theme-aware field with explicit text, placeholder,
-  background, and border colors.
-- Amount fields may be visually emphasized, but description and date fields
-  stay calm and easy to scan.
-- Use keyboard-aware scrolling, clear labels, and useful error states.
-
-### Navigation
-
-- Use Expo Router stacks/tabs and the shared `NavigationHeader`.
-- Preserve native back behavior, safe-area insets, and platform conventions.
-- Keep top-level navigation limited to primary destinations; actions belong in
-  screen content or contextual buttons.
-
-### Balance and Settlement Surfaces
-
-- State the direction in words such as “You owe” or “You are owed”; do not make
-  red/green the sole explanation.
-- Use restrained positive/negative accents and show exact currency amounts.
-- Confirmation language should describe the recorded action in human terms.
+---
 
 ## Do's and Don'ts
 
 ### Do:
-
-- **Do** use `useThemeColors()` and add reusable light/dark tokens when a new
-  surface needs a color.
-- **Do** inspect loading, empty, error, disabled, selected, and modal states in
-  both themes.
-- **Do** keep copy direct, respectful, and social.
-- **Do** use native safe-area, keyboard, back, and navigation behavior.
-- **Do** preserve touch target sizes and accessibility labels/states.
+- **Do** use `useThemeColors()` and tokens from `constants/theme.ts` for all surfaces, borders, and text.
+- **Do** inspect loading, empty, error, disabled, and modal states in both Light and Dark modes.
+- **Do** use `borderRadius: 16` for content cards and `borderRadius: 24` for hero balance summaries.
+- **Do** use squircle rounded avatars (14px radius for 44px avatars) rather than raw circles.
+- **Do** format all currency numbers with `fontVariant: ['tabular-nums']`.
 
 ### Don't:
-
-- **Don't** leave raw white/black surfaces or placeholder colors visible in the
-  opposite theme.
-- **Don't** turn the product into a spreadsheet with dense rows, excessive
-  tables, or accounting jargon.
-- **Don't** use gradients, glow, emojis, or animation as decoration without a
-  clear product or state purpose.
-- **Don't** create a one-off card, modal, input, or header when a shared
-  component already expresses the pattern.
-- **Don't** hide balance direction behind color alone or invent financial
-  claims, testimonials, or payment integrations.
+- **Don't** leave raw white or black backgrounds, text colors, or borders that fail in opposite theme appearances.
+- **Don't** use saturated or bright borders; borders should be soft `rgba(255, 255, 255, 0.08)` in dark mode and `#E5E5E5` in light mode.
+- **Don't** hardcode one-off hex values in screens; use theme tokens.
+- **Don't** make positive/negative color the only cue for financial direction—always pair color with explicit wording ("You are owed", "You owe").

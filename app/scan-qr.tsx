@@ -22,7 +22,7 @@ import {
 } from 'react-native';
 
 export default function ScanQRScreen() {
-  const { colors, isDark } = useThemeColors();
+  const { colors, gradients, isDark } = useThemeColors();
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [permission, requestPermission] = useCameraPermissions();
@@ -99,7 +99,7 @@ export default function ScanQRScreen() {
 
   if (!permission) {
     return (
-      <View style={[styles.container, { backgroundColor: isDark ? '#0A0A0F' : colors.background }]}>
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
         <ThemedText>Requesting camera permission...</ThemedText>
       </View>
     );
@@ -107,28 +107,13 @@ export default function ScanQRScreen() {
 
   if (!permission.granted) {
     return (
-      <LinearGradient
-        colors={isDark ? ['#0A0A0F', '#0F172A', '#0A0A0F'] : ['#F0FDF4', '#ECFDF5', '#F0FDF4']}
-        style={styles.container}>
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity
-            onPress={() => router.back()}
-            style={[styles.backButton, {
-              backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)',
-              borderColor: isDark ? 'rgba(45, 212, 191, 0.3)' : 'rgba(34, 197, 94, 0.3)',
-            }]}>
-            <IconSymbol size={20} name="chevron.left" color={isDark ? '#2DD4BF' : colors.tint} />
-          </TouchableOpacity>
-          <ThemedText type="subtitle" style={[styles.headerTitle, !isDark && { color: colors.text }]}>
-            Scan QR Code
-          </ThemedText>
-          <View style={styles.headerRight} />
-        </View>
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <LinearGradient colors={gradients.screenBackground} style={StyleSheet.absoluteFill} />
+        <NavigationHeader title="Scan QR Code" onBack={() => router.back()} />
 
         <View style={styles.permissionContainer}>
-          <View style={[styles.iconContainer, { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)' }]}>
-            <IconSymbol size={48} name="camera.fill" color={isDark ? '#2DD4BF' : colors.tint} />
+          <View style={[styles.iconContainer, { backgroundColor: isDark ? '#064e3b' : 'rgba(34, 197, 94, 0.12)' }]}>
+            <IconSymbol size={48} name="camera.fill" color={colors.accent} />
           </View>
           <ThemedText type="subtitle" style={[styles.permissionTitle, !isDark && { color: colors.text }]}>
             Camera Access Required
@@ -136,17 +121,21 @@ export default function ScanQRScreen() {
           <ThemedText style={[styles.permissionText, !isDark && { color: colors.textSecondary }]}>
             We need camera access to scan QR codes and add friends
           </ThemedText>
-          <TouchableOpacity onPress={requestPermission}>
-            <LinearGradient
-              colors={isDark ? ['#2DD4BF', '#14B8A6'] : ['#22c55e', '#16a34a']}
-              style={styles.permissionButton}>
-              <ThemedText style={styles.permissionButtonText}>Continue</ThemedText>
-            </LinearGradient>
+          <TouchableOpacity
+            onPress={requestPermission}
+            activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel="Continue to camera permission"
+            style={[styles.permissionButton, { backgroundColor: colors.accent }]}
+          >
+            <ThemedText style={styles.permissionButtonText}>Continue</ThemedText>
           </TouchableOpacity>
         </View>
-      </LinearGradient>
+      </View>
     );
   }
+
+  const cornerStyle = { borderColor: colors.accent };
 
   return (
     <View style={styles.container}>
@@ -165,10 +154,10 @@ export default function ScanQRScreen() {
         {/* Scanner Frame */}
         <View style={styles.scannerContainer}>
           <View style={styles.scannerFrame}>
-            <View style={[styles.corner, styles.cornerTL]} />
-            <View style={[styles.corner, styles.cornerTR]} />
-            <View style={[styles.corner, styles.cornerBL]} />
-            <View style={[styles.corner, styles.cornerBR]} />
+            <View style={[styles.corner, styles.cornerTL, cornerStyle]} />
+            <View style={[styles.corner, styles.cornerTR, cornerStyle]} />
+            <View style={[styles.corner, styles.cornerBL, cornerStyle]} />
+            <View style={[styles.corner, styles.cornerBR, cornerStyle]} />
           </View>
         </View>
 
@@ -180,8 +169,15 @@ export default function ScanQRScreen() {
 
           <TouchableOpacity
             onPress={() => setShowMyCode(true)}
-            style={styles.showMyCodeButton}
+            style={[
+              styles.showMyCodeButton,
+              {
+                backgroundColor: isDark ? 'rgba(0, 0, 0, 0.65)' : 'rgba(255, 255, 255, 0.25)',
+                borderColor: isDark ? 'rgba(255, 255, 255, 0.18)' : 'rgba(255, 255, 255, 0.45)',
+              },
+            ]}
             activeOpacity={0.8}
+            accessibilityRole="button"
             accessibilityLabel="Show my QR code"
           >
             <IconSymbol name="qrcode" size={20} color="#fff" />

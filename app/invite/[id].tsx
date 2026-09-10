@@ -166,10 +166,10 @@ export default function InviteScreen() {
 
             <View style={styles.content}>
                 <View style={[styles.avatarContainer, {
-                    backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.1)',
-                    borderColor: isDark ? '#2DD4BF' : '#22c55e'
+                    backgroundColor: isDark ? '#064e3b' : 'rgba(34, 197, 94, 0.12)',
+                    borderColor: isDark ? 'rgba(16, 185, 129, 0.35)' : 'rgba(34, 197, 94, 0.25)',
                 }]}>
-                    <ThemedText style={[styles.avatarText, { color: isDark ? '#2DD4BF' : '#16a34a' }]}>
+                    <ThemedText style={[styles.avatarText, { color: isDark ? '#10b981' : colors.accent }]}>
                         {inviter.name.charAt(0).toUpperCase()}
                     </ThemedText>
                 </View>
@@ -231,7 +231,7 @@ const styles = StyleSheet.create({
     avatarContainer: {
         width: 100,
         height: 100,
-        borderRadius: 50,
+        borderRadius: 24,
         justifyContent: 'center',
         alignItems: 'center',
         borderWidth: 2,
