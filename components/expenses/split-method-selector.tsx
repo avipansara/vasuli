@@ -15,17 +15,11 @@ export interface SplitMethodSelectorProps {
 export function SplitMethodSelector({
   splitMethod,
   onSelectSplitMethod,
-  splitType,
   label = 'Split method',
 }: SplitMethodSelectorProps) {
   const { colors, settle, isDark } = useThemeColors();
 
-  const availableMethods = SPLIT_METHODS.filter(method => {
-    if (splitType === SplitType.FRIENDS && method.id === SplitMethod.SHARES) {
-      return false;
-    }
-    return true;
-  });
+  const availableMethods = SPLIT_METHODS;
 
   return (
     <View style={styles.container}>
