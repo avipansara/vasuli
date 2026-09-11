@@ -4,6 +4,9 @@ on:
   push:
     tags:
       - 'v*'
+  # Manual fallback: tag pushes occasionally fail to trigger (seen 2026-09-05
+  # with v1.0.23, fired twice with no run). Run from the Actions tab instead.
+  workflow_dispatch:
 
 jobs:
   validate:
