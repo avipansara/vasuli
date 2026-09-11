@@ -624,7 +624,7 @@ const styles = StyleSheet.create({
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 6 },
     shadowRadius: 16,
-    elevation: 5,
+    elevation: 1,
   },
   groupEyebrow: {
     fontSize: 12,
@@ -781,7 +781,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.15,
     shadowRadius: 16,
-    elevation: 3,
+    elevation: 1,
   },
   settleButtonText: {
     fontSize: 16,

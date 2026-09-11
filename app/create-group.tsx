@@ -108,7 +108,7 @@ export default function CreateGroupScreen() {
     shadowOffset: { width: 0, height: isDark ? 4 : 3 },
     shadowOpacity: isDark ? 0.15 : 0.09,
     shadowRadius: isDark ? 4 : 10,
-    elevation: 3,
+    elevation: 1,
     borderRadius: 14,
   };
 

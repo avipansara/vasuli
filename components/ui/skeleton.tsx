@@ -192,7 +192,7 @@ export function FriendDetailSkeleton() {
             shadowOffset: { width: 0, height: 4 },
             shadowOpacity: isDark ? 0.32 : 0.08,
             shadowRadius: 12,
-            elevation: 4,
+            elevation: 1,
           },
         ]}>
         <Skeleton width={90} height={12} style={{ alignSelf: 'center', marginBottom: 8 }} />
@@ -222,7 +222,7 @@ export function FriendDetailSkeleton() {
               shadowOffset: { width: 0, height: 3 },
               shadowOpacity: isDark ? 0.25 : 0.06,
               shadowRadius: 8,
-              elevation: 2,
+              elevation: 1,
             },
           ]}>
           <Skeleton width={44} height={44} borderRadius={22} style={{ marginRight: 14 }} />
@@ -261,7 +261,7 @@ export function GroupDetailSkeleton() {
             shadowOffset: { width: 0, height: 4 },
             shadowOpacity: isDark ? 0.32 : 0.08,
             shadowRadius: 12,
-            elevation: 4,
+            elevation: 1,
           },
         ]}>
         <Skeleton width={100} height={12} style={{ alignSelf: 'center', marginBottom: 8 }} />
@@ -294,7 +294,7 @@ export function GroupDetailSkeleton() {
               shadowOffset: { width: 0, height: 3 },
               shadowOpacity: isDark ? 0.25 : 0.06,
               shadowRadius: 8,
-              elevation: 2,
+              elevation: 1,
             },
           ]}>
           <Skeleton width={48} height={48} borderRadius={24} style={{ marginRight: 14 }} />
@@ -330,7 +330,7 @@ export function ExpenseDetailSkeleton() {
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: isDark ? 0.35 : 0.09,
     shadowRadius: 10,
-    elevation: 3,
+    elevation: 1,
   };
 
   return (
@@ -437,7 +437,7 @@ export function SettlementDetailSkeleton() {
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.09,
     shadowRadius: 0,
-    elevation: 4,
+    elevation: 1,
   };
 
   return (

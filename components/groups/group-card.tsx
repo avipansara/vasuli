@@ -94,7 +94,7 @@ function GroupCardInner({ group, onRefresh }: GroupCardProps) {
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.15,
       shadowRadius: 4,
-      elevation: 4,
+      elevation: 1,
     } : {
       backgroundColor: '#ffffff',
       borderWidth: 0,
@@ -102,7 +102,7 @@ function GroupCardInner({ group, onRefresh }: GroupCardProps) {
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.09,
       shadowRadius: 0,
-      elevation: 4,
+      elevation: 1,
     }),
     [isDark]
   );

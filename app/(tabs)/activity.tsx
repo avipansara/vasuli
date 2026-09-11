@@ -155,7 +155,7 @@ export default function ActivityScreen() {
           shadowOffset: { width: 0, height: 2 },
           shadowOpacity: isDark ? 0.24 : 0.04,
           shadowRadius: 6,
-          elevation: 2,
+          elevation: 1,
         }]}>
           <IconSymbol
             name="magnifyingglass"

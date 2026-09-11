@@ -259,7 +259,7 @@ export default function ProfileScreen() {
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: isDark ? 0.15 : 0.09,
     shadowRadius: isDark ? 4 : 12,
-    elevation: 4,
+    elevation: 1,
   };
 
   return (

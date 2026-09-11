@@ -57,7 +57,7 @@ export default function TabLayoutWeb() {
               shadowOffset: { width: 0, height: 8 },
               shadowOpacity: isDark ? 0.3 : 0.15,
               shadowRadius: 16,
-              elevation: 10,
+              elevation: 1,
               borderWidth: 1,
               borderColor: isDark ? 'rgba(45, 212, 191, 0.1)' : 'rgba(0, 0, 0, 0.05)',
             },

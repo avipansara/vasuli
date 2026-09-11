@@ -76,14 +76,14 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   darkShadow: {
-    elevation: 6,
+    elevation: 2,
     shadowColor: '#2DD4BF',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.22,
     shadowRadius: 14,
   },
   lightShadow: {
-    elevation: 6,
+    elevation: 2,
     shadowColor: '#166534',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.16,

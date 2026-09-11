@@ -48,7 +48,7 @@ export function FriendExpenseActivityEvent({
       shadowOffset: { width: 0, height: isDark ? 4 : 2 },
       shadowOpacity: isDark ? 0.15 : 0.09,
       shadowRadius: isDark ? 4 : 0,
-      elevation: 4,
+      elevation: 1,
     }]}>
       <View style={[styles.updateIcon, { backgroundColor: iconSurface }]}>
         <IconSymbol size={20} name={iconName} color={statusColor} />

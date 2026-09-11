@@ -26,7 +26,7 @@ export const ThemedInput = forwardRef<TextInput, ThemedInputProps>(
             shadowOffset: { width: 0, height: 3 },
             shadowOpacity: isDark ? 0.35 : 0.09,
             shadowRadius: 10,
-            elevation: 3,
+            elevation: 1,
           },
           containerStyle,
         ]}>

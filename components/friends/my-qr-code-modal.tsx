@@ -172,7 +172,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.15,
     shadowRadius: 16,
-    elevation: 6,
+    elevation: 1,
     borderWidth: 1,
     borderColor: 'rgba(0, 0, 0, 0.06)',
   },

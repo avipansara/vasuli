@@ -125,7 +125,7 @@ export function SettlementOperationCard({
             shadowOffset: { width: 0, height: isDark ? 4 : 2 },
             shadowOpacity: isDark ? 0.15 : 0.09,
             shadowRadius: isDark ? 4 : 0,
-            elevation: 4,
+            elevation: 1,
           },
         ]}>
         <View style={[styles.icon, {
@@ -261,7 +261,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.09,
     shadowRadius: 0,
-    elevation: 4,
+    elevation: 1,
   },
   icon: {
     width: 38,

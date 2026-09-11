@@ -212,7 +212,7 @@ function FriendSettleContent({
           borderWidth: 1,
           shadowColor: '#000000',
           shadowOpacity: isDark ? 0.32 : 0.12,
-          elevation: 5,
+          elevation: 1,
         }]}>
           <View style={styles.profileRow}>
             <View style={[styles.avatar, { backgroundColor: settle.avatarSelectedBackground }]}>
@@ -302,7 +302,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.12,
     shadowRadius: 16,
-    elevation: 5,
+    elevation: 1,
   },
   profileRow: {
     flexDirection: 'row',
