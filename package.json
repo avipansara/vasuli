@@ -18,6 +18,8 @@
     "e2e:ios:smoke": "E2E_INCLUDE_SMOKE=1 node scripts/e2e-run.cjs e2e/smoke.test.js",
     "e2e:ios": "node scripts/e2e-run.cjs",
     "precommit": "npm run lint && npm run typecheck:supabase && npm run test",
+    "db:migrate:dev": "node scripts/migrate-dev.cjs",
+    "db:promote:prod": "node scripts/promote-migrations.cjs",
     "draft": "npx eas-cli@latest workflow:run create-draft.yml",
     "development-builds": "npx eas-cli@latest workflow:run create-development-builds.yml",
     "deploy": "npx eas-cli@latest workflow:run deploy-to-production.yml",

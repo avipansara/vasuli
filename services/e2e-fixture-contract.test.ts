@@ -192,7 +192,8 @@ describe('run-scoped E2E fixture SQL contract', () => {
     expect(cleanupScript).toContain('const legacyGroupPrefix = `${GROUP_PREFIX}${runId}`');
     expect(cleanupScript).toContain('group_prefix: legacyGroupPrefix');
     expect(cleanupScript).not.toContain('E2E_CLEANUP_HISTORY');
-    expect(cleanupScript).toContain("host !== 'jtnculejudbioyecytap.supabase.co'");
+    expect(cleanupScript).toContain('Refusing cleanup against non-development Supabase host');
+    expect(cleanupScript).not.toMatch(/[a-z]{20}\.supabase\.co/);
   });
 
   it('hardens legacy cleanup behind the run-scoped development actor boundary', () => {

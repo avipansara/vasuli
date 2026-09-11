@@ -5,6 +5,9 @@ on:
     tags:
       - 'v*'
 
+permissions:
+  contents: write
+
 jobs:
   validate:
     name: Lint, Typecheck, and Test
@@ -31,13 +34,62 @@ jobs:
       - name: Run tests
         run: npm run test
 
+  migrate-prod:
+    name: Promote & Apply Prod Migrations
+    needs: validate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository (master)
+        uses: actions/checkout@v4
+        with:
+          ref: master
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Apply pending migrations to Prod and promote
+        run: node scripts/promote-migrations.cjs
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROD_PROJECT_ID: ${{ secrets.SUPABASE_PROD_PROJECT_ID }}
+
+      - name: Commit and push promoted migrations to master
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add supabase/migrations/ supabase/pending_migrations/ types/supabase.ts
+          if git diff --cached --quiet; then
+            echo "No schema migration changes to commit."
+            exit 0
+          fi
+          git commit -m "chore(db): promote migrations for ${{ github.ref_name }} [skip ci]"
+          for attempt in 1 2 3; do
+            if git push origin HEAD:master; then
+              echo "Promoted migrations pushed to master."
+              exit 0
+            fi
+            echo "Push rejected, rebasing onto latest master (attempt $attempt)..."
+            git pull --rebase origin master || break
+          done
+          echo "Failed to push promoted migrations after retries." >&2
+          exit 1
+
   build-android:
     name: Build & Submit Android Production
-    needs: validate
+    needs: [validate, migrate-prod]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          ref: master
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -65,11 +117,13 @@ jobs:
 
   build-ios:
     name: Build & Submit iOS Production
-    needs: validate
+    needs: [validate, migrate-prod]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          ref: master
 
       - name: Set up Node.js
         uses: actions/setup-node@v4

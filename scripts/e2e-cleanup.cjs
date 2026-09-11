@@ -24,7 +24,11 @@ async function main() {
   }
 
   const host = new URL(SUPABASE_URL).hostname;
-  if (host !== 'jtnculejudbioyecytap.supabase.co') {
+  const devProjectId = process.env.SUPABASE_DEV_PROJECT_ID;
+  const prodProjectId = process.env.SUPABASE_PROD_PROJECT_ID;
+  const allowedHost = process.env.SUPABASE_DEV_HOST
+    || (devProjectId ? `${devProjectId}.supabase.co` : null);
+  if ((allowedHost && host !== allowedHost) || (prodProjectId && host.includes(prodProjectId))) {
     fail(`Refusing cleanup against non-development Supabase host: ${host}`);
     return;
   }
