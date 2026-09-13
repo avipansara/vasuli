@@ -251,6 +251,17 @@ describe('settlement RPC migration contracts', () => {
     expect(migration).toContain("'cancellations', cancellation_rows");
   });
 
+  it('normalizes binary float residue without accepting fractional cents', () => {
+    const migration = readMigration('20260912193000_tolerate_cancellation_float_residue.sql');
+
+    expect(migration).toContain('ABS(cancellation_amount - ROUND(cancellation_amount, 2)) > 0.000000001');
+    expect(migration).toContain('cancellation_amount := ROUND(cancellation_amount, 2);');
+    expect(migration).toContain('Could not update cancellation amount normalization');
+    expect(migration).toContain("p.proname = 'commit_settlement_operation'");
+    expect(migration).not.toContain('DROP FUNCTION');
+    expect(migration).not.toContain('DROP TABLE');
+  });
+
   it('excludes converted group legs from the reversal stale-balance guard', () => {
     const migration = readMigration('20260907000000_fix_reversal_balance_backfill_exclusion.sql');
 

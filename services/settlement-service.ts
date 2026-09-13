@@ -316,11 +316,12 @@ export function buildCombinedSettlementPlan({
   // partial branch returns above with `cancellations: []`.
   const cancellations = orderedGroups.map(scope => {
     const paid = paidByGroup.get(scope.groupId) ?? 0;
-    const residual = scope.amount + (scope.amount < 0 ? paid : -paid);
-    if (residual === 0) return null;
+    const residualCents = toCents(scope.amount)
+      + (scope.amount < 0 ? toCents(paid) : -toCents(paid));
+    if (residualCents === 0) return null;
     return {
       groupId: scope.groupId,
-      amount: Math.abs(residual),
+      amount: Math.abs(residualCents) / 100,
       currency,
     };
   }).filter((cancellation): cancellation is NonNullable<typeof cancellation> => cancellation !== null);

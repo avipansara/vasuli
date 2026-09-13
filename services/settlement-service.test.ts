@@ -172,6 +172,27 @@ describe('settlementModule.preview', () => {
       });
   });
 
+  it('rounds full-payment cancellation residuals to whole cents', () => {
+    expect(settlementModule.preview({
+      currentUserId: 'current-user',
+      friendId: 'friend-a',
+      currency: 'USD',
+      amount: 453.90,
+      directBalance: 69.48,
+      groupBalances: [{
+        groupId: 'precision-group',
+        groupName: 'Precision Group',
+        currency: 'USD',
+        amount: -523.38,
+        direction: 'you_owe',
+      }],
+    }).cancellations).toEqual([{
+      groupId: 'precision-group',
+      amount: 69.48,
+      currency: 'USD',
+    }]);
+  });
+
   it('emits a participant-free cancellation for a negative group balance', () => {
     const plan = settlementModule.preview({
       currentUserId: 'current-user',

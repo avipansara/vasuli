@@ -5,6 +5,10 @@
 - Fixed `getCurrencySymbol` and `formatCurrency` defaults to resolve dynamically against the user's preferred currency instead of hardcoding `USD`.
 - Expanded `SUPPORTED_SETTLEMENT_CURRENCIES` to include `GBP` and `INR` so non-USD settlements succeed without validation failures.
 
+## 2026-09-12
+
+- Fixed full friend settlements failing when a cancellation amount contained binary floating-point residue; the app now sends exact cents, and the database normalizes harmless sub-nanodollar residue while rejecting genuine fractional cents. Deploy migration `20260912193000_tolerate_cancellation_float_residue.sql` before release.
+
 ## 2026-09-10
 
 - Added a personal QR code generator (`MyQRCodeModal` and `QRCode` component) accessible from Add Friend, Profile settings, and the QR Scanner overlay, allowing users to instantly generate and share their personal invite code and link with friends.

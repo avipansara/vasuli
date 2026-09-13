@@ -222,6 +222,18 @@ BEGIN
     RAISE EXCEPTION 'malformed cancellation direction/sign was accepted';
   EXCEPTION WHEN OTHERS THEN IF SQLERRM <> 'SETTLEMENT_TRANSFER_INVALID' THEN RAISE; END IF; END;
   BEGIN
+    -- Genuine fractional cents stay invalid even though tiny binary float
+    -- residue is accepted and normalized by the RPC.
+    PERFORM public.commit_settlement_operation(
+      '93000000-0000-0000-0000-000000000015', f.friend, NULL, 'all_balances', 9, 'USD', NOW(), -9,
+      jsonb_build_array(jsonb_build_object('groupId', NULL, 'fromUserId', f.actor, 'toUserId', f.friend, 'amount', 9, 'currency', 'USD')),
+      '[]'::jsonb,
+      jsonb_build_array(
+        jsonb_build_object('groupId', f.group_two, 'amount', 3.001, 'currency', 'USD'),
+        jsonb_build_object('groupId', f.group_one, 'amount', 10, 'currency', 'USD')));
+    RAISE EXCEPTION 'fractional-cent cancellation was accepted';
+  EXCEPTION WHEN OTHERS THEN IF SQLERRM <> 'SETTLEMENT_TRANSFER_INVALID' THEN RAISE; END IF; END;
+  BEGIN
     -- Mismatched cancellation amount is rejected against the server plan.
     PERFORM public.commit_settlement_operation(
       '93000000-0000-0000-0000-000000000015', f.friend, NULL, 'all_balances', 9, 'USD', NOW(), -9,
@@ -287,8 +299,8 @@ BEGIN
   -- Dedicated surface (replaces ticket-17 option B signed legs): creditor-free
   -- entries with no participants and no signed delta.
   cancellations := jsonb_build_array(
-    jsonb_build_object('groupId', f.group_two, 'amount', 3, 'currency', 'USD'),
-    jsonb_build_object('groupId', f.group_one, 'amount', 10, 'currency', 'USD'));
+    jsonb_build_object('groupId', f.group_two, 'amount', 3.0000000000000002, 'currency', 'USD'),
+    jsonb_build_object('groupId', f.group_one, 'amount', 10.0000000000000002, 'currency', 'USD'));
   r := public.commit_settlement_operation(
     '93000000-0000-0000-0000-000000000003', f.friend, NULL, 'all_balances', 9, 'USD', NOW(), -9, allocations, '[]'::jsonb, cancellations);
   v_operation_id := (r->>'operationId')::UUID;
