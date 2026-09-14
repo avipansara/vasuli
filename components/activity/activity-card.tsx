@@ -3,7 +3,7 @@ import { IconSymbol, IconSymbolName } from '@/components/ui/icon-symbol';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getActivityHref } from '@/lib/activity-link';
 import type { Activity as DbActivity } from '@/types/database';
-import { formatCurrency } from '@/utils/currency';
+import { useCurrency } from '@/contexts/currency-context';
 import { formatDate } from '@/utils/date';
 import { router } from 'expo-router';
 import { memo, useMemo } from 'react';
@@ -70,6 +70,7 @@ function areActivityCardPropsEqual(prev: ActivityCardProps, next: ActivityCardPr
 
 function ActivityCardInner({ activity, currentUserId, deletedExpenseTargetIds }: ActivityCardProps) {
   const { colors, isDark } = useThemeColors();
+  const { formatCurrency } = useCurrency();
   const item = mapDbActivityToItem(activity);
   const href = getActivityHref(activity, currentUserId, deletedExpenseTargetIds);
   const dateStr = formatActivityDate(item.date);

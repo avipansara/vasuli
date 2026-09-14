@@ -6,6 +6,7 @@ import { NavigationHeader } from '@/components/ui/screen-header';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useAnalytics } from '@/contexts/analytics-context';
+import { useCurrency } from '@/contexts/currency-context';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { activityService } from '@/services/activity-service';
@@ -52,6 +53,7 @@ type EditableSplit = Pick<ExpenseSplit, 'userId' | 'amount' | 'splitType' | 'per
 export default function EditExpenseScreen() {
   const { gradients, colors, settle, isDark } = useThemeColors();
   const { user } = useAuth();
+  const { currency: preferredCurrency, currencySymbol } = useCurrency();
   const { service: analytics } = useAnalytics();
   const { id } = useLocalSearchParams<{ id: string }>();
   const currentUserId = user?.id || '';
@@ -492,7 +494,7 @@ export default function EditExpenseScreen() {
               How much?
             </ThemedText>
             <View style={styles.amountInputRow}>
-              <Text style={[styles.currencySymbol, { color: settle.accentText }]}>{getCurrencySymbol(editFormQuery.data?.expense?.currency)}</Text>
+              <Text style={[styles.currencySymbol, { color: settle.accentText }]}>{editFormQuery.data?.expense?.currency ? getCurrencySymbol(editFormQuery.data.expense.currency) : currencySymbol}</Text>
               <TextInput
                 ref={amountInputRef}
                 style={[styles.amountInput, { color: isDark ? '#fff' : colors.text }]}
@@ -688,7 +690,7 @@ export default function EditExpenseScreen() {
             <CustomSplitBreakdown
               splitMethod={splitMethod}
               totalAmount={parseFloat(amount) || 0}
-              currency={editFormQuery.data?.expense?.currency}
+              currency={editFormQuery.data?.expense?.currency ?? preferredCurrency}
               participants={participants}
               customAmounts={customAmounts}
               customPercentages={customPercentages}

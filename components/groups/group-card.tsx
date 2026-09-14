@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/auth-context-otp';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { createGroupDetailTraceId, logGroupDetailDiagnostic } from '@/lib/group-detail-diagnostics';
 import { groupService } from '@/services/group-service';
-import { formatCurrency } from '@/utils/currency';
+import { useCurrency } from '@/contexts/currency-context';
 import type { GroupWithMembers } from '@/types/database';
 import { router } from 'expo-router';
 import { memo, useMemo, useRef } from 'react';
@@ -34,6 +34,7 @@ function areGroupCardPropsEqual(prev: GroupCardProps, next: GroupCardProps): boo
 
 function GroupCardInner({ group, onRefresh }: GroupCardProps) {
   const { colors, isDark } = useThemeColors();
+  const { formatCurrency } = useCurrency();
   const { user } = useAuth();
   const swipeableRef = useRef<SwipeableMethods>(null);
   const balance = group.yourBalance || 0;

@@ -1,3 +1,10 @@
+## 2026-09-14
+
+- Fixed app-wide currency synchronization: changing the preferred currency in Profile settings (`USD`, `GBP`, `INR`) now updates all balance cards, friend cards, group cards, activity cards, expense creation inputs, custom split breakdowns, and settlement flows immediately across tabs and screens without requiring an app restart.
+- Added reactive subscription listeners to `utils/currency.ts` and wired `CurrencyContext` to automatically invalidate active query caches on currency change.
+- Fixed `getCurrencySymbol` and `formatCurrency` defaults to resolve dynamically against the user's preferred currency instead of hardcoding `USD`.
+- Expanded `SUPPORTED_SETTLEMENT_CURRENCIES` to include `GBP` and `INR` so non-USD settlements succeed without validation failures.
+
 ## 2026-09-10
 
 - Added a personal QR code generator (`MyQRCodeModal` and `QRCode` component) accessible from Add Friend, Profile settings, and the QR Scanner overlay, allowing users to instantly generate and share their personal invite code and link with friends.

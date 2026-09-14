@@ -4,6 +4,7 @@ import { UserAvatar } from '@/components/ui/user-avatar';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import type { FriendRelationshipProjection } from '@/services/friend-detail-service';
 import type { User } from '@/types/database';
+import { useCurrency } from '@/contexts/currency-context';
 import { formatCurrency } from '@/utils/currency';
 import { getDisplayName } from '@/utils/validation';
 import { memo, useMemo } from 'react';
@@ -89,6 +90,7 @@ function areFriendCardPropsEqual(prev: FriendCardProps, next: FriendCardProps): 
 
 function FriendCardInner({ friend, onPress, onDelete }: FriendCardProps) {
   const { colors, friends: friendsTheme, isDark } = useThemeColors();
+  const { currency: preferredCurrency, formatCurrency: formatCurrencyContext } = useCurrency();
   const balance = normalizeDisplayBalance(friend.balance);
   const hasSeparateBalances = Boolean(
     friend.relationship
@@ -125,12 +127,12 @@ function FriendCardInner({ friend, onPress, onDelete }: FriendCardProps) {
         label: 'in non-group expenses',
         amount: Math.abs(friend.relationship.directBalance),
         direction: friend.relationship.directBalance > 0 ? 'you_are_owed' : 'you_owe',
-        currency: friend.relationship.directCurrency ?? 'USD',
+        currency: friend.relationship.directCurrency ?? preferredCurrency,
       });
     }
 
     return items;
-  }, [friend.relationship]);
+  }, [friend.relationship, preferredCurrency]);
 
   const emailColor = colors.textSecondary;
   const branchTextColor = colors.textSecondary;
@@ -207,7 +209,7 @@ function FriendCardInner({ friend, onPress, onDelete }: FriendCardProps) {
               {balance !== 0 ? (
                 <>
                   <ThemedText type='title' style={[styles.balanceAmount, { color: isDark ? (balance > 0 ? '#10b981' : '#ffb4ab') : balanceColor }]}>
-                    {formatCurrency(Math.abs(balance))}
+                    {formatCurrencyContext(Math.abs(balance))}
                   </ThemedText>
                   <ThemedText
                     style={[styles.balanceLabel, { color: isDark ? '#64748b' : colors.textSecondary }]}

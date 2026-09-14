@@ -16,7 +16,7 @@ import { friendSummaryService } from '@/services/friend-summary-service';
 import { friendshipService } from '@/services/friendship-service';
 import { queryKeys } from '@/services/query-keys';
 import type { Expense, User } from '@/types/database';
-import { formatCurrency } from '@/utils/currency';
+import { useCurrency } from '@/contexts/currency-context';
 import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
@@ -29,6 +29,7 @@ interface UserWithBalance extends User {
 
 export default function FriendsScreen() {
   const { colors, friends: friendsTheme, invitations } = useThemeColors();
+  const { formatCurrency } = useCurrency();
   const [refreshing, setRefreshing] = useState(false);
   const { user } = useAuth();
   const currentUserId = user?.id || '';

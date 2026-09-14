@@ -10,6 +10,7 @@ import { groupDetailService } from '@/services/group-detail-service';
 import { exportGroupExpensesCsv } from '@/services/group-expense-csv';
 import { calculateGroupStats, type GroupBalanceStat, type GroupPayerStat } from '@/services/group-stats';
 import { queryKeys } from '@/services/query-keys';
+import { useCurrency } from '@/contexts/currency-context';
 import { formatCurrency } from '@/utils/currency';
 import { useQuery } from '@tanstack/react-query';
 import { Image } from 'expo-image';
@@ -120,6 +121,7 @@ export default function GroupStatsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
+  useCurrency();
   const { colors, gradients, friendDetail: theme, isDark } = useThemeColors();
   const [isExporting, setIsExporting] = useState(false);
   const [showAllContributors, setShowAllContributors] = useState(false);

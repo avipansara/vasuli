@@ -24,7 +24,8 @@ import {
 } from '@/services/friend-detail-module';
 import { projectFriendRelationship, type FriendDetailData } from '@/services/friend-detail-service';
 import type { Expense, User } from '@/types/database';
-import { formatCurrency, normalizeBalance } from '@/utils/currency';
+import { useCurrency } from '@/contexts/currency-context';
+import { normalizeBalance } from '@/utils/currency';
 import { formatDate } from '@/utils/date';
 import { getFirstName } from '@/utils/validation';
 import { trackExpenseDeleted } from '@/lib/analytics/track';
@@ -58,6 +59,7 @@ const ACTIVITY_FILTERS: { id: ActivityFilter; label: string; icon: IconSymbolNam
 
 export default function FriendDetailScreen() {
   const { id, returnTo } = useLocalSearchParams<{ id: string; returnTo?: string }>();
+  const { currency: preferredCurrency, formatCurrency } = useCurrency();
   const navigation = useNavigation();
   const isReturningRef = useRef(false);
 
@@ -468,7 +470,7 @@ export default function FriendDetailScreen() {
     ? `${balanceCopy}, choose a currency to settle`
     : balance === 0
       ? balanceCopy
-      : `${balanceCopy}, ${formatCurrency(Math.abs(balance), relationship.settleableTotal?.currency ?? relationship.directCurrency)}`;
+      : `${balanceCopy}, ${formatCurrency(Math.abs(balance), relationship.settleableTotal?.currency ?? relationship.directCurrency ?? preferredCurrency)}`;
 
 
   return (
@@ -581,7 +583,7 @@ export default function FriendDetailScreen() {
             <ThemedText type='subtitle' style={[styles.summaryCardAmount, { color: isDark ? (isOwing ? '#ffb3b0' : isOwed ? '#4edea3' : '#94A3B8') : balanceColor }]}>
               {hasCurrencyAmbiguity
                 ? 'Multiple currencies'
-                : `${isOwing ? '-' : isOwed ? '+' : ''}${formatCurrency(Math.abs(balance), relationship.settleableTotal?.currency ?? relationship.directCurrency ?? 'USD')}`}
+                : `${isOwing ? '-' : isOwed ? '+' : ''}${formatCurrency(Math.abs(balance), relationship.settleableTotal?.currency ?? relationship.directCurrency ?? preferredCurrency)}`}
             </ThemedText>
 
             <ThemedText style={[styles.summaryCardSubtitle, { color: isDark ? '#94A3B8' : colors.textSecondary }]}>
@@ -591,7 +593,7 @@ export default function FriendDetailScreen() {
             </ThemedText>
 
             <ThemedText style={[styles.summaryCardSubtitle, { color: isDark ? '#94A3B8' : colors.textSecondary }]}>
-              Direct balance: {relationship.directBalance >= 0 ? '+' : ''}{formatCurrency(Math.abs(relationship.directBalance), relationship.directCurrency ?? 'USD')}
+              Direct balance: {relationship.directBalance >= 0 ? '+' : ''}{formatCurrency(Math.abs(relationship.directBalance), relationship.directCurrency ?? preferredCurrency)}
             </ThemedText>
 
             {balance !== 0 && !hasCurrencyAmbiguity && (
@@ -780,7 +782,7 @@ export default function FriendDetailScreen() {
                             canDelete={!item.projection.isDeleted && !settlementDeleteFlow.isDeletedLocally(item.operationId)}
                             isDeleting={settlementDeleteFlow.isDeletePending(item.operationId)}
                             isDeletedOverride={settlementDeleteFlow.isDeletedLocally(item.operationId)}
-                            onDelete={() => handleDeleteOperation(item.operationId, item.projection.currency ?? 'USD')}
+                            onDelete={() => handleDeleteOperation(item.operationId, item.projection.currency ?? preferredCurrency)}
                             onOpenGroup={(groupId) => router.push(`/groups/${groupId}` as any)}
                             swipeableRefs={swipeableRefs}
                           />

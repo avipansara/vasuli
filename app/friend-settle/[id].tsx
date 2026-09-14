@@ -13,7 +13,7 @@ import { createPaymentIntentId, settlementModule } from '@/services/settlement-s
 import { trackSettlementCancelled, trackSettlementCreated, trackSettlementCreationFailed, trackSettlementStarted } from '@/lib/analytics/track';
 import type { FriendRelationshipProjection } from '@/services/friend-detail-service';
 import type { User } from '@/types/database';
-import { formatCurrency } from '@/utils/currency';
+import { useCurrency } from '@/contexts/currency-context';
 import { useQueryClient } from '@tanstack/react-query';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useRef, type MutableRefObject, useState } from 'react';
@@ -147,6 +147,7 @@ function FriendSettleContent({
   bottomInset: number;
 }) {
   const { settle, isDark } = useThemeColors();
+  const { currency: preferredCurrency, formatCurrency: formatCurrencyContext } = useCurrency();
   const { service: analytics } = useAnalytics();
 
   const settlementCurrency = relationship?.settleableTotal?.currency ?? relationship?.zeroNetCurrency;
@@ -233,7 +234,7 @@ function FriendSettleContent({
           <View
             testID="friend-settlement-relationship-summary"
             accessibilityRole="summary"
-            accessibilityLabel={`Combined relationship summary, ${formatCurrency(Math.abs(netAmount), settlementCurrency)}`}
+            accessibilityLabel={`Combined relationship summary, ${formatCurrencyContext(Math.abs(netAmount), settlementCurrency ?? preferredCurrency)}`}
             style={styles.balanceRow}
           >
             <ThemedText
@@ -246,7 +247,7 @@ function FriendSettleContent({
               numberOfLines={1}
               style={[styles.balanceValueText, { color: settle.accentText }]}
             >
-              {formatCurrency(Math.abs(netAmount), settlementCurrency)}
+              {formatCurrencyContext(Math.abs(netAmount), settlementCurrency ?? preferredCurrency)}
             </ThemedText>
           </View>
         </View>

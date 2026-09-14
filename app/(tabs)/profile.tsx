@@ -15,7 +15,6 @@ import { calculateFriendSummaryTotals, friendSummaryService } from '@/services/f
 import { notificationService } from '@/services/notification-service';
 import { queryKeys } from '@/services/query-keys';
 import { userService } from '@/services/user-service';
-import { formatCurrency } from '@/utils/currency';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -213,7 +212,7 @@ export default function ProfileScreen() {
     );
   }
 
-  const { changeCurrency, currencySymbol } = useCurrency();
+  const { changeCurrency, currencySymbol, formatCurrency } = useCurrency();
 
   async function handleToggleAnalytics(value: boolean) {
     try {

@@ -21,7 +21,7 @@ import {
 import { createReactQueryCacheAdapter } from '@/services/query-cache-adapter';
 import { queryKeys } from '@/services/query-keys';
 import { userService } from '@/services/user-service';
-import { getCurrencySymbol, getPreferredCurrency } from '@/utils/currency';
+import { useCurrency } from '@/contexts/currency-context';
 import { formatDate } from '@/utils/date';
 import { filterFriendsForExpenseSearch } from '@/utils/friend-search';
 import { getGroupExpenseParticipant } from '@/utils/group-expense-participants';
@@ -56,6 +56,7 @@ import {
 export default function AddExpenseScreen() {
   const { colors, settle, isDark } = useThemeColors();
   const { user } = useAuth();
+  const { currency: preferredCurrency, currencySymbol } = useCurrency();
   const { service: analytics } = useAnalytics();
   const { groupId: preselectedGroupId, friendId: preselectedFriendId } = useLocalSearchParams<{ groupId?: string; friendId?: string }>();
   const currentUserId = user?.id || '';
@@ -285,7 +286,7 @@ export default function AddExpenseScreen() {
           : { kind: 'friends', friendIds: selectedFriendIds },
         description: trimmedDescription,
         amount: amountNum,
-        currency: getPreferredCurrency(),
+        currency: preferredCurrency,
         date: expenseDate.getTime(),
         payerId: activePayerId,
         currentUserId,
@@ -332,7 +333,7 @@ export default function AddExpenseScreen() {
       trackExpenseCreated(analytics, {
         groupId: isGroup ? selectedGroupId : undefined,
         memberCount: participantIds.length || undefined,
-        currency: getPreferredCurrency(),
+        currency: preferredCurrency,
       });
     } catch (error) {
       console.error('Error creating expense:', error);
@@ -496,7 +497,7 @@ export default function AddExpenseScreen() {
                     </ThemedText>
                   </View>
                   <View style={styles.amountInputRow}>
-                    <Text style={[styles.currencySymbol, { color: settle.accentText }]}>{getCurrencySymbol()}</Text>
+                    <Text style={[styles.currencySymbol, { color: settle.accentText }]}>{currencySymbol}</Text>
                     <TextInput
                       ref={amountInputRef}
                       style={[styles.amountInput, { color: settle.accentText }]}
@@ -828,6 +829,7 @@ export default function AddExpenseScreen() {
             <CustomSplitBreakdown
               splitMethod={splitMethod}
               totalAmount={parseFloat(amount) || 0}
+              currency={preferredCurrency}
               participants={participants}
               customAmounts={customAmounts}
               customPercentages={customPercentages}

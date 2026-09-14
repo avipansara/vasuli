@@ -27,7 +27,8 @@ import {
 import { createReactQueryCacheAdapter } from '@/services/query-cache-adapter';
 import { queryKeys } from '@/services/query-keys';
 import type { Expense, GroupMember, Settlement, SettlementCancellation, SettlementScopeTransfer, User } from '@/types/database';
-import { formatCurrency, getPreferredCurrency } from '@/utils/currency';
+import { useCurrency } from '@/contexts/currency-context';
+import { formatCurrency } from '@/utils/currency';
 import { formatDate } from '@/utils/date';
 import { groupPairTotalsService, toGroupScopedLine } from '@/services/group-pair-totals-service';
 import { getViewerPairBalance } from '@/utils/group-member-balance';
@@ -137,6 +138,7 @@ export default function GroupDetailScreen() {
   }, []);
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
   const { user } = useAuth();
+  const { currency: preferredCurrency, formatCurrency: formatCurrencyContext } = useCurrency();
   const { service: analytics } = useAnalytics();
   const currentUserId = user?.id || '';
   const queryClient = useQueryClient();
@@ -799,16 +801,16 @@ export default function GroupDetailScreen() {
               : null;
 
       const memberBalance = balances.get(item.userId) || 0;
-      let totalBalanceDisplay = `${formatCurrency(0)}`;
+      let totalBalanceDisplay = `${formatCurrencyContext(0)}`;
       let totalBalanceColor = isDark ? '#94A3B8' : '#64748B';
       let totalBalanceLabel = 'settled up';
 
       if (memberBalance > 0.005) {
-        totalBalanceDisplay = `+${formatCurrency(memberBalance)}`;
+        totalBalanceDisplay = `+${formatCurrencyContext(memberBalance)}`;
         totalBalanceColor = isDark ? '#10B981' : '#047857';
         totalBalanceLabel = 'gets back total';
       } else if (memberBalance < -0.005) {
-        totalBalanceDisplay = `-${formatCurrency(Math.abs(memberBalance))}`;
+        totalBalanceDisplay = `-${formatCurrencyContext(Math.abs(memberBalance))}`;
         totalBalanceColor = isDark ? '#F87171' : '#DC2626';
         totalBalanceLabel = 'owes total';
       }
@@ -940,7 +942,7 @@ export default function GroupDetailScreen() {
       pairTotals,
       memberUserId: item.userId,
       viewerUserId: currentUserId,
-      preferredCurrency: getPreferredCurrency(),
+      preferredCurrency,
     });
     const balance = isViewerRelative
       ? viewerPairBalance?.signedAmount ?? 0
@@ -1054,7 +1056,7 @@ export default function GroupDetailScreen() {
             {(!isViewerRelative || hasViewerPair) && balance !== 0 && (
               <>
                 <ThemedText type='subtitle' style={[styles.memberBalanceAmount, { color: balanceColor }]}>
-                  {formatCurrency(Math.abs(balance), viewerPairBalance?.currency)}
+                  {formatCurrencyContext(Math.abs(balance), viewerPairBalance?.currency ?? preferredCurrency)}
                 </ThemedText>
                 <ThemedText style={[styles.balanceLabel, { color: isDark ? '#94A3B8' : colors.textSecondary }]}>
                   {isViewerRelative ? (balance > 0 ? 'You owe' : 'Owes you') : (balance > 0 ? 'gets back' : 'owes')}
@@ -1149,7 +1151,7 @@ export default function GroupDetailScreen() {
       ? friendDetailTheme.negative
       : friendDetailTheme.actionIcon;
   const balanceCopy = currentUserBalance > 0 ? 'You are owed' : currentUserBalance < 0 ? 'You owe' : 'Settled up in this group';
-  const balanceAccessibilityValue = `${balanceCopy}, ${formatCurrency(Math.abs(currentUserBalance))}`;
+  const balanceAccessibilityValue = `${balanceCopy}, ${formatCurrencyContext(Math.abs(currentUserBalance))}`;
 
   return (
     <View style={[styles.container, { backgroundColor: isDark ? '#050914' : colors.background }]}>
@@ -1245,7 +1247,7 @@ export default function GroupDetailScreen() {
             </ThemedText>
 
             <ThemedText type='subtitle' style={[styles.summaryCardAmount, { color: isDark ? (currentUserBalance < 0 ? '#ffb3b0' : currentUserBalance > 0 ? '#4edea3' : '#94A3B8') : balanceColor }]}>
-              {currentUserBalance < 0 ? '-' : currentUserBalance > 0 ? '+' : ''}{formatCurrency(Math.abs(currentUserBalance))}
+              {currentUserBalance < 0 ? '-' : currentUserBalance > 0 ? '+' : ''}{formatCurrencyContext(Math.abs(currentUserBalance))}
             </ThemedText>
 
             <ThemedText style={[styles.summaryCardSubtitle, { color: isDark ? '#94A3B8' : colors.textSecondary }]}>

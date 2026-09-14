@@ -12,9 +12,32 @@ const STORAGE_KEY = 'vasuli:preferred-currency';
 
 let currentPreferredCurrency: CurrencyCode = 'USD';
 
+type CurrencyListener = (currency: CurrencyCode) => void;
+const listeners = new Set<CurrencyListener>();
+
+function notifyListeners(currency: CurrencyCode): void {
+  for (const listener of listeners) {
+    try {
+      listener(currency);
+    } catch (error) {
+      console.error('Error in currency listener:', error);
+    }
+  }
+}
+
+export function subscribePreferredCurrency(listener: CurrencyListener): () => void {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+}
+
 AsyncStorage.getItem(STORAGE_KEY).then(val => {
   if (val === 'USD' || val === 'GBP' || val === 'INR') {
-    currentPreferredCurrency = val;
+    if (currentPreferredCurrency !== val) {
+      currentPreferredCurrency = val;
+      notifyListeners(val);
+    }
   }
 }).catch(() => {});
 
@@ -26,7 +49,11 @@ export async function hydratePreferredCurrency(): Promise<CurrencyCode> {
   try {
     const val = await AsyncStorage.getItem(STORAGE_KEY);
     if (val === 'USD' || val === 'GBP' || val === 'INR') {
+      const changed = currentPreferredCurrency !== val;
       currentPreferredCurrency = val;
+      if (changed) {
+        notifyListeners(val);
+      }
     }
   } catch (error) {
     console.warn('Failed to hydrate preferred currency:', error);
@@ -37,10 +64,11 @@ export async function hydratePreferredCurrency(): Promise<CurrencyCode> {
 export async function setPreferredCurrency(currency: CurrencyCode): Promise<void> {
   await AsyncStorage.setItem(STORAGE_KEY, currency);
   currentPreferredCurrency = currency;
+  notifyListeners(currency);
 }
 
-export function getCurrencySymbol(currencyCode: string = 'USD'): string {
-  const code = (currencyCode || 'USD').toUpperCase() as CurrencyCode;
+export function getCurrencySymbol(currencyCode?: string): string {
+  const code = (currencyCode || getPreferredCurrency()).toUpperCase() as CurrencyCode;
   return CURRENCY_SYMBOLS[code] || code;
 }
 

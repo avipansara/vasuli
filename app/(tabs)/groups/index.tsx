@@ -17,7 +17,7 @@ import { trackGroupCreated } from '@/lib/analytics/track';
 import { queryKeys } from '@/services/query-keys';
 import { userService } from '@/services/user-service';
 import type { Group, GroupWithMembers } from '@/types/database';
-import { formatCurrency } from '@/utils/currency';
+import { useCurrency } from '@/contexts/currency-context';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -25,6 +25,7 @@ import { Alert, Animated, FlatList, Platform, StyleSheet, TouchableOpacity, View
 
 export default function GroupsScreen() {
   const { colors, invitations, isDark } = useThemeColors();
+  const { formatCurrency } = useCurrency();
   const [modalVisible, setModalVisible] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
   const [newGroupDescription, setNewGroupDescription] = useState('');

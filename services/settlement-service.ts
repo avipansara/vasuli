@@ -77,7 +77,7 @@ export type SettlementOperationReversal = {
   reused: boolean;
 };
 
-export const SUPPORTED_SETTLEMENT_CURRENCIES = ['USD'] as const;
+export const SUPPORTED_SETTLEMENT_CURRENCIES = ['USD', 'GBP', 'INR'] as const;
 
 export type CombinedSettlementDirection = 'you_paid_friend' | 'friend_paid_you';
 

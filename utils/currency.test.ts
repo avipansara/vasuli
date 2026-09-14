@@ -1,13 +1,37 @@
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const store = new Map<string, string>();
+
+vi.mock('@react-native-async-storage/async-storage', () => ({
+  default: {
+    getItem: vi.fn(async (key: string) => (store.has(key) ? store.get(key)! : null)),
+    setItem: vi.fn(async (key: string, value: string) => {
+      store.set(key, value);
+    }),
+    removeItem: vi.fn(async (key: string) => {
+      store.delete(key);
+    }),
+  },
+}));
+
 import {
   formatCurrency,
   fromCents,
   getCurrencySymbol,
+  getPreferredCurrency,
   normalizeBalance,
+  setPreferredCurrency,
+  subscribePreferredCurrency,
   toCents,
 } from './currency';
 
 describe('currency utilities', () => {
+  beforeEach(async () => {
+    store.clear();
+    vi.clearAllMocks();
+    await setPreferredCurrency('USD');
+  });
+
   describe('getCurrencySymbol', () => {
     it('returns correct symbol for supported currencies', () => {
       expect(getCurrencySymbol('USD')).toBe('$');
@@ -18,6 +42,35 @@ describe('currency utilities', () => {
 
     it('falls back to currency code when unknown', () => {
       expect(getCurrencySymbol('EUR')).toBe('EUR');
+    });
+
+    it('defaults to preferred currency when no code is passed', async () => {
+      await setPreferredCurrency('GBP');
+      expect(getCurrencySymbol()).toBe('£');
+      await setPreferredCurrency('INR');
+      expect(getCurrencySymbol()).toBe('₹');
+      await setPreferredCurrency('USD');
+      expect(getCurrencySymbol()).toBe('$');
+    });
+  });
+
+  describe('preferred currency subscriptions', () => {
+    it('notifies subscribers when preferred currency changes and unrolls correctly', async () => {
+      const updates: string[] = [];
+      const unsubscribe = subscribePreferredCurrency((c) => updates.push(c));
+
+      await setPreferredCurrency('INR');
+      expect(getPreferredCurrency()).toBe('INR');
+      expect(formatCurrency(20)).toBe('₹20.00');
+
+      await setPreferredCurrency('GBP');
+      expect(getPreferredCurrency()).toBe('GBP');
+      expect(formatCurrency(20)).toBe('£20.00');
+
+      unsubscribe();
+      await setPreferredCurrency('USD');
+      expect(getPreferredCurrency()).toBe('USD');
+      expect(updates).toEqual(['INR', 'GBP']);
     });
   });
 

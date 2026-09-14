@@ -12,6 +12,7 @@ import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { activityService } from '@/services/activity-service';
 import { queryKeys } from '@/services/query-keys';
 import type { Activity } from '@/types/database';
+import { useCurrency } from '@/contexts/currency-context';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Animated, Keyboard, Platform, RefreshControl, SectionList, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
@@ -19,6 +20,7 @@ import { getTimePeriod } from '@/utils/date';
 
 export default function ActivityScreen() {
   const { colors, friendDetail: friendDetailTheme, isDark } = useThemeColors();
+  useCurrency();
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [activitySearch, setActivitySearch] = useState('');

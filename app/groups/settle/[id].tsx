@@ -26,7 +26,8 @@ import {
   isSettleableGroupBalance,
 } from '@/utils/group-settle-selection';
 import { formatCurrencyInput, normalizeCurrencyInput } from '@/utils/validation';
-import { formatCurrency, getCurrencySymbol, getPreferredCurrency } from '@/utils/currency';
+import { formatCurrency } from '@/utils/currency';
+import { useCurrency } from '@/contexts/currency-context';
 import { toSettleableBalance } from '@/utils/group-settle-pairs';
 import { useQueryClient } from '@tanstack/react-query';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
@@ -158,6 +159,7 @@ export default function GroupSettleScreen() {
   const [selectedMember, setSelectedMember] = useState<MemberWithBalance | null>(null);
   const [amount, setAmount] = useState('');
   const [settling, setSettling] = useState(false);
+  const { currency: preferredCurrency, currencySymbol, formatCurrency } = useCurrency();
   // ADR-0001 ticket 03 corrective: one payment intent per submission chain so
   // retried taps return the original operation receipt (`reused: true`) instead
   // of recording a duplicate group payment. Cleared only after success.
@@ -171,7 +173,7 @@ export default function GroupSettleScreen() {
     candidates: MemberWithBalance[],
     pairTotals: GroupPairTotal[],
   ): MemberWithBalance[] => {
-    const currency = getPreferredCurrency();
+    const currency = preferredCurrency;
     return candidates.map(member => ({
       ...member,
       balance: toSettleableBalance({
@@ -182,7 +184,7 @@ export default function GroupSettleScreen() {
         fallbackGlobalBalance: member.balance,
       }) ?? member.balance,
     }));
-  }, [currentUserId]);
+  }, [currentUserId, preferredCurrency]);
 
   const applyGroupDetail = useCallback((groupDetail: GroupDetailReadModel) => {
     const membersWithBalances = groupDetail.members
@@ -331,7 +333,7 @@ export default function GroupSettleScreen() {
       return;
     }
 
-    const currency = getPreferredCurrency();
+    const currency = preferredCurrency;
     const isReceiving = selectedMember.balance < 0;
     const fromUserId = isReceiving ? selectedMember.userId : currentUserId;
     const toUserId = isReceiving ? currentUserId : selectedMember.userId;
@@ -515,7 +517,7 @@ export default function GroupSettleScreen() {
             <ThemedText style={[styles.sectionLabel, { color: settle.textSecondary }]}>Amount to settle</ThemedText>
             <View style={[styles.amountSection, { backgroundColor: settle.heroBackground, borderColor: settle.heroBorder }]}>
               <View style={styles.amountInputRow}>
-                <Text style={[styles.currencySymbol, { color: settle.accentText }]}>{getCurrencySymbol()}</Text>
+                <Text style={[styles.currencySymbol, { color: settle.accentText }]}>{currencySymbol}</Text>
                 <TextInput
                   style={[styles.amountInput, { color: settle.accentText }]}
                   value={amount}
@@ -526,7 +528,7 @@ export default function GroupSettleScreen() {
                   keyboardType="decimal-pad"
                   returnKeyType="done"
                   selectTextOnFocus
-                  accessibilityLabel={`Group settlement amount in ${getCurrencySymbol()}`}
+                  accessibilityLabel={`Group settlement amount in ${currencySymbol}`}
                   accessibilityHint={selectedMember ? `Enter up to ${formatCurrency(Math.abs(selectedMember.balance))}` : undefined}
                   testID="group-settle-amount-input"
                   maxFontSizeMultiplier={1.4}
