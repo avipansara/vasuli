@@ -1,3 +1,19 @@
+## 2026-09-29
+
+- Added recurring expense management screens and controls: Activity header shortcut, rule list separated by ownership and status, detail view with future-only edits, pause and resume, confirmed stop, backlog review for missed dates, and prefilled rule creation from stopped rules.
+- Clarified recurring expense start and cutoff dates, kept review actions reachable on smaller screens, and prevented picker dismissal from overwriting the selected date.
+- Enabled Expo SDK 57 iOS scene lifecycle support for iOS 27 builds; regenerate native projects and build a new app binary.
+- Limit PostHog source-map upload build integration to EAS Build so local simulator builds do not require CLI credentials.
+- Added a trusted recurring-expense scheduler and durable activity, rule-notice, and occurrence push retries, with preview/production setup guidance.
+- Added lifecycle handling that pauses invalid group/friend rules and stops future rules on account deletion, plus rollback-only regressions and scheduler recovery guidance. Release setup requires applying the recurring-expense migrations and deploying the `process-recurring-expenses` function and per-environment Cron/Vault configuration to preview and production.
+- Added the authenticated recurring-rule client service, owner-only posting diagnostics, occurrence provenance, and cache refresh boundaries for server-posted expenses.
+- Fixed recurring rule edits to preserve saved currency and share ratios, validate the selected split method, and let owners repair participants before resuming.
+- Kept posted recurring expense dates consistent across viewer time zones, exports, and intentional date edits.
+
+## 2026-09-28
+
+- Drafted the recurring expenses specification: automatic weekly or monthly posting, separate edits for posted expenses and future occurrences, and a server-side plan to prevent duplicate posts.
+
 ## 2026-09-14
 
 - Fixed app-wide currency synchronization: changing the preferred currency in Profile settings (`USD`, `GBP`, `INR`) now updates all balance cards, friend cards, group cards, activity cards, expense creation inputs, custom split breakdowns, and settlement flows immediately across tabs and screens without requiring an app restart.
