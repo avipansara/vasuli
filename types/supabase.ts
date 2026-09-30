@@ -186,6 +186,7 @@ export type Database = {
           created_by: string
           currency: string
           date: string
+          effective_date: string | null
           deleted_at: string | null
           deleted_by: string | null
           description: string
@@ -194,6 +195,8 @@ export type Database = {
           image_url: string | null
           notes: string | null
           paid_by: string
+          recurring_rule_id: string | null
+          scheduled_for: string | null
           updated_at: string
         }
         Insert: {
@@ -203,6 +206,7 @@ export type Database = {
           created_by: string
           currency?: string
           date: string
+          effective_date?: string | null
           deleted_at?: string | null
           deleted_by?: string | null
           description: string
@@ -211,6 +215,8 @@ export type Database = {
           image_url?: string | null
           notes?: string | null
           paid_by: string
+          recurring_rule_id?: string | null
+          scheduled_for?: string | null
           updated_at?: string
         }
         Update: {
@@ -220,6 +226,7 @@ export type Database = {
           created_by?: string
           currency?: string
           date?: string
+          effective_date?: string | null
           deleted_at?: string | null
           deleted_by?: string | null
           description?: string
@@ -228,6 +235,8 @@ export type Database = {
           image_url?: string | null
           notes?: string | null
           paid_by?: string
+          recurring_rule_id?: string | null
+          scheduled_for?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -254,6 +263,152 @@ export type Database = {
           },
           {
             foreignKeyName: "expenses_paid_by_fkey"
+            columns: ["paid_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expenses_recurring_rule_id_fkey"
+            columns: ["recurring_rule_id"]
+            isOneToOne: false
+            referencedRelation: "recurring_expense_rules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recurring_expense_rule_participants: {
+        Row: {
+          created_at: string
+          id: string
+          percentage: number | null
+          rule_id: string
+          share_amount: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          percentage?: number | null
+          rule_id: string
+          share_amount: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          percentage?: number | null
+          rule_id?: string
+          share_amount?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recurring_expense_rule_participants_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "recurring_expense_rules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_expense_rule_participants_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recurring_expense_rules: {
+        Row: {
+          amount: number
+          anchor_day: number
+          cadence: string
+          created_at: string
+          currency: string
+          description: string
+          first_due_on: string
+          group_id: string | null
+          id: string
+          last_due_on: string | null
+          last_error: string | null
+          last_error_at: string | null
+          next_due_on: string | null
+          owner_id: string | null
+          paid_by: string | null
+          paused_reason: string | null
+          scope_type: string
+          split_method: string
+          split_type: string
+          status: string
+          time_zone: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          anchor_day: number
+          cadence: string
+          created_at?: string
+          currency: string
+          description: string
+          first_due_on: string
+          group_id?: string | null
+          id?: string
+          last_due_on?: string | null
+          last_error?: string | null
+          last_error_at?: string | null
+          next_due_on?: string | null
+          owner_id?: string | null
+          paid_by?: string | null
+          paused_reason?: string | null
+          scope_type: string
+          split_method: string
+          split_type: string
+          status?: string
+          time_zone: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          anchor_day?: number
+          cadence?: string
+          created_at?: string
+          currency?: string
+          description?: string
+          first_due_on?: string
+          group_id?: string | null
+          id?: string
+          last_due_on?: string | null
+          last_error?: string | null
+          last_error_at?: string | null
+          next_due_on?: string | null
+          owner_id?: string | null
+          paid_by?: string | null
+          paused_reason?: string | null
+          scope_type?: string
+          split_method?: string
+          split_type?: string
+          status?: string
+          time_zone?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recurring_expense_rules_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_expense_rules_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_expense_rules_paid_by_fkey"
             columns: ["paid_by"]
             isOneToOne: false
             referencedRelation: "users"
@@ -870,7 +1025,32 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      recurring_expense_rule_shares: {
+        Row: {
+          anchor_day: number
+          cadence: string
+          created_at: string
+          currency: string
+          description: string
+          first_due_on: string
+          group_id: string | null
+          last_due_on: string | null
+          next_due_on: string | null
+          paid_by: string | null
+          paused_reason: string | null
+          percentage: number | null
+          rule_id: string
+          scope_type: string
+          share_amount: number
+          split_method: string
+          split_type: string
+          status: string
+          time_zone: string
+          updated_at: string
+          user_id: string
+        }
+        Relationships: []
+      }
     }
     Functions: {
       commit_settlement_operation: {
@@ -1090,6 +1270,38 @@ export type Database = {
           user_id: string
           user_name: string
         }[]
+      }
+      create_recurring_expense_rule: {
+        Args: { p_confirm_duplicate?: boolean; p_participants: Json; p_rule: Json }
+        Returns: Json
+      }
+      edit_recurring_expense_rule: {
+        Args: { p_participants: Json; p_rule: Json; p_rule_id: string }
+        Returns: Json
+      }
+      get_recurring_expense_rule: {
+        Args: { p_rule_id: string }
+        Returns: Json
+      }
+      list_recurring_expense_rules: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
+      pause_recurring_expense_rule: {
+        Args: { p_rule_id: string }
+        Returns: Json
+      }
+      resume_recurring_expense_rule: {
+        Args: { p_rule_id: string }
+        Returns: Json
+      }
+      review_recurring_expense_date: {
+        Args: { p_action: string; p_expected_due_on: string; p_rule_id: string }
+        Returns: Json
+      }
+      stop_recurring_expense_rule: {
+        Args: { p_rule_id: string }
+        Returns: Json
       }
       reverse_settlement_operation: {
         Args: { p_expected_balance: number; p_operation_id: string }
