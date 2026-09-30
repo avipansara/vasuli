@@ -32,6 +32,9 @@ type FriendDetailReadModelRow = {
     createdBy?: string;
     category?: string;
     date: string | number;
+    effectiveDate?: string;
+    recurringRuleId?: string;
+    scheduledFor?: string;
     imageUrl?: string;
     notes?: string;
     createdAt: string | number;
@@ -121,6 +124,9 @@ function mapExpense(expense: FriendDetailReadModelRow['expenses'][number]): Frie
     createdBy: expense.createdBy,
     category: expense.category,
     date: toTimestamp(expense.date),
+    effectiveDate: expense.effectiveDate,
+    recurringRuleId: expense.recurringRuleId,
+    scheduledFor: expense.scheduledFor,
     imageUrl: expense.imageUrl,
     notes: expense.notes,
     createdAt: toTimestamp(expense.createdAt),

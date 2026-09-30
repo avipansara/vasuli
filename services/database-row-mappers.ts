@@ -56,6 +56,9 @@ type ExpenseRow = {
   updated_at: string;
   deleted_at?: string | null;
   deleted_by?: string | null;
+  recurring_rule_id?: string | null;
+  scheduled_for?: string | null;
+  effective_date?: string | null;
 };
 
 type ExpenseSplitRow = {
@@ -170,6 +173,9 @@ export function mapExpenseRow(row: ExpenseRow): Expense {
     updatedAt: timestamp(row.updated_at),
     deletedAt: row.deleted_at ? timestamp(row.deleted_at) : undefined,
     deletedBy: optional(row.deleted_by),
+    recurringRuleId: optional(row.recurring_rule_id),
+    scheduledFor: optional(row.scheduled_for),
+    effectiveDate: optional(row.effective_date),
   };
 }
 

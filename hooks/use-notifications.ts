@@ -3,6 +3,11 @@ import { getNotificationHref } from '@/lib/notification-link';
 import { notificationService } from '@/services/notification-service';
 import { userService } from '@/services/user-service';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useQueryClient } from '@tanstack/react-query';
+import {
+  invalidatePostedOccurrenceImpacts,
+  invalidateRecurringRule,
+} from '@/services/recurring-expense-invalidation';
 import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef } from 'react';
@@ -77,23 +82,35 @@ export function useNotifications(enabled = true) {
     return () => {
       cancelled = true;
     };
-  }, [enabled, isLoading, refreshUser, user?.id, user?.pushToken]);
+  }, [enabled, isLoading, refreshUser, user, user?.id, user?.pushToken]);
+
+  const queryClient = useQueryClient();
+  const userId = user?.id;
+
+  const invalidateNotificationCaches = useCallback(() => {
+    if (!userId) return;
+    void Promise.allSettled([
+      invalidatePostedOccurrenceImpacts(queryClient, userId),
+      invalidateRecurringRule(queryClient, userId),
+    ]);
+  }, [queryClient, userId]);
 
   const handleNotificationNavigation = useCallback((data: Record<string, unknown>) => {
+    invalidateNotificationCaches();
     const href = getNotificationHref(data);
     if (href) {
       router.push(href as any);
     } else {
       console.warn('Notification has no navigable destination:', data);
     }
-  }, [router]);
+  }, [invalidateNotificationCaches, router]);
 
   useEffect(() => {
     // Listen for notifications received while app is in foreground
     notificationListener.current = notificationService.addNotificationReceivedListener(
       (notification) => {
         console.log('Notification received:', notification);
-        // You can show a custom in-app notification here if desired
+        invalidateNotificationCaches();
       }
     );
 
@@ -134,7 +151,7 @@ export function useNotifications(enabled = true) {
         notificationService.removeNotificationSubscription(responseListener.current);
       }
     };
-  }, [handleNotificationNavigation]);
+  }, [handleNotificationNavigation, invalidateNotificationCaches]);
 
   return {
     clearBadge: notificationService.clearBadge,

@@ -66,29 +66,32 @@ export function formatDate(
  * Returns e.g. "Aug 20 – Sep 5", or "Aug 20" for single-day range, or "No expenses yet".
  */
 export function formatDateRange(
-  items: (DateInput | { date: DateInput })[],
+  items: (DateInput | { date: DateInput; effectiveDate?: string })[],
   locale: string = 'en-US'
 ): string {
   if (items.length === 0) return 'No expenses yet';
 
-  const timestamps = items
-    .map(item => {
-      const val = typeof item === 'object' && item !== null && 'date' in item ? item.date : item;
-      return toDate(val as DateInput).getTime();
-    })
-    .filter(time => !isNaN(time))
-    .sort((a, b) => a - b);
+  const values = items.map(item => {
+    if (typeof item === 'object' && item !== null && 'date' in item) {
+      if (item.effectiveDate) return { key: item.effectiveDate, dateOnly: true };
+      const date = toDate(item.date as DateInput);
+      return isNaN(date.getTime()) ? null : { key: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`, dateOnly: false };
+    }
+    const date = toDate(item as DateInput);
+    return isNaN(date.getTime()) ? null : { key: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`, dateOnly: false };
+  }).filter((value): value is { key: string; dateOnly: boolean } => value !== null).sort((a, b) => a.key.localeCompare(b.key));
 
-  if (timestamps.length === 0) return 'No expenses yet';
-
-  const first = new Date(timestamps[0]);
-  const last = new Date(timestamps[timestamps.length - 1]);
-
-  const formatMonthDay = (date: Date) => formatDate(date, 'monthDay', locale);
-
-  return timestamps[0] === timestamps[timestamps.length - 1]
-    ? formatMonthDay(first)
-    : `${formatMonthDay(first)} – ${formatMonthDay(last)}`;
+  if (values.length === 0) return 'No expenses yet';
+  const format = (value: typeof values[number]) => {
+    const [year, month, day] = value.key.split('-').map(Number);
+    const date = new Date(Date.UTC(year, month - 1, day, 12));
+    return value.dateOnly
+      ? date.toLocaleDateString(locale, { month: 'short', day: 'numeric', timeZone: 'UTC' })
+      : new Date(year, month - 1, day, 12).toLocaleDateString(locale, { month: 'short', day: 'numeric' });
+  };
+  return values[0].key === values[values.length - 1].key
+    ? format(values[0])
+    : `${format(values[0])} – ${format(values[values.length - 1])}`;
 }
 
 /**

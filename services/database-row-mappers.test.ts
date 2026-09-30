@@ -59,11 +59,17 @@ describe('database row mappers', () => {
       updated_at: date,
       deleted_at: date,
       deleted_by: 'u',
+      recurring_rule_id: 'rule-1',
+      scheduled_for: '2026-01-02',
+      effective_date: '2026-01-03',
     })).toMatchObject({
       groupId: undefined,
       amount: 0,
       deletedAt: new Date(date).getTime(),
       deletedBy: 'u',
+      recurringRuleId: 'rule-1',
+      scheduledFor: '2026-01-02',
+      effectiveDate: '2026-01-03',
     });
   });
 

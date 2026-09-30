@@ -33,6 +33,7 @@ describe('createGroupExpenseCsv', () => {
         category: 'Food',
         notes: 'Split\nthree ways',
         date: Date.UTC(2026, 7, 15),
+        effectiveDate: '2026-08-16',
         createdAt: Date.UTC(2026, 7, 15),
         updatedAt: Date.UTC(2026, 7, 16),
         paidByUser: { id: 'user-a', name: 'Alex', isActive: true, createdAt: 0 },
@@ -45,7 +46,7 @@ describe('createGroupExpenseCsv', () => {
 
     expect(result.fileName).toBe('Trip - Miami-expenses-2026-08-15.csv');
     expect(result.content).toContain('\uFEFFExpense ID,Date,Description,Amount,Currency');
-    expect(result.content).toContain('expense-1,2026-08-15,"Dinner, ""best"" night",60.00,USD,Alex,Food,"Split\nthree ways",2026-08-15,2026-08-16,Alex: 30.00 USD; Blair: 30.00 USD');
+    expect(result.content).toContain('expense-1,2026-08-16,"Dinner, ""best"" night",60.00,USD,Alex,Food,"Split\nthree ways",2026-08-15,2026-08-16,Alex: 30.00 USD; Blair: 30.00 USD');
   });
 
   it('handles missing optional data and unresolved users', () => {

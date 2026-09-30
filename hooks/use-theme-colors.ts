@@ -1,4 +1,4 @@
-import { Colors, ExpenseDetailTheme, FriendDetailTheme, FriendsTheme, Gradients, InvitationsTheme, SettleTheme } from '@/constants/theme';
+import { Colors, ExpenseDetailTheme, FriendDetailTheme, FriendsTheme, Gradients, InvitationsTheme, RecurringTheme, SettleTheme } from '@/constants/theme';
 import { useTheme } from '@/contexts/theme-context';
 
 export function useThemeColors() {
@@ -10,6 +10,7 @@ export function useThemeColors() {
   const friendDetail = FriendDetailTheme[colorScheme];
   const invitations = InvitationsTheme[colorScheme];
   const settle = SettleTheme[colorScheme];
+  const recurring = RecurringTheme[colorScheme];
 
   return {
     colors,
@@ -19,6 +20,7 @@ export function useThemeColors() {
     friendDetail,
     invitations,
     settle,
+    recurring,
     colorScheme,
     isDark,
   };

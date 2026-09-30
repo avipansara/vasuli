@@ -22,6 +22,9 @@ import { queryKeys } from '@/services/query-keys';
 import { userService } from '@/services/user-service';
 import { formatCurrency } from '@/utils/currency';
 import { formatDate } from '@/utils/date';
+import { formatExpenseDate } from '@/utils/expense-date';
+import { formatRecurringLocalDate } from '@/utils/recurring-management';
+import { useRecurringExpenseRule } from '@/hooks/use-recurring-expense-queries';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
@@ -36,7 +39,7 @@ import {
 } from 'react-native';
 
 export default function ExpenseDetailScreen() {
-  const { colors, expenseDetail, friends, isDark } = useThemeColors();
+  const { colors, expenseDetail, friends, isDark, recurring } = useThemeColors();
   const { user } = useAuth();
   const { service: analytics } = useAnalytics();
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -83,6 +86,7 @@ export default function ExpenseDetailScreen() {
     },
   });
   const expense = expenseQueryData?.expense ?? null;
+  const recurringRuleQuery = useRecurringExpenseRule(currentUserId, expense?.recurringRuleId ?? '');
   const splits = expenseQueryData?.splits ?? [];
   const payer = expenseQueryData?.payer ?? null;
   const group = expenseQueryData?.group ?? null;
@@ -174,6 +178,7 @@ export default function ExpenseDetailScreen() {
               await Promise.allSettled(
                 getExpenseDeletionInvalidationKeys(currentUserId, {
                   expenseId: id,
+                  recurringRuleId: expense?.recurringRuleId,
                   groupId: group?.id,
                   paidBy: expense?.paidBy,
                   participantIds: otherParticipantIds,
@@ -247,18 +252,15 @@ export default function ExpenseDetailScreen() {
     );
   }
 
-  const dateStr = formatDate(expense.date, {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  });
+  const dateStr = expense.effectiveDate
+    ? formatExpenseDate(expense)
+    : formatDate(expense.date, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
 
   const isCreator = expense.createdBy === currentUserId || (!expense.createdBy && expense.paidBy === currentUserId);
   const isPayer = expense.paidBy === currentUserId;
   const isDeleted = Boolean(expense.deletedAt);
   const canManageExpense = !isDeleted && (isCreator || isPayer);
+  const canEditFutureRule = recurringRuleQuery.data?.ownerId === currentUserId;
   const payerName = isPayer ? 'You' : payer?.name || 'Unknown';
 
   const cardStyle = {
@@ -285,7 +287,7 @@ export default function ExpenseDetailScreen() {
                 name="pencil"
                 size={18}
                 shape='square'
-                accessibilityLabel='Edit expense'
+                accessibilityLabel={expense.recurringRuleId ? 'Edit this expense' : 'Edit expense'}
                 testID="expense-detail-edit-button"
                 onPress={() => router.push(`/edit-expense/${id}` as any)}
               />
@@ -371,6 +373,78 @@ export default function ExpenseDetailScreen() {
               </View>
             </View>
           </View>
+
+          {expense.recurringRuleId && (
+            <View
+              testID="expense-detail-recurring-banner"
+              style={[
+                styles.recurringBanner,
+                {
+                  backgroundColor: recurring.cardBackground,
+                  borderColor: recurring.cardBorder,
+                },
+              ]}
+            >
+              <View style={styles.recurringBannerHeader}>
+                <View style={[styles.recurringIconBadge, { backgroundColor: recurring.iconBackground }]}>
+                  <IconSymbol name="arrow.trianglehead.2.clockwise" size={16} color={recurring.iconColor} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <ThemedText style={[styles.recurringBannerTitle, { color: colors.text }]}>
+                    {recurringRuleQuery.data?.cadence
+                      ? `Repeats ${recurringRuleQuery.data.cadence}`
+                      : 'Recurring expense occurrence'}
+                  </ThemedText>
+                  <ThemedText style={[styles.recurringBannerSubtitle, { color: colors.textSecondary }]}>
+                    {expense.scheduledFor
+                      ? `Scheduled for ${formatRecurringLocalDate(expense.scheduledFor)}`
+                      : 'Created automatically on schedule'}
+                  </ThemedText>
+                </View>
+              </View>
+
+              <View style={styles.recurringBannerActions}>
+                <TouchableOpacity
+                  testID="view-recurring-rule-button"
+                  accessibilityRole="button"
+                  accessibilityLabel="View recurring schedule"
+                  onPress={() => router.push(`/recurring-expenses/${expense.recurringRuleId}` as any)}
+                  style={[
+                    styles.recurringActionButton,
+                    {
+                      backgroundColor: recurring.buttonBackground,
+                      borderColor: recurring.buttonBorder,
+                    },
+                  ]}
+                >
+                  <ThemedText style={[styles.recurringActionText, { color: colors.tint }]}>
+                    View schedule
+                  </ThemedText>
+                  <IconSymbol name="chevron.right" size={12} color={colors.tint} />
+                </TouchableOpacity>
+
+                {canEditFutureRule && (
+                  <TouchableOpacity
+                    testID="edit-future-recurring-rule-button"
+                    accessibilityRole="button"
+                    accessibilityLabel="Edit future expenses"
+                    onPress={() => router.push(`/recurring-expenses/edit/${expense.recurringRuleId}` as any)}
+                    style={[
+                      styles.recurringActionButton,
+                      {
+                        backgroundColor: recurring.secondaryActionBackground,
+                        borderColor: colors.border,
+                      },
+                    ]}
+                  >
+                    <ThemedText style={[styles.recurringActionText, { color: colors.text }]}>
+                      Edit future expenses
+                    </ThemedText>
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
+          )}
 
           {isDeleted && (
             <View style={[styles.deletedBanner, {
@@ -522,6 +596,14 @@ export default function ExpenseDetailScreen() {
                   }
                 };
 
+                let isRecurring = false;
+                if (activity.metadata) {
+                  try {
+                    const parsed = typeof activity.metadata === 'string' ? JSON.parse(activity.metadata) : activity.metadata;
+                    isRecurring = Boolean(parsed?.recurring);
+                  } catch {}
+                }
+
                 return (
                   <View style={[styles.activityCard, cardStyle]} key={activity.id}>
                     <View style={[styles.activityIcon, {
@@ -537,16 +619,23 @@ export default function ExpenseDetailScreen() {
                       <ThemedText type="defaultSemiBold" style={[styles.activityDescription, { color: colors.text }]}>
                         {activity.description}
                       </ThemedText>
-                      <View style={styles.activityMeta}>
-                        <ThemedText style={[styles.activityUser, { color: colors.textSecondary }]}>
-                          {activity.userName || 'Unknown'}
-                        </ThemedText>
-                        <ThemedText style={[styles.activityDot, { color: colors.textSecondary }]}>
-                          •
-                        </ThemedText>
-                        <ThemedText style={[styles.activityTime, { color: colors.textSecondary }]}>
-                          {timeStr}
-                        </ThemedText>
+                      <View style={[styles.activityMeta, isRecurring && styles.recurringActivityMeta]}>
+                        {isRecurring && (
+                          <ThemedText style={[styles.activityUser, { color: recurring.badgeActiveText, fontWeight: '700' }]}>
+                            Created automatically
+                          </ThemedText>
+                        )}
+                        <View style={styles.activityMetaDetails}>
+                          <ThemedText style={[styles.activityUser, { color: colors.textSecondary }]}>
+                            {activity.userName || 'Unknown'}
+                          </ThemedText>
+                          <ThemedText style={[styles.activityDot, { color: colors.textSecondary }]}>
+                            •
+                          </ThemedText>
+                          <ThemedText style={[styles.activityTime, { color: colors.textSecondary }]}>
+                            {timeStr}
+                          </ThemedText>
+                        </View>
                       </View>
                     </View>
                     {activity.amount && (
@@ -850,6 +939,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 5,
   },
+  recurringActivityMeta: {
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+  },
+  activityMetaDetails: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 5,
+  },
   activityUser: {
     fontSize: 12,
     fontWeight: '600',
@@ -867,5 +966,52 @@ const styles = StyleSheet.create({
   activityAmount: {
     fontSize: 15,
     fontWeight: '700',
+  },
+  recurringBanner: {
+    borderWidth: 1,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    gap: 14,
+  },
+  recurringBannerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  recurringIconBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  recurringBannerTitle: {
+    fontSize: 15,
+    lineHeight: 20,
+    fontWeight: '700',
+  },
+  recurringBannerSubtitle: {
+    fontSize: 13,
+    lineHeight: 18,
+    marginTop: 2,
+  },
+  recurringBannerActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  recurringActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  recurringActionText: {
+    fontSize: 13,
+    fontWeight: '600',
   },
 });

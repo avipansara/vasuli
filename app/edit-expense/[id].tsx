@@ -8,6 +8,7 @@ import { useAuth } from '@/contexts/auth-context-otp';
 import { useAnalytics } from '@/contexts/analytics-context';
 import { useCurrency } from '@/contexts/currency-context';
 import { useThemeColors } from '@/hooks/use-theme-colors';
+import { useRecurringExpenseRule } from '@/hooks/use-recurring-expense-queries';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { activityService } from '@/services/activity-service';
 import { expenseService } from '@/services/expense-service';
@@ -19,6 +20,7 @@ import type { Expense, ExpenseSplit, User } from '@/types/database';
 import { normalizeCurrencyInput } from '@/utils/validation';
 import { getCurrencySymbol, normalizeBalance } from '@/utils/currency';
 import { formatDate } from '@/utils/date';
+import { dateOnlyToLocalDate, getExpenseDateUpdate } from '@/utils/expense-date';
 import { getGroupExpenseParticipant } from '@/utils/group-expense-participants';
 import { getEvenSplitValues, getSplitProgress, resolveExpenseSplits } from '@/utils/split-validation';
 import { trackExpenseUpdated } from '@/lib/analytics/track';
@@ -51,7 +53,7 @@ type HomeFriend = User & { balance: number; recentExpenses?: Expense[] };
 type EditableSplit = Pick<ExpenseSplit, 'userId' | 'amount' | 'splitType' | 'percentage'>;
 
 export default function EditExpenseScreen() {
-  const { gradients, colors, settle, isDark } = useThemeColors();
+  const { gradients, colors, settle, isDark, recurring } = useThemeColors();
   const { user } = useAuth();
   const { currency: preferredCurrency, currencySymbol } = useCurrency();
   const { service: analytics } = useAnalytics();
@@ -109,6 +111,8 @@ export default function EditExpenseScreen() {
   });
   const groups = useMemo(() => editFormQuery.data?.groups ?? [], [editFormQuery.data?.groups]);
   const friends = useMemo(() => editFormQuery.data?.friends ?? [], [editFormQuery.data?.friends]);
+  const recurringRuleId = editFormQuery.data?.expense?.recurringRuleId;
+  const recurringRuleQuery = useRecurringExpenseRule(currentUserId, recurringRuleId ?? '');
   const groupMembers = useMemo(() => groupMembersQuery.data?.memberIds ?? [], [groupMembersQuery.data?.memberIds]);
   const groupMemberUsers = useMemo(() => groupMembersQuery.data?.memberUsers ?? [], [groupMembersQuery.data?.memberUsers]);
   const dataLoading = editFormQuery.isLoading;
@@ -128,7 +132,9 @@ export default function EditExpenseScreen() {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- Query data hydrates the editable form state once the server record is available.
     setDescription(formData.expense.description);
     setAmount(formData.expense.amount.toString());
-    setExpenseDate(new Date(formData.expense.date));
+    setExpenseDate(formData.expense.effectiveDate
+      ? dateOnlyToLocalDate(formData.expense.effectiveDate)
+      : new Date(formData.expense.date));
     setOriginalExpense(formData.expense);
     setSplitType(formData.expense.groupId ? SplitType.GROUP : SplitType.FRIENDS);
     setSelectedGroupId(formData.expense.groupId || '');
@@ -271,11 +277,12 @@ export default function EditExpenseScreen() {
     try {
       const newAmount = parseFloat(amount);
       const trimmedDescription = description.trim();
+      const dateChange = getExpenseDateUpdate(originalExpense, expenseDate);
       const updatedExpense: Expense = {
         ...originalExpense,
         description: trimmedDescription,
         amount: newAmount,
-        date: expenseDate.getTime(),
+        ...dateChange,
         groupId: splitType === SplitType.GROUP ? selectedGroupId : undefined,
         updatedAt: Date.now(),
       };
@@ -309,7 +316,7 @@ export default function EditExpenseScreen() {
       await expenseService.update(id, {
         description: trimmedDescription,
         amount: newAmount,
-        date: expenseDate.getTime(),
+        ...dateChange,
         groupId: splitType === SplitType.GROUP ? selectedGroupId : undefined,
       }, splits);
       trackExpenseUpdated(analytics, {
@@ -333,13 +340,22 @@ export default function EditExpenseScreen() {
         queryClient.invalidateQueries({ queryKey: friendsHomeQueryKey }),
         queryClient.invalidateQueries({ queryKey: queryKeys.expenses.detail(id) }),
         queryClient.invalidateQueries({ queryKey: queryKeys.expenses.list(currentUserId) }),
+        ...(originalExpense.recurringRuleId
+          ? [
+            queryClient.invalidateQueries({ queryKey: queryKeys.recurringExpenses.detail(currentUserId, originalExpense.recurringRuleId) }),
+            queryClient.invalidateQueries({ queryKey: queryKeys.recurringExpenses.occurrences(currentUserId, originalExpense.recurringRuleId) }),
+          ]
+          : []),
         ...affectedFriendIds.flatMap(friendId => [
           queryClient.invalidateQueries({ queryKey: queryKeys.friends.detail(currentUserId, friendId) }),
         ]),
         ...affectedGroupIds.flatMap(groupId => [
           queryClient.invalidateQueries({ queryKey: queryKeys.groups.detail(currentUserId, groupId) }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.groups.pairTotals(currentUserId, groupId) }),
         ]),
+        queryClient.invalidateQueries({ queryKey: queryKeys.friends.detailScope(currentUserId) }),
         queryClient.invalidateQueries({ queryKey: queryKeys.groups.list(currentUserId) }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.activity.listScope(currentUserId) }),
       ]);
 
       try {
@@ -488,6 +504,49 @@ export default function EditExpenseScreen() {
 
       <KeyboardAwareScroll contentContainerStyle={styles.scrollContent}>
         <Animated.View style={[styles.content, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+          {editFormQuery.data?.expense?.recurringRuleId && (
+            <View
+              testID="edit-expense-recurring-banner"
+              style={[
+                styles.recurringNoticeBanner,
+                {
+                  backgroundColor: recurring.noticeBackground,
+                  borderColor: recurring.noticeBorder,
+                },
+              ]}
+            >
+              <View style={styles.recurringNoticeHeader}>
+                <IconSymbol name="info.circle" size={16} color={recurring.noticeText} />
+                <ThemedText style={[styles.recurringNoticeTitle, { color: recurring.noticeText }]}>
+                  Changes to this expense only
+                </ThemedText>
+              </View>
+              <ThemedText style={[styles.recurringNoticeText, { color: colors.textSecondary }]}>
+                Changes made here only apply to this single expense. Future scheduled expenses and rule templates will not be affected.
+              </ThemedText>
+              {recurringRuleQuery.data?.ownerId === currentUserId && recurringRuleId && (
+                <TouchableOpacity
+                  testID="edit-future-rule-from-expense-button"
+                  accessibilityRole="button"
+                  accessibilityLabel="Edit future recurring expenses"
+                  onPress={() => router.push(`/recurring-expenses/edit/${recurringRuleId}` as any)}
+                  style={[
+                    styles.recurringNoticeAction,
+                    {
+                      backgroundColor: recurring.buttonBackground,
+                      borderColor: recurring.buttonBorder,
+                    },
+                  ]}
+                >
+                  <ThemedText style={[styles.recurringNoticeActionText, { color: colors.tint }]}>
+                    Edit future expenses
+                  </ThemedText>
+                  <IconSymbol name="chevron.right" size={12} color={colors.tint} />
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
+
           {/* Amount Input */}
           <View style={styles.amountSection}>
             <ThemedText style={[styles.amountLabel, !isDark && { color: colors.textSecondary }]}>
@@ -863,5 +922,41 @@ const styles = StyleSheet.create({
   emptyStateText: {
     fontSize: 14,
     opacity: 0.6,
+  },
+  recurringNoticeBanner: {
+    borderWidth: 1,
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 16,
+    gap: 8,
+  },
+  recurringNoticeHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  recurringNoticeTitle: {
+    fontSize: 14,
+    lineHeight: 18,
+    fontWeight: '700',
+  },
+  recurringNoticeText: {
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  recurringNoticeAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 8,
+    borderWidth: 1,
+    marginTop: 4,
+  },
+  recurringNoticeActionText: {
+    fontSize: 13,
+    fontWeight: '600',
   },
 });
