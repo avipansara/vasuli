@@ -1,3 +1,4 @@
+import { SettlementReceipt } from './settlement-receipt';
 import { ThemedText } from '@/components/themed-text';
 import { SharedModal } from '@/components/ui/shared-modal';
 import { useThemeColors } from '@/hooks/use-theme-colors';
@@ -295,8 +296,8 @@ export function FriendSettlementConfirmation({
 
       <SharedModal
         visible={phase !== 'editing'}
-        onClose={() => phase !== 'committing' && setPhase('editing')}
-        title="Confirm settlement"
+        onClose={() => phase === 'success' ? onDone() : phase !== 'committing' && setPhase('editing')}
+        title={phase === 'success' ? 'Settlement recorded' : 'Confirm settlement'}
         subtitle={phase === 'success' ? 'Settlement recorded.' : `You are recording one settlement with ${friendName}.`}
         icon="banknote"
       >
@@ -326,13 +327,15 @@ export function FriendSettlementConfirmation({
 
         {phase === 'success' ? (
           <View testID="friend-settlement-success">
-            <ThemedText style={[styles.modalText, { color: colors.text }]}>
-              {result
-                ? `${netAmount < 0 ? `You paid ${friendName}` : `${friendName} paid you`} ${formatCurrency(result.totalAmount, result.currency)} once.`
-                : 'Settlement recorded.'}
-            </ThemedText>
-            {result?.reused ? (
-              <ThemedText style={[styles.modalDetail, { color: colors.textSecondary }]}>This settlement was already recorded.</ThemedText>
+            {result ? (
+              <SettlementReceipt
+                amount={result.totalAmount}
+                currency={result.currency}
+                friendName={friendName}
+                paidByYou={netAmount < 0}
+                remainingAmount={Math.max(0, maxAmount - result.totalAmount)}
+                reused={result.reused}
+              />
             ) : null}
             <TouchableOpacity testID="friend-settlement-done-button" accessibilityRole="button" accessibilityLabel="Done" onPress={onDone} style={[styles.button, { backgroundColor: settle.buttonBackground }]}>
               <Text style={[styles.buttonText, { color: settle.buttonText }]}>Done</Text>

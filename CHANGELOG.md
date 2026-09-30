@@ -1,3 +1,7 @@
+## 2026-09-30
+
+- Added a stamped settlement receipt after friend and group payments, with remaining balances for partial payments and reduced-motion support.
+
 ## 2026-09-14
 
 - Fixed app-wide currency synchronization: changing the preferred currency in Profile settings (`USD`, `GBP`, `INR`) now updates all balance cards, friend cards, group cards, activity cards, expense creation inputs, custom split breakdowns, and settlement flows immediately across tabs and screens without requiring an app restart.

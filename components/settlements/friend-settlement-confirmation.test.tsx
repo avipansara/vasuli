@@ -11,6 +11,25 @@ vi.mock('react-native', () => {
   const rn = { View: el('div', 'View'), Text: el('span', 'Text'), TouchableOpacity: el('button', 'TouchableOpacity'), TextInput, Platform: { select: (value: any) => value.web ?? value.default }, StyleSheet: { create: (value: any) => value } };
   return { ...rn, default: rn };
 });
+vi.mock('react-native-reanimated', async () => {
+  const { View } = await import('react-native');
+  return {
+    default: { View },
+    cancelAnimation: vi.fn(),
+    Easing: { bezier: () => (value: number) => value },
+    useReducedMotion: () => true,
+    useSharedValue: (initial: number) => React.useMemo(() => {
+      let value = initial;
+      return { get: () => value, set: (next: number) => { value = next; } };
+    }, [initial]),
+    useAnimatedStyle: (style: () => unknown) => style(),
+    withDelay: (_delay: number, value: number) => value,
+    withTiming: (value: number) => value,
+    withSequence: (...values: number[]) => values.at(-1),
+  };
+});
+vi.mock('react-native-worklets', () => ({ scheduleOnRN: (callback: () => void) => callback() }));
+vi.mock('expo-haptics', () => ({ NotificationFeedbackType: { Success: 'success' }, notificationAsync: vi.fn().mockResolvedValue(undefined) }));
 vi.mock('@/components/ui/shared-modal', () => ({ SharedModal: ({ visible, children }: any) => visible ? React.createElement('div', null, children) : null }));
 vi.mock('@/components/themed-text', () => ({ ThemedText: ({ children, style, testID, ...props }: any) => React.createElement('span', { ...props, 'data-testid': testID, 'data-semantic-color': style?.[1]?.color }, children) }));
 vi.mock('@/hooks/use-theme-colors', () => ({ useThemeColors: () => themeMode.dark ? ({ colors: { text: '#fff', textSecondary: '#aaa', border: '#555', error: '#f99' }, settle: { textPrimary: '#fff', textSecondary: '#aaa', accentText: '#2dd4bf', buttonBackground: '#10b981', buttonText: '#040914' } }) : ({ colors: { text: '#111', textSecondary: '#555', border: '#ccc', error: '#b00' }, settle: { textPrimary: '#111', textSecondary: '#555', accentText: '#075', buttonBackground: '#075', buttonText: '#fff' } }) }));
@@ -31,6 +50,9 @@ describe('FriendSettlementConfirmation', () => {
     fireEvent.click(screen.getByTestId('friend-settlement-record-button'));
     fireEvent.click(screen.getByTestId('friend-settlement-confirm-button'));
     await waitFor(() => expect(onCommit).toHaveBeenCalledWith(3));
+    await waitFor(() => expect(screen.getByTestId('settlement-receipt-status').textContent).toBe('$9.00 remaining with Friend.'));
+    expect(screen.getByTestId('settlement-receipt-amount').textContent).toBe('$3.00');
+    expect(screen.queryByText("You're all square with Friend.")).toBeNull();
   });
 
   it('keeps a natural zero breakdown visible and disables recording', () => {
@@ -50,7 +72,7 @@ describe('FriendSettlementConfirmation', () => {
     expect(confirmation).toContain('You pay Friend $12.00 once');
     expect(confirmation).toContain('Also clears balances in Trip. No extra payment.');
     fireEvent.click(screen.getByTestId('friend-settlement-confirm-button'));
-    await waitFor(() => expect(screen.getByTestId('friend-settlement-success').textContent).toContain('$12.00 once'));
+    await waitFor(() => expect(screen.getByTestId('friend-settlement-success').textContent).toContain('$12.00'));
     expect(screen.getByTestId('friend-settlement-success').textContent?.match(/\$12\.00/g)).toHaveLength(1);
     expect(onCommit).toHaveBeenCalledTimes(1);
   });
@@ -158,6 +180,7 @@ describe('FriendSettlementConfirmation', () => {
     fireEvent.click(button);
     fireEvent.click(button);
     expect(onCommit).toHaveBeenCalledTimes(1);
+    expect(screen.queryByTestId('settlement-receipt')).toBeNull();
     resolve?.({ totalAmount: 12, currency: 'USD', reused: false });
   });
 
