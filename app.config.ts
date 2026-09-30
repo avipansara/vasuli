@@ -18,33 +18,39 @@ export default ({ config }: ConfigContext): ExpoConfig => {
 
   const package_ = bundleIdentifier;
   const plugins = config.plugins ?? [];
-  // PostHog's Expo plugin handles Hermes source-map upload for EAS Build when
-  // credentials are present (phase-two Error Tracking). Native symbol upload
-  // and session replay stay disabled in phase one.
-  const posthogPlugin: ExpoConfig['plugins'] = [
+  // EAS Build's source-map upload phase needs PostHog CLI credentials. Keep it
+  // out of local native builds while leaving the runtime PostHog SDK enabled.
+  const posthogPlugin: ExpoConfig['plugins'] = process.env.EAS_BUILD === 'true'
+    ? [
+        [
+          'posthog-react-native/expo',
+          {
+            uploadNativeSymbols: false,
+            skipOnConflict: true,
+          },
+        ],
+      ]
+    : [];
+  const pluginsWithPostHog = [...plugins, ...posthogPlugin];
+  const pluginsWithBuildProperties: ExpoConfig['plugins'] = [
+    ...pluginsWithPostHog,
     [
-      'posthog-react-native/expo',
+      'expo-build-properties',
       {
-        uploadNativeSymbols: false,
-        skipOnConflict: true,
+        ios: {
+          enableSceneSupport: true,
+        },
+        ...(!isDev && !isPreview
+          ? {
+              android: {
+                // x86 targets are only needed for emulators and add native build time.
+                buildArchs: ['armeabi-v7a', 'arm64-v8a'],
+              },
+            }
+          : {}),
       },
     ],
   ];
-  const pluginsWithPostHog = [...plugins, ...posthogPlugin];
-  const productionPlugins = isDev || isPreview
-    ? pluginsWithPostHog
-    : [
-        ...pluginsWithPostHog,
-        [
-          'expo-build-properties',
-          {
-            android: {
-              // x86 targets are only needed for emulators and add native build time.
-              buildArchs: ['armeabi-v7a', 'arm64-v8a'],
-            },
-          },
-        ],
-      ];
 
   // Resolve google-services.json file paths dynamically (e.g. from EAS Secret path or default local path)
   const prodGoogleServices = './google-services.json';
@@ -62,7 +68,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       package: package_,
       googleServicesFile,
     },
-    plugins: productionPlugins,
+    plugins: pluginsWithBuildProperties,
     extra: {
       ...config.extra,
       eas: {
