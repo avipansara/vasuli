@@ -1,3 +1,7 @@
+## 2026-09-30
+
+- Added a stamped settlement receipt after friend and group payments, with remaining balances for partial payments and reduced-motion support.
+
 ## 2026-09-29
 
 - Added recurring expense management screens and controls: Activity header shortcut, rule list separated by ownership and status, detail view with future-only edits, pause and resume, confirmed stop, backlog review for missed dates, and prefilled rule creation from stopped rules.
