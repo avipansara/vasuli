@@ -6,6 +6,8 @@ export const queryKeys = {
   },
   groups: {
     list: (userId: string) => ['groups', 'list', userId] as const,
+    detailScope: (userId: string) => ['groups', 'detail', userId] as const,
+    pairTotalsScope: (userId: string) => ['groups', 'pair-totals', userId] as const,
     detail: (userId: string, groupId: string) => ['groups', 'detail', userId, groupId] as const,
     pairTotals: (userId: string, groupId: string) => ['groups', 'pair-totals', userId, groupId] as const,
   },
@@ -19,6 +21,14 @@ export const queryKeys = {
   },
   activity: {
     list: (userId: string, search = '') => ['activity', 'list', userId, search] as const,
+    listScope: (userId: string) => ['activity', 'list', userId] as const,
+  },
+  recurringExpenses: {
+    list: (userId: string) => ['recurring-expenses', 'list', userId] as const,
+    detailScope: (userId: string) => ['recurring-expenses', 'detail', userId] as const,
+    detail: (userId: string, ruleId: string) => ['recurring-expenses', 'detail', userId, ruleId] as const,
+    occurrencesScope: (userId: string) => ['recurring-expenses', 'occurrences', userId] as const,
+    occurrences: (userId: string, ruleId: string) => ['recurring-expenses', 'occurrences', userId, ruleId] as const,
   },
   invitations: {
     received: (userId: string, email: string) => ['invitations', 'received', userId, email] as const,

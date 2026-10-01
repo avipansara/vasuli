@@ -44,6 +44,75 @@ export interface Expense {
   updatedAt: number;
   deletedAt?: number;
   deletedBy?: string;
+  /** Rule that created this expense, when it is a posted recurring occurrence. */
+  recurringRuleId?: string;
+  /** Local due date stored by the recurring rule, independent of createdAt. */
+  scheduledFor?: string;
+  /** Effective calendar date for a recurring occurrence, including an intentional historical date edit. */
+  effectiveDate?: string;
+}
+
+export type RecurringExpenseCadence = 'weekly' | 'monthly';
+export type RecurringExpenseStatus = 'active' | 'paused' | 'stopped' | 'ended';
+export type RecurringExpenseScope = 'group' | 'friends';
+export type RecurringExpenseSplitMethod = 'equal' | 'unequal' | 'percentage' | 'shares';
+export type ExpenseSplitType = 'equal' | 'exact' | 'percentage';
+
+export interface RecurringExpenseParticipant {
+  userId: string;
+  shareAmount: number;
+  percentage?: number;
+}
+
+/** Readable schedule data returned by the authenticated recurring rule RPCs. */
+export interface RecurringExpenseRule {
+  id: string;
+  /** Null for a shared participant; the owner identity is not needed to read a rule. */
+  ownerId?: string;
+  scopeType: RecurringExpenseScope;
+  groupId?: string;
+  description: string;
+  amount: number;
+  currency: string;
+  paidBy: string;
+  splitMethod: RecurringExpenseSplitMethod;
+  splitType: ExpenseSplitType;
+  cadence: RecurringExpenseCadence;
+  anchorDay: number;
+  timeZone: string;
+  firstDueOn: string;
+  nextDueOn?: string;
+  lastDueOn?: string;
+  status: RecurringExpenseStatus;
+  pausedReason?: string;
+  /** Operator/posting diagnostic returned only by a separate owner-RLS read. */
+  lastError?: string;
+  lastErrorAt?: number;
+  createdAt: number;
+  updatedAt: number;
+  participants: RecurringExpenseParticipant[];
+}
+
+export type RecurringExpenseRuleInput = Omit<RecurringExpenseRule,
+  'id' | 'ownerId' | 'nextDueOn' | 'status' | 'pausedReason' | 'createdAt' | 'updatedAt'>;
+
+export interface RecurringExpenseRuleCommandResult {
+  ruleId: string;
+  status?: RecurringExpenseStatus;
+  nextDueOn?: string;
+  appliesFrom?: string;
+  expenseId?: string;
+  action?: 'post' | 'skip';
+  materialChange?: boolean;
+  duplicateWarning?: boolean;
+  existingRuleId?: string;
+  alreadyReviewed?: boolean;
+  staleExpectedDate?: boolean;
+  lastPostedDueOn?: string;
+  stoppedAfterDueOn?: string;
+  reason?: string;
+  reviewed?: string | null;
+  reviewOutcome?: 'reviewed' | 'already_reviewed' | 'needs_repair' | 'stale';
 }
 
 export interface ExpenseSplit {

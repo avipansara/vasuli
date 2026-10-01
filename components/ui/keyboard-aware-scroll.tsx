@@ -18,6 +18,7 @@ interface KeyboardAwareScrollProps {
   contentContainerStyle?: any;
   showDismissButton?: boolean;
   footer?: React.ReactNode;
+  footerBackgroundColor?: string;
   testID?: string;
 }
 
@@ -26,6 +27,7 @@ export function KeyboardAwareScroll({
   contentContainerStyle,
   showDismissButton = true,
   footer,
+  footerBackgroundColor,
   testID,
 }: KeyboardAwareScrollProps) {
   const { colors, isDark } = useThemeColors();
@@ -87,11 +89,13 @@ export function KeyboardAwareScroll({
 
       {/* Footer - Always visible above keyboard */}
       {footer && !keyboardVisible && (
-        <View style={styles.footerContainer}>
-          <LinearGradient
-            colors={isDark ? ['rgba(10, 10, 15, 0)', 'rgba(10, 10, 15, 0.95)', 'rgba(10, 10, 15, 1)'] : ['rgba(255, 255, 255, 0)', 'rgba(255, 255, 255, 0.95)', 'rgba(255, 255, 255, 1)']}
-            style={styles.footerGradient}
-          />
+        <View style={[styles.footerContainer, footerBackgroundColor ? { backgroundColor: footerBackgroundColor } : null]}>
+          {!footerBackgroundColor && (
+            <LinearGradient
+              colors={isDark ? ['rgba(10, 10, 15, 0)', 'rgba(10, 10, 15, 0.95)', 'rgba(10, 10, 15, 1)'] : ['rgba(255, 255, 255, 0)', 'rgba(255, 255, 255, 0.95)', 'rgba(255, 255, 255, 1)']}
+              style={styles.footerGradient}
+            />
+          )}
           {footer}
         </View>
       )}

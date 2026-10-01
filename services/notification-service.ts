@@ -12,7 +12,7 @@ function notificationPreferenceKey(userId: string): string {
 }
 
 export interface PushNotificationData {
-  type: 'expense_added' | 'expense_updated' | 'expense_deleted' | 'expense_reminder' | 'group_created' | 'member_added' | 'invitation_sent' | 'invitation_accepted' | 'settlement_created';
+  type: 'expense_added' | 'expense_updated' | 'expense_deleted' | 'expense_reminder' | 'group_created' | 'member_added' | 'invitation_sent' | 'invitation_accepted' | 'settlement_created' | 'recurring_rule_created' | 'recurring_rule_updated';
   title: string;
   body: string;
   data?: Record<string, any>;

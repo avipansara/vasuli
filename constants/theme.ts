@@ -338,6 +338,55 @@ export const SettleTheme = {
   },
 };
 
+export const RecurringTheme = {
+  light: {
+    buttonBackground: 'rgba(0, 0, 0, 0.04)',
+    buttonBorder: BORDER_LIGHT,
+    badgeBackground: 'rgba(0, 0, 0, 0.04)',
+    paused: '#d97706',
+    pausedText: '#b45309',
+    pausedBannerBackground: 'rgba(217, 119, 6, 0.08)',
+    pausedBannerBorder: 'rgba(217, 119, 6, 0.2)',
+    secondaryActionBackground: 'rgba(0, 0, 0, 0.06)',
+    noticeBackground: 'rgba(0, 94, 68, 0.08)',
+    noticeBorder: 'rgba(0, 94, 68, 0.24)',
+    noticeText: '#005E44',
+    cardBackground: '#FFFFFF',
+    cardBorder: 'rgba(0, 94, 68, 0.18)',
+    iconBackground: '#E7F6F1',
+    iconColor: '#005E44',
+    badgeActiveText: '#005E44',
+    badgeActiveBackground: '#E7F6F1',
+    rowMutedBackground: 'rgba(0, 0, 0, 0.02)',
+    participantNoticeBackground: 'rgba(0, 0, 0, 0.03)',
+    dangerButtonBackground: '#dc2626',
+    dangerButtonText: '#ffffff',
+  },
+  dark: {
+    buttonBackground: 'rgba(255, 255, 255, 0.06)',
+    buttonBorder: BORDER_DARK,
+    badgeBackground: 'rgba(255, 255, 255, 0.06)',
+    paused: '#fbbf24',
+    pausedText: '#fbbf24',
+    pausedBannerBackground: 'rgba(251, 191, 36, 0.12)',
+    pausedBannerBorder: 'rgba(251, 191, 36, 0.3)',
+    secondaryActionBackground: 'rgba(255, 255, 255, 0.08)',
+    noticeBackground: 'rgba(16, 185, 129, 0.1)',
+    noticeBorder: 'rgba(78, 222, 163, 0.32)',
+    noticeText: '#4EDEA3',
+    cardBackground: '#0B1118',
+    cardBorder: 'rgba(255, 255, 255, 0.12)',
+    iconBackground: 'rgba(78, 222, 163, 0.16)',
+    iconColor: '#4EDEA3',
+    badgeActiveText: '#4EDEA3',
+    badgeActiveBackground: 'rgba(78, 222, 163, 0.16)',
+    rowMutedBackground: 'rgba(255, 255, 255, 0.02)',
+    participantNoticeBackground: 'rgba(255, 255, 255, 0.04)',
+    dangerButtonBackground: '#b91c1c',
+    dangerButtonText: '#ffffff',
+  },
+};
+
 // Gradient presets for liquid glass effects - Dark mode
 export const Gradients = {
   dark: {

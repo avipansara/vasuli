@@ -17,3 +17,8 @@ verify_jwt = true
 # Invoked only by a trusted external scheduler with the service-role secret.
 [functions.process-analytics-deletion-retries]
 verify_jwt = false
+
+# Scheduled calls carry the service-role bearer token and the function checks
+# that exact server secret before making any database request.
+[functions.process-recurring-expenses]
+verify_jwt = false

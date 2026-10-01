@@ -67,6 +67,10 @@ describe('date utilities', () => {
       expect(formatDateRange([date])).toBe('Aug 20');
     });
 
+    it('uses recurring effective dates instead of saved-zone instants', () => {
+      expect(formatDateRange([{ date: Date.parse('2026-01-02T09:00:00Z'), effectiveDate: '2026-01-01' }])).toBe('Jan 1');
+    });
+
     it('formats range between different dates', () => {
       const start = new Date(2026, 7, 20);
       const end = new Date(2026, 8, 5);

@@ -76,6 +76,18 @@ describe('parsePushNotificationBody', () => {
     if (r.ok) expect(r.notification.type).toBe('expense_deleted');
   });
 
+  it.each(['recurring_rule_created', 'recurring_rule_updated'] as const)(
+    'accepts %s rule notices',
+    (type) => {
+      const result = parsePushNotificationBody({
+        tokens: ['ExponentPushToken[a]'],
+        notification: { type, title: 'Recurring expense', body: 'Monthly rent' },
+      });
+      expect(result.ok).toBe(true);
+      if (result.ok) expect(result.notification.type).toBe(type);
+    },
+  );
+
   it('rejects unknown notification type', () => {
     const r = parsePushNotificationBody({
       tokens: ['ExponentPushToken[a]'],

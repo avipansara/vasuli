@@ -5,6 +5,14 @@ groups and directly between friends.
 
 ## Language
 
+**Recurring expense rule**:
+One person's saved instructions for creating future shared expenses on a
+schedule. The rule itself does not change balances.
+
+**Occurrence**:
+One dated expense created from a recurring expense rule. It changes balances
+like any other expense and keeps its own history when the rule changes.
+
 **Settlement operation**:
 One action that reduces or clears balances between two people. It may include
 a payment, non-cash balance adjustments, or both.

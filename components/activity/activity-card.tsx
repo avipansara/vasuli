@@ -69,7 +69,7 @@ function areActivityCardPropsEqual(prev: ActivityCardProps, next: ActivityCardPr
 }
 
 function ActivityCardInner({ activity, currentUserId, deletedExpenseTargetIds }: ActivityCardProps) {
-  const { colors, isDark } = useThemeColors();
+  const { colors, isDark, recurring } = useThemeColors();
   const { formatCurrency } = useCurrency();
   const item = mapDbActivityToItem(activity);
   const href = getActivityHref(activity, currentUserId, deletedExpenseTargetIds);
@@ -77,13 +77,30 @@ function ActivityCardInner({ activity, currentUserId, deletedExpenseTargetIds }:
 
   const isDeleted = item.isDeleted || item.description.startsWith('Deleted:');
   const isUpdated = item.isUpdated || item.description.startsWith('Updated:');
+  const isAutomatic = useMemo(() => {
+    if (!activity.metadata) return false;
+    try {
+      const parsed = typeof activity.metadata === 'string' ? JSON.parse(activity.metadata) : activity.metadata;
+      return Boolean(parsed?.recurring);
+    } catch {
+      return false;
+    }
+  }, [activity.metadata]);
+
   const title = item.description.replace(/^(Deleted|Updated):\s*/i, '');
   const actorName = activity.userName?.trim() || 'Someone';
   const actorLabel = currentUserId && activity.userId === currentUserId ? 'You' : actorName;
   const amountLabel = item.amount === undefined ? null : `${item.type === 'settlement' ? '+' : ''}${formatCurrency(item.amount)}`;
-  const statusLabel = isDeleted ? 'Deleted' : isUpdated ? 'Updated' : null;
+  const statusLabel = isDeleted
+    ? 'Deleted'
+    : isUpdated
+      ? 'Updated'
+      : isAutomatic
+        ? 'Created automatically'
+        : null;
   const accessibilityLabel = [
     statusLabel,
+    isAutomatic && (isDeleted || isUpdated) ? 'Created automatically' : null,
     title,
     `by ${actorLabel}`,
     dateStr,
@@ -95,15 +112,25 @@ function ActivityCardInner({ activity, currentUserId, deletedExpenseTargetIds }:
     isDeleted
       ? 'trash.fill'
       : item.type === 'expense'
-        ? 'dollarsign.circle.fill'
+        ? (isAutomatic ? 'arrow.trianglehead.2.clockwise' : 'dollarsign.circle.fill')
         : item.type === 'settlement'
           ? 'checkmark.circle.fill'
           : 'person.badge.plus';
 
-  const statusColor = isDeleted ? colors.error : isDark ? '#FBBF24' : '#B45309';
+  const statusColor = isDeleted
+    ? colors.error
+    : isUpdated
+      ? (isDark ? '#FBBF24' : '#B45309')
+      : isAutomatic
+        ? recurring.badgeActiveText
+        : colors.textSecondary;
   const statusBgColor = isDeleted
-    ? isDark ? 'rgba(239, 68, 68, 0.14)' : 'rgba(239, 68, 68, 0.1)'
-    : isDark ? 'rgba(251, 191, 36, 0.14)' : 'rgba(245, 158, 11, 0.12)';
+    ? (isDark ? 'rgba(239, 68, 68, 0.14)' : 'rgba(239, 68, 68, 0.1)')
+    : isUpdated
+      ? (isDark ? 'rgba(251, 191, 36, 0.14)' : 'rgba(245, 158, 11, 0.12)')
+      : isAutomatic
+        ? recurring.badgeActiveBackground
+        : 'transparent';
   const amountColor = isDeleted
     ? colors.textSecondary
     : item.type === 'settlement'
@@ -179,6 +206,23 @@ function ActivityCardInner({ activity, currentUserId, deletedExpenseTargetIds }:
               {item.type === 'settlement' ? 'Payment' : item.type === 'expense' ? 'Expense' : 'Group'}
             </ThemedText>
           </View>
+
+          {isAutomatic && (isDeleted || isUpdated) && (
+            <View
+              style={[
+                styles.groupPill,
+                {
+                  backgroundColor: recurring.badgeActiveBackground,
+                },
+              ]}>
+              <ThemedText
+                type="defaultSemiBold"
+                numberOfLines={1}
+                style={[styles.groupName, { color: recurring.badgeActiveText }]}>
+                Created automatically
+              </ThemedText>
+            </View>
+          )}
 
           {item.groupName && (
             <View

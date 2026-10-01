@@ -18,6 +18,7 @@ import { scopeTransferService } from './scope-transfer-service';
 import { settlementCancellationService } from './settlement-cancellation-service';
 import { settlementOperationMetadataService } from './settlement-operation-metadata-service';
 import { formatDate } from '@/utils/date';
+import { formatCalendarDateString } from '@/utils/expense-date';
 
 export type FriendDetailReadAdapter = {
   getDetail(currentUserId: string, friendId: string): Promise<FriendDetailData | null>;
@@ -142,9 +143,14 @@ export function groupFriendActivityByMonth(activity: FriendActivityItem[]): Frie
   const sorted = [...activity].sort((a, b) => b.date - a.date);
 
   for (const item of sorted) {
-    const date = new Date(item.date);
-    const monthYear = formatDate(date, 'monthYear');
-    const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    const calendarDate = 'expense' in item ? item.expense.effectiveDate : undefined;
+    const date = calendarDate ? new Date(`${calendarDate}T12:00:00Z`) : new Date(item.date);
+    const monthYear = calendarDate
+      ? formatCalendarDateString(calendarDate, 'en-US', { month: 'long', year: 'numeric' })
+      : formatDate(date, 'monthYear');
+    const monthKey = calendarDate
+      ? calendarDate.slice(0, 7)
+      : `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
     let group = groups.find(candidate => candidate.monthKey === monthKey);
     if (!group) {
       group = { monthYear, monthKey, items: [] };
