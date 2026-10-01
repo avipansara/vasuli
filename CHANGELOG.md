@@ -1,3 +1,8 @@
+## 2026-10-01
+
+- Scanning an existing friend's QR code now offers to open their friend page instead of adding them again.
+- Fixed repeated QR scan prompts, added camera permission recovery through phone settings, and increased QR clear borders for more reliable friend scanning.
+
 ## 2026-09-14
 
 - Fixed app-wide currency synchronization: changing the preferred currency in Profile settings (`USD`, `GBP`, `INR`) now updates all balance cards, friend cards, group cards, activity cards, expense creation inputs, custom split breakdowns, and settlement flows immediately across tabs and screens without requiring an app restart.
