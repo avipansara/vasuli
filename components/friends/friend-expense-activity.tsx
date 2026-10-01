@@ -2,6 +2,7 @@ import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import type { FriendActivityItem } from '@/services/friend-detail-service';
 import { formatCurrency } from '@/utils/currency';
+import { formatExpenseDate } from '@/utils/expense-date';
 import { getFirstName } from '@/utils/validation';
 import type { MutableRefObject } from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
@@ -154,7 +155,7 @@ export function FriendExpenseActivity({
       containerStyle={{ overflow: 'visible' }}>
       <TouchableOpacity
         accessibilityRole="button"
-        accessibilityLabel={`${expense.description}, ${sourceLabel}, ${formatDate(expense.date)}, ${expense.paidByName} paid ${formatCurrency(expense.amount, expense.currency)}, ${isGroupExpense ? groupRelationship ? `${groupRelationship.label}, ${formatCurrency(groupRelationship.amount, expense.currency)}` : 'no balance impact' : expense.paidBy === currentUserId ? `you are owed ${formatCurrency(expense.friendShare, expense.currency)}` : `you owe ${formatCurrency(expense.yourShare, expense.currency)}`}`}
+        accessibilityLabel={`${expense.description}, ${sourceLabel}, ${formatExpenseDate(expense)}, ${expense.paidByName} paid ${formatCurrency(expense.amount, expense.currency)}, ${isGroupExpense ? groupRelationship ? `${groupRelationship.label}, ${formatCurrency(groupRelationship.amount, expense.currency)}` : 'no balance impact' : expense.paidBy === currentUserId ? `you are owed ${formatCurrency(expense.friendShare, expense.currency)}` : `you owe ${formatCurrency(expense.yourShare, expense.currency)}`}`}
         accessibilityHint="Opens expense details"
         activeOpacity={0.7}
         onPress={() => onOpenExpense(expense.id)}>
@@ -185,7 +186,7 @@ export function FriendExpenseActivity({
               {expense.description}
             </ThemedText>
             <ThemedText style={[styles.expenseDate, { color: isDark ? '#94A3B8' : colors.textSecondary }]} numberOfLines={2}>
-              {expense.paidBy === currentUserId ? 'Paid by you' : `Paid by ${expense.paidByName}`}{'\n'}{formatDate(expense.date)}
+              {expense.paidBy === currentUserId ? 'Paid by you' : `Paid by ${expense.paidByName}`}{'\n'}{formatExpenseDate(expense)}
             </ThemedText>
             <View style={[styles.sourcePill, { backgroundColor: isGroupExpense ? friendDetailTheme.positiveSurface : friendDetailTheme.settledSurface }]}>
               <IconSymbol

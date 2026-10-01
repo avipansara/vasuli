@@ -4,7 +4,7 @@ import { useEffect, useRef } from 'react';
 
 let nextRealtimeChannelId = 0;
 
-type TableName = 'expenses' | 'expense_splits' | 'settlements' | 'settlement_scope_transfers' | 'settlement_cancellations' | 'groups' | 'group_members' | 'friendships' | 'invitations' | 'users';
+type TableName = 'expenses' | 'expense_splits' | 'settlements' | 'settlement_scope_transfers' | 'settlement_cancellations' | 'groups' | 'group_members' | 'friendships' | 'invitations' | 'users' | 'recurring_expense_rules';
 type EventType = 'INSERT' | 'UPDATE' | 'DELETE' | '*';
 
 interface UseRealtimeOptions {
@@ -151,4 +151,3 @@ export function useGroupsHomeRealtime(
     enabled: isEnabled,
   });
 }
-

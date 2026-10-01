@@ -60,7 +60,7 @@ function buildExpenseRow(
 ): string[] {
   return [
     expense.id,
-    formatCsvDate(expense.date),
+    expense.effectiveDate ?? formatCsvDate(expense.date),
     expense.description,
     formatAmount(expense.amount),
     expense.currency,

@@ -9,6 +9,9 @@ const mocks = vi.hoisted(() => {
   const expenseInsert = vi.fn()
   const expenseUpdate = vi.fn()
   const expenseUpdateEq = vi.fn()
+  const occurrenceFirstEq = vi.fn()
+  const occurrenceSecondEq = vi.fn()
+  const occurrenceMaybeSingle = vi.fn()
   const splitSelect = vi.fn()
   const splitsInsert = vi.fn()
   const linkAuthUserToProfile = vi.fn()
@@ -23,6 +26,9 @@ const mocks = vi.hoisted(() => {
     expenseInsert,
     expenseUpdate,
     expenseUpdateEq,
+    occurrenceFirstEq,
+    occurrenceSecondEq,
+    occurrenceMaybeSingle,
     splitSelect,
     splitsInsert,
     linkAuthUserToProfile,
@@ -97,6 +103,11 @@ describe('expenseService.create auth bridge', () => {
     mocks.from.mockImplementation((table: string) => {
       if (table === 'expenses') {
         return {
+          select: () => ({
+            eq: mocks.occurrenceFirstEq.mockImplementation(() => ({
+              eq: mocks.occurrenceSecondEq.mockImplementation(() => ({ maybeSingle: mocks.occurrenceMaybeSingle })),
+            })),
+          }),
           insert: mocks.expenseInsert.mockImplementation(() => ({
             select: () => ({
               single: mocks.expenseSingle,
@@ -179,6 +190,22 @@ describe('expenseService.create auth bridge', () => {
     }, [])).rejects.toThrow('Supabase Auth session does not match the current app user.')
 
     expect(mocks.expenseSingle).not.toHaveBeenCalled()
+  })
+
+  it('confirms a recurring occurrence only when the server returns its rule and due date', async () => {
+    mocks.occurrenceMaybeSingle.mockResolvedValueOnce({ data: { id: 'posted-expense-id' }, error: null })
+
+    await expect(expenseService.hasRecurringOccurrence('rule-id', '2026-09-29')).resolves.toBe(true)
+
+    expect(mocks.from).toHaveBeenCalledWith('expenses')
+    expect(mocks.occurrenceFirstEq).toHaveBeenCalledWith('recurring_rule_id', 'rule-id')
+    expect(mocks.occurrenceSecondEq).toHaveBeenCalledWith('scheduled_for', '2026-09-29')
+  })
+
+  it('keeps a due-today rule waiting while no occurrence exists on the server', async () => {
+    mocks.occurrenceMaybeSingle.mockResolvedValueOnce({ data: null, error: null })
+
+    await expect(expenseService.hasRecurringOccurrence('rule-id', '2026-09-29')).resolves.toBe(false)
   })
 
   it('requires a Supabase Auth session before inserting', async () => {

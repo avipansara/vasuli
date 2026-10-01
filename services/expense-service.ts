@@ -91,6 +91,7 @@ export const expenseService = {
     if (expense.paidBy !== undefined) updateData.paid_by = expense.paidBy;
     if (expense.category !== undefined) updateData.category = expense.category;
     if (expense.date !== undefined) updateData.date = new Date(expense.date).toISOString();
+    if (expense.effectiveDate !== undefined) updateData.effective_date = expense.effectiveDate;
     if (expense.imageUrl !== undefined) updateData.image_url = expense.imageUrl;
     if (expense.notes !== undefined) updateData.notes = expense.notes;
 
@@ -144,6 +145,18 @@ export const expenseService = {
     }
 
     return mapExpenseRow(data);
+  },
+
+  /** Checks server-confirmed posting without hiding an occurrence that was later soft-deleted. */
+  async hasRecurringOccurrence(ruleId: string, dueOn: string): Promise<boolean> {
+    const { data, error } = await supabase
+      .from('expenses')
+      .select('id')
+      .eq('recurring_rule_id', ruleId)
+      .eq('scheduled_for', dueOn)
+      .maybeSingle();
+    if (error) throw error;
+    return data !== null;
   },
 
   async getByGroup(groupId: string): Promise<Expense[]> {

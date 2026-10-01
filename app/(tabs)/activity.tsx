@@ -16,10 +16,11 @@ import { useCurrency } from '@/contexts/currency-context';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Animated, Keyboard, Platform, RefreshControl, SectionList, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { router } from 'expo-router';
 import { getTimePeriod } from '@/utils/date';
 
 export default function ActivityScreen() {
-  const { colors, friendDetail: friendDetailTheme, isDark } = useThemeColors();
+  const { colors, friendDetail: friendDetailTheme, isDark, recurring } = useThemeColors();
   useCurrency();
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -148,7 +149,20 @@ export default function ActivityScreen() {
     <View
       style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.header}>
-        <ThemedText type="header" style={[styles.headerTitle, { color: isDark ? '#f8fafc' : colors.text }]}>Activity</ThemedText>
+        <View style={styles.headerTopRow}>
+          <ThemedText type="header" style={[styles.headerTitle, { color: isDark ? '#f8fafc' : colors.text }]}>Activity</ThemedText>
+          <TouchableOpacity
+            testID="activity-recurring-action"
+            accessibilityRole="button"
+            accessibilityLabel="Recurring expenses"
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            onPress={() => router.push('/recurring-expenses' as never)}
+            style={[styles.recurringButton, { backgroundColor: recurring.buttonBackground, borderColor: recurring.buttonBorder }]}
+          >
+            <IconSymbol name="arrow.trianglehead.2.clockwise" size={14} color={colors.tint} />
+            <ThemedText style={[styles.recurringButtonText, { color: colors.tint }]}>Recurring</ThemedText>
+          </TouchableOpacity>
+        </View>
         <View style={[styles.searchContainer, {
           backgroundColor: colors.card,
           borderWidth: isDark ? 1 : 0,
@@ -259,6 +273,25 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   headerTitle: {
+  },
+  headerTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  recurringButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    minHeight: 36,
+  },
+  recurringButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
   },
   searchContainer: {
     flexDirection: 'row',

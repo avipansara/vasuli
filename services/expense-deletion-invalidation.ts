@@ -2,6 +2,7 @@ import { queryKeys } from '@/services/query-keys';
 
 type ExpenseDeletionInvalidationOptions = {
   expenseId: string;
+  recurringRuleId?: string;
   groupId?: string;
   paidBy?: string;
   participantIds?: readonly string[];
@@ -21,7 +22,7 @@ function uniqueQueryKeys(keys: readonly QueryKey[]): readonly QueryKey[] {
 
 export function getExpenseDeletionInvalidationKeys(
   currentUserId: string,
-  { expenseId, groupId, paidBy, participantIds = [] }: ExpenseDeletionInvalidationOptions,
+  { expenseId, recurringRuleId, groupId, paidBy, participantIds = [] }: ExpenseDeletionInvalidationOptions,
 ): readonly QueryKey[] {
   const affectedFriendIds = [...new Set([
     ...participantIds,
@@ -39,14 +40,20 @@ export function getExpenseDeletionInvalidationKeys(
 
   return uniqueQueryKeys([
     queryKeys.expenses.detail(expenseId),
+    ...(recurringRuleId ? [queryKeys.recurringExpenses.detail(currentUserId, recurringRuleId)] : []),
+    ...(recurringRuleId ? [queryKeys.recurringExpenses.occurrences(currentUserId, recurringRuleId)] : []),
     queryKeys.expenses.list(currentUserId),
-    queryKeys.activity.list(currentUserId),
+    ['expenses', 'detail'],
+    queryKeys.activity.listScope(currentUserId),
     ...relationshipKeys,
+    queryKeys.friends.detailScope(currentUserId),
     ...(groupId
       ? [
         queryKeys.groups.detail(currentUserId, groupId),
         queryKeys.groups.pairTotals(currentUserId, groupId),
         queryKeys.groups.list(currentUserId),
+        queryKeys.groups.detailScope(currentUserId),
+        queryKeys.groups.pairTotalsScope(currentUserId),
       ]
       : []),
   ]);
