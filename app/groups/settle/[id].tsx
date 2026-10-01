@@ -1,3 +1,5 @@
+import { SettlementReceipt, type SettlementReceiptProps } from '@/components/settlements/settlement-receipt';
+import { SharedModal } from '@/components/ui/shared-modal';
 import { ThemedText } from '@/components/themed-text';
 import { AsyncErrorState } from '@/components/ui/async-error-state';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -159,6 +161,7 @@ export default function GroupSettleScreen() {
   const [selectedMember, setSelectedMember] = useState<MemberWithBalance | null>(null);
   const [amount, setAmount] = useState('');
   const [settling, setSettling] = useState(false);
+  const [successReceipt, setSuccessReceipt] = useState<SettlementReceiptProps | null>(null);
   const { currency: preferredCurrency, currencySymbol, formatCurrency } = useCurrency();
   // ADR-0001 ticket 03 corrective: one payment intent per submission chain so
   // retried taps return the original operation receipt (`reused: true`) instead
@@ -394,12 +397,15 @@ export default function GroupSettleScreen() {
           currency: receipt.currency ?? currency,
         });
       }
-      if (receipt.reused) {
-        Alert.alert('Already recorded', `Settled ${formatCurrency(amountNum)} with ${selectedMember.user?.name}`);
-      } else {
-        Alert.alert('Success', `Settled ${formatCurrency(amountNum)} with ${selectedMember.user?.name}`);
-      }
-      router.back();
+      setSuccessReceipt({
+        amount: receipt.totalAmount,
+        currency: receipt.currency,
+        friendName: selectedMember.user?.name ?? 'Friend',
+        paidByYou: selectedMember.balance > 0,
+        remainingAmount: Math.max(0, Math.abs(selectedMember.balance) - receipt.totalAmount),
+        scopeName: group?.name,
+        reused: receipt.reused,
+      });
     } catch (error) {
       trackSettlementCreationFailed(analytics, {
         groupId: typeof id === 'string' ? id : undefined,
@@ -445,7 +451,7 @@ export default function GroupSettleScreen() {
     [handleSelectMember, selectedMember?.userId]
   );
 
-  const canSubmitSettlement = canSubmitGroupSettlement(selectedMember, amount, settling);
+  const canSubmitSettlement = canSubmitGroupSettlement(selectedMember, amount, settling) && successReceipt === null;
 
   if (loading && !group) {
     return (
@@ -601,6 +607,12 @@ export default function GroupSettleScreen() {
             </TouchableOpacity>
           </View>
         </KeyboardAwareScroll>
+        <SharedModal visible={successReceipt !== null} onClose={() => router.back()} title="Settlement recorded" subtitle="Your group payment has been recorded." icon="banknote">
+          {successReceipt ? <SettlementReceipt {...successReceipt} /> : null}
+          <TouchableOpacity testID="group-settlement-done-button" accessibilityRole="button" accessibilityLabel="Done" onPress={() => router.back()} style={[styles.settleButton, { backgroundColor: settle.buttonBackground }]}>
+            <Text style={[styles.settleButtonText, { color: settle.buttonText }]}>Done</Text>
+          </TouchableOpacity>
+        </SharedModal>
       </View>
     </TouchableWithoutFeedback>
   );
