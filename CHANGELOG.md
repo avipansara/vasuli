@@ -1,3 +1,26 @@
+## [Unreleased]
+
+## [1.0.28] - 2026-10-01
+
+### Highlights
+
+- Add weekly and monthly recurring expenses, with schedule review, future edits, pause/resume, stop, and missed-date management (#44).
+- Show stamped receipts after friend and group settlements, including remaining balances for partial payments and reduced-motion support (#45).
+- Improve friend QR scanning with duplicate-scan protection, camera permission recovery, clearer QR borders, and direct navigation for existing friends (#46).
+- Apply preferred-currency changes immediately across balances, expenses, and settlement flows.
+- Preserve expense calendar dates across time zones and improve settlement cancellation amount handling.
+
+### Upgrade notes
+
+A new native binary is required for the Expo SDK 57 dependency updates and iOS 27 scene support.
+
+Recurring expenses require applying the seven recurring-expense database migrations, deploying `process-recurring-expenses`, and configuring the trusted Cron/Vault scheduler separately in production. The tag workflow only promotes `supabase/pending_migrations`; it does not apply the recurring migrations already stored in `supabase/migrations` or deploy the scheduler. See [scheduler setup](https://github.com/avipansara/vasuli/blob/v1.0.28/docs/recurring-expense-scheduler.md).
+
+The production workflow builds and auto-submits Android to the internal track and iOS to App Store Connect. It requires GitHub Actions secrets `EXPO_TOKEN`, `SUPABASE_ACCESS_TOKEN`, and `SUPABASE_PROD_PROJECT_ID`.
+
+[Full changelog](https://github.com/avipansara/vasuli/compare/v1.0.27...v1.0.28)
+
+
 ## 2026-10-01
 
 - Scanning an existing friend's QR code now offers to open their friend page instead of adding them again.
