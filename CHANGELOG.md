@@ -1,3 +1,8 @@
+## 2026-10-01
+
+- Scanning an existing friend's QR code now offers to open their friend page instead of adding them again.
+- Fixed repeated QR scan prompts, added camera permission recovery through phone settings, and increased QR clear borders for more reliable friend scanning.
+
 ## 2026-09-30
 
 - Added a stamped settlement receipt after friend and group payments, with remaining balances for partial payments and reduced-motion support.

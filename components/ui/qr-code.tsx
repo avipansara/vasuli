@@ -22,7 +22,7 @@ export function QRCode({
     try {
       const qr = QRCodeGenerator.create(value, { errorCorrectionLevel: 'M' });
       const qrSize = qr.modules.size;
-      const margin = 2; // Quiet zone padding modules
+      const margin = 4; // Quiet zone padding modules
       const totalModules = qrSize + margin * 2;
       const cell = size / totalModules;
       const data = qr.modules.data;

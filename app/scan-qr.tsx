@@ -11,10 +11,12 @@ import { userService } from '@/services/user-service';
 import { useQueryClient } from '@tanstack/react-query';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
-import { useState } from 'react';
+import { router, useIsFocused } from 'expo-router';
+import { useEffect, useRef, useState } from 'react';
 import {
   Alert,
+  AppState,
+  Linking,
   Platform,
   StyleSheet,
   TouchableOpacity,
@@ -25,12 +27,34 @@ export default function ScanQRScreen() {
   const { colors, gradients, isDark } = useThemeColors();
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const [permission, requestPermission] = useCameraPermissions();
+  const [permission, requestPermission, getPermission] = useCameraPermissions();
+  const isFocused = useIsFocused();
+  const scanInProgress = useRef(false);
   const [scanned, setScanned] = useState(false);
   const [showMyCode, setShowMyCode] = useState(false);
 
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') void getPermission();
+    });
+    return () => subscription.remove();
+  }, [getPermission]);
+
+  const resumeScanning = () => {
+    scanInProgress.current = false;
+    setScanned(false);
+  };
+
+  const showScanNotice = (title: string, message: string) => {
+    Alert.alert(title, message, [{ text: 'OK', onPress: resumeScanning }], {
+      cancelable: true,
+      onDismiss: resumeScanning,
+    });
+  };
+
   const handleBarCodeScanned = async ({ data }: { data: string }) => {
-    if (scanned) return;
+    if (scanInProgress.current || showMyCode || !isFocused) return;
+    scanInProgress.current = true;
     setScanned(true);
 
     const parsed = parseInviteFromUrl(data);
@@ -38,8 +62,7 @@ export default function ScanQRScreen() {
 
     if (friendId) {
       if (user?.id && friendId === user.id) {
-        Alert.alert('Notice', 'This is your own QR code.');
-        setScanned(false);
+        showScanNotice('Notice', 'This is your own QR code.');
         return;
       }
 
@@ -48,6 +71,29 @@ export default function ScanQRScreen() {
         const friend = await userService.getById(friendId);
 
         if (friend) {
+          if (!user?.id) {
+            showScanNotice('Sign In Required', 'Please sign in before adding a friend.');
+            return;
+          }
+
+          const openFriend = () => {
+            router.back();
+            router.push(`/friends/${friendId}` as any);
+          };
+
+          if (await friendshipService.areFriends(user.id, friendId)) {
+            Alert.alert(
+              'Already Friends',
+              `You're already friends with ${friend.name}.`,
+              [
+                { text: 'Cancel', style: 'cancel', onPress: resumeScanning },
+                { text: 'Open Friend', onPress: openFriend },
+              ],
+              { cancelable: true, onDismiss: resumeScanning }
+            );
+            return;
+          }
+
           Alert.alert(
             'Friend Found!',
             `Add ${friend.name} as a friend?`,
@@ -55,45 +101,38 @@ export default function ScanQRScreen() {
               {
                 text: 'Cancel',
                 style: 'cancel',
-                onPress: () => setScanned(false),
+                onPress: resumeScanning,
               },
               {
                 text: 'Add Friend',
                 onPress: async () => {
                   try {
-                    if (user?.id) {
-                      await friendshipService.createAccepted(user.id, friendId);
-                      await invalidateFriendRelationshipSurfaces(queryClient, user.id, friendId);
-                    }
+                    if (!user?.id) throw new Error('Please sign in before adding a friend.');
+                    await friendshipService.createAccepted(user.id, friendId);
+                    await invalidateFriendRelationshipSurfaces(queryClient, user.id, friendId);
                     Alert.alert('Connected!', `You and ${friend.name} are now friends.`, [
                       {
                         text: 'Done',
-                        onPress: () => {
-                          router.back();
-                          router.push(`/friends/${friendId}` as any);
-                        },
+                        onPress: openFriend,
                       },
                     ]);
                   } catch (addErr: any) {
-                    Alert.alert('Error', addErr?.message || 'Failed to connect with user');
-                    setScanned(false);
+                    showScanNotice('Error', addErr?.message || 'Failed to connect with user');
                   }
                 },
               },
-            ]
+            ],
+            { cancelable: true, onDismiss: resumeScanning }
           );
         } else {
-          Alert.alert('Not Found', 'This user was not found. They may need to create an account first.');
-          setScanned(false);
+          showScanNotice('Not Found', 'This user was not found. They may need to create an account first.');
         }
       } catch (error) {
         console.error('Error finding user:', error);
-        Alert.alert('Error', 'Failed to find user');
-        setScanned(false);
+        showScanNotice('Error', 'Failed to find user. Please check your connection and try again.');
       }
     } else {
-      Alert.alert('Invalid QR Code', 'This QR code is not a valid Vasuli invite.');
-      setScanned(false);
+      showScanNotice('Invalid QR Code', 'This QR code is not a valid Vasuli invite.');
     }
   };
 
@@ -122,13 +161,21 @@ export default function ScanQRScreen() {
             We need camera access to scan QR codes and add friends
           </ThemedText>
           <TouchableOpacity
-            onPress={requestPermission}
+            onPress={() => {
+              if (permission.canAskAgain) {
+                void requestPermission();
+              } else {
+                void Linking.openSettings().catch(() => {
+                  Alert.alert('Camera Access', 'Open your phone settings and allow camera access for Vasuli.');
+                });
+              }
+            }}
             activeOpacity={0.8}
             accessibilityRole="button"
-            accessibilityLabel="Continue to camera permission"
+            accessibilityLabel={permission.canAskAgain ? "Continue to camera permission" : "Open camera permission settings"}
             style={[styles.permissionButton, { backgroundColor: colors.accent }]}
           >
-            <ThemedText style={styles.permissionButtonText}>Continue</ThemedText>
+            <ThemedText style={styles.permissionButtonText}>{permission.canAskAgain ? 'Continue' : 'Open Settings'}</ThemedText>
           </TouchableOpacity>
         </View>
       </View>
@@ -139,13 +186,13 @@ export default function ScanQRScreen() {
 
   return (
     <View style={styles.container}>
-      <CameraView
+      {isFocused && <CameraView
         style={StyleSheet.absoluteFill}
         barcodeScannerSettings={{
           barcodeTypes: ['qr'],
         }}
-        onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
-      />
+        onBarcodeScanned={scanned || showMyCode ? undefined : handleBarCodeScanned}
+      />}
 
       {/* Overlay */}
       <View style={styles.overlay}>
