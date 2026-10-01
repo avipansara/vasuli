@@ -45,7 +45,7 @@ function measurementDirectory(scope = process.env.E2E_MEASUREMENT_SCOPE ?? 'tick
 
 function usesRunScopedFixtures(args = []) {
   if (args.length === 0) return true;
-  return args.some((arg) => /(?:^|[/\\])(?:activity-balances|deletion-guards|direct-expenses|split-methods|payer-selection|friend-settle|settlement-reversal)\.test\.js$/.test(arg));
+  return args.some((arg) => /(?:^|[/\\])(?:activity-balances|deletion-guards|direct-expenses|split-methods|payer-selection|recurring-expense-creation|friend-settle|settlement-reversal)\.test\.js$/.test(arg));
 }
 
 function runE2E({

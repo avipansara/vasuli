@@ -6,6 +6,7 @@ import { AnalyticsProvider } from '@/contexts/analytics-context';
 import { CurrencyProvider } from '@/contexts/currency-context';
 import { ThemeProvider as AppThemeProvider, useTheme } from '@/contexts/theme-context';
 import { useNotifications } from '@/hooks/use-notifications';
+import { useRecurringExpenseRefresh } from '@/hooks/use-recurring-expense-refresh';
 import { buildInvitePath, parseInviteFromUrl } from '@/lib/invite-deeplink';
 import { queryClient } from '@/lib/query-client';
 import { getInstalledAppVersion } from '@/lib/app-version';
@@ -118,6 +119,7 @@ function useProtectedRoute(animationComplete: boolean) {
 function RootLayoutNav() {
   const { isDark } = useTheme();
   const { user } = useAuth();
+  useRecurringExpenseRefresh(user?.id, !!user?.id);
   const [animationComplete, setAnimationComplete] = useState(false);
   const isLoading = useProtectedRoute(animationComplete);
   const router = useRouter();
@@ -296,6 +298,9 @@ function RootLayoutNav() {
           <Stack.Screen name="help-support" options={{ headerShown: false }} />
           <Stack.Screen name="invite/[id]" options={{ headerShown: false }} />
           <Stack.Screen name="invitations" options={{ headerShown: false }} />
+          <Stack.Screen name="recurring-expenses/index" options={{ headerShown: false }} />
+          <Stack.Screen name="recurring-expenses/[id]" options={{ headerShown: false }} />
+          <Stack.Screen name="recurring-expenses/edit/[id]" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
         </Stack>
       </RouteErrorBoundary>
       <AppUpdatePrompt

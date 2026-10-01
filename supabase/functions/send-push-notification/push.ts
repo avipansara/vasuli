@@ -8,7 +8,9 @@ export type PushNotificationType =
   | 'member_added'
   | 'invitation_sent'
   | 'invitation_accepted'
-  | 'settlement_created';
+  | 'settlement_created'
+  | 'recurring_rule_created'
+  | 'recurring_rule_updated';
 
 export interface PushNotificationPayload {
   type: PushNotificationType;
@@ -34,6 +36,8 @@ const ALLOWED_TYPES = new Set<string>([
   'invitation_sent',
   'invitation_accepted',
   'settlement_created',
+  'recurring_rule_created',
+  'recurring_rule_updated',
 ]);
 
 function readString(o: Record<string, unknown>, camel: string, snake: string): string {

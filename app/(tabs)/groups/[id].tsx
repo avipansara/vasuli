@@ -30,6 +30,7 @@ import type { Expense, GroupMember, Settlement, SettlementCancellation, Settleme
 import { useCurrency } from '@/contexts/currency-context';
 import { formatCurrency } from '@/utils/currency';
 import { formatDate } from '@/utils/date';
+import { formatExpenseDate } from '@/utils/expense-date';
 import { groupPairTotalsService, toGroupScopedLine } from '@/services/group-pair-totals-service';
 import { getViewerPairBalance } from '@/utils/group-member-balance';
 import { getFirstName } from '@/utils/validation';
@@ -584,7 +585,7 @@ export default function GroupDetailScreen() {
   }
 
   function renderExpense({ item }: { item: Expense & { paidByUser?: User } }) {
-    const dateStr = formatDate(item.date);
+    const dateStr = formatExpenseDate(item);
     const categoryStyle = (item.category && CATEGORY_MAP[item.category])
       ? CATEGORY_MAP[item.category]
       : { icon: 'arrow.up.right', lightBg: '#F3F4F6', darkBg: 'rgba(156, 163, 175, 0.15)', lightColor: '#4B5563', darkColor: '#9CA3AF' };
