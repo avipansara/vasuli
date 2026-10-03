@@ -755,6 +755,8 @@ DECLARE
   v_legacy_settlement_ids uuid[];
   v_legacy_activity_ids uuid[];
   v_payment_intent_ids uuid[];
+  v_recurring_rule_ids uuid[];
+  v_recurring_expense_ids uuid[];
   v_deleted integer := 0;
   v_scenario_count integer := 0;
 BEGIN
@@ -886,6 +888,43 @@ BEGIN
       DELETE FROM public.settlement_commitments
       WHERE payment_intent_id = ANY(v_payment_intent_ids);
     END IF;
+  END IF;
+
+  -- A recurring rule created by a UI test belongs to its isolated fixture
+  -- Group. Remove only rules owned by this actor in the selected run Groups,
+  -- then clear any scheduler rows or posted occurrences before deleting the
+  -- rule. This also makes cleanup safe if a due-date worker ran mid-test.
+  SELECT coalesce(array_agg(rule.id), '{}')
+    INTO v_recurring_rule_ids
+  FROM public.recurring_expense_rules rule
+  WHERE rule.owner_id = v_actor_id
+    AND rule.group_id = ANY(v_group_ids);
+
+  IF coalesce(array_length(v_recurring_rule_ids, 1), 0) > 0 THEN
+    SELECT coalesce(array_agg(expense.id), '{}')
+      INTO v_recurring_expense_ids
+    FROM public.expenses expense
+    WHERE expense.recurring_rule_id = ANY(v_recurring_rule_ids);
+
+    IF coalesce(array_length(v_recurring_expense_ids, 1), 0) > 0 THEN
+      DELETE FROM public.activities
+      WHERE recurring_occurrence_id = ANY(v_recurring_expense_ids);
+    END IF;
+
+    DELETE FROM public.recurring_expense_activity_outbox
+    WHERE rule_id = ANY(v_recurring_rule_ids);
+    DELETE FROM public.recurring_expense_occurrence_outbox
+    WHERE rule_id = ANY(v_recurring_rule_ids);
+
+    IF coalesce(array_length(v_recurring_expense_ids, 1), 0) > 0 THEN
+      DELETE FROM public.expense_splits
+      WHERE expense_id = ANY(v_recurring_expense_ids);
+      DELETE FROM public.expenses
+      WHERE id = ANY(v_recurring_expense_ids);
+    END IF;
+
+    DELETE FROM public.recurring_expense_rules
+    WHERE id = ANY(v_recurring_rule_ids);
   END IF;
 
   IF coalesce(array_length(v_expense_ids, 1), 0) > 0 THEN
@@ -1698,6 +1737,8 @@ DECLARE
   v_legacy_settlement_ids uuid[];
   v_legacy_activity_ids uuid[];
   v_payment_intent_ids uuid[];
+  v_recurring_rule_ids uuid[];
+  v_recurring_expense_ids uuid[];
   v_deleted integer := 0;
   v_scenario_count integer := 0;
 BEGIN
@@ -1829,6 +1870,43 @@ BEGIN
       DELETE FROM public.settlement_commitments
       WHERE payment_intent_id = ANY(v_payment_intent_ids);
     END IF;
+  END IF;
+
+  -- A recurring rule created by a UI test belongs to its isolated fixture
+  -- Group. Remove only rules owned by this actor in the selected run Groups,
+  -- then clear any scheduler rows or posted occurrences before deleting the
+  -- rule. This also makes cleanup safe if a due-date worker ran mid-test.
+  SELECT coalesce(array_agg(rule.id), '{}')
+    INTO v_recurring_rule_ids
+  FROM public.recurring_expense_rules rule
+  WHERE rule.owner_id = v_actor_id
+    AND rule.group_id = ANY(v_group_ids);
+
+  IF coalesce(array_length(v_recurring_rule_ids, 1), 0) > 0 THEN
+    SELECT coalesce(array_agg(expense.id), '{}')
+      INTO v_recurring_expense_ids
+    FROM public.expenses expense
+    WHERE expense.recurring_rule_id = ANY(v_recurring_rule_ids);
+
+    IF coalesce(array_length(v_recurring_expense_ids, 1), 0) > 0 THEN
+      DELETE FROM public.activities
+      WHERE recurring_occurrence_id = ANY(v_recurring_expense_ids);
+    END IF;
+
+    DELETE FROM public.recurring_expense_activity_outbox
+    WHERE rule_id = ANY(v_recurring_rule_ids);
+    DELETE FROM public.recurring_expense_occurrence_outbox
+    WHERE rule_id = ANY(v_recurring_rule_ids);
+
+    IF coalesce(array_length(v_recurring_expense_ids, 1), 0) > 0 THEN
+      DELETE FROM public.expense_splits
+      WHERE expense_id = ANY(v_recurring_expense_ids);
+      DELETE FROM public.expenses
+      WHERE id = ANY(v_recurring_expense_ids);
+    END IF;
+
+    DELETE FROM public.recurring_expense_rules
+    WHERE id = ANY(v_recurring_rule_ids);
   END IF;
 
   IF coalesce(array_length(v_expense_ids, 1), 0) > 0 THEN

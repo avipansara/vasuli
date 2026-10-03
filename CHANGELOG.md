@@ -21,7 +21,15 @@ The production workflow builds and auto-submits Android to the internal track an
 [Full changelog](https://github.com/avipansara/vasuli/compare/v1.0.27...v1.0.28)
 
 
+## 2026-10-03
+
+- Add TesterArmy device E2E coverage for iOS & Android (account, settings, groups, expenses, deep links), wire default E2E runners to TesterArmy, modernize GitHub Actions workflows, remove Detox native configuration, and preserve link-based invite attribution in product analytics.
+
 ## 2026-10-01
+
+- Refresh the iPhone App Store screenshots for first-time users with friends, shared groups, flexible splits, clear balances, settlement receipts, and recurring bills, using fresh native captures and synthetic sample data.
+
+- Upgrade the App Store screenshot editor with undo/redo, font and image controls, safer autosave, and export fixes while preserving existing Vasuli decks and isolated crops.
 
 - Scanning an existing friend's QR code now offers to open their friend page instead of adding them again.
 - Fixed repeated QR scan prompts, added camera permission recovery through phone settings, and increased QR clear borders for more reliable friend scanning.

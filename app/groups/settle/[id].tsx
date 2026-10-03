@@ -480,7 +480,7 @@ export default function GroupSettleScreen() {
   }
 
   return (
-    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
       <View style={[styles.container, { backgroundColor: settle.background }]}>
         <Stack.Screen options={{ headerShown: false }} />
         <NavigationHeader title="SETTLE UP" onBack={() => router.back()} />
