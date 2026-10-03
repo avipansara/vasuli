@@ -323,7 +323,7 @@ export class AnalyticsService {
       case 'expense_input_method':
         return value === 'manual' || value === 'scan' || value === 'import';
       case 'invite_type':
-        return value === 'email' || value === 'friend_request';
+        return value === 'email' || value === 'friend_request' || value === 'link';
       case 'currency_code':
         return typeof value === 'string' && /^[A-Z]{3}$/.test(value);
       case 'failure_category':

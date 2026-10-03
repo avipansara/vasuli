@@ -516,7 +516,7 @@ export function OTPAuthScreen({ variant }: { variant: OTPAuthVariant }) {
       >
         <IconSymbol name="chevron.left" size={20} color={otpAccent} />
       </Pressable>
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
         <View>
           <View style={styles.otpHeader}>
             {renderIcon('lock.fill')}

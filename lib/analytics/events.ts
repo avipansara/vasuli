@@ -44,7 +44,7 @@ export type ExpenseFailureCategory =
   | 'unknown';
 
 export type SettlementFailureCategory = ExpenseFailureCategory;
-export type InviteType = 'email' | 'friend_request';
+export type InviteType = 'email' | 'friend_request' | 'link';
 
 export type AnalyticsPlatform = 'ios' | 'android' | 'web';
 

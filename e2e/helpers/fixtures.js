@@ -11,6 +11,17 @@ function getFixtureClient() {
     throw new Error('Run-scoped E2E fixtures require the development Supabase URL and anon key.');
   }
 
+  const allowedHost = process.env.SUPABASE_DEV_HOST;
+  let host;
+  try {
+    host = new URL(url).hostname;
+  } catch {
+    throw new Error('Run-scoped E2E fixtures require a valid development Supabase URL.');
+  }
+  if (!allowedHost || host !== allowedHost) {
+    throw new Error(`Refusing E2E fixture access to unapproved Supabase host: ${host}`);
+  }
+
   fixtureClient = createClient(url, key, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
