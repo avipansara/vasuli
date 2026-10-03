@@ -86,7 +86,7 @@
     "react-native-worklets": "0.10.1"
   },
   "devDependencies": {
-    "@e2e-dev/mobile": "^0.16.0",
+    "@e2e-dev/mobile": "^0.9.1",
     "@posthog/cli": "^0.18.1",
     "@testing-library/react": "^16.3.2",
     "@types/jest": "29.5.14",
