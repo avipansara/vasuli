@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+## 2026-10-13
+
+- Add native Sign in with Apple on iOS sign-in and sign-up, with private relay email support. Requires Apple/Supabase provider setup and a new iOS binary; see [setup instructions](docs/sign-in-with-apple.md).
+
 ## [1.0.28] - 2026-10-01
 
 ### Highlights
