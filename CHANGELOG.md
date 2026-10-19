@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+- Upgrade to Expo SDK 58, React Native 0.88, and React 19.3, including matching navigation, animation, and native-module dependencies. Rebuild development clients and ship a new app version and native binary before publishing updates, because SDK 57 binaries cannot load this runtime.
+- Preserve input focus and friend-detail return navigation with the new React Native and Expo Router APIs.
+- Replace deprecated notification and CSV file APIs, and keep browser controls clear of device safe areas under Expo Router 58.
+
 ## [1.0.29] - 2026-11-07
 
 ### Highlights

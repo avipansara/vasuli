@@ -108,7 +108,7 @@ async function downloadCsvOnWeb(file: GroupExpenseCsvFile): Promise<void> {
 
 async function shareCsvOnNative(file: GroupExpenseCsvFile): Promise<void> {
   const [FileSystem, Sharing] = await Promise.all([
-    import('expo-file-system/legacy'),
+    import('expo-file-system'),
     import('expo-sharing'),
   ]);
 
@@ -116,22 +116,17 @@ async function shareCsvOnNative(file: GroupExpenseCsvFile): Promise<void> {
     throw new Error('File sharing is unavailable on this device.');
   }
 
-  const directory = FileSystem.cacheDirectory;
-  if (!directory) throw new Error('Temporary file storage is unavailable.');
-
-  const localUri = `${directory}${file.fileName}`;
-  await FileSystem.writeAsStringAsync(localUri, file.content, {
-    encoding: FileSystem.EncodingType.UTF8,
-  });
+  const localFile = new FileSystem.File(FileSystem.Paths.cache, file.fileName);
+  await localFile.write(file.content);
 
   try {
-    await Sharing.shareAsync(localUri, {
+    await Sharing.shareAsync(localFile.uri, {
       mimeType: CSV_MIME_TYPE,
       UTI: CSV_UTI,
       dialogTitle: 'Export group expenses',
     });
   } finally {
-    await FileSystem.deleteAsync(localUri, { idempotent: true });
+    if (localFile.exists) localFile.delete();
   }
 }
 

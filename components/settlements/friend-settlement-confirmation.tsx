@@ -6,7 +6,8 @@ import type { FriendGroupBalanceSummary } from '@/services/friend-detail-service
 import { settlementModule, type CombinedSettlementPlan } from '@/services/settlement-service';
 import { formatCurrency, getCurrencySymbol } from '@/utils/currency';
 import { useMemo, useState } from 'react';
-import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { webSafeAreaPaddingBottom } from '@/utils/web-safe-area';
 
 type Phase = 'editing' | 'confirming' | 'committing' | 'success' | 'stale' | 'retry' | 'error';
 
@@ -275,7 +276,11 @@ export function FriendSettlementConfirmation({
         </View>
       </View>
 
-      <View style={[styles.bottomActions, { paddingBottom: bottomInset }]}>
+      <View
+        style={[styles.bottomActions, {
+          paddingBottom: Platform.OS === 'web' ? webSafeAreaPaddingBottom(bottomInset) : bottomInset,
+        }]}
+      >
         {onCancel ? (
           <TouchableOpacity accessibilityRole="button" accessibilityLabel="Cancel settlement" onPress={onCancel} style={styles.cancelButton}>
             <Text style={[styles.cancelButtonText, { color: settle.textSecondary }]}>Cancel</Text>

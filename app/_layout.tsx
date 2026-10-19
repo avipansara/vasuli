@@ -15,7 +15,7 @@ import { checkForAppUpdate } from '@/services/app-update-coordinator';
 import { createAppUpdateService } from '@/services/app-update-service';
 import { friendSummaryService } from '@/services/friend-summary-service';
 import { createPostSplashStartup } from '@/services/post-splash-startup';
-import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router/react-navigation';
+import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { useFonts } from 'expo-font';
 import * as Linking from 'expo-linking';
@@ -78,7 +78,7 @@ const appUpdateService = createAppUpdateService({ supabase });
 
 function useProtectedRoute(animationComplete: boolean) {
   const { isAuthenticated, isLoading } = useAuth();
-  const segments = useSegments();
+  const segments: string[] = useSegments();
   const router = useRouter();
   const navState = useRootNavigationState();
 

@@ -1,4 +1,4 @@
-import { useFocusEffect } from 'expo-router/react-navigation';
+import { useFocusEffect } from 'expo-router';
 import { useCallback, useRef } from 'react';
 
 interface UseRefetchOnFocusOptions {

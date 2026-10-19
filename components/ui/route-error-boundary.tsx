@@ -1,11 +1,12 @@
 import { ThemedText } from '@/components/themed-text';
 import { useThemeColors } from '@/hooks/use-theme-colors';
+import { usePlatformSafeAreaInsets } from '@/hooks/use-platform-safe-area-insets';
 import { type Href, useRouter } from 'expo-router';
 import type { ReactNode } from 'react';
 import type { FallbackProps } from 'react-error-boundary';
 import { ErrorBoundary } from 'react-error-boundary';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { webSafeAreaProps } from '@/utils/web-safe-area';
 
 type RouteErrorFallbackProps = FallbackProps & {
   homeHref: Href;
@@ -19,7 +20,7 @@ function RouteErrorFallback({
   title,
 }: RouteErrorFallbackProps) {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
+  const insets = usePlatformSafeAreaInsets();
   const { colors } = useThemeColors();
 
   const handleGoHome = () => {
@@ -36,11 +37,12 @@ function RouteErrorFallback({
 
   return (
     <View
+      {...webSafeAreaProps('error-screen')}
       style={[
         styles.screen,
         {
-          paddingTop: insets.top + 24,
-          paddingBottom: insets.bottom + 24,
+          paddingTop: Platform.OS === 'web' ? undefined : insets.top + 24,
+          paddingBottom: Platform.OS === 'web' ? undefined : insets.bottom + 24,
           paddingHorizontal: 24,
           backgroundColor: colors.background,
         },

@@ -250,7 +250,7 @@ export default function FriendsScreen() {
                   You have no pending balances with any friends.
                 </ThemedText>
               </View>
-            ) : null
+            ) : undefined
           }
           ListFooterComponent={
             settledFriends.length > 0 ? (
@@ -288,7 +288,7 @@ export default function FriendsScreen() {
                   </View>
                 )}
               </View>
-            ) : null
+            ) : undefined
           }
         />
       )}

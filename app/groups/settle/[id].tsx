@@ -9,6 +9,7 @@ import { GenericSkeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useAnalytics } from '@/contexts/analytics-context';
 import { useThemeColors } from '@/hooks/use-theme-colors';
+import { usePlatformSafeAreaInsets } from '@/hooks/use-platform-safe-area-insets';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { calculateBalances } from '@/services/balance-utils';
 import type { GroupDetailReadModel } from '@/services/group-detail-read-model';
@@ -29,6 +30,7 @@ import {
 } from '@/utils/group-settle-selection';
 import { formatCurrencyInput, normalizeCurrencyInput } from '@/utils/validation';
 import { formatCurrency } from '@/utils/currency';
+import { webSafeAreaProps } from '@/utils/web-safe-area';
 import { useCurrency } from '@/contexts/currency-context';
 import { toSettleableBalance } from '@/utils/group-settle-pairs';
 import { useQueryClient } from '@tanstack/react-query';
@@ -39,6 +41,7 @@ import {
   Alert,
   FlatList,
   Keyboard,
+  Platform,
   StyleSheet,
   Text,
   TextInput,
@@ -46,7 +49,6 @@ import {
   TouchableWithoutFeedback,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface MemberWithBalance extends GroupMember {
   user?: User;
@@ -147,7 +149,7 @@ const SettleMemberRow = memo(function SettleMemberRow({ item, isSelected, onSele
 
 export default function GroupSettleScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const insets = useSafeAreaInsets();
+  const insets = usePlatformSafeAreaInsets();
   const { user } = useAuth();
   const { service: analytics } = useAnalytics();
   const { colors, settle, isDark } = useThemeColors();
@@ -572,7 +574,10 @@ export default function GroupSettleScreen() {
             </ThemedText>
           ) : null}
 
-          <View style={[styles.bottomActionsContainer, { paddingBottom: Math.max(insets.bottom, 16) }]}>
+          <View
+            {...webSafeAreaProps('group-settlement-actions')}
+            style={[styles.bottomActionsContainer, Platform.OS === 'web' ? undefined : { paddingBottom: Math.max(insets.bottom, 16) }]}
+          >
             <TouchableOpacity accessibilityRole="button" accessibilityLabel="Cancel settlement" onPress={() => router.back()} style={styles.cancelButton}>
               <Text style={[styles.cancelButtonText, { color: settle.textSecondary }]}>Cancel</Text>
             </TouchableOpacity>

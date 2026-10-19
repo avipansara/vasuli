@@ -7,6 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useAnalytics } from '@/contexts/analytics-context';
 import { useThemeColors } from '@/hooks/use-theme-colors';
+import { usePlatformSafeAreaInsets } from '@/hooks/use-platform-safe-area-insets';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { friendDetailModule } from '@/services/friend-detail-module';
 import { createPaymentIntentId, settlementModule } from '@/services/settlement-service';
@@ -20,11 +21,11 @@ import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useRef, type MutableRefObject, useState } from 'react';
 import {
   Alert,
+  Platform,
   StyleSheet,
   Text,
   View
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface UserWithBalance extends User {
   balance: number;
@@ -32,7 +33,7 @@ interface UserWithBalance extends User {
 
 export default function FriendSettleScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const insets = useSafeAreaInsets();
+  const insets = usePlatformSafeAreaInsets();
   const { user } = useAuth();
   const { service: analytics } = useAnalytics();
   const { colors } = useThemeColors();
@@ -120,7 +121,7 @@ export default function FriendSettleScreen() {
       paymentIntentIdRef={paymentIntentIdRef}
       queryClient={queryClient}
       onRefresh={loadData}
-      bottomInset={Math.max(insets.bottom, 16)}
+      bottomInset={Platform.OS === 'web' ? 16 : Math.max(insets.bottom, 16)}
     />
   );
 }

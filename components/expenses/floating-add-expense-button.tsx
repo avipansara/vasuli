@@ -1,11 +1,12 @@
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { ThemedText } from '@/components/themed-text';
 import { useThemeColors } from '@/hooks/use-theme-colors';
+import { usePlatformSafeAreaInsets } from '@/hooks/use-platform-safe-area-insets';
 import { Gradients } from '@/constants/theme';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, usePathname } from 'expo-router';
-import { Pressable, StyleSheet, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Platform, Pressable, StyleSheet, View } from 'react-native';
+import { webSafeAreaProps } from '@/utils/web-safe-area';
 
 interface FloatingAddExpenseButtonProps {
   bottomOffset?: number;
@@ -17,7 +18,7 @@ export function FloatingAddExpenseButton({
   rightOffset = 18,
 }: FloatingAddExpenseButtonProps) {
   const { isDark } = useThemeColors();
-  const insets = useSafeAreaInsets();
+  const insets = usePlatformSafeAreaInsets();
   const pathname = usePathname();
   const bottom = Math.max(insets.bottom, 12) + bottomOffset;
   const right = Math.max(insets.right, 0) + rightOffset;
@@ -27,7 +28,11 @@ export function FloatingAddExpenseButton({
   }
 
   return (
-    <View pointerEvents="box-none" style={[styles.container, { bottom, right }]}>
+    <View
+      pointerEvents="box-none"
+      {...webSafeAreaProps('floating-expense')}
+      style={[styles.container, Platform.OS === 'web' ? { marginBottom: bottomOffset, marginRight: rightOffset } : { bottom, right }]}
+    >
       <Pressable
         accessibilityLabel="Add expense"
         accessibilityRole="button"

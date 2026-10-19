@@ -30,6 +30,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  type TextInputInstance,
   TouchableWithoutFeedback,
   View,
 } from 'react-native';
@@ -88,7 +89,7 @@ export function OTPAuthScreen({ variant }: { variant: OTPAuthVariant }) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [otp, setOtp] = useState(EMPTY_OTP);
-  const otpInputs = useRef<(TextInput | null)[]>([]);
+  const otpInputs = useRef<(TextInputInstance | null)[]>([]);
   const [loading, setLoading] = useState(false);
   const [resendDeadline, setResendDeadline] = useState<number | null>(null);
   const [currentTime, setCurrentTime] = useState(() => Date.now());

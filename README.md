@@ -47,7 +47,7 @@ cp .env.example .env
 # Edit .env, then restart the dev server (Expo reads EXPO_PUBLIC_* on startup).
 ```
 
-This app targets **Expo SDK 57**, which matches the **App Store** [Expo Go](https://expo.dev/go) client for day-to-day development on a physical device.
+This app targets **Expo SDK 58**, React Native 0.88, and React 19.3. Use Node.js 22.13+, 24.3+, or 26+ on an even-numbered release line. Rebuild the development client after upgrading; an SDK 57 client cannot load this app. See the [SDK 58 release notes](https://expo.dev/changelog/sdk-58) for Expo Go availability.
 
 For **custom native code** or modules Expo Go does not include, use a **development build** and the dev-client bundler:
 
