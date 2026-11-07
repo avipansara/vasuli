@@ -31,7 +31,7 @@ import { formatDate } from '@/utils/date';
 import { filterFriendsForExpenseSearch } from '@/utils/friend-search';
 import { getGroupExpenseParticipant } from '@/utils/group-expense-participants';
 import { getEvenSplitValues, getSplitProgress, resolveExpenseSplits } from '@/utils/split-validation';
-import { normalizeCurrencyInput } from '@/utils/validation';
+import { getVisibleEmail, normalizeCurrencyInput } from '@/utils/validation';
 import { getInitialPostingState } from '@/utils/recurring-schedule';
 import { getRecurringSplitFormValues } from '@/utils/recurring-edit-form';
 import { getCurrencySymbol } from '@/utils/currency';
@@ -1154,9 +1154,9 @@ export default function AddExpenseScreen() {
                                   <Text style={[styles.optionText, { color: isSelected ? (settle.buttonBackground) : (colors.text) }]}>
                                     {friend.name}
                                   </Text>
-                                  {friend.email && (
+                                  {getVisibleEmail(friend.email) && (
                                     <Text style={[styles.optionSubtext, { color: isDark ? '#6B7280' : colors.textSecondary }]}>
-                                      {friend.email}
+                                      {getVisibleEmail(friend.email)}
                                     </Text>
                                   )}
                                 </View>

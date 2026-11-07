@@ -1,4 +1,5 @@
 import type { User } from '@/types/database';
+import { getVisibleEmail } from '@/utils/validation';
 
 type SearchableFriend = Pick<User, 'email' | 'name'>;
 
@@ -17,7 +18,8 @@ export function filterFriendsForExpenseSearch<T extends SearchableFriend>(
   }
 
   return friends.filter(friend => {
-    const searchableText = `${friend.name} ${friend.email ?? ''}`.toLowerCase();
+    const visibleEmail = getVisibleEmail(friend.email) ?? '';
+    const searchableText = `${friend.name} ${visibleEmail}`.toLowerCase();
     return terms.every(term => searchableText.includes(term));
   });
 }

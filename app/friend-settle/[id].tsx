@@ -14,6 +14,7 @@ import { trackSettlementCancelled, trackSettlementCreated, trackSettlementCreati
 import type { FriendRelationshipProjection } from '@/services/friend-detail-service';
 import type { User } from '@/types/database';
 import { useCurrency } from '@/contexts/currency-context';
+import { getVisibleEmail } from '@/utils/validation';
 import { useQueryClient } from '@tanstack/react-query';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useRef, type MutableRefObject, useState } from 'react';
@@ -226,7 +227,7 @@ function FriendSettleContent({
                 {friend.name}
               </ThemedText>
               <ThemedText style={[styles.profileEmail, { color: settle.textSecondary }]}>
-                {friend.email || `${friend.name.toLowerCase().replace(/\s+/g, '.')}@vasuli.app`}
+                {getVisibleEmail(friend.email) || `${friend.name.toLowerCase().replace(/\s+/g, '.')}@vasuli.app`}
               </ThemedText>
             </View>
           </View>

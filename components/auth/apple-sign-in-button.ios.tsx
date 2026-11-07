@@ -1,4 +1,5 @@
 import { useThemeColors } from '@/hooks/use-theme-colors';
+// eslint-disable-next-line import/no-unresolved
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { useEffect, useState } from 'react';
 import { View } from 'react-native';

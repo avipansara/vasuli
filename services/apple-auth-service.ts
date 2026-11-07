@@ -38,16 +38,19 @@ export async function signInWithApple(): Promise<AppleSignInResult> {
       return { success: false, error: error?.message || 'Unable to establish your Apple session.' };
     }
 
-    // Use only the email verified by Supabase, including Apple's relay address.
-    // Repeat authorizations may omit credential.email and credential.fullName.
+    // Use the email verified by Supabase (including Apple's @privaterelay.appleid.com
+    // address when the user selects Hide My Email), falling back to credential.email
+    // or auth_user_id lookup if Apple omits the email claim on repeat login.
     const name = credential.fullName
       ? AppleAuthentication.formatFullName(credential.fullName).trim()
       : '';
-    const storedName = data.user.user_metadata?.name;
+    const storedName = data.user.user_metadata?.name ?? data.user.user_metadata?.full_name;
+    const verifiedEmail = data.user.email || credential.email || undefined;
     const { user, created } = await linkAuthUserToProfile({
       authUserId: data.user.id,
-      email: data.user.email,
+      email: verifiedEmail,
       name: name || (typeof storedName === 'string' && storedName.trim()) || 'Vasuli user',
+      ...(verifiedEmail ? {} : { allowMissingEmail: true }),
     });
     if (created) await markAccountCreated(user.id);
 

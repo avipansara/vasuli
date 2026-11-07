@@ -1,5 +1,10 @@
 ## [Unreleased]
 
+## 2026-11-07
+
+- Remove automated friend referral emails for non-Vasuli email addresses in Add Friend and Invitations, replacing the non-user email flow with the native invite-link share sheet to comply with App Store Guideline 5.1.2.
+- Keep Sign in with Apple private relay addresses (`@privaterelay.appleid.com`) hidden across friend cards, QR modals, group/expense member pickers, email lookup, and invitations, while linking Apple Sign-In profiles by `auth_user_id` and fixing new-user profile creation to match the `public.users` schema (Guideline 4.8).
+
 ## 2026-10-13
 
 - Add native Sign in with Apple on iOS sign-in and sign-up, with private relay email support. Requires Apple/Supabase provider setup and a new iOS binary; see [setup instructions](docs/sign-in-with-apple.md).

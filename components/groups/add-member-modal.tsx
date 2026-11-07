@@ -6,6 +6,7 @@ import { UserAvatar } from '@/components/ui/user-avatar';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { filterUsers } from '@/lib/filter-users';
 import type { User } from '@/types/database';
+import { getVisibleEmail } from '@/utils/validation';
 import { useDeferredValue, useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, View } from 'react-native';
 
@@ -87,9 +88,9 @@ export function AddMemberModal({
           <ThemedText type="defaultSemiBold" numberOfLines={1} style={{ color: selected ? settle.accentText : colors.text, fontSize: 16 }}>
             {item.name}
           </ThemedText>
-          {!!item.email && (
+          {!!getVisibleEmail(item.email) && (
             <ThemedText numberOfLines={1} style={[styles.userSecondary, { color: colors.textSecondary }]}>
-              {item.email}
+              {getVisibleEmail(item.email)}
             </ThemedText>
           )}
         </View>

@@ -27,7 +27,7 @@ import type { Expense, User } from '@/types/database';
 import { useCurrency } from '@/contexts/currency-context';
 import { normalizeBalance } from '@/utils/currency';
 import { formatDate } from '@/utils/date';
-import { getFirstName } from '@/utils/validation';
+import { getFirstName, getVisibleEmail } from '@/utils/validation';
 import { trackExpenseDeleted } from '@/lib/analytics/track';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams, useNavigation } from 'expo-router';
@@ -561,7 +561,7 @@ export default function FriendDetailScreen() {
             end={{ x: 0, y: 1 }}
             accessible
             accessibilityRole="summary"
-            accessibilityLabel={`${friend.name}${friend.email ? `, ${friend.email}` : ''}, ${balanceAccessibilityValue}`}
+            accessibilityLabel={`${friend.name}${getVisibleEmail(friend.email) ? `, ${getVisibleEmail(friend.email)}` : ''}, ${balanceAccessibilityValue}`}
             accessibilityLiveRegion="polite"
             style={[styles.summaryCard, {
               borderWidth: 0,

@@ -26,10 +26,12 @@ const createdUser = {
 
 const mocks = vi.hoisted(() => {
   const singleByEmail = vi.fn()
+  const singleByAuthUserId = vi.fn()
   const updateSingle = vi.fn()
+  const insertPayload = vi.fn()
   const insertSingle = vi.fn()
   const from = vi.fn()
-  return { singleByEmail, updateSingle, insertSingle, from }
+  return { singleByEmail, singleByAuthUserId, updateSingle, insertPayload, insertSingle, from }
 })
 
 vi.mock('@/lib/supabase', () => ({
@@ -44,6 +46,7 @@ describe('linkAuthUserToProfile', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.singleByEmail.mockResolvedValue({ data: null, error: { code: 'PGRST116' } })
+    mocks.singleByAuthUserId.mockResolvedValue({ data: null, error: { code: 'PGRST116' } })
     mocks.updateSingle.mockResolvedValue({ data: existingUser, error: null })
     mocks.insertSingle.mockResolvedValue({ data: createdUser, error: null })
     mocks.from.mockImplementation((table: string) => {
@@ -52,7 +55,12 @@ describe('linkAuthUserToProfile', () => {
       return {
         select: () => ({
           eq: (column: string) => ({
-            single: column === 'email' ? mocks.singleByEmail : vi.fn(),
+            single:
+              column === 'email'
+                ? mocks.singleByEmail
+                : column === 'auth_user_id'
+                  ? mocks.singleByAuthUserId
+                  : vi.fn(),
           }),
         }),
         update: () => ({
@@ -62,11 +70,14 @@ describe('linkAuthUserToProfile', () => {
             }),
           }),
         }),
-        insert: () => ({
-          select: () => ({
-            single: mocks.insertSingle,
-          }),
-        }),
+        insert: (payload: unknown) => {
+          mocks.insertPayload(payload)
+          return {
+            select: () => ({
+              single: mocks.insertSingle,
+            }),
+          }
+        },
       }
     })
   })
@@ -105,7 +116,36 @@ describe('linkAuthUserToProfile', () => {
     expect(result.user.id).toBe('new-public-user-id')
     expect(result.user.name).toBe('New User')
     expect(result.created).toBe(true)
+    expect(mocks.insertPayload).toHaveBeenCalledWith({
+      auth_user_id: 'new-auth-id',
+      name: 'New User',
+      email: 'new@example.com',
+      is_active: true,
+    })
     expect(mocks.updateSingle).not.toHaveBeenCalled()
+  })
+
+  it('stores Apple Private Relay email and resolves by auth_user_id when email is hidden or omitted on repeat login', async () => {
+    mocks.singleByAuthUserId.mockResolvedValueOnce({
+      data: {
+        ...existingUser,
+        id: 'apple-profile-id',
+        auth_user_id: 'apple-auth-id',
+        email: 'xyz123@privaterelay.appleid.com',
+        name: 'Alex Taylor',
+      },
+      error: null,
+    })
+
+    const result = await linkAuthUserToProfile({
+      authUserId: 'apple-auth-id',
+      allowMissingEmail: true,
+    })
+
+    expect(result.user.id).toBe('apple-profile-id')
+    expect(result.user.email).toBe('xyz123@privaterelay.appleid.com')
+    expect(result.created).toBe(false)
+    expect(mocks.insertSingle).not.toHaveBeenCalled()
   })
 
   it('rejects phone-only profile linking', async () => {

@@ -68,6 +68,20 @@ describe('native Apple authentication', () => {
     expect(mocks.link.mock.calls[0][0].name).toBe('Alex Taylor');
   });
 
+  it('links by authUserId when email is omitted from repeat Apple login', async () => {
+    mocks.verify.mockResolvedValue({ data: {
+      user: { id: 'auth-id', email: undefined, user_metadata: { full_name: 'Alex Taylor' } },
+      session: {},
+    }, error: null });
+    expect(await signInWithApple()).toEqual({ success: true });
+    expect(mocks.link).toHaveBeenCalledWith({
+      authUserId: 'auth-id',
+      email: undefined,
+      name: 'Alex Taylor',
+      allowMissingEmail: true,
+    });
+  });
+
   it('treats dismissal as cancellation without authenticating or creating a profile', async () => {
     mocks.signIn.mockRejectedValue({ code: 'ERR_REQUEST_CANCELED' });
     expect(await signInWithApple()).toEqual({ success: false, cancelled: true });

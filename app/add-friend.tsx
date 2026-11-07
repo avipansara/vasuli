@@ -13,7 +13,7 @@ import { invitationService } from '@/services/invitation-service';
 import { trackInviteSent } from '@/lib/analytics/track';
 import { userService } from '@/services/user-service';
 import type { User } from '@/types/database';
-import { isEmailValid, normalizeEmail } from '@/utils/validation';
+import { isApplePrivateRelayEmail, isEmailValid, normalizeEmail } from '@/utils/validation';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
@@ -34,7 +34,6 @@ export default function AddFriendScreen() {
   const { service: analytics } = useAnalytics();
   const currentUserId = user?.id ?? '';
   const [email, setEmail] = useState('');
-  const [name, setName] = useState('');
   const [lookupState, setLookupState] = useState<LookupState>('idle');
   const [matchedUser, setMatchedUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(false);
@@ -52,7 +51,9 @@ export default function AddFriendScreen() {
     const timer = setTimeout(async () => {
       setLookupState('checking');
       try {
-        const found = await userService.getByEmail(normalized);
+        const found = isApplePrivateRelayEmail(normalized)
+          ? null
+          : await userService.getByEmail(normalized);
         if (cancelled) return;
         setMatchedUser(found);
         setLookupState(found ? 'found' : 'not-found');
@@ -81,26 +82,22 @@ export default function AddFriendScreen() {
       Alert.alert('Enter a valid email', 'Use an email address to check whether they already use Vasuli.');
       return;
     }
-    if (lookupState !== 'found' && lookupState !== 'not-found') {
+    if (lookupState !== 'found' || !matchedUser) {
       Alert.alert('Still checking', 'Wait for Vasuli to finish checking this email.');
       return;
     }
 
     setLoading(true);
     try {
-      const inviteeName = name.trim().replace(/\s+/g, ' ') || undefined;
       const result = await invitationService.sendRequestOrInvitation({
         inviterId: currentUserId,
         inviteeEmail: normalized,
-        inviteeName,
         inviterName: user?.name || 'A friend',
       });
       trackInviteSent(analytics, result.type === 'friend_request' ? 'friend_request' : 'email');
       Alert.alert(
-        result.type === 'friend_request' ? 'Friend request sent' : 'Invite sent',
-        result.type === 'friend_request'
-          ? `${matchedUser?.name || 'Your friend'} can accept your request from Invitations.`
-          : `An invite was sent to ${normalized}.`,
+        'Friend request sent',
+        `${matchedUser.name || 'Your friend'} can accept your request from Invitations.`,
         [{ text: 'Done', onPress: () => router.back() }],
       );
     } catch (error: any) {
@@ -216,30 +213,15 @@ export default function AddFriendScreen() {
                       </View>
                       <View style={styles.resultIdentity}>
                         <ThemedText selectable style={[styles.resultName, { color: colors.text }]}>{lookupState === 'error' ? 'Couldn’t check this email' : 'Not on Vasuli yet'}</ThemedText>
-                        <ThemedText selectable style={[styles.resultSupporting, { color: colors.textSecondary }]}>{lookupState === 'error' ? 'Try again in a moment.' : 'They’ll get an invite to join you.'}</ThemedText>
+                        <ThemedText selectable style={[styles.resultSupporting, { color: colors.textSecondary }]}>{lookupState === 'error' ? 'Try again in a moment.' : 'Share an invite link so they can join you on Vasuli.'}</ThemedText>
                       </View>
                     </View>
                     {lookupState === 'not-found' && (
-                      <>
-                        <ThemedInput
-                          value={name}
-                          onChangeText={setName}
-                          autoCapitalize="words"
-                          autoCorrect={false}
-                          returnKeyType="done"
-                          onSubmitEditing={Keyboard.dismiss}
-                          accessibilityLabel="Invitee name"
-                          placeholder="Their name (optional)"
-                          icon="person"
-                        />
-                        <ThemedButton
-                          label="Send invite"
-                          onPress={handlePrimaryAction}
-                          disabled={loading}
-                          loading={loading}
-                          style={{ marginTop: 12 }}
-                        />
-                      </>
+                      <ThemedButton
+                        label="Share invite link"
+                        onPress={handleShareInvite}
+                        style={{ marginTop: 12 }}
+                      />
                     )}
                   </>
                 )}

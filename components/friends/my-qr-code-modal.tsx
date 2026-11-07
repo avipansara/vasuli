@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { buildInvitePath } from '@/lib/invite-deeplink';
 import { useThemeColors } from '@/hooks/use-theme-colors';
+import { getVisibleEmail } from '@/utils/validation';
 import { ThemedText } from '../themed-text';
 import { IconSymbol } from '../ui/icon-symbol';
 import { QRCode } from '../ui/qr-code';
@@ -29,6 +30,7 @@ export function MyQRCodeModal({ visible, onClose, user }: MyQRCodeModalProps) {
   if (!user) return null;
 
   const displayName = user.name || 'Vasuli User';
+  const visibleEmail = getVisibleEmail(user.email);
   const initial = displayName.charAt(0).toUpperCase();
   const inviteUrl = `https://split-space.com${buildInvitePath(user.id)}`;
 
@@ -71,9 +73,9 @@ export function MyQRCodeModal({ visible, onClose, user }: MyQRCodeModalProps) {
           <ThemedText type="subtitle" style={[styles.userName, { color: colors.text }]}>
             {displayName}
           </ThemedText>
-          {user.email ? (
+          {visibleEmail ? (
             <ThemedText style={[styles.userEmail, { color: colors.textSecondary }]}>
-              {user.email}
+              {visibleEmail}
             </ThemedText>
           ) : null}
         </View>
