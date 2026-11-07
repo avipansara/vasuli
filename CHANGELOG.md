@@ -1,13 +1,17 @@
 ## [Unreleased]
 
-## 2026-11-07
+## [1.0.29] - 2026-11-07
 
-- Remove automated friend referral emails for non-Vasuli email addresses in Add Friend and Invitations, replacing the non-user email flow with the native invite-link share sheet to comply with App Store Guideline 5.1.2.
-- Keep Sign in with Apple private relay addresses (`@privaterelay.appleid.com`) hidden across friend cards, QR modals, group/expense member pickers, email lookup, and invitations, while linking Apple Sign-In profiles by `auth_user_id` and fixing new-user profile creation to match the `public.users` schema (Guideline 4.8).
+### Highlights
 
-## 2026-10-13
+- Sign in or create an account with Apple on iOS, including with Hide My Email. Apple relay addresses stay hidden in friend and group screens.
+- Invite people who haven't joined Vasuli by sharing a link. Vasuli no longer sends referral emails to those addresses from the app.
 
-- Add native Sign in with Apple on iOS sign-in and sign-up, with private relay email support. Requires Apple/Supabase provider setup and a new iOS binary; see [setup instructions](docs/sign-in-with-apple.md).
+### Upgrade notes
+
+This release requires a new iOS binary and the Apple sign-in capability on the production provisioning profile. The Apple provider must be enabled in Supabase. See the [setup guide](docs/sign-in-with-apple.md). No database migration is needed for these changes.
+
+[Full changelog](https://github.com/avipansara/vasuli/compare/v1.0.28...v1.0.29)
 
 ## [1.0.28] - 2026-10-01
 
