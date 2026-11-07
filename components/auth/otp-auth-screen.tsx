@@ -1,5 +1,6 @@
 /* eslint-disable react-hooks/refs -- OTP focus is advanced from native input events, not during render. */
 import { parseCompleteOtp } from '@/components/auth/otp-code';
+import { AppleSignInButton } from '@/components/auth/apple-sign-in-button';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useThemeColors } from '@/hooks/use-theme-colors';
@@ -229,6 +230,23 @@ export function OTPAuthScreen({ variant }: { variant: OTPAuthVariant }) {
         'Google sign-in failed',
         'Something went wrong. Please try again.',
       );
+    } finally {
+      setLoading(false);
+    }
+  }
+  async function handleAppleSignIn() {
+    if (loading) return;
+    setLoading(true);
+    try {
+      const { signInWithApple } = await import('@/services/apple-auth-service');
+      const result = await signInWithApple();
+      if (!result.success) {
+        if (!result.cancelled) Alert.alert('Apple sign-in failed', result.error);
+        return;
+      }
+      await redirectAfterAuth();
+    } catch {
+      Alert.alert('Apple sign-in failed', 'Something went wrong. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -465,6 +483,11 @@ export function OTPAuthScreen({ variant }: { variant: OTPAuthVariant }) {
           ]}
         />
       </View>
+      <AppleSignInButton
+        testID={isSignUp ? 'apple-sign-up-button' : 'apple-sign-in-button'}
+        onPress={handleAppleSignIn}
+        disabled={loading}
+      />
       <Pressable
         testID={config.googleTestID}
         onPress={handleGoogleSignIn}

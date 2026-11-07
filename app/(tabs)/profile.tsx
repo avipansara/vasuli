@@ -15,6 +15,7 @@ import { calculateFriendSummaryTotals, friendSummaryService } from '@/services/f
 import { notificationService } from '@/services/notification-service';
 import { queryKeys } from '@/services/query-keys';
 import { userService } from '@/services/user-service';
+import { isApplePrivateRelayEmail } from '@/utils/validation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -284,7 +285,9 @@ export default function ProfileScreen() {
               {currentUser?.name || 'User'}
             </ThemedText>
             <ThemedText style={[styles.userEmail, { color: isDark ? '#9ba6b8' : colors.textSecondary }]} numberOfLines={1}>
-              {currentUser?.email || 'No email set'}
+              {isApplePrivateRelayEmail(currentUser?.email)
+                ? 'Private Apple email'
+                : currentUser?.email || 'No email set'}
             </ThemedText>
           </View>
           <Pressable

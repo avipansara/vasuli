@@ -1,5 +1,18 @@
 ## [Unreleased]
 
+## [1.0.29] - 2026-11-07
+
+### Highlights
+
+- Sign in or create an account with Apple on iOS, including with Hide My Email. Apple relay addresses stay hidden in friend and group screens.
+- Invite people who haven't joined Vasuli by sharing a link. Vasuli no longer sends referral emails to those addresses from the app.
+
+### Upgrade notes
+
+This release requires a new iOS binary and the Apple sign-in capability on the production provisioning profile. The Apple provider must be enabled in Supabase. See the [setup guide](docs/sign-in-with-apple.md). No database migration is needed for these changes.
+
+[Full changelog](https://github.com/avipansara/vasuli/compare/v1.0.28...v1.0.29)
+
 ## [1.0.28] - 2026-10-01
 
 ### Highlights
