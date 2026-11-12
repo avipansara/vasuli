@@ -83,11 +83,7 @@ export function useRealtime({
       }
     });
 
-    channel.subscribe((status) => {
-      if (status === 'SUBSCRIBED') {
-        console.log(`[Realtime] Subscribed to ${table}`);
-      }
-    });
+    channel.subscribe();
 
     channelRef.current = channel;
 

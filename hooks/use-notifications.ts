@@ -101,15 +101,14 @@ export function useNotifications(enabled = true) {
     if (href) {
       router.push(href as any);
     } else {
-      console.warn('Notification has no navigable destination:', data);
+      console.warn('Notification has no navigable destination');
     }
   }, [invalidateNotificationCaches, router]);
 
   useEffect(() => {
     // Listen for notifications received while app is in foreground
     notificationListener.current = notificationService.addNotificationReceivedListener(
-      (notification) => {
-        console.log('Notification received:', notification);
+      () => {
         invalidateNotificationCaches();
       }
     );
@@ -122,7 +121,6 @@ export function useNotifications(enabled = true) {
       handledResponseIds.add(responseId);
 
       const data = response.notification.request.content.data as Record<string, unknown>;
-      console.log('Notification tapped:', data);
       handleNotificationNavigation(data);
     };
 

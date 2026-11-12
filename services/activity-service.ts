@@ -22,8 +22,6 @@ export const activityService = {
 
     if (error) throw error;
 
-    console.log('[Activity] Created:', activity.type, activity.description);
-
     return mapActivityRow(data);
   },
 
@@ -50,7 +48,6 @@ export const activityService = {
     // get_user_activities SECURITY DEFINER function in the database.
     // This replaces the previous 6-query client-side merge where every page
     // re-fetched unbounded datasets and discarded rows via Array.slice.
-    console.log('[getUserActivities] calling RPC with', { p_limit: limit ?? 20, p_offset: offset ?? 0, p_search: search ?? '' });
     const { data, error } = await supabase.rpc('get_user_activities', {
       p_limit:  limit  ?? 20,
       p_offset: offset ?? 0,
@@ -62,7 +59,6 @@ export const activityService = {
       throw error;
     }
 
-    console.log('[getUserActivities] got', (data || []).length, 'rows');
     return (data || []).map(mapActivityRow);
   },
 

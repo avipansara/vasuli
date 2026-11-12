@@ -51,7 +51,6 @@ export async function sendSignUpCode(params: {
 
     // Mock mode for development
     if (USE_MOCK_DATA) {
-      console.log(`[MOCK] Sign up code sent to ${email}. Use code: ${MOCK_OTP_CODE}`);
       // Store pending signup info for verification
       await AsyncStorage.setItem('pending_signup', JSON.stringify({ name, email }));
       return { success: true };
@@ -106,7 +105,6 @@ export async function sendSignInCode(params: {
 
     // Mock mode for development
     if (USE_MOCK_DATA) {
-      console.log(`[MOCK] Sign in code sent to ${email}. Use code: ${MOCK_OTP_CODE}`);
       // Store pending signin info for verification
       await AsyncStorage.setItem('pending_signin', JSON.stringify({ email }));
       return { success: true };
@@ -118,7 +116,6 @@ export async function sendSignInCode(params: {
         body: { email, action: 'send' },
       });
       if (checkData?.success && checkData?.isTestAccount) {
-        console.log(`[TEST ACCOUNT] Sign in requested for test user ${email}. Skip email sending.`);
         return { success: true };
       }
     } catch (checkError) {
@@ -185,7 +182,6 @@ export async function verifySignUpCode(params: {
       const user = createAppUser(mockUser);
       await AsyncStorage.removeItem('pending_signup');
 
-      console.log('[MOCK] Sign up successful!');
       return { success: true, user };
     }
 
@@ -264,7 +260,6 @@ export async function verifySignInCode(params: {
       const user = createAppUser(mockUser);
       await AsyncStorage.removeItem('pending_signin');
 
-      console.log('[MOCK] Sign in successful!');
       return { success: true, user };
     }
 
@@ -304,7 +299,6 @@ export async function verifySignInCode(params: {
         }
 
         const user = createAppUserFromProfile(profile);
-        console.log('[TEST ACCOUNT] Sign in successful!');
         return { success: true, user };
       } else if (verifyData?.isTestAccount && !verifyData?.success) {
         return {

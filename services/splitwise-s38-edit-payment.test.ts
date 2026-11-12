@@ -97,10 +97,6 @@ function expenseRow(id: string, amount: number) {
   };
 }
 
-function splitRow(id: string, expenseId: string, userId: string, amount: number) {
-  return { id, expense_id: expenseId, user_id: userId, amount, split_type: 'equal', percentage: null };
-}
-
 describe('Splitwise S38: edit an expense after a payment', () => {
   beforeEach(() => {
     state.expenses = [];

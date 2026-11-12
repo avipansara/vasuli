@@ -75,17 +75,13 @@ export default function CreateGroupScreen() {
 
     setLoading(true);
     try {
-      console.log('[CreateGroup] Creating group with user:', currentUserId);
       const newGroup = await groupService.create({
         name: groupName.trim(),
         description: description.trim() || undefined,
       });
-      console.log('[CreateGroup] Group created:', newGroup.id);
 
       // Add current user as first member (admin)
-      console.log('[CreateGroup] Adding creator as admin member');
       await groupService.addMember(newGroup.id, currentUserId, 'admin');
-      console.log('[CreateGroup] Creator added successfully');
       trackGroupCreated(analytics, { groupId: newGroup.id, memberCount: 1 });
 
       await queryClient.invalidateQueries({

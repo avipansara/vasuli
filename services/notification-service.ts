@@ -95,7 +95,6 @@ export const notificationService = {
     }
 
     if (finalStatus !== 'granted') {
-      console.log('Failed to get push token for push notification!');
       return null;
     }
 
@@ -110,7 +109,6 @@ export const notificationService = {
         projectId,
       });
       token = pushTokenData.data;
-      console.log('Push token:', token);
     } catch (error) {
       console.error('Error getting push token:', error);
     }

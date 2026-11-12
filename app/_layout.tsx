@@ -242,8 +242,6 @@ function RootLayoutNav() {
         return;
       }
 
-      console.log('[DeepLink] Received URL:', event.url);
-
       try {
         const parsed = parseInviteFromUrl(event.url);
         if (!parsed) {
@@ -251,8 +249,6 @@ function RootLayoutNav() {
         }
 
         const { inviterId, invitationId } = parsed;
-        console.log('[DeepLink] Navigating to invite', { inviterId, invitationId });
-
         const path = buildInvitePath(inviterId, invitationId);
         router.replace(path as Href);
       } catch (err) {

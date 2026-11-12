@@ -32,8 +32,6 @@
     "e2e": "node scripts/tester-army-run.cjs",
     "e2e:android": "node scripts/tester-army-run.cjs --target android",
     "e2e:list": "npx e2e list",
-    "e2e:detox": "node scripts/e2e-run.cjs",
-    "e2e:detox:smoke": "E2E_INCLUDE_SMOKE=1 node scripts/e2e-run.cjs e2e/smoke.test.js",
     "e2e:build:android": "E2E_PLATFORM=android node scripts/e2e-build.cjs",
     "e2e:tester-army": "node scripts/tester-army-run.cjs",
     "e2e:tester-army:list": "npx e2e list"

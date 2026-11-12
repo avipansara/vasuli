@@ -121,7 +121,6 @@ export const invitationService = {
         if (!invitationId) {
           throw new Error('Invitation insert did not return an id; cannot send email.');
         }
-        console.log(`[Invitation] Sending email to ${inviteeEmail}`);
         await assertSendInvitationEmail({
           inviteeEmail: String(inviteeEmail),
           inviteeName: String(inviteeName),
