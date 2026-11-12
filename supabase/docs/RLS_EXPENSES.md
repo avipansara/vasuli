@@ -25,8 +25,8 @@ Supabase Auth user.
 
 | Table | Authenticated access |
 | --- | --- |
-| `expenses` | Visible to the payer, split participants, or members of the expense group. Writes are payer-only. |
-| `expense_splits` | Visible when the parent expense is visible. Writes are payer-only. |
+| `expenses` | Visible to the creator, payer, split participants, or members of the expense group. The creator inserts; the creator or payer can update or delete, subject to the policy checks. |
+| `expense_splits` | Visible when the parent expense is visible. The expense creator or payer can write splits. |
 | `settlements` | Visible/writable by participants; group admins can update/delete group settlements. |
 | `groups` | Readable to authenticated app users so group creation can return the inserted row; updates/deletes require group admin. |
 | `group_members` | Visible to group members. Inserts require group admin, except the first self-membership when a group is created. |

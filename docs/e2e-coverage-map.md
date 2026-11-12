@@ -1,7 +1,11 @@
-# Detox coverage map
+# Historical Detox coverage map
 
-The release suite runs 11 focused device journeys. The smoke journey is a
-separate development check and is excluded from the default full-suite match.
+This records the earlier Detox suite and is retained for historical context.
+The current default E2E runner is TesterArmy; see the [current coverage and gap
+matrix](tester-army-e2e.md) for verified journeys and platform results.
+
+The former release suite ran 11 focused device journeys. Its smoke journey was
+a separate development check, excluded from the default full-suite match.
 
 | Previous device case | Replacement | Layer |
 | --- | --- | --- |
@@ -13,7 +17,7 @@ separate development check and is excluded from the default full-suite match.
 | `split-methods.test.js` invalid unequal split, percentage, shares, and other calculation combinations | `utils/split-validation.test.ts` validation tests | Vitest |
 | `deletion-guards.test.js` separate Group and member cases | One combined case with two independently seeded Groups | Detox |
 
-The retained device journeys are:
+The retained device journeys were:
 
 1. Authentication contract and email input.
 2. Configured-account sign-in.
@@ -27,8 +31,8 @@ The retained device journeys are:
 10. Direct Expense lifecycle.
 11. Group and member deletion guards.
 
-The full suite creates two run-named Groups through the UI. Run-scoped cleanup
-purges only the current run's `Detox Group <runId>` prefix. The combined
-deletion guards use one run-scoped seeded Group, and the other seeded journeys
-create no UI Group or Friend. The smoke journey creates one additional Group
-only when run explicitly.
+The full suite created two run-named Groups through the UI. Run-scoped cleanup
+purged only the current run's `Detox Group <runId>` prefix. The combined
+deletion guards used one run-scoped seeded Group, and the other seeded journeys
+created no UI Group or Friend. The smoke journey created one additional Group
+when run explicitly.

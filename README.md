@@ -21,9 +21,9 @@ npm run start:prod -- --ios
 
 This requires an installed development build. The command prints the selected
 Supabase host and uses `localhost:8085`. It loads public variables only from `.env`
-and excludes env files from Metro's module graph for this run. Expo SDK 57 otherwise
-loads `.env.development.local` again through its Fast Refresh virtual env module,
-even with `EXPO_NO_DOTENV=1`. Normal `npm start` behavior is unchanged.
+and excludes env files from Metro's module graph for this run to prevent the
+development environment from being reloaded by Fast Refresh. Normal `npm start`
+behavior is unchanged.
 Actions taken in this mode affect production data. Restart this command after
 editing `.env`; source-code changes still use Fast Refresh.
 
@@ -36,11 +36,11 @@ The app needs your Supabase **project URL** and **anon (public) API key** at sta
 
 Do **not** use the `service_role` key in the app; it bypasses RLS and must stay server-side only.
 
-**Invitations RLS:** Tight policies require a Supabase Auth JWT where `auth.uid()` matches `public.users.id`. The default OTP-only anon client cannot satisfy that — see [`supabase/docs/RLS_INVITATIONS.md`](./supabase/docs/RLS_INVITATIONS.md) before applying [`supabase/migrations/002_invitations_rls_policies.sql`](./supabase/migrations/002_invitations_rls_policies.sql).
-
-**Expenses RLS:** [`supabase/migrations/004_expenses_rls_policies.sql`](./supabase/migrations/004_expenses_rls_policies.sql) adds payer/group-member rules for **`authenticated`** and permissive **`anon`** policies for the OTP-only client. See [`supabase/docs/RLS_EXPENSES.md`](./supabase/docs/RLS_EXPENSES.md).
-
-**Edge Function `send-invitation` (401):** The gateway defaults to requiring a JWT; this app invokes with the anon key only. [`supabase/config.toml`](./supabase/config.toml) sets `verify_jwt = false` for that function. After changing config, redeploy: `npm run supabase:deploy:send-invitation` (uses `--no-verify-jwt`). You can also toggle **Enforce JWT** off for that function in the Dashboard under Edge Functions → send-invitation → Details / Settings.
+**Database access:** Supabase Auth sessions identify callers with `auth.uid()`;
+app-domain users are linked through `public.users.auth_user_id`. Current access
+rules are described in the [invitations](./supabase/docs/RLS_INVITATIONS.md) and
+[expenses](./supabase/docs/RLS_EXPENSES.md) guides. Apply migrations in order;
+the early RLS migrations do not describe the current policy on their own.
 
 ```bash
 cp .env.example .env
@@ -94,9 +94,15 @@ In the dev server output, you'll find options to open the app in:
 
 You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
 
-### Invitation emails (Resend)
+### Invitations
 
-If the app creates an invite and the `send-invitation` Edge Function returns **200**, the handler successfully called Resend. Delivery still depends on: **`RESEND_API_KEY`** set for the function (Dashboard → Edge Functions → Secrets), **sender domain** verified in [Resend](https://resend.com/docs) (e.g. `support@split-space.com`), and the recipient inbox (spam / promotions). Check Resend’s **Logs** if the message does not arrive.
+The Add people screen sends friend requests to existing users and offers a
+share link for people who have not joined. The invitation service also retains
+an email path for invitation records. That path invokes the `send-invitation`
+Edge Function, which requires `RESEND_API_KEY` and a verified sender domain.
+The function's gateway JWT setting is in [`supabase/config.toml`](./supabase/config.toml);
+the deploy script uses `--no-verify-jwt`. Check Resend logs when an email sent
+through that path does not arrive.
 
 ### Tests
 
@@ -105,26 +111,24 @@ If the app creates an invite and the `send-invitation` Edge Function returns **2
 - **Edge Functions** — `supabase/functions/**/*.test.ts` (e.g. `send-invitation` payload parsing)
 - **App helpers** — `lib/**/*.test.ts`, `utils/**/*.test.ts` (validation, invite deep links)
 - **Services** — `services/**/*.test.ts` (mocked Supabase client for invitations, friendships, users)
+- **Components and hooks** — `components/**/*.test.tsx` and `hooks/**/*.test.*`
 
 ```bash
 npm test
 npm run test:watch
 ```
 
-**Optional later:** component tests with [Expo unit testing](https://docs.expo.dev/develop/unit-testing/) (jest-expo / React Native Testing Library) for focused UI coverage. Full user-flow E2E coverage is provided by the Detox setup described above.
+### iOS E2E testing with TesterArmy
 
-### iOS E2E testing with Detox
-
-Detox runs the native user-flow tests on the configured **iPhone 17 Pro** iOS
+TesterArmy runs the native user-flow tests on the configured **iPhone 17 Pro** iOS
 simulator. The current scenarios cover sign-in, Friends, Groups, creating a
 group, adding an expense, settlement flows (group and friend level), the
 expense edit/delete lifecycle via Expense Detail, group rename and deletion,
 and the Activity feed with balance verification.
 
-The retained behavior mapping for the serial suite is in
-[`docs/e2e-coverage-map.md`](./docs/e2e-coverage-map.md). The default full
-suite runs the focused journeys once; the smoke journey remains a separate
-development command.
+The [TesterArmy coverage matrix](./docs/tester-army-e2e.md) lists verified
+journeys and gaps. The default full suite runs the focused journeys; the smoke
+journey remains a separate development command.
 
 #### Prerequisites
 
@@ -294,7 +298,8 @@ artifacts for 30 days.
 
 This project is configured to use [EAS Workflows](https://docs.expo.dev/eas/workflows/get-started/) to automate some development and release processes. These commands are set up in [`package.json`](./package.json) and can be run using NPM scripts in your terminal.
 
-The default Git branch for this project is **`master`**. Production workflows are triggered by pushes to `master`.
+The default Git branch is **`master`**. Pushes to `master` trigger the preview
+workflow; production releases run on `v*` tags.
 
 ### Previews
 

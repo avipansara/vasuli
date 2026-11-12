@@ -108,7 +108,8 @@ Build profiles are defined in `eas.json`:
 
 - `development`: internal development client builds
 - `development-simulator`: iOS simulator development build
-- `preview`: internal preview builds
+- `preview`: store-distribution preview builds
+- `preview-simulator`: internal iOS simulator preview builds
 - `production`: store builds with auto-incrementing versions
 
 Existing workflow shortcuts are available through:
@@ -119,9 +120,9 @@ npm run draft
 npm run deploy
 ```
 
-The workflows are in `.eas/workflows/`. The production workflow builds and
-submits binaries when needed, or publishes platform updates when a compatible
-build already exists. Manual `eas update` commands must include an explicit
+Pushes to `master` trigger the EAS preview workflow. Production releases run
+through `.github/workflows/production-build.yml` on `v*` tags; `npm run deploy`
+is a manual EAS fallback. Manual `eas update` commands must include an explicit
 `--environment` such as `preview` or `production`.
 
 Use a development build when native modules or config plugins are not
@@ -150,10 +151,9 @@ official workflow documentation:
 ## Git and release notes
 
 - Do not commit, tag, push, or submit builds unless explicitly requested.
-- Significant features, fixes, refactors, specification changes, deployment
-  changes, and documentation changes should be recorded in `CHANGELOG.md`
-  under the current date. Keep entries concise and describe user-visible or
-  operational impact.
+- Record meaningful user-visible changes and operational requirements in
+  `CHANGELOG.md` under the current date. Keep entries concise; omit routine
+  refactors, tests, session notes, and implementation details without impact.
 - Update the relevant version metadata when preparing a release, then follow
   the repository’s requested commit, tag, push, and submission process. Do not
   invent release steps or perform them without explicit instruction.
@@ -162,8 +162,8 @@ official workflow documentation:
 
 ### Issue tracker
 
-Issues and specs are tracked as Local Markdown under `.scratch/`. See
-`docs/agents/issue-tracker.md`.
+Issues and specs are local Markdown under Git-ignored `.scratch/` and are not
+shared between checkouts. See `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 

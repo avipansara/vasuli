@@ -285,8 +285,9 @@ Vasuli intentionally differs by undoing the whole operation together.
 "Splitwise-style" in the original decision describes net settlement behavior,
 not identical deletion semantics or a claim about Splitwise's private schema.
 
-Implementation and verification are specified in
-[One settlement activity with whole-operation Delete](../../.scratch/delete-settlement-label/spec.md).
+The original implementation notes for one settlement activity with
+whole-operation Delete were kept in local scratch files and are not shared in
+the repository.
 Affected areas are the Friend/Group activity read models and components,
 shared confirmation and mutation controllers, and their tests. Read metadata
 may need additive extension under existing visibility rules; mutation

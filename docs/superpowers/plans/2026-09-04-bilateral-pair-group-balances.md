@@ -1,5 +1,8 @@
 # Bilateral Pair Group Balances Implementation Plan
 
+> Historical plan from 2026-09-04. Do not execute these steps as current work;
+> reassess the present code and settlement ADRs before planning changes.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Make every friend-pair group balance bilateral (what the two people owe each other, e.g. viewer↔friend = you owe $523.38) instead of negated-global-net (today's wrong −$1610.11), in both display and settlement validation, shipped atomically.

@@ -86,8 +86,6 @@ revisit trigger below is met.
 
 Verification references:
 
-- `docs/specs/2026-08-18-relationship-balance-projection.md`
-- `docs/specs/2026-08-18-group-detail-mutation-module.md`
 - `services/settlement-service.test.ts`
 
 The canonical scope-transfer sign convention and settlement RPC boundary are

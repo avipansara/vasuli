@@ -150,9 +150,9 @@ superseded.
 
 ## Implementation plan
 
-1. Reconcile the tickets under `.scratch/per-scope-settlement/issues/` with
-   the [spec](../../.scratch/per-scope-settlement/spec.md). Prior completion
-   evidence remains historical; add work for full-settlement cancellation.
+1. Reconcile any locally available tickets under `.scratch/per-scope-settlement/`.
+   Scratch files are not shared in Git. Prior completion evidence remains
+   historical; add work for full-settlement cancellation.
 2. Update `services/settlement-service.ts` and its planner tests with separate
    partial/full plans. Preserve direct-first and smallest-group partial order.
    Audit existing `ADR-0004` code comments for the superseded blanket ban.

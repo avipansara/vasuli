@@ -4,6 +4,9 @@ Accepted architecture decisions for Vasuli live in this directory. Their
 numbers are stable identifiers; later decisions supersede earlier ones rather
 than silently rewriting them.
 
+Consult the active decisions relevant to the work. Superseded records explain
+history and do not authorize implementation that conflicts with their successors.
+
 ## Active decisions
 
 - [ADR-0002 — Settlement module consolidation](0002-settlement-module-consolidation.md)

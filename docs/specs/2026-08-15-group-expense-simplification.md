@@ -1,5 +1,9 @@
 # Group Expense Simplification
 
+> Historical proposal from 2026-08-15, not an active implementation task.
+> Reassess it against current settlement decisions and product requirements
+> before starting work.
+
 ## Problem Statement
 
 When several people share expenses in a group, the current balances can create
