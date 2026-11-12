@@ -57,6 +57,9 @@ jobs:
       E2E_MEASUREMENT_SCOPE: ci-full
       E2E_RUN_ID: ci-full-${{ github.run_id }}-${{ github.run_attempt }}
       E2E_WORKER_ID: ci-worker-0
+      # The development project carries the recurring expense schema and the
+      # run-scoped cleanup that removes a saved rule with its posted expense.
+      E2E_RECURRING_PERSISTENCE: '1'
     steps:
       - name: Check out repository
         uses: actions/checkout@v4

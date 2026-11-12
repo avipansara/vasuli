@@ -69,6 +69,8 @@ test('a saved weekly recurring expense can be paused', async ({ app, screen, dev
     await expect(screen.getByTestId('recurring-expense-review-sheet')).toBeVisible();
     await screen.getByTestId('save-recurring-expense-button').tap();
     await expect(screen.getByLabel('View recurring expenses')).toBeVisible({ timeout: 20_000 });
+    // Let the saved-state card finish its entrance animation before the tap.
+    await new Promise((resolve) => setTimeout(resolve, 3000));
     await screen.getByLabel('View recurring expenses').tap();
     const rule = screen.getByLabel(new RegExp(`^${description},`));
     await expect(rule).toBeVisible({ timeout: 20_000 });

@@ -8,6 +8,7 @@
 
 - Update the TesterArmy runner and mobile engine used for device E2E tests.
 - Allow the E2E workflows to validate their development database host without a local environment file.
+- Apply the recurring expense migrations and the run-scoped cleanup to the development database, so the E2E suite now verifies a saved recurring rule.
 - Prevent a spurious “Group not found” alert while deleting a group.
 - Make the group and friend “Settle Up” buttons available to screen readers.
 - Make settlement deletion easier to reveal with a swipe.

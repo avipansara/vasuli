@@ -29,10 +29,10 @@ operation can select ambiguously with multiple booted simulators even when
 `E2E_IOS_DEVICE` pins the target.
 
 Expo 58 verification on 2026-11-12 passed the whole suite on both platforms:
-18 iOS Simulator tests on the iPhone 18 Pro and 20 Android Emulator tests on
-the Pixel 9a, each with only the saved recurring rule skipped. Both runs cover
-the account routes, the direct and group expense lifecycles, group splits and
-payer selection, the group lifecycle, recurring review and navigation, group
+19 iOS Simulator tests on the iPhone 18 Pro and 21 Android Emulator tests on
+the Pixel 9a, including the saved recurring rule. Both runs cover the account
+routes, the direct and group expense lifecycles, group splits and payer
+selection, the group lifecycle, recurring review and navigation, group
 stats, and the group, friend, and settlement reversal flows. The iOS state-reset
 case stays excluded from simulator runs because the mobile engine's reset can
 pick the wrong booted simulator. A disposable development-only friend profile
@@ -61,7 +61,7 @@ supports the balance tests.
 | same — settlement reversal | Delete a committed settlement, restore the `$12.00` balance, retain deleted history | **Passed** (iOS Simulator, Android Emulator) |
 | `recurring-expenses.e2e.ts` — weekly rule review/cancel | Review sheet and cancel-before-save | **Passed** (iOS Simulator, Android Emulator) |
 | same — Activity opens recurring management route | Recurring header and add button | **Passed** (iOS Simulator, Android Emulator) |
-| same — save and pause a weekly rule | Rule appears in management, then exposes Resume after pausing | **Gated**: development recurring migrations and cleanup are not installed |
+| same — save and pause a weekly rule | Rule appears in management, then exposes Resume after pausing | **Passed** (iOS Simulator, Android Emulator) |
 | `native-groups-link.e2e.ts` — stable groups deep link | Android `vasuli://groups` opens Groups | **Passed** (Android Emulator Pixel 9a) |
 
 ## Route coverage accounting
@@ -97,8 +97,8 @@ uncovered by this TesterArmy suite and need a manual or future automated check.
 | `/help-support` | **Verified** (iOS Simulator, Android Emulator): FAQ heading |
 | `/privacy-policy` | **Verified** (iOS Simulator, Android Emulator): policy heading |
 | `/terms-conditions` | **Verified** (iOS Simulator, Android Emulator): terms heading |
-| `/recurring-expenses` | **Verified** (iOS Simulator, Android Emulator): header/add button; persisted schedules unmanaged |
-| `/recurring-expenses/[id]` | Uncovered: detail, pause/resume/stop |
+| `/recurring-expenses` | **Verified** (iOS Simulator, Android Emulator): header/add button; a saved rule appears in the management list |
+| `/recurring-expenses/[id]` | **Verified** (iOS Simulator, Android Emulator): saved rule detail opens and the rule pauses |
 | `/recurring-expenses/edit/[id]` | Uncovered: persisted schedule edits |
 | `/scan-qr` | Manual: camera permission, live scan and second-device QR input |
 | `/settlement-detail/[id]` | Uncovered: operation detail/reversal |
@@ -112,9 +112,9 @@ group flows require the project wrapper's run ID and cleanup. Never direct
 fixture RPCs at production.
 
 The saved recurring-rule test is skipped unless `E2E_RECURRING_PERSISTENCE=1`.
-Before enabling it, apply the recurring migrations and the updated development-only
-`supabase/fixtures/e2e-run-scoped-fixtures.sql` purge function to the approved
-development project. The current development database has neither the recurring
-tables nor the updated cleanup, so the test must remain disabled there. The new
-cleanup passed transactional local tests; the prior development cleanup remains
-installed.
+The development project carries the recurring migrations and the updated
+development-only `supabase/fixtures/e2e-run-scoped-fixtures.sql` purge function,
+so the test runs there and the full workflow sets the flag. A new development
+project needs both before the flag is safe: the recurring migrations, and the
+cleanup function that removes a saved rule with its posted expense while
+leaving another run's rule alone.
