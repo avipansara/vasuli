@@ -31,7 +31,7 @@ import { formatDate } from '@/utils/date';
 import { filterFriendsForExpenseSearch } from '@/utils/friend-search';
 import { getGroupExpenseParticipant } from '@/utils/group-expense-participants';
 import { getEvenSplitValues, getSplitProgress, resolveExpenseSplits } from '@/utils/split-validation';
-import { normalizeCurrencyInput } from '@/utils/validation';
+import { getVisibleEmail, normalizeCurrencyInput } from '@/utils/validation';
 import { getInitialPostingState } from '@/utils/recurring-schedule';
 import { getRecurringSplitFormValues } from '@/utils/recurring-edit-form';
 import { getCurrencySymbol } from '@/utils/currency';
@@ -46,7 +46,9 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import NetInfo from '@react-native-community/netinfo';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
+import { webSafeAreaProps } from '@/utils/web-safe-area';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import type { ReactNode } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -59,10 +61,33 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  type TextInputInstance,
+  type StyleProp,
   TouchableOpacity,
   View,
+  type ViewStyle,
 } from 'react-native';
 
+type RecurringReviewSheetContainerProps = {
+  children: ReactNode;
+  style: StyleProp<ViewStyle>;
+};
+
+function RecurringReviewSheetContainer({ children, style }: RecurringReviewSheetContainerProps) {
+  if (Platform.OS === 'web') {
+    return (
+      <View testID="recurring-expense-review-sheet" {...webSafeAreaProps('review-sheet')} style={style}>
+        {children}
+      </View>
+    );
+  }
+
+  return (
+    <SafeAreaView testID="recurring-expense-review-sheet" edges={['bottom']} style={style}>
+      {children}
+    </SafeAreaView>
+  );
+}
 
 export default function AddExpenseScreen() {
   const { colors, recurring, settle, isDark } = useThemeColors();
@@ -218,8 +243,8 @@ export default function AddExpenseScreen() {
   const [slideAnim] = useState(() => new Animated.Value(30));
 
   // Input refs for focus management
-  const amountInputRef = useRef<TextInput>(null);
-  const descriptionInputRef = useRef<TextInput>(null);
+  const amountInputRef = useRef<TextInputInstance>(null);
+  const descriptionInputRef = useRef<TextInputInstance>(null);
 
   const visibleFriends = useMemo(() => {
     if (preselectedFriendId) {
@@ -1154,9 +1179,9 @@ export default function AddExpenseScreen() {
                                   <Text style={[styles.optionText, { color: isSelected ? (settle.buttonBackground) : (colors.text) }]}>
                                     {friend.name}
                                   </Text>
-                                  {friend.email && (
+                                  {getVisibleEmail(friend.email) && (
                                     <Text style={[styles.optionSubtext, { color: isDark ? '#6B7280' : colors.textSecondary }]}>
-                                      {friend.email}
+                                      {getVisibleEmail(friend.email)}
                                     </Text>
                                   )}
                                 </View>
@@ -1207,7 +1232,7 @@ export default function AddExpenseScreen() {
         transparent
         onRequestClose={() => setShowRecurringReview(false)}>
         <View style={styles.reviewBackdrop}>
-          <SafeAreaView testID="recurring-expense-review-sheet" edges={['bottom']} style={[styles.reviewSheet, { backgroundColor: colors.modalBackground, borderColor: colors.border }]}>
+          <RecurringReviewSheetContainer style={[styles.reviewSheet, { backgroundColor: colors.modalBackground, borderColor: colors.border }]}>
             <ScrollView
               testID="recurring-review-scroll"
               style={styles.reviewBody}
@@ -1252,7 +1277,7 @@ export default function AddExpenseScreen() {
                 <ThemedText style={{ color: colors.textSecondary, fontWeight: '600' }}>Back to expense</ThemedText>
               </TouchableOpacity>
             </View>
-          </SafeAreaView>
+          </RecurringReviewSheetContainer>
         </View>
       </Modal>
     </View >

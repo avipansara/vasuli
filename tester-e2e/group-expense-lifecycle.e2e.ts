@@ -52,7 +52,7 @@ test('the group list opens a seeded group stats route', async ({ app, screen, de
   try {
     fixture = await fixtures.seedOutstandingGroup({ testKey });
   } catch (err) {
-    if (err?.message?.includes('E2E_FIXTURE_CLEAN_FRIEND_NOT_FOUND')) {
+    if (err instanceof Error && err.message.includes('E2E_FIXTURE_CLEAN_FRIEND_NOT_FOUND')) {
       test.skip();
       return;
     }

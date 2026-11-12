@@ -5,6 +5,7 @@ import { NavigationHeader } from '@/components/ui/screen-header';
 import { ThemedText } from '@/components/themed-text';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useThemeColors } from '@/hooks/use-theme-colors';
+import { usePlatformSafeAreaInsets } from '@/hooks/use-platform-safe-area-insets';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { groupDetailService } from '@/services/group-detail-service';
 import { exportGroupExpensesCsv } from '@/services/group-expense-csv';
@@ -17,9 +18,9 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { formatDateRange } from '@/utils/date';
+import { webSafeAreaProps } from '@/utils/web-safe-area';
 
 const AVATAR_COLORS = ['#7C5CFC', '#22C55E', '#F59E0B', '#3B82F6', '#EC4899'];
 
@@ -120,7 +121,7 @@ function BalanceColumn({ title, members, color, avatarById, surface, maxVisible 
 export default function GroupStatsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user } = useAuth();
-  const insets = useSafeAreaInsets();
+  const insets = usePlatformSafeAreaInsets();
   useCurrency();
   const { colors, gradients, friendDetail: theme, isDark } = useThemeColors();
   const [isExporting, setIsExporting] = useState(false);
@@ -216,9 +217,10 @@ export default function GroupStatsScreen() {
       />
       <ScrollView
         style={styles.content}
+        {...webSafeAreaProps('group-stats-content')}
         contentContainerStyle={[
           styles.contentContainer,
-          { paddingBottom: Math.max(insets.bottom, 16) + 100 },
+          Platform.OS === 'web' ? undefined : { paddingBottom: Math.max(insets.bottom, 16) + 100 },
         ]}
         showsVerticalScrollIndicator={false}>
         <View style={styles.groupIntro}>

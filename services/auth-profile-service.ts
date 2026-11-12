@@ -7,10 +7,22 @@ type LinkAuthUserParams = {
   authUserId: string;
   email?: string;
   name?: string;
+  allowMissingEmail?: boolean;
 };
 
 function isMissingRow(error: any): boolean {
   return error?.code === 'PGRST116';
+}
+
+async function findProfileByAuthUserId(authUserId: string) {
+  const { data, error } = await supabase
+    .from('users')
+    .select('*')
+    .eq('auth_user_id', authUserId)
+    .single();
+
+  if (error && !isMissingRow(error)) throw error;
+  return data;
 }
 
 async function findProfileByEmail(email: string) {
@@ -46,8 +58,6 @@ async function createProfile(params: Required<Pick<LinkAuthUserParams, 'authUser
       auth_user_id: params.authUserId,
       name: params.name,
       email: params.email || null,
-      email_verified: !!params.email,
-      phone_verified: false,
       is_active: true,
     })
     .select()
@@ -66,11 +76,11 @@ export type LinkAuthUserResult = {
 export async function linkAuthUserToProfile(params: LinkAuthUserParams): Promise<LinkAuthUserResult> {
   const email = normalizeEmail(params.email);
 
-  if (!email) {
+  if (!email && !params.allowMissingEmail) {
     throw new Error('Email is required to link an auth user');
   }
 
-  const existingProfile = await findProfileByEmail(email);
+  const existingProfile = email ? await findProfileByEmail(email) : null;
 
   if (existingProfile) {
     if (existingProfile.auth_user_id === params.authUserId) {
@@ -78,6 +88,11 @@ export async function linkAuthUserToProfile(params: LinkAuthUserParams): Promise
     }
 
     return { user: await attachAuthUserId(existingProfile.id, params.authUserId), created: false };
+  }
+
+  const existingByAuthUser = await findProfileByAuthUserId(params.authUserId);
+  if (existingByAuthUser) {
+    return { user: mapUserRow(existingByAuthUser), created: false };
   }
 
   return {

@@ -17,6 +17,8 @@ test('a group can be created, renamed from the list, and deleted from its detail
 
   const group = groupCard(screen, groupName);
   await expect(group).toBeVisible({ timeout: 15_000 });
+  // The card is visible before the create-screen transition finishes accepting swipes.
+  await new Promise((resolve) => setTimeout(resolve, 3000));
   const box = await group.boundingBox();
   if (box) {
     await screen.swipe({
@@ -33,6 +35,8 @@ test('a group can be created, renamed from the list, and deleted from its detail
   await replaceText(screen.getByTestId('edit-group-name-input'), groupName.length, renamed);
   await screen.getByTestId('edit-group-save-button').tap();
   await expect(groupCard(screen, renamed)).toBeVisible({ timeout: 15_000 });
+  // The list also appears before the edit-screen transition accepts taps.
+  await new Promise((resolve) => setTimeout(resolve, 3000));
   await groupCard(screen, renamed).tap();
 
   await screen.getByTestId('delete-group-button').tap();

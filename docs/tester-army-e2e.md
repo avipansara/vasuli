@@ -3,6 +3,20 @@
 This document tracks the TesterArmy (`@e2e-dev/mobile`) suite authored for
 Codex task 7.
 
+The runner now uses `e2e@0.23.0` and `@e2e-dev/mobile@0.12.6`. It fails the run
+when a test skips after a soft assertion failure; clean precondition skips
+remain skips. Interrupted tests are reported separately, and the CLI exits
+with code 130 for an interrupted run. Both targets declare `app.bundleId` and
+install their configured build in the test helper, keeping Android package
+discovery explicit.
+
+Upgrade verification on 2026-10-06 passed strict TypeScript checking, all 906
+Vitest tests, and the focused malformed-email validation test on iPhone 18 Pro.
+No Android device was connected for an upgrade smoke run. Keep only one iOS
+simulator booted for tests using `app.clearState()`: the mobile engine's reset
+operation can select ambiguously with multiple booted simulators even when
+`E2E_IOS_DEVICE` pins the target.
+
 ## Test suite and scenario matrix
 
 | Test scenario | Key assertions | Result |
@@ -15,7 +29,7 @@ Codex task 7.
 | same — Profile opens terms and conditions | Financial Disclaimer heading | **Passed** (iOS Simulator) |
 | same — Profile opens Help and Support | FAQ heading | **Passed** (iOS Simulator) |
 | same — sign-in keeps Continue disabled for a malformed email | Valid email enables Continue; appended invalid character disables it | **Passed** (iOS Simulator) |
-| `group-management.e2e.ts` — group create, rename, delete | Run-scoped group appears, rename appears, deletion yields Restore action | **Passed** (iOS Simulator) |
+| `group-management.e2e.ts` — group create, rename, delete | Run-scoped group appears, rename appears, deletion yields Restore action | **Passed** on iOS Simulator with Expo 58 on 2026-11-12; the test waits for the create and edit transitions before interacting with the list |
 | `group-expense-lifecycle.e2e.ts` — seeded group member adds/edits expense | Expense appears, edited `$24.50` appears, delete hides row | **Passed** (iOS Simulator) |
 | same — group list opens seeded stats | Stats route, Total spent, seeded `$12.00` | Gated: fixture requires clean friend without prior settlement records |
 | `group-expense-splits.e2e.ts` — exact participant split | Submits `$20.00` Unequal split of `$14.50` and `$5.50`, expense row appears | **Passed** (iOS Simulator) |

@@ -458,16 +458,18 @@ export async function syncSupabaseAuthSessionToAppProfile(expectedEmail?: string
   const email = normalizeEmail(authUser?.email);
   const expected = normalizeEmail(expectedEmail);
 
-  if (!authUser?.id || !email) return null;
+  if (!authUser?.id) return null;
   if (expected && expected !== email) {
     await supabase.auth.signOut();
     return null;
   }
 
+  const metadataName = authUser.user_metadata?.name ?? authUser.user_metadata?.full_name;
   const { user: profile, created } = await linkAuthUserToProfile({
     authUserId: authUser.id,
     email,
-    name: typeof authUser.user_metadata?.name === 'string' ? authUser.user_metadata.name : undefined,
+    name: typeof metadataName === 'string' ? metadataName : undefined,
+    ...(email ? {} : { allowMissingEmail: true }),
   });
   if (created) await markAccountCreated(profile.id);
   return createAppUserFromProfile(profile);

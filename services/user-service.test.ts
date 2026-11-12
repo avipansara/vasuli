@@ -97,6 +97,13 @@ describe('userService.getByEmail', () => {
     expect(user?.id).toBe('u2')
     expect(mocks.maybeSingle).toHaveBeenCalledOnce()
   })
+
+  it('does not query profiles for Apple private relay email addresses', async () => {
+    const user = await userService.getByEmail('hidden-token@privaterelay.appleid.com')
+
+    expect(user).toBeNull()
+    expect(mocks.from).not.toHaveBeenCalled()
+  })
 })
 
 describe('userService.deleteAccount', () => {

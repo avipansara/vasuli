@@ -5,13 +5,6 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { NavigationHeader } from '@/components/ui/screen-header';
 import { GenericSkeleton } from '@/components/ui/skeleton';
 import { UserAvatar } from '@/components/ui/user-avatar';
-import {
-  ACCENT_TEAL,
-  BG_ICON_DARK,
-  BG_ICON_LIGHT,
-  BORDER_ACCENT_DARK,
-  BORDER_ACCENT_LIGHT,
-} from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useAnalytics } from '@/contexts/analytics-context';
 import { useRealtime } from '@/hooks/use-realtime';
@@ -29,7 +22,7 @@ import { userService } from '@/services/user-service';
 import type { Invitation } from '@/types/database';
 import { formatDate } from '@/utils/date';
 import { getSentInvitationDisplay } from '@/utils/invitation-display';
-import { normalizeEmail } from '@/utils/validation';
+import { getVisibleEmail, normalizeEmail } from '@/utils/validation';
 import { trackInviteAccepted } from '@/lib/analytics/track';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -63,8 +56,9 @@ type SentListItem =
   | { type: 'email_invitation'; id: string; data: InvitationWithDetails };
 
 function getRequesterDisplayName(request: PendingFriendshipRequest): string {
+  const visibleEmail = getVisibleEmail(request.requesterEmail);
   return request.requesterName?.trim()
-    || request.requesterEmail?.split('@')[0]
+    || visibleEmail?.split('@')[0]
     || 'Someone';
 }
 
@@ -78,7 +72,6 @@ export default function InvitationsScreen() {
   const queryClient = useQueryClient();
 
   const userId = user?.id;
-  const userName = user?.name;
   const normalizedEmail = normalizeEmail(user?.email);
 
   const receivedInvitationsQueryKey = useMemo(
@@ -358,20 +351,6 @@ export default function InvitationsScreen() {
     );
   }, [loadInvitations]);
 
-  const handleResend = useCallback(async (invitation: InvitationWithDetails) => {
-    setActionLoading(invitation.id);
-    try {
-      await invitationService.resend(invitation.id, userName);
-      Alert.alert('Success', 'Invitation resent!');
-      await loadInvitations();
-    } catch (error) {
-      console.error('Error resending invitation:', error);
-      Alert.alert('Error', 'Failed to resend invitation');
-    } finally {
-      setActionLoading(null);
-    }
-  }, [userName, loadInvitations]);
-
   const handleCancel = useCallback(async (invitation: InvitationWithDetails) => {
     Alert.alert(
       'Cancel Invitation',
@@ -525,9 +504,9 @@ export default function InvitationsScreen() {
                 <ThemedText type="defaultSemiBold" numberOfLines={1} style={styles.cardTitle}>
                   {requesterName}
                 </ThemedText>
-                {req.requesterEmail ? (
+                {getVisibleEmail(req.requesterEmail) ? (
                   <ThemedText numberOfLines={1} style={[styles.cardSubtitle, { color: colors.textSecondary }]}>
-                    {req.requesterEmail}
+                    {getVisibleEmail(req.requesterEmail)}
                   </ThemedText>
                 ) : null}
                 <ThemedText numberOfLines={1} style={[styles.cardDate, { color: colors.textSecondary }]}>
@@ -716,6 +695,7 @@ export default function InvitationsScreen() {
     [
       actionLoading,
       cardSurfaceStyle,
+      colors.accent,
       colors.textSecondary,
       handleAccept,
       handleAcceptFriendRequest,
@@ -724,7 +704,6 @@ export default function InvitationsScreen() {
       invitations.danger,
       invitations.dangerBorder,
       invitations.dangerSurface,
-      isDark,
     ]
   );
 
@@ -758,7 +737,7 @@ export default function InvitationsScreen() {
                   {req.recipientName}
                 </ThemedText>
                 <ThemedText style={[styles.cardSubtitle, { color: colors.textSecondary }]}>
-                  {req.recipientEmail || 'Friend request sent'}
+                  {getVisibleEmail(req.recipientEmail) || 'Friend request sent'}
                 </ThemedText>
                 <ThemedText style={[styles.cardDate, { color: colors.textSecondary }]}>
                   {isPending ? formatDate(req.createdAt, 'short') : `Declined · ${formatDate(req.createdAt, 'short')}`}
@@ -862,44 +841,6 @@ export default function InvitationsScreen() {
           {isPending && (
             <View style={styles.cardActions}>
               <TouchableOpacity
-                onPress={() => handleResend(inv)}
-                disabled={isLoading}
-                activeOpacity={0.7}
-                accessibilityRole="button"
-                accessibilityLabel={`Resend invitation to ${display.title}`}
-                accessibilityState={{ disabled: isLoading, busy: isLoading }}
-                style={[
-                  styles.actionButton,
-                  styles.actionButtonSecondary,
-                  {
-                    backgroundColor: isDark ? BG_ICON_DARK : BG_ICON_LIGHT,
-                    borderColor: isDark ? BORDER_ACCENT_DARK : BORDER_ACCENT_LIGHT,
-                    opacity: isLoading ? 0.5 : 1,
-                  },
-                ]}
-              >
-                {isLoading ? (
-                  <ActivityIndicator size="small" color={colors.accent} />
-                ) : (
-                  <>
-                    <IconSymbol
-                      name="arrow.clockwise"
-                      size={16}
-                      color={colors.accent}
-                    />
-                    <ThemedText
-                      style={[
-                        styles.actionText,
-                        { color: colors.accent },
-                      ]}
-                    >
-                      Resend
-                    </ThemedText>
-                  </>
-                )}
-              </TouchableOpacity>
-
-              <TouchableOpacity
                 onPress={() => handleCancel(inv)}
                 disabled={isLoading}
                 activeOpacity={0.7}
@@ -936,16 +877,17 @@ export default function InvitationsScreen() {
       actionLoading,
       cardSurfaceStyle,
       colors.textSecondary,
-      colors.tint,
       handleCancel,
       handleCancelFriendRequest,
       handleResendFriendRequest,
-      handleResend,
       invitations.danger,
       invitations.dangerBorder,
       invitations.dangerSurface,
+      invitations.divider,
       invitations.icon,
-      isDark,
+      invitations.pendingBorder,
+      invitations.pendingSurface,
+      invitations.pendingText,
     ]
   );
 

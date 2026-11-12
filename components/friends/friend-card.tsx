@@ -6,7 +6,7 @@ import type { FriendRelationshipProjection } from '@/services/friend-detail-serv
 import type { User } from '@/types/database';
 import { useCurrency } from '@/contexts/currency-context';
 import { formatCurrency } from '@/utils/currency';
-import { getDisplayName } from '@/utils/validation';
+import { getDisplayName, getVisibleEmail } from '@/utils/validation';
 import { memo, useMemo } from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
@@ -98,6 +98,7 @@ function FriendCardInner({ friend, onPress, onDelete }: FriendCardProps) {
     && friend.relationship.totalsByCurrency.filter(total => total.amount !== 0).length === 1
   );
   const displayName = getDisplayName(friend.name, friend.email);
+  const visibleEmail = getVisibleEmail(friend.email);
 
   const balanceBreakdown = useMemo(() => {
     if (!friend.relationship) return [];
@@ -198,9 +199,9 @@ function FriendCardInner({ friend, onPress, onDelete }: FriendCardProps) {
                 style={[styles.name, { color: isDark ? '#f8fafc' : colors.text }]}>
                 {displayName}
               </ThemedText>
-              {friend.email ? (
+              {visibleEmail ? (
                 <ThemedText numberOfLines={1} style={[styles.email, { color: isDark ? '#64748b' : emailColor }]}>
-                  {friend.email}
+                  {visibleEmail}
                 </ThemedText>
               ) : null}
             </View>

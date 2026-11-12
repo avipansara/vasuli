@@ -32,11 +32,29 @@ export function normalizeEmail(email: string | undefined): string | undefined {
   return trimmed.length === 0 ? undefined : trimmed;
 }
 
+export function isApplePrivateRelayEmail(email: string | null | undefined): boolean {
+  const normalized = normalizeEmail(email ?? undefined);
+  return !!normalized && normalized.endsWith('@privaterelay.appleid.com');
+}
+
+export function getVisibleEmail(email: string | null | undefined): string | undefined {
+  const normalized = normalizeEmail(email ?? undefined);
+  if (!normalized || isApplePrivateRelayEmail(normalized)) {
+    return undefined;
+  }
+  return email?.trim();
+}
+
 /** Use the verified email as a useful identity cue when a profile has no real name. */
 export function getDisplayName(name: string | undefined, email: string | undefined): string {
   const normalizedName = name?.trim();
   if (normalizedName && normalizedName.toLowerCase() !== 'user') return normalizedName;
   const normalizedEmail = normalizeEmail(email);
+  if (isApplePrivateRelayEmail(normalizedEmail)) {
+    return normalizedName && normalizedName.toLowerCase() !== 'user'
+      ? normalizedName
+      : 'Vasuli user';
+  }
   return normalizedEmail?.split('@')[0] || normalizedName || 'Unknown friend';
 }
 

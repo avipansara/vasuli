@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import type { User } from '@/types/database';
-import { normalizeEmail } from '@/utils/validation';
+import { isApplePrivateRelayEmail, normalizeEmail } from '@/utils/validation';
 import { mapUserRow } from './database-row-mappers';
 
 const OUTSTANDING_BALANCES_CODE = 'ACCOUNT_HAS_OUTSTANDING_BALANCES';
@@ -101,7 +101,7 @@ export const userService = {
 
   async getByEmail(email: string): Promise<User | null> {
     const normalized = normalizeEmail(email);
-    if (!normalized) return null;
+    if (!normalized || isApplePrivateRelayEmail(normalized)) return null;
 
     const { data, error } = await supabase
       .from('users')

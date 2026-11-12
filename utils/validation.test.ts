@@ -5,6 +5,8 @@ import {
   getEmailErrorMessage,
   getDisplayName,
   getPersonNameErrorMessage,
+  getVisibleEmail,
+  isApplePrivateRelayEmail,
   isEmailValid,
   normalizeCurrencyInput,
   normalizeEmail,
@@ -51,6 +53,25 @@ describe('getDisplayName', () => {
 
   it('keeps a real profile name', () => {
     expect(getDisplayName('Alex Johnson', 'alex@example.com')).toBe('Alex Johnson')
+  })
+
+  it('does not expose an Apple Private Relay token as the display name', () => {
+    expect(getDisplayName(undefined, '8k2j4h9s7d@privaterelay.appleid.com')).toBe('Vasuli user')
+    expect(getDisplayName('User', '8k2j4h9s7d@privaterelay.appleid.com')).toBe('Vasuli user')
+  })
+})
+
+describe('Apple Private Relay email helpers', () => {
+  it('detects Apple Private Relay addresses case-insensitively', () => {
+    expect(isApplePrivateRelayEmail('  abc123@PrivateRelay.AppleID.com ')).toBe(true)
+    expect(isApplePrivateRelayEmail('alex@example.com')).toBe(false)
+    expect(isApplePrivateRelayEmail(undefined)).toBe(false)
+  })
+
+  it('hides Apple Private Relay addresses from public display', () => {
+    expect(getVisibleEmail('abc123@privaterelay.appleid.com')).toBeUndefined()
+    expect(getVisibleEmail('  alex@example.com  ')).toBe('alex@example.com')
+    expect(getVisibleEmail('')).toBeUndefined()
   })
 })
 

@@ -14,6 +14,7 @@ import { useAnalytics } from '@/contexts/analytics-context';
 import { useFriendDetailController } from '@/hooks/use-friend-detail-controller';
 import { useSettlementDeleteFlow } from '@/hooks/use-settlement-delete-flow';
 import { useThemeColors } from '@/hooks/use-theme-colors';
+import { usePlatformSafeAreaInsets } from '@/hooks/use-platform-safe-area-insets';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { buildFriendSettlementOperationActivity } from '@/services/friend-settlement-operation-view';
 import {
@@ -27,10 +28,11 @@ import type { Expense, User } from '@/types/database';
 import { useCurrency } from '@/contexts/currency-context';
 import { normalizeBalance } from '@/utils/currency';
 import { formatDate } from '@/utils/date';
-import { getFirstName } from '@/utils/validation';
+import { getFirstName, getVisibleEmail } from '@/utils/validation';
 import { trackExpenseDeleted } from '@/lib/analytics/track';
+import { webSafeAreaProps } from '@/utils/web-safe-area';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router, useLocalSearchParams, useNavigation } from 'expo-router';
+import { useRouter, useLocalSearchParams, usePreventRemove, type Href } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Animated, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
 import type { SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable';
@@ -40,7 +42,6 @@ import Reanimated, {
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface UserWithBalance extends User {
   balance: number;
@@ -60,30 +61,25 @@ const ACTIVITY_FILTERS: { id: ActivityFilter; label: string; icon: IconSymbolNam
 export default function FriendDetailScreen() {
   const { id, returnTo } = useLocalSearchParams<{ id: string; returnTo?: string }>();
   const { currency: preferredCurrency, formatCurrency } = useCurrency();
-  const navigation = useNavigation();
-  const isReturningRef = useRef(false);
+  const router = useRouter();
+  const [isReturning, setIsReturning] = useState(false);
+  const disablePrevention = usePreventRemove(Boolean(returnTo) && !isReturning, () => {
+    setIsReturning(true);
+  });
 
   const handleBack = useCallback(() => {
     if (returnTo) {
-      isReturningRef.current = true;
-      router.replace(returnTo as any);
+      setIsReturning(true);
     } else {
       router.back();
     }
-  }, [returnTo]);
+  }, [returnTo, router]);
 
   useEffect(() => {
-    if (!returnTo) return;
-
-    const unsubscribe = navigation.addListener('beforeRemove', (e) => {
-      if (isReturningRef.current) return;
-      e.preventDefault();
-      isReturningRef.current = true;
-      router.replace(returnTo as any);
-    });
-
-    return unsubscribe;
-  }, [navigation, returnTo]);
+    if (!isReturning || !returnTo) return;
+    disablePrevention();
+    router.replace(returnTo as Href);
+  }, [disablePrevention, isReturning, returnTo, router]);
 
   const { gradients, colors, settle, friendDetail: friendDetailTheme, isDark } = useThemeColors();
   const [activityFilter, setActivityFilter] = useState<ActivityFilter>('all');
@@ -96,7 +92,7 @@ export default function FriendDetailScreen() {
   const swipeableRefs = useRef<Map<string, SwipeableMethods>>(new Map());
 
   // Animations
-  const insets = useSafeAreaInsets();
+  const insets = usePlatformSafeAreaInsets();
   const [scrollY] = useState(() => new Animated.Value(0));
 
   const headerTitleOpacity = scrollY.interpolate({
@@ -561,7 +557,7 @@ export default function FriendDetailScreen() {
             end={{ x: 0, y: 1 }}
             accessible
             accessibilityRole="summary"
-            accessibilityLabel={`${friend.name}${friend.email ? `, ${friend.email}` : ''}, ${balanceAccessibilityValue}`}
+            accessibilityLabel={`${friend.name}${getVisibleEmail(friend.email) ? `, ${getVisibleEmail(friend.email)}` : ''}, ${balanceAccessibilityValue}`}
             accessibilityLiveRegion="polite"
             style={[styles.summaryCard, {
               borderWidth: 0,
@@ -824,10 +820,13 @@ export default function FriendDetailScreen() {
       </Animated.ScrollView>
 
       {/* Floating Add Expense Button */}
-      <View style={[styles.floatingButtonContainer, {
-        bottom: Math.max(insets.bottom, 12) + 20,
-        right: Math.max(insets.right, 0) + 18,
-      }]}>
+      <View
+        {...webSafeAreaProps('friend-floating-expense')}
+        style={[styles.floatingButtonContainer, Platform.OS === 'web' ? undefined : {
+          bottom: Math.max(insets.bottom, 12) + 20,
+          right: Math.max(insets.right, 0) + 18,
+        }]}
+      >
         <TouchableOpacity
           accessibilityLabel="Add expense"
           accessibilityRole="button"

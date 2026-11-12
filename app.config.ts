@@ -31,15 +31,12 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         ],
       ]
     : [];
-  const pluginsWithPostHog = [...plugins, ...posthogPlugin];
+  const pluginsWithPostHog = [...plugins, ...posthogPlugin, 'expo-apple-authentication'];
   const pluginsWithBuildProperties: ExpoConfig['plugins'] = [
     ...pluginsWithPostHog,
     [
       'expo-build-properties',
       {
-        ios: {
-          enableSceneSupport: true,
-        },
         ...(!isDev && !isPreview
           ? {
               android: {
@@ -62,6 +59,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     ios: {
       ...config.ios,
       bundleIdentifier,
+      usesAppleSignIn: true,
     },
     android: {
       ...config.android,

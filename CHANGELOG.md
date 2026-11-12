@@ -1,5 +1,30 @@
 ## [Unreleased]
 
+- Upgrade to Expo SDK 58, React Native 0.88, and React 19.3, including matching navigation, animation, and native-module dependencies. Rebuild development clients and ship a new app version and native binary before publishing updates, because SDK 57 binaries cannot load this runtime.
+- Preserve input focus and friend-detail return navigation with the new React Native and Expo Router APIs.
+- Replace deprecated notification and CSV file APIs, and keep browser controls clear of device safe areas under Expo Router 58.
+
+## 2026-11-12
+
+- Update the TesterArmy runner and mobile engine used for device E2E tests.
+
+## [1.0.29] - 2026-11-07
+
+### Highlights
+
+- Sign in or create an account with Apple on iOS, including with Hide My Email. Apple relay addresses stay hidden in friend and group screens.
+- Invite people who haven't joined Vasuli by sharing a link. Vasuli no longer sends referral emails to those addresses from the app.
+
+### Upgrade notes
+
+This release requires a new iOS binary and the Apple sign-in capability on the production provisioning profile. The Apple provider must be enabled in Supabase. See the [setup guide](docs/sign-in-with-apple.md). No database migration is needed for these changes.
+
+[Full changelog](https://github.com/avipansara/vasuli/compare/v1.0.28...v1.0.29)
+
+## 2026-10-06
+
+- Upgrade the TesterArmy SDK and mobile engine, and fail CI on tests skipped after a soft assertion failure.
+
 ## [1.0.28] - 2026-10-01
 
 ### Highlights

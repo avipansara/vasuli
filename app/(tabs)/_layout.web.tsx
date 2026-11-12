@@ -1,5 +1,5 @@
 import { BlurView } from 'expo-blur';
-import { Tabs } from 'expo-router';
+import { Tabs } from 'expo-router/js-tabs';
 import React from 'react';
 import { Platform, StyleSheet, View, useWindowDimensions } from 'react-native';
 
@@ -10,7 +10,7 @@ import { RouteErrorBoundary } from '@/components/ui/route-error-boundary';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 
 /**
- * Web keeps JS Tabs + floating bar. Native uses `unstable-native-tabs` in `_layout.tsx`
+ * Web keeps JS Tabs + floating bar. Native uses `native-tabs` in `_layout.tsx`
  * (system tab bar, SF Symbols, iOS 26 minimize behavior).
  */
 export default function TabLayoutWeb() {
@@ -88,21 +88,21 @@ export default function TabLayoutWeb() {
             name="friends"
             options={{
               title: 'Friends',
-              tabBarIcon: ({ color }) => <IconSymbol size={28} name="person.2.fill" color={color} />,
+              tabBarIcon: ({ color }) => <IconSymbol size={28} name="person.2.fill" color={typeof color === 'string' ? color : colors.tint} />,
             }}
           />
           <Tabs.Screen
             name="groups"
             options={{
               title: 'Groups',
-              tabBarIcon: ({ color }) => <IconSymbol size={28} name="person.3.fill" color={color} />,
+              tabBarIcon: ({ color }) => <IconSymbol size={28} name="person.3.fill" color={typeof color === 'string' ? color : colors.tint} />,
             }}
           />
           <Tabs.Screen
             name="activity"
             options={{
               title: 'Activity',
-              tabBarIcon: ({ color }) => <IconSymbol size={28} name="clock.fill" color={color} />,
+              tabBarIcon: ({ color }) => <IconSymbol size={28} name="clock.fill" color={typeof color === 'string' ? color : colors.tint} />,
             }}
           />
           <Tabs.Screen
@@ -110,7 +110,7 @@ export default function TabLayoutWeb() {
             options={{
               title: 'Profile',
               tabBarIcon: ({ color }) => (
-                <IconSymbol size={28} name="person.circle.fill" color={color} />
+                <IconSymbol size={28} name="person.circle.fill" color={typeof color === 'string' ? color : colors.tint} />
               ),
             }}
           />

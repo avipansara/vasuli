@@ -45,6 +45,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  type TextInputInstance,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -82,8 +83,8 @@ export default function EditExpenseScreen() {
   const [slideAnim] = useState(() => new Animated.Value(30));
 
   // Input refs
-  const amountInputRef = useRef<TextInput>(null);
-  const descriptionInputRef = useRef<TextInput>(null);
+  const amountInputRef = useRef<TextInputInstance>(null);
+  const descriptionInputRef = useRef<TextInputInstance>(null);
   const editFormQuery = useQuery({
     queryKey: queryKeys.expenses.editForm(currentUserId, id),
     enabled: !!currentUserId && !!id,

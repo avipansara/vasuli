@@ -23,6 +23,7 @@ export default {
   tests: 'tester-e2e/**/*.e2e.ts',
   workers: 1,
   retries: 0,
+  failOnSkippedFailure: true,
   timeout: 120_000,
   launchTimeout: 300_000,
   actionTimeout: 30_000,

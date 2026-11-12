@@ -7,6 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/auth-context-otp';
 import { useAnalytics } from '@/contexts/analytics-context';
 import { useThemeColors } from '@/hooks/use-theme-colors';
+import { usePlatformSafeAreaInsets } from '@/hooks/use-platform-safe-area-insets';
 import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { friendDetailModule } from '@/services/friend-detail-module';
 import { createPaymentIntentId, settlementModule } from '@/services/settlement-service';
@@ -14,16 +15,17 @@ import { trackSettlementCancelled, trackSettlementCreated, trackSettlementCreati
 import type { FriendRelationshipProjection } from '@/services/friend-detail-service';
 import type { User } from '@/types/database';
 import { useCurrency } from '@/contexts/currency-context';
+import { getVisibleEmail } from '@/utils/validation';
 import { useQueryClient } from '@tanstack/react-query';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useRef, type MutableRefObject, useState } from 'react';
 import {
   Alert,
+  Platform,
   StyleSheet,
   Text,
   View
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface UserWithBalance extends User {
   balance: number;
@@ -31,7 +33,7 @@ interface UserWithBalance extends User {
 
 export default function FriendSettleScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const insets = useSafeAreaInsets();
+  const insets = usePlatformSafeAreaInsets();
   const { user } = useAuth();
   const { service: analytics } = useAnalytics();
   const { colors } = useThemeColors();
@@ -119,7 +121,7 @@ export default function FriendSettleScreen() {
       paymentIntentIdRef={paymentIntentIdRef}
       queryClient={queryClient}
       onRefresh={loadData}
-      bottomInset={Math.max(insets.bottom, 16)}
+      bottomInset={Platform.OS === 'web' ? 16 : Math.max(insets.bottom, 16)}
     />
   );
 }
@@ -226,7 +228,7 @@ function FriendSettleContent({
                 {friend.name}
               </ThemedText>
               <ThemedText style={[styles.profileEmail, { color: settle.textSecondary }]}>
-                {friend.email || `${friend.name.toLowerCase().replace(/\s+/g, '.')}@vasuli.app`}
+                {getVisibleEmail(friend.email) || `${friend.name.toLowerCase().replace(/\s+/g, '.')}@vasuli.app`}
               </ThemedText>
             </View>
           </View>

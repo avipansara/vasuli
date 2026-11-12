@@ -2,8 +2,8 @@
 
 ## Project overview
 
-Vasuli is a mobile-first Expo Router application targeting Expo SDK 57, React
-Native 0.86, and React 19.2. It supports iOS and Android, with a web tab
+Vasuli is a mobile-first Expo Router application targeting Expo SDK 58, React
+Native 0.88, and React 19.3. It supports iOS and Android, with a web tab
 layout for web development. Prioritize cross-platform behavior, accessibility,
 performance, and the existing visual language.
 
