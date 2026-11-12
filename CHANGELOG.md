@@ -7,6 +7,9 @@
 ## 2026-11-12
 
 - Update the TesterArmy runner and mobile engine used for device E2E tests.
+- Prevent a spurious “Group not found” alert while deleting a group.
+- Make the group and friend “Settle Up” buttons available to screen readers.
+- Make settlement deletion easier to reveal with a swipe.
 
 ## [1.0.29] - 2026-11-07
 

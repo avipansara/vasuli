@@ -118,6 +118,7 @@ export default function GroupDetailScreen() {
   const [isAddingMember, setIsAddingMember] = useState(false);
   const [deletingExpenseId, setDeletingExpenseId] = useState<string | null>(null);
   const [isDeletingGroup, setIsDeletingGroup] = useState(false);
+  const deletingGroupRef = useRef(false);
   const [removingMemberId, setRemovingMemberId] = useState<string | null>(null);
   const [sectionTab, setSectionTab] = useState<SectionTab>('all');
 
@@ -348,7 +349,7 @@ export default function GroupDetailScreen() {
   }, [cancellations, currentUserId, id, namesById, settlementDeleteFlow, settlementOperations, scopeTransfers, settlements]);
 
   useEffect(() => {
-    if (groupDetail === null && !isFetching && !error) {
+    if (groupDetail === null && !isFetching && !error && !deletingGroupRef.current) {
       Alert.alert('Error', 'Group not found');
       router.back();
     }
@@ -472,6 +473,7 @@ export default function GroupDetailScreen() {
           text: 'Delete',
           style: 'destructive',
           onPress: async () => {
+            deletingGroupRef.current = true;
             try {
               setIsDeletingGroup(true);
               const result = await groupDetailMutationController.deleteGroup({
@@ -483,6 +485,7 @@ export default function GroupDetailScreen() {
                 cache: queryCache,
               });
               if (result.status === 'blocked') {
+                deletingGroupRef.current = false;
                 Alert.alert(
                   'Settle Group First',
                   'This group still has outstanding balances. Settle all expenses before deleting it.',
@@ -491,6 +494,7 @@ export default function GroupDetailScreen() {
               }
               router.replace('/groups' as any);
             } catch (error) {
+              deletingGroupRef.current = false;
               console.error('Error deleting group:', error);
               Alert.alert('Error', error instanceof Error ? error.message : 'Failed to delete group');
             } finally {
@@ -1223,10 +1227,6 @@ export default function GroupDetailScreen() {
             }
             start={{ x: 1, y: 0 }}
             end={{ x: 0, y: 1 }}
-            accessible
-            accessibilityRole="summary"
-            accessibilityLabel={`${group.name}, ${members.length} members, ${balanceAccessibilityValue}`}
-            accessibilityLiveRegion="polite"
             style={[styles.summaryCard, {
               borderWidth: 0,
               shadowColor: isDark ? '#64748b' : '#475569',
@@ -1239,21 +1239,28 @@ export default function GroupDetailScreen() {
               paddingHorizontal: 16,
               borderRadius: 24,
             }]}>
-            <ThemedText type='defaultSemiBold' style={[styles.summaryCardTitle, { color: isDark ? (currentUserBalance < 0 ? '#ffb3b0' : currentUserBalance > 0 ? '#45dfa4' : '#94A3B8') : balanceColor }]}>
-              {currentUserBalance > 0
-                ? 'YOU ARE OWED'
-                : currentUserBalance < 0
-                  ? 'YOU OWE'
-                  : 'SETTLED UP IN THIS GROUP'}
-            </ThemedText>
+            <View
+              accessible
+              accessibilityRole="summary"
+              accessibilityLabel={`${group.name}, ${members.length} members, ${balanceAccessibilityValue}`}
+              accessibilityLiveRegion="polite"
+              style={{ alignItems: 'center' }}>
+              <ThemedText type='defaultSemiBold' style={[styles.summaryCardTitle, { color: isDark ? (currentUserBalance < 0 ? '#ffb3b0' : currentUserBalance > 0 ? '#45dfa4' : '#94A3B8') : balanceColor }]}>
+                {currentUserBalance > 0
+                  ? 'YOU ARE OWED'
+                  : currentUserBalance < 0
+                    ? 'YOU OWE'
+                    : 'SETTLED UP IN THIS GROUP'}
+              </ThemedText>
 
-            <ThemedText type='subtitle' style={[styles.summaryCardAmount, { color: isDark ? (currentUserBalance < 0 ? '#ffb3b0' : currentUserBalance > 0 ? '#4edea3' : '#94A3B8') : balanceColor }]}>
-              {currentUserBalance < 0 ? '-' : currentUserBalance > 0 ? '+' : ''}{formatCurrencyContext(Math.abs(currentUserBalance))}
-            </ThemedText>
+              <ThemedText type='subtitle' style={[styles.summaryCardAmount, { color: isDark ? (currentUserBalance < 0 ? '#ffb3b0' : currentUserBalance > 0 ? '#4edea3' : '#94A3B8') : balanceColor }]}>
+                {currentUserBalance < 0 ? '-' : currentUserBalance > 0 ? '+' : ''}{formatCurrencyContext(Math.abs(currentUserBalance))}
+              </ThemedText>
 
-            <ThemedText style={[styles.summaryCardSubtitle, { color: isDark ? '#94A3B8' : colors.textSecondary }]}>
-              Across {members.length} members
-            </ThemedText>
+              <ThemedText style={[styles.summaryCardSubtitle, { color: isDark ? '#94A3B8' : colors.textSecondary }]}>
+                Across {members.length} members
+              </ThemedText>
+            </View>
 
             {!groupIsSettled && currentUserBalance !== 0 && (
               <View style={styles.cardQuickActions}>
