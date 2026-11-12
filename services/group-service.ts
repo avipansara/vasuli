@@ -32,7 +32,7 @@ function mapGroupHomeRow(row: GroupHomeRow): GroupWithMembers {
 }
 
 export const groupService = {
-  async getHomeSummaries(_currentUserId: string): Promise<GroupWithMembers[]> {
+  async getHomeSummaries(): Promise<GroupWithMembers[]> {
     const { data, error } = await supabase.rpc('get_groups_home_summaries');
 
     if (error) throw error;

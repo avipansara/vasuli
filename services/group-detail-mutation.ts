@@ -19,7 +19,7 @@ type HomeFriend = User & {
 };
 
 export type GroupDetailExpenseMutationDependencies = {
-  deleteExpense: (expenseId: string, userId: string, userName: string) => Promise<void>;
+  deleteExpense: (expenseId: string, userName: string) => Promise<void>;
   getUsersByIds: (userIds: string[]) => Promise<User[]>;
   sendExpenseDeletedNotification: (
     tokens: string[],
@@ -91,7 +91,6 @@ export function createGroupDetailMutationModule(
 
         await dependencies.deleteExpense(
           params.expenseId,
-          params.currentUser.id,
           params.currentUser.name,
         );
       } catch (error) {

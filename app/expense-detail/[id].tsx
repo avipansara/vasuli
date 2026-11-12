@@ -166,14 +166,14 @@ export default function ExpenseDetailScreen() {
           onPress: async () => {
             try {
               setIsDeleting(true);
-              await expenseService.delete(id, currentUserId, user?.name || 'Unknown');
+              await expenseService.delete(id, user?.name || 'Unknown');
               trackExpenseDeleted(analytics, {
                 groupId: expense?.groupId,
                 currency: expense?.currency,
               });
               const otherParticipantIds = splits
+                .filter(split => split.amount > 0)
                 .map(split => split.userId)
-                .filter((userId, index) => splits[index].amount > 0)
                 .filter(userId => userId !== currentUserId);
               await Promise.allSettled(
                 getExpenseDeletionInvalidationKeys(currentUserId, {
@@ -189,8 +189,8 @@ export default function ExpenseDetailScreen() {
                 try {
                   const usersToNotify = await userService.getByIds(
                     splits
+                      .filter(split => split.amount > 0)
                       .map(split => split.userId)
-                      .filter((userId, index) => splits[index].amount > 0)
                       .filter(userId => userId !== currentUserId)
                   );
                   const pushTokens = usersToNotify

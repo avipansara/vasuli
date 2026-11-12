@@ -176,9 +176,7 @@ export function AddMemberModal({
       submitLoading={submitting}
       onSubmit={onSubmit}
       headerStyle="centered"
-      submitBadge={selectedUserIds.length > 0 ? selectedUserIds.length : undefined}
-      submitGradientColors={isDark ? ['#4edea3', '#4edea3'] : ['#003527', '#003527']}
-      submitTextColor={isDark ? '#003824' : '#ffffff'}>
+      submitBadge={selectedUserIds.length > 0 ? selectedUserIds.length : undefined}>
     </SharedModal>
   );
 }

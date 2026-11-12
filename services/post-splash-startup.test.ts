@@ -21,7 +21,7 @@ describe('post-splash startup readiness', () => {
 
     await request.queryFn();
 
-    expect(getHomeSummaries).toHaveBeenCalledWith('user-1');
+    expect(getHomeSummaries).toHaveBeenCalledWith();
   });
 
   it('deduplicates concurrent prefetch requests for the same profile', async () => {

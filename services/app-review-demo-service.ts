@@ -5,7 +5,6 @@ import { groupService } from '@/services/group-service';
 import { settlementService } from '@/services/settlement-service';
 import { userService } from '@/services/user-service';
 import type { Expense, ExpenseSplit, Group, User } from '@/types/database';
-import { normalizeEmail } from '@/utils/validation';
 
 
 type DemoFriend = {

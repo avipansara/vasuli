@@ -35,8 +35,6 @@ interface SharedModalProps {
   onSubmit?: () => void;
   submitDisabled?: boolean;
   submitLoading?: boolean;
-  submitGradientColors?: string[];
-  submitTextColor?: string;
   headerStyle?: 'default' | 'centered';
   submitBadge?: string | number;
 }
@@ -57,7 +55,6 @@ export function SharedModal({
   submitDisabled = false,
   submitLoading = false,
   onSubmit,
-  submitTextColor = '#0A0A0F',
   headerStyle = 'default',
   submitBadge,
 }: SharedModalProps) {

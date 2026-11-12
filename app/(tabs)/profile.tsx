@@ -121,7 +121,7 @@ export default function ProfileScreen() {
     initialData: cachedFriends,
     refetchOnMount: false,
     queryFn: async () => {
-      return friendSummaryService.getHomeSummaries(currentUserId);
+      return friendSummaryService.getHomeSummaries();
     },
   });
   const { totalOwed, totalOwing } = useMemo(() => calculateFriendSummaryTotals(friends), [friends]);
@@ -368,7 +368,7 @@ export default function ProfileScreen() {
             </Pressable>
           )}
           <View style={[styles.settingsList, cardStyle]}>
-            {settingsItems.map((item, index) => (
+            {settingsItems.map(item => (
               <Pressable
                 key={item.title}
                 style={({ pressed }) => [

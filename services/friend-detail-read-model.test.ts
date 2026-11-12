@@ -58,7 +58,7 @@ describe('friend detail read model', () => {
       },
     });
 
-    await expect(readModel.getDetail('current-user', 'friend-a')).resolves.toMatchObject({
+    await expect(readModel.getDetail('friend-a')).resolves.toMatchObject({
       friend: { id: 'friend-a', name: 'Asha', balance: 25 },
       expenses: [{ id: 'expense-1', paidBy: 'isha-user', paidByName: 'Isha', yourShare: 40, friendShare: 40, groupName: 'Alaska Trip' }],
       activity: [
@@ -75,7 +75,7 @@ describe('friend detail read model', () => {
       rpc: async () => ({ data: null, error: null }),
     });
 
-    await expect(readModel.getDetail('current-user', 'missing-friend')).resolves.toBeNull();
+    await expect(readModel.getDetail('missing-friend')).resolves.toBeNull();
   });
 
   it('removes group expenses and group activity from the friend projection', async () => {
@@ -130,7 +130,7 @@ describe('friend detail read model', () => {
       }),
     });
 
-    await expect(readModel.getDetail('current-user', 'friend-a')).resolves.toMatchObject({
+    await expect(readModel.getDetail('friend-a')).resolves.toMatchObject({
       expenses: [],
       activity: [{ id: 'group-expense:car-rental', type: 'group_expense' }],
     });
@@ -159,7 +159,7 @@ describe('friend detail read model', () => {
       }),
     });
 
-    await expect(readModel.getDetail('current-user', 'friend-a')).resolves.toMatchObject({
+    await expect(readModel.getDetail('friend-a')).resolves.toMatchObject({
       expenses: [],
       activity: [{
         type: 'group_expense',
@@ -191,7 +191,7 @@ describe('friend detail read model', () => {
       }),
     });
 
-    const detail = await readModel.getDetail('current-user', 'friend-a');
+    const detail = await readModel.getDetail('friend-a');
     expect(detail).toMatchObject({
       friend: { balance: 15 },
       expenses: [],
@@ -212,7 +212,7 @@ describe('friend detail read model', () => {
       rpc: async () => ({ data: null, error: { message: 'Read model unavailable' } }),
     });
 
-    await expect(readModel.getDetail('current-user', 'friend-a')).rejects.toThrow('Read model unavailable');
+    await expect(readModel.getDetail('friend-a')).rejects.toThrow('Read model unavailable');
   });
 
   it('maps additive settlement operation metadata when the RPC exposes it', async () => {
@@ -239,7 +239,7 @@ describe('friend detail read model', () => {
       }),
     });
 
-    await expect(readModel.getDetail('current-user', 'friend-a')).resolves.toMatchObject({
+    await expect(readModel.getDetail('friend-a')).resolves.toMatchObject({
       settlementOperations: [{
         operationId: 'operation-9',
         status: 'reversed',
@@ -265,7 +265,7 @@ describe('friend detail read model', () => {
       }),
     });
 
-    const detail = await readModel.getDetail('current-user', 'friend-a');
+    const detail = await readModel.getDetail('friend-a');
     expect(detail).not.toHaveProperty('settlementOperations');
   });
 });

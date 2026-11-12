@@ -52,7 +52,7 @@ export default function GroupsScreen() {
     queryKey: groupsQueryKey,
     enabled: !!currentUserId,
     queryFn: async () => {
-      return groupService.getHomeSummaries(currentUserId);
+      return groupService.getHomeSummaries();
     },
   });
   const { data: deletedGroups = [], refetch: refetchDeletedGroups } = useQuery({

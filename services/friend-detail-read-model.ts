@@ -228,7 +228,7 @@ function buildActivity(
 
 export function createFriendDetailReadModel(rpcClient: FriendDetailRpcClient = defaultRpcClient) {
   return {
-    async getDetail(currentUserId: string, friendId: string): Promise<FriendDetailData | null> {
+    async getDetail(friendId: string): Promise<FriendDetailData | null> {
       const startedAt = Date.now();
       const { data, error } = await rpcClient.rpc('get_friend_detail_read_model', {
         p_friend_id: friendId,

@@ -7,7 +7,6 @@ import {
 } from '@/services/friend-detail-service';
 import { friendDetailReadModel } from '@/services/friend-detail-read-model';
 import { friendGroupBalanceService } from '@/services/friend-group-balance-service';
-import { activityService } from '@/services/activity-service';
 import { expenseService } from '@/services/expense-service';
 import { friendshipService } from '@/services/friendship-service';
 import { friendSummaryService } from '@/services/friend-summary-service';
@@ -21,11 +20,11 @@ import { formatDate } from '@/utils/date';
 import { formatCalendarDateString } from '@/utils/expense-date';
 
 export type FriendDetailReadAdapter = {
-  getDetail(currentUserId: string, friendId: string): Promise<FriendDetailData | null>;
+  getDetail(friendId: string): Promise<FriendDetailData | null>;
 };
 
 export type FriendRelationshipAdapter = {
-  getRelationship(currentUserId: string, friendId: string): Promise<FriendRelationshipProjection>;
+  getRelationship(friendId: string): Promise<FriendRelationshipProjection>;
 };
 
 export type FriendGroupBalanceAdapter = {
@@ -44,19 +43,8 @@ export type FriendSettlementOperationMetadataAdapter = {
   getByFriend(friendId: string): Promise<NonNullable<FriendDetailData['settlementOperations']>>;
 };
 
-export type FriendDetailActivityAdapter = {
-  logSettlementCreated(params: {
-    settlementId: string;
-    fromUserId: string;
-    fromUserName: string;
-    toUserName: string;
-    amount: number;
-    groupId?: string;
-  }): Promise<unknown>;
-};
-
 export type FriendDetailExpenseAdapter = {
-  delete(expenseId: string, currentUserId: string, currentUserName: string): Promise<void>;
+  delete(expenseId: string, currentUserName: string): Promise<void>;
 };
 
 export type FriendDetailFriendshipAdapter = {
@@ -74,7 +62,6 @@ export type FriendDetailModuleDependencies = {
   scopeTransferAdapter?: FriendScopeTransferAdapter;
   cancellationAdapter?: FriendCancellationAdapter;
   settlementOperationMetadataAdapter?: FriendSettlementOperationMetadataAdapter;
-  activityAdapter?: FriendDetailActivityAdapter;
   expenseAdapter?: FriendDetailExpenseAdapter;
   friendshipAdapter?: FriendDetailFriendshipAdapter;
   notificationAdapter?: FriendDetailNotificationAdapter;
@@ -84,7 +71,6 @@ export type FriendDetailModule = {
   getDetail(currentUserId: string, friendId: string): Promise<FriendDetailData | null>;
   deleteExpense(params: {
     expenseId: string;
-    currentUserId: string;
     currentUserName: string;
     description?: string;
     amount?: number;
@@ -170,7 +156,6 @@ export function createFriendDetailModule(
   const scopeTransferAdapter = dependencies.scopeTransferAdapter;
   const cancellationAdapter = dependencies.cancellationAdapter;
   const operationMetadataAdapter = dependencies.settlementOperationMetadataAdapter;
-  const activityAdapter = dependencies.activityAdapter ?? activityService;
   const expenseAdapter = dependencies.expenseAdapter ?? expenseService;
   const friendshipAdapter = dependencies.friendshipAdapter ?? friendshipService;
 
@@ -178,7 +163,7 @@ export function createFriendDetailModule(
     async getDetail(currentUserId, friendId) {
       const relationshipAdapter = dependencies.relationshipAdapter;
       const [detail, groupBalances, scopeTransfers, cancellations, operationMetadata] = await Promise.all([
-        readAdapter.getDetail(currentUserId, friendId),
+        readAdapter.getDetail(friendId),
         groupBalanceAdapter?.getSharedGroupBalances(currentUserId, friendId) ?? Promise.resolve([]),
         scopeTransferAdapter?.getByFriend(friendId) ?? Promise.resolve([]),
         cancellationAdapter?.getByFriend(friendId) ?? Promise.resolve([]),
@@ -188,7 +173,7 @@ export function createFriendDetailModule(
       const mergedOperations = mergeSettlementOperations(detail.settlementOperations, operationMetadata);
       const relationship = relationshipAdapter
         ? {
-            ...(await relationshipAdapter.getRelationship(currentUserId, friendId)),
+            ...(await relationshipAdapter.getRelationship(friendId)),
             activity: detail.relationship.activity.length > 0
               ? detail.relationship.activity
               : detail.activity,
@@ -212,13 +197,12 @@ export function createFriendDetailModule(
     },
     async deleteExpense({
       expenseId,
-      currentUserId,
       currentUserName,
       description,
       amount,
       friendPushToken,
     }) {
-      await expenseAdapter.delete(expenseId, currentUserId, currentUserName);
+      await expenseAdapter.delete(expenseId, currentUserName);
       if (!friendPushToken || description === undefined || amount === undefined) return;
 
       const { createExpenseDeletedNotification, notificationService } = await import('@/services/notification-service');

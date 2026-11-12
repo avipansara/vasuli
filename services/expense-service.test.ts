@@ -285,7 +285,7 @@ describe('expenseService.create auth bridge', () => {
       return {}
     })
 
-    await expenseService.delete('expense-id', 'payer-id', 'Payer')
+    await expenseService.delete('expense-id', 'Payer')
 
     expect(mocks.rpc).toHaveBeenCalledWith('soft_delete_expense', {
       p_expense_id: 'expense-id',

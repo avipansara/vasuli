@@ -12,7 +12,7 @@ import { getFetchErrorMessage } from '@/lib/fetch-error-message';
 import { groupService } from '@/services/group-service';
 import { queryKeys } from '@/services/query-keys';
 import { userService } from '@/services/user-service';
-import type { Expense, RecurringExpenseRule } from '@/types/database';
+import type { Expense } from '@/types/database';
 import { formatCurrency } from '@/utils/currency';
 import { getRecurringStatusColor } from '@/utils/recurring-status';
 import {

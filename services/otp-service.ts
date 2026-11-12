@@ -9,7 +9,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const USE_MOCK_DATA = process.env.EXPO_PUBLIC_USE_MOCK_DATA === 'true';
 const MOCK_OTP_CODE = '123456';
 const AUTH_EMAIL_REDIRECT_URL = 'vasuli://auth/callback';
-const APP_REVIEWER_NAME = 'Apple Reviewer';
 
 function getOAuthParams(url: string): URLSearchParams {
   const hashIndex = url.indexOf('#');

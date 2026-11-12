@@ -10,7 +10,7 @@ type StartupQueryClient = {
 
 type PostSplashStartupDependencies = {
   queryClient: StartupQueryClient;
-  getHomeSummaries: (userId: string) => Promise<FriendSummary[]>;
+  getHomeSummaries: () => Promise<FriendSummary[]>;
 };
 
 export function createPostSplashStartup({
@@ -27,7 +27,7 @@ export function createPostSplashStartup({
       const prefetch = queryClient
         .prefetchQuery({
           queryKey: queryKeys.friends.home(userId),
-          queryFn: () => getHomeSummaries(userId),
+          queryFn: () => getHomeSummaries(),
         })
         .then(() => undefined);
 

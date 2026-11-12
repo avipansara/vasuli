@@ -23,7 +23,6 @@ type FriendExpenseActivityProps = {
   onEditExpense: (expenseId: string) => void;
   onDeleteExpense: (expenseId: string) => void;
   onOpenExpense: (expenseId: string) => void;
-  formatDate: (timestamp: number) => string;
   friendName: string;
   readOnly?: boolean;
 };
@@ -90,7 +89,6 @@ export function FriendExpenseActivity({
   onEditExpense,
   onDeleteExpense,
   onOpenExpense,
-  formatDate,
   friendName,
   readOnly = false,
 }: FriendExpenseActivityProps) {

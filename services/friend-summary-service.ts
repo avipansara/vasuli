@@ -178,15 +178,15 @@ export function buildFriendSummaries(
 }
 
 export const friendSummaryService = {
-  async getHomeSummaries(currentUserId: string): Promise<FriendHomeSummary[]> {
+  async getHomeSummaries(): Promise<FriendHomeSummary[]> {
     const { data, error } = await supabase.rpc('get_friend_home_relationships');
 
     if (error) throw error;
     return ((data || []) as FriendHomeRow[]).map(mapFriendHomeRow);
   },
 
-  async getRelationship(currentUserId: string, friendId: string): Promise<FriendRelationshipProjection> {
-    const summary = (await this.getHomeSummaries(currentUserId)).find(friend => friend.id === friendId);
+  async getRelationship(friendId: string): Promise<FriendRelationshipProjection> {
+    const summary = (await this.getHomeSummaries()).find(friend => friend.id === friendId);
     if (!summary) throw new Error('Friend relationship projection was not found.');
     return summary.relationship;
   },

@@ -250,7 +250,7 @@ export const expenseService = {
     return (data || []).map(mapExpenseRow);
   },
 
-  async delete(id: string, userId: string, userName: string): Promise<void> {
+  async delete(id: string, userName: string): Promise<void> {
     const { error } = await supabase.rpc('soft_delete_expense', {
       p_expense_id: id,
       p_user_name: userName,

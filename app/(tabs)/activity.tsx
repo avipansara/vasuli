@@ -59,7 +59,7 @@ export default function ActivityScreen() {
     enabled: !!currentUserId,
     initialPageParam: 0,
     queryFn: async ({ pageParam }) => {
-      return activityService.getUserActivities(currentUserId, PAGE_SIZE, pageParam, activitySearch);
+      return activityService.getUserActivities(PAGE_SIZE, pageParam, activitySearch);
     },
     getNextPageParam: (lastPage, allPages) => {
       if (lastPage.length < PAGE_SIZE) return undefined;

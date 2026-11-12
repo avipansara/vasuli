@@ -112,13 +112,13 @@ describe('relationship cross-surface freshness', () => {
       readAdapter: { getDetail: async () => makeDetail(state) },
       groupBalanceAdapter: { getSharedGroupBalances: async () => state.groupBalances },
       relationshipAdapter: {
-        getRelationship: async () => (await friendSummaryService.getHomeSummaries(currentUserId))[0].relationship,
+        getRelationship: async () => (await friendSummaryService.getHomeSummaries())[0].relationship,
       },
     });
 
     const readSurfaces = async () => {
       const [home, detail] = await Promise.all([
-        friendSummaryService.getHomeSummaries(currentUserId),
+        friendSummaryService.getHomeSummaries(),
         detailModule.getDetail(currentUserId, friendId),
       ]);
       return {

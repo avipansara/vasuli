@@ -274,7 +274,6 @@ export default function FriendDetailScreen() {
 
               await friendDetailModule.deleteExpense({
                 expenseId,
-                currentUserId,
                 currentUserName: user?.name || 'Unknown',
                 description: expenseToDelete?.description,
                 amount: expenseToDelete?.amount,
@@ -766,7 +765,6 @@ export default function FriendDetailScreen() {
                           onEditExpense={handleEditExpense}
                           onDeleteExpense={handleDeleteExpense}
                           onOpenExpense={handleOpenExpense}
-                          formatDate={formatDate}
                           friendName={friend.name}
                           readOnly={item.type === 'group_expense'}
                         />

@@ -187,7 +187,6 @@ describe('Friend detail module', () => {
 
     await expect(module.deleteExpense({
       expenseId: 'expense-1',
-      currentUserId: 'current-user',
       currentUserName: 'You',
     })).resolves.toBeUndefined();
   });

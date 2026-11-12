@@ -45,7 +45,7 @@ export const activityService = {
     return (data || []).map(mapActivityRow);
   },
 
-  async getUserActivities(userId: string, limit?: number, offset?: number, search?: string): Promise<Activity[]> {
+  async getUserActivities(limit?: number, offset?: number, search?: string): Promise<Activity[]> {
     // All filtering, ordering, and LIMIT/OFFSET pagination are handled by the
     // get_user_activities SECURITY DEFINER function in the database.
     // This replaces the previous 6-query client-side merge where every page

@@ -61,7 +61,7 @@ describe('Friends home read model', () => {
       error: null,
     });
 
-    const result = await friendSummaryService.getHomeSummaries('current-user');
+    const result = await friendSummaryService.getHomeSummaries();
 
     expect(mocks.rpc).toHaveBeenCalledWith('get_friend_home_relationships');
     expect(result).toEqual([
@@ -155,7 +155,7 @@ describe('Friends home read model', () => {
       error: null,
     });
 
-    const [summary] = await friendSummaryService.getHomeSummaries('current-user');
+    const [summary] = await friendSummaryService.getHomeSummaries();
     const friendDetail = await createFriendDetailModule({
       readAdapter: {
         getDetail: async () => ({ friend, expenses, activity: [], groupBalances, relationship }),
@@ -202,7 +202,7 @@ describe('Friends home read model', () => {
       error: null,
     });
 
-    const [summary] = await friendSummaryService.getHomeSummaries('current-user');
+    const [summary] = await friendSummaryService.getHomeSummaries();
 
     expect(summary.balance).toBe(0);
     expect(summary.relationship?.totalsByCurrency).toHaveLength(2);

@@ -18,7 +18,6 @@ import { createPostHogClient } from '@/lib/analytics/posthog-adapter';
 import { defaultPreferenceStore } from '@/lib/analytics/preference-store';
 import { getReleaseContext } from '@/lib/analytics/release-context';
 import { AnalyticsService } from '@/services/analytics-service';
-import type { AnalyticsEventName } from '@/lib/analytics/events';
 
 interface AnalyticsContextType {
   service: AnalyticsService;

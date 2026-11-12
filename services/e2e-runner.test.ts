@@ -150,7 +150,7 @@ describe('e2e runner', () => {
 
   it('marks fixture-backed focused runs for run-scoped cleanup while leaving unrelated runs legacy-scoped', () => {
     const environments: Record<string, string>[] = [];
-    const runCommand = vi.fn((_command: string, args: string[], env?: Record<string, string>) => {
+    const runCommand = vi.fn((_command: string, _args: string[], env?: Record<string, string>) => {
       if (env) environments.push({ ...env });
       return { status: 0, signal: null };
     });

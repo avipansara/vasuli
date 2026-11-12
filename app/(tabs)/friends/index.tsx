@@ -47,7 +47,7 @@ export default function FriendsScreen() {
   } = useQuery({
     queryKey: friendsQueryKey,
     enabled: !!currentUserId,
-    queryFn: () => friendSummaryService.getHomeSummaries(currentUserId),
+    queryFn: () => friendSummaryService.getHomeSummaries(),
   });
   const loading = isLoading && friends.length === 0;
   const loadError = error ? getFetchErrorMessage(error) : null;

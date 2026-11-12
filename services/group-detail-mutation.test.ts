@@ -118,7 +118,7 @@ describe('Group detail mutation module', () => {
       cache: state.cache,
     });
 
-    expect(deleteExpense).toHaveBeenCalledWith(expense.id, currentUser.id, currentUser.name);
+    expect(deleteExpense).toHaveBeenCalledWith(expense.id, currentUser.name);
     expect(state.getHome()).toEqual([{ ...friend, balance: 0, recentExpenses: [] }]);
     expect(state.getGroup()?.expenses).toEqual([]);
     expect(state.getGroup()?.balances.get(friend.id)).toBe(0);

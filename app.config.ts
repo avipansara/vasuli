@@ -1,6 +1,4 @@
 import { ConfigContext, ExpoConfig } from 'expo/config';
-import fs from 'fs';
-import path from 'path';
 
 export default ({ config }: ConfigContext): ExpoConfig => {
   const appEnv = process.env.APP_ENV || 'production';

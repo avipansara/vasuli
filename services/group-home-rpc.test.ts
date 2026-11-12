@@ -31,7 +31,7 @@ describe('Groups home read model', () => {
       error: null,
     });
 
-    const result = await groupService.getHomeSummaries('current-user');
+    const result = await groupService.getHomeSummaries();
 
     expect(mocks.rpc).toHaveBeenCalledWith('get_groups_home_summaries');
     expect(result).toEqual([
