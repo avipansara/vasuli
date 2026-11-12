@@ -41,7 +41,7 @@ function prepareSimulator({ githubEnv = process.env.GITHUB_ENV } = {}) {
   });
 
   if (githubEnv) {
-    appendFileSync(githubEnv, `DETOX_DEVICE_UDID=${simulator.udid}\n`);
+    appendFileSync(githubEnv, `DETOX_DEVICE_UDID=${simulator.udid}\nE2E_IOS_DEVICE=${simulator.udid}\n`);
   }
 
   process.stdout.write(`[e2e-simulator] ${SIMULATOR_NAME} ${simulator.udid} is booted and ready.\n`);

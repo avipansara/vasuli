@@ -4,6 +4,15 @@
 - Preserve input focus and friend-detail return navigation with the new React Native and Expo Router APIs.
 - Replace deprecated notification and CSV file APIs, and keep browser controls clear of device safe areas under Expo Router 58.
 
+## 2026-11-12
+
+- Update the TesterArmy runner and mobile engine used for device E2E tests.
+- Allow the E2E workflows to validate their development database host without a local environment file.
+- Apply the recurring expense migrations and the run-scoped cleanup to the development database, so the E2E suite now verifies a saved recurring rule.
+- Prevent a spurious “Group not found” alert while deleting a group.
+- Make the group and friend “Settle Up” buttons available to screen readers.
+- Make settlement deletion easier to reveal with a swipe.
+
 ## [1.0.29] - 2026-11-07
 
 ### Highlights
@@ -16,6 +25,10 @@
 This release requires a new iOS binary and the Apple sign-in capability on the production provisioning profile. The Apple provider must be enabled in Supabase. See the [setup guide](docs/sign-in-with-apple.md). No database migration is needed for these changes.
 
 [Full changelog](https://github.com/avipansara/vasuli/compare/v1.0.28...v1.0.29)
+
+## 2026-10-06
+
+- Upgrade the TesterArmy SDK and mobile engine, and fail CI on tests skipped after a soft assertion failure.
 
 ## [1.0.28] - 2026-10-01
 
@@ -38,7 +51,15 @@ The production workflow builds and auto-submits Android to the internal track an
 [Full changelog](https://github.com/avipansara/vasuli/compare/v1.0.27...v1.0.28)
 
 
+## 2026-10-03
+
+- Add TesterArmy device E2E coverage for iOS & Android (account, settings, groups, expenses, deep links), wire default E2E runners to TesterArmy, modernize GitHub Actions workflows, remove Detox native configuration, and preserve link-based invite attribution in product analytics.
+
 ## 2026-10-01
+
+- Refresh the iPhone App Store screenshots for first-time users with friends, shared groups, flexible splits, clear balances, settlement receipts, and recurring bills, using fresh native captures and synthetic sample data.
+
+- Upgrade the App Store screenshot editor with undo/redo, font and image controls, safer autosave, and export fixes while preserving existing Vasuli decks and isolated crops.
 
 - Scanning an existing friend's QR code now offers to open their friend page instead of adding them again.
 - Fixed repeated QR scan prompts, added camera permission recovery through phone settings, and increased QR clear borders for more reliable friend scanning.

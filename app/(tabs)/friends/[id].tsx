@@ -555,10 +555,6 @@ export default function FriendDetailScreen() {
             }
             start={{ x: 1, y: 0 }}
             end={{ x: 0, y: 1 }}
-            accessible
-            accessibilityRole="summary"
-            accessibilityLabel={`${friend.name}${getVisibleEmail(friend.email) ? `, ${getVisibleEmail(friend.email)}` : ''}, ${balanceAccessibilityValue}`}
-            accessibilityLiveRegion="polite"
             style={[styles.summaryCard, {
               borderWidth: 0,
               shadowColor: isDark ? '#64748b' : '#475569',
@@ -572,25 +568,32 @@ export default function FriendDetailScreen() {
               borderRadius: 24,
             }]}>
 
-            <ThemedText type='defaultSemiBold' style={[styles.summaryCardTitle, { color: isDark ? (isOwing ? '#ffb3b0' : isOwed ? '#45dfa4' : '#94A3B8') : balanceColor }]}>
-              {balanceCardTitle}
-            </ThemedText>
+            <View
+              accessible
+              accessibilityRole="summary"
+              accessibilityLabel={`${friend.name}${getVisibleEmail(friend.email) ? `, ${getVisibleEmail(friend.email)}` : ''}, ${balanceAccessibilityValue}`}
+              accessibilityLiveRegion="polite"
+              style={{ alignItems: 'center' }}>
+              <ThemedText type='defaultSemiBold' style={[styles.summaryCardTitle, { color: isDark ? (isOwing ? '#ffb3b0' : isOwed ? '#45dfa4' : '#94A3B8') : balanceColor }]}>
+                {balanceCardTitle}
+              </ThemedText>
 
-            <ThemedText type='subtitle' style={[styles.summaryCardAmount, { color: isDark ? (isOwing ? '#ffb3b0' : isOwed ? '#4edea3' : '#94A3B8') : balanceColor }]}>
-              {hasCurrencyAmbiguity
-                ? 'Multiple currencies'
-                : `${isOwing ? '-' : isOwed ? '+' : ''}${formatCurrency(Math.abs(balance), relationship.settleableTotal?.currency ?? relationship.directCurrency ?? preferredCurrency)}`}
-            </ThemedText>
+              <ThemedText type='subtitle' style={[styles.summaryCardAmount, { color: isDark ? (isOwing ? '#ffb3b0' : isOwed ? '#4edea3' : '#94A3B8') : balanceColor }]}>
+                {hasCurrencyAmbiguity
+                  ? 'Multiple currencies'
+                  : `${isOwing ? '-' : isOwed ? '+' : ''}${formatCurrency(Math.abs(balance), relationship.settleableTotal?.currency ?? relationship.directCurrency ?? preferredCurrency)}`}
+              </ThemedText>
 
-            <ThemedText style={[styles.summaryCardSubtitle, { color: isDark ? '#94A3B8' : colors.textSecondary }]}>
-              {groupBalanceCount > 0
-                ? `${sharedExpensesCount} direct expenses + ${groupBalanceCount} group ${groupBalanceCount === 1 ? 'balance' : 'balances'}`
-                : `Across ${sharedExpensesCount} direct expenses`}
-            </ThemedText>
+              <ThemedText style={[styles.summaryCardSubtitle, { color: isDark ? '#94A3B8' : colors.textSecondary }]}>
+                {groupBalanceCount > 0
+                  ? `${sharedExpensesCount} direct expenses + ${groupBalanceCount} group ${groupBalanceCount === 1 ? 'balance' : 'balances'}`
+                  : `Across ${sharedExpensesCount} direct expenses`}
+              </ThemedText>
 
-            <ThemedText style={[styles.summaryCardSubtitle, { color: isDark ? '#94A3B8' : colors.textSecondary }]}>
-              Direct balance: {relationship.directBalance >= 0 ? '+' : ''}{formatCurrency(Math.abs(relationship.directBalance), relationship.directCurrency ?? preferredCurrency)}
-            </ThemedText>
+              <ThemedText style={[styles.summaryCardSubtitle, { color: isDark ? '#94A3B8' : colors.textSecondary }]}>
+                Direct balance: {relationship.directBalance >= 0 ? '+' : ''}{formatCurrency(Math.abs(relationship.directBalance), relationship.directCurrency ?? preferredCurrency)}
+              </ThemedText>
+            </View>
 
             {balance !== 0 && !hasCurrencyAmbiguity && (
               <View style={styles.cardQuickActions}>

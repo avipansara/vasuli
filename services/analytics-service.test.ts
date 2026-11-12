@@ -139,6 +139,18 @@ describe('AnalyticsService', () => {
     expect(client.capture).toHaveBeenCalledTimes(3)
   })
 
+  it('records link-based invite acceptance with the privacy-safe source enum', async () => {
+    const { deps, client } = createDeps()
+    const service = new AnalyticsService(deps as never)
+    await service.identify(USER_UUID)
+
+    expect(await service.track('invite accepted', { invite_type: 'link' })).toBe(true)
+    expect(client.capture).toHaveBeenCalledWith(
+      'invite accepted',
+      expect.objectContaining({ invite_type: 'link' }),
+    )
+  })
+
   it('derives stable pseudonymous group keys and never sends raw IDs', async () => {
     const { deps, client } = createDeps()
     const service = new AnalyticsService(deps as never)

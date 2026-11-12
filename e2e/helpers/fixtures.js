@@ -2,6 +2,8 @@ const { createClient } = require('@supabase/supabase-js');
 
 let fixtureClient;
 
+/** @typedef {{ runId?: string, workerId?: string, testKey?: string }} FixtureOptions */
+
 function getFixtureClient() {
   if (fixtureClient) return fixtureClient;
 
@@ -11,12 +13,24 @@ function getFixtureClient() {
     throw new Error('Run-scoped E2E fixtures require the development Supabase URL and anon key.');
   }
 
+  const allowedHost = process.env.SUPABASE_DEV_HOST;
+  let host;
+  try {
+    host = new URL(url).hostname;
+  } catch {
+    throw new Error('Run-scoped E2E fixtures require a valid development Supabase URL.');
+  }
+  if (!allowedHost || host !== allowedHost) {
+    throw new Error(`Refusing E2E fixture access to unapproved Supabase host: ${host}`);
+  }
+
   fixtureClient = createClient(url, key, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
   return fixtureClient;
 }
 
+/** @param {FixtureOptions} [options] */
 async function seedOutstandingGroup({
   runId = process.env.E2E_RUN_ID,
   workerId = process.env.E2E_WORKER_ID ?? 'worker-0',
@@ -50,6 +64,7 @@ async function seedOutstandingGroup({
   return data;
 }
 
+/** @param {FixtureOptions} [options] */
 async function seedGroupMembership({
   runId = process.env.E2E_RUN_ID,
   workerId = process.env.E2E_WORKER_ID ?? 'worker-0',
@@ -81,6 +96,7 @@ async function seedGroupMembership({
   return data;
 }
 
+/** @param {FixtureOptions} [options] */
 async function seedSettlementReversal({
   runId = process.env.E2E_RUN_ID,
   workerId = process.env.E2E_WORKER_ID ?? 'worker-0',
@@ -112,6 +128,7 @@ async function seedSettlementReversal({
   return data;
 }
 
+/** @param {FixtureOptions} [options] */
 async function purgeFixtureRun({
   runId = process.env.E2E_RUN_ID,
   workerId = process.env.E2E_WORKER_ID ?? 'worker-0',
@@ -140,6 +157,7 @@ async function purgeFixtureRun({
   return data;
 }
 
+/** @param {FixtureOptions} [options] */
 async function seedFriendship({
   runId = process.env.E2E_RUN_ID,
   workerId = process.env.E2E_WORKER_ID ?? 'worker-0',

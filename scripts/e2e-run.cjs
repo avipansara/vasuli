@@ -5,12 +5,27 @@ const path = require('node:path');
 const { performance } = require('node:perf_hooks');
 
 function loadEnvFile(filePath, overrideKeys = new Set()) {
-  if (!fs.existsSync(filePath)) return;
+  if (!fs.existsSync(filePath)) return {};
+  const values = {};
   for (const line of fs.readFileSync(filePath, 'utf8').split(/\r?\n/)) {
     const match = line.match(/^([A-Za-z_][A-Za-z0-9_]*)=(.*)$/);
-    if (!match || (process.env[match[1]] !== undefined && !overrideKeys.has(match[1]))) continue;
-    process.env[match[1]] = match[2].replace(/^['"]|['"]$/g, '');
+    if (!match) continue;
+    const [, key] = match;
+    const value = match[2].replace(/^['"]|['"]$/g, '');
+    values[key] = value;
+    if (process.env[key] === undefined || overrideKeys.has(key)) process.env[key] = value;
   }
+  return values;
+}
+
+function readEnvFile(filePath) {
+  if (!fs.existsSync(filePath)) return {};
+  const values = {};
+  for (const line of fs.readFileSync(filePath, 'utf8').split(/\r?\n/)) {
+    const match = line.match(/^([A-Za-z_][A-Za-z0-9_]*)=(.*)$/);
+    if (match) values[match[1]] = match[2].replace(/^['"]|['"]$/g, '');
+  }
+  return values;
 }
 
 const root = path.resolve(__dirname, '..');
@@ -116,10 +131,27 @@ function runE2E({
 }
 
 if (require.main === module) {
-  loadEnvFile(path.join(root, '.env.development.local'), new Set([
+  const devEnv = loadEnvFile(path.join(root, '.env.development.local'), new Set([
     'EXPO_PUBLIC_SUPABASE_URL',
     'EXPO_PUBLIC_SUPABASE_KEY',
   ]));
+  try {
+    const devHost = new URL(devEnv.EXPO_PUBLIC_SUPABASE_URL).hostname;
+    process.env.SUPABASE_DEV_HOST = devHost;
+    const baseEnvPath = path.join(root, '.env');
+    if (fs.existsSync(baseEnvPath)) {
+      const baseEnv = readEnvFile(baseEnvPath);
+      const baseHost = baseEnv.EXPO_PUBLIC_SUPABASE_URL
+        ? new URL(baseEnv.EXPO_PUBLIC_SUPABASE_URL).hostname
+        : null;
+      if (baseHost && baseHost === devHost) {
+        throw new Error('The development Supabase host must differ from the base environment host.');
+      }
+    }
+  } catch (error) {
+    console.error(`[e2e-run] ${error.message ?? 'Invalid development Supabase configuration.'}`);
+    process.exit(1);
+  }
   process.env.E2E_CLEANUP_CONFIRM = 'delete';
   const measurementDir = measurementDirectory();
   process.env.E2E_RUN_ID ??= `run-${new Date().toISOString().replace(/[-:.TZ]/g, '')}-${process.pid}`;

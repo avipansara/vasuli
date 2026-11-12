@@ -5,6 +5,7 @@ node_modules/
 
 # Expo
 .expo/
+.e2e/
 dist/
 web-build/
 expo-env.d.ts
@@ -36,7 +37,6 @@ yarn-error.*
 .env.example
 google-services-key.json
 
-
 # typescript
 *.tsbuildinfo
 
@@ -55,5 +55,6 @@ supabase/fixtures/e2e-development-friend.sql
 .agents/
 marketing/
 PRODUCT.md
+.scratch/
 
 google-services.json

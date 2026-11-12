@@ -35,7 +35,7 @@ export function SettlementOperationDeleteSwipeAction({
 }
 
 const styles = StyleSheet.create({
-  swipeActionRight: { flex: 1, alignItems: 'flex-end', justifyContent: 'center', borderRadius: 12 },
+  swipeActionRight: { width: 80, alignItems: 'flex-end', justifyContent: 'center', borderRadius: 12 },
   swipeActionButton: { width: 80, alignItems: 'center', justifyContent: 'center', minHeight: 64 },
   swipeActionText: { fontSize: 12, marginTop: 4 },
 });

@@ -755,6 +755,8 @@ DECLARE
   v_legacy_settlement_ids uuid[];
   v_legacy_activity_ids uuid[];
   v_payment_intent_ids uuid[];
+  v_recurring_rule_ids uuid[];
+  v_recurring_expense_ids uuid[];
   v_deleted integer := 0;
   v_scenario_count integer := 0;
 BEGIN
@@ -886,6 +888,43 @@ BEGIN
       DELETE FROM public.settlement_commitments
       WHERE payment_intent_id = ANY(v_payment_intent_ids);
     END IF;
+  END IF;
+
+  -- A recurring rule created by a UI test belongs to its isolated fixture
+  -- Group. Remove only rules owned by this actor in the selected run Groups,
+  -- then clear any scheduler rows or posted occurrences before deleting the
+  -- rule. This also makes cleanup safe if a due-date worker ran mid-test.
+  SELECT coalesce(array_agg(rule.id), '{}')
+    INTO v_recurring_rule_ids
+  FROM public.recurring_expense_rules rule
+  WHERE rule.owner_id = v_actor_id
+    AND rule.group_id = ANY(v_group_ids);
+
+  IF coalesce(array_length(v_recurring_rule_ids, 1), 0) > 0 THEN
+    SELECT coalesce(array_agg(expense.id), '{}')
+      INTO v_recurring_expense_ids
+    FROM public.expenses expense
+    WHERE expense.recurring_rule_id = ANY(v_recurring_rule_ids);
+
+    IF coalesce(array_length(v_recurring_expense_ids, 1), 0) > 0 THEN
+      DELETE FROM public.activities
+      WHERE recurring_occurrence_id = ANY(v_recurring_expense_ids);
+    END IF;
+
+    DELETE FROM public.recurring_expense_activity_outbox
+    WHERE rule_id = ANY(v_recurring_rule_ids);
+    DELETE FROM public.recurring_expense_occurrence_outbox
+    WHERE rule_id = ANY(v_recurring_rule_ids);
+
+    IF coalesce(array_length(v_recurring_expense_ids, 1), 0) > 0 THEN
+      DELETE FROM public.expense_splits
+      WHERE expense_id = ANY(v_recurring_expense_ids);
+      DELETE FROM public.expenses
+      WHERE id = ANY(v_recurring_expense_ids);
+    END IF;
+
+    DELETE FROM public.recurring_expense_rules
+    WHERE id = ANY(v_recurring_rule_ids);
   END IF;
 
   IF coalesce(array_length(v_expense_ids, 1), 0) > 0 THEN
@@ -1698,6 +1737,8 @@ DECLARE
   v_legacy_settlement_ids uuid[];
   v_legacy_activity_ids uuid[];
   v_payment_intent_ids uuid[];
+  v_recurring_rule_ids uuid[];
+  v_recurring_expense_ids uuid[];
   v_deleted integer := 0;
   v_scenario_count integer := 0;
 BEGIN
@@ -1829,6 +1870,43 @@ BEGIN
       DELETE FROM public.settlement_commitments
       WHERE payment_intent_id = ANY(v_payment_intent_ids);
     END IF;
+  END IF;
+
+  -- A recurring rule created by a UI test belongs to its isolated fixture
+  -- Group. Remove only rules owned by this actor in the selected run Groups,
+  -- then clear any scheduler rows or posted occurrences before deleting the
+  -- rule. This also makes cleanup safe if a due-date worker ran mid-test.
+  SELECT coalesce(array_agg(rule.id), '{}')
+    INTO v_recurring_rule_ids
+  FROM public.recurring_expense_rules rule
+  WHERE rule.owner_id = v_actor_id
+    AND rule.group_id = ANY(v_group_ids);
+
+  IF coalesce(array_length(v_recurring_rule_ids, 1), 0) > 0 THEN
+    SELECT coalesce(array_agg(expense.id), '{}')
+      INTO v_recurring_expense_ids
+    FROM public.expenses expense
+    WHERE expense.recurring_rule_id = ANY(v_recurring_rule_ids);
+
+    IF coalesce(array_length(v_recurring_expense_ids, 1), 0) > 0 THEN
+      DELETE FROM public.activities
+      WHERE recurring_occurrence_id = ANY(v_recurring_expense_ids);
+    END IF;
+
+    DELETE FROM public.recurring_expense_activity_outbox
+    WHERE rule_id = ANY(v_recurring_rule_ids);
+    DELETE FROM public.recurring_expense_occurrence_outbox
+    WHERE rule_id = ANY(v_recurring_rule_ids);
+
+    IF coalesce(array_length(v_recurring_expense_ids, 1), 0) > 0 THEN
+      DELETE FROM public.expense_splits
+      WHERE expense_id = ANY(v_recurring_expense_ids);
+      DELETE FROM public.expenses
+      WHERE id = ANY(v_recurring_expense_ids);
+    END IF;
+
+    DELETE FROM public.recurring_expense_rules
+    WHERE id = ANY(v_recurring_rule_ids);
   END IF;
 
   IF coalesce(array_length(v_expense_ids, 1), 0) > 0 THEN
@@ -2019,7 +2097,7 @@ REVOKE EXECUTE ON FUNCTION public.purge_e2e_groups(text) FROM PUBLIC, anon, serv
 GRANT EXECUTE ON FUNCTION public.purge_e2e_groups(text) TO authenticated;
 -- END inlined supabase/fixtures/e2e-purge-groups.sql
 
-SELECT plan(87);
+SELECT plan(90);
 
 CREATE TEMP TABLE fixture_test_users (
   auth_id uuid PRIMARY KEY,
@@ -2540,8 +2618,39 @@ SELECT is(
 );
 SELECT is(public.purge_e2e_fixture_run('run-e', 'worker-a', 'direct-expense'), 1, 'friendship cleanup reports one scenario');
 SELECT is((SELECT count(*)::integer FROM public.e2e_fixture_runs WHERE run_id = 'run-e'), 0, 'friendship cleanup removes only its metadata');
+
+CREATE TEMP TABLE fixture_recurring_rules (id uuid, run_id text);
+WITH inserted AS (
+  INSERT INTO public.recurring_expense_rules (
+    owner_id, paid_by, scope_type, group_id, description, amount, currency,
+    split_method, split_type, cadence, anchor_day, time_zone, first_due_on, next_due_on
+  )
+  SELECT actor.app_id, actor.app_id, 'group', (result.payload->>'groupId')::uuid,
+         result.key, 12, 'USD', 'equal', 'equal', 'weekly', 0, 'UTC', current_date, current_date
+  FROM fixture_results result CROSS JOIN fixture_test_users actor
+  WHERE result.key IN ('run-b', 'run-c-first')
+  RETURNING id, description
+)
+INSERT INTO fixture_recurring_rules SELECT id, description FROM inserted;
+
+INSERT INTO public.recurring_expense_rule_participants (rule_id, user_id, share_amount)
+SELECT rule.id, member.user_id, 6
+FROM fixture_recurring_rules fixture
+JOIN public.recurring_expense_rules rule ON rule.id = fixture.id
+JOIN public.group_members member ON member.group_id = rule.group_id;
+
+INSERT INTO public.expenses (group_id, description, amount, currency, paid_by, created_by, date, recurring_rule_id, scheduled_for)
+SELECT rule.group_id, 'recurring fixture occurrence', 12, 'USD', rule.owner_id, rule.owner_id,
+       now(), rule.id, current_date
+FROM public.recurring_expense_rules rule
+JOIN fixture_recurring_rules fixture ON fixture.id = rule.id
+WHERE fixture.run_id = 'run-c-first';
+
 SELECT is(public.purge_e2e_fixture_run('run-c', 'worker-a', 'payer'), 1, 'membership cleanup reports one scenario');
 SELECT is((SELECT count(*)::integer FROM public.groups WHERE name LIKE 'Detox Group run-c%'), 0, 'membership cleanup removes its group');
+SELECT is((SELECT count(*)::integer FROM public.recurring_expense_rules WHERE id = (SELECT id FROM fixture_recurring_rules WHERE run_id = 'run-c-first')), 0, 'cleanup removes recurring rules in the selected run');
+SELECT is((SELECT count(*)::integer FROM public.recurring_expense_rules WHERE id = (SELECT id FROM fixture_recurring_rules WHERE run_id = 'run-b')), 1, 'cleanup preserves recurring rules in other runs');
+SELECT is((SELECT count(*)::integer FROM public.expenses WHERE description = 'recurring fixture occurrence'), 0, 'cleanup removes posted occurrences before their recurring rule');
 
 SELECT is(public.purge_e2e_fixture_run('run-a', 'worker-a', 'guards'), 1, 'selected run cleanup reports one scenario');
 SELECT is((SELECT count(*)::integer FROM public.e2e_fixture_runs WHERE run_id = 'run-a'), 0, 'selected run metadata is removed');

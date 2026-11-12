@@ -196,6 +196,28 @@ describe('run-scoped E2E fixture SQL contract', () => {
     expect(cleanupScript).not.toMatch(/[a-z]{20}\.supabase\.co/);
   });
 
+  it('purges run-scoped direct friend expenses in FK-safe order under creator RLS', () => {
+    expect(cleanupScript).toContain("const DIRECT_EXPENSE_PREFIX = 'TesterArmy direct '");
+    expect(cleanupScript).toContain("const RUN_ID_PATTERN =");
+    expect(cleanupScript).toContain("function escapeLikePattern");
+    expect(cleanupScript).toContain("async function purgeRunScopedDirectExpenses");
+    expect(cleanupScript).toContain(".is('group_id', null)");
+    expect(cleanupScript).toContain(".in('target_id', expenseIds)");
+    expect(cleanupScript).toContain(".in('expense_id', expenseIds)");
+    expect(cleanupScript).toContain(".in('id', expenseIds)");
+
+    const fnBody = cleanupScript.slice(
+      cleanupScript.indexOf("async function purgeRunScopedDirectExpenses"),
+      cleanupScript.indexOf("async function main()"),
+    );
+    const deleteActivityIndex = fnBody.indexOf(".from('activities')\n    .delete()");
+    const deleteSplitIndex = fnBody.indexOf(".from('expense_splits')\n    .delete()");
+    const deleteExpenseIndex = fnBody.indexOf(".from('expenses')\n    .delete()");
+    expect(deleteActivityIndex).toBeGreaterThan(-1);
+    expect(deleteActivityIndex).toBeLessThan(deleteSplitIndex);
+    expect(deleteSplitIndex).toBeLessThan(deleteExpenseIndex);
+  });
+
   it('hardens legacy cleanup behind the run-scoped development actor boundary', () => {
     expect(purgeGroupsSql).toContain('PERFORM public.e2e_fixture_require_development()');
     expect(purgeGroupsSql).toContain('v_actor_id := public.e2e_fixture_actor()');

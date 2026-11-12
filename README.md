@@ -190,38 +190,23 @@ npm run e2e:build:ios
 npm run e2e:ios
 ```
 
-For a fast development check, reuse the installed release binary and run the
-single deterministic authentication, Group, and Expense lifecycle journey:
+For a smoke run of the account and static routes, reuse the release binary:
 
 ```bash
 npm run e2e:ios:smoke
 ```
 
-The smoke journey validates the authenticated Friends route before navigating
-to Groups, then creates, renames, and deletes one Group and creates, edits, and
-deletes one Expense. It uses the same cleanup and timing output as the full
-suite. The installed release binary is reused; run `npm run e2e:build:ios`
-separately when the native app needs rebuilding.
-
-`e2e:build:ios` builds the Detox release app. `e2e:ios` removes only groups
-whose names begin with `Detox Group ` before and after the run, then executes
-the tests serially. The scripts load Supabase and test-account values from
-`.env.development.local`. Test execution does not build the app; reuse the
-existing release binary. Build once with `npm run e2e:build:ios`, then run the
-smoke, full, or focused commands as many times as needed. The Xcode build is
-measured separately and is excluded from the 40% wrapper-runtime gate. Run a
-focused file or named test without rebuilding by forwarding Detox arguments to
-the runner:
+The runner loads the development Supabase and test-account values from
+`.env.development.local`, checks the approved host, and cleans run-scoped
+fixtures before and after the suite. It does not build the app. Build again
+after native dependencies or app configuration change. Run a focused flow with:
 
 ```bash
-npm run e2e:ios -- e2e/auth.test.js
-npm run e2e:ios -- e2e/auth.test.js -t "signs in"
+npm run e2e:ios -- tester-e2e/group-management.e2e.ts
 ```
 
-The runner prints cleanup, Detox/Jest, per-test, and total wrapper durations
-and writes a JSON timing artifact under the selected measurement scope in
-`.scratch/detox-e2e-performance/measurements/`. The full-suite default scope is
-`ticket-01`; the smoke command uses `ticket-02`.
+See [TesterArmy coverage](docs/tester-army-e2e.md) for verified flows and
+fixture requirements.
 
 To preview cleanup without deleting anything:
 
@@ -247,22 +232,21 @@ E2E_STALE_BEFORE=2026-08-23T10:00:00Z \
 E2E_CLEANUP_CONFIRM=delete npm run e2e:cleanup -- --apply
 ```
 
-Never run the fixture or cleanup against production. If the simulator is not
-available, inspect the device name in `.detoxrc.js` and update the local Detox
-configuration only; do not commit account credentials.
+Never run the fixture or cleanup against production. For a specific simulator, set `E2E_IOS_DEVICE` to its UDID. Do not commit
+account credentials.
 
 ## Workflows
 
 ### GitHub Actions iOS E2E
 
-The repository keeps Detox verification in two GitHub Actions workflows. They
+The repository runs TesterArmy verification in two GitHub Actions workflows. They
 are separate from the EAS build and release workflows below.
 
 - [`e2e-smoke.yml`](./.github/workflows/e2e-smoke.yml) is manual-only
   (**Run workflow**): simulator E2E is too slow to gate pull requests, which
   stay covered by lint, typecheck, and unit checks.
 - [`e2e-full.yml`](./.github/workflows/e2e-full.yml) runs the serial full suite
-  on weekday mornings and through **Run workflow**. It is intentionally not a
+  on app-related pushes to master, weekly, and through **Run workflow**. It is intentionally not a
   job in general CI or a release build. Both workflows use `macos-26`, build
   the ignored iOS project from the checked-in Expo config, build the release
   app once, and run the selected suite against that installed binary. A
@@ -276,10 +260,15 @@ at the development Supabase project:
 
 ```text
 E2E_SUPABASE_URL
+E2E_SUPABASE_DEV_HOST
 E2E_SUPABASE_ANON_KEY
 E2E_TEST_ACCOUNT_EMAIL
 E2E_TEST_ACCOUNT_OTP
 ```
+
+Set `E2E_SUPABASE_DEV_HOST` separately to the development project's hostname
+(without `https://`). The runner checks it against `E2E_SUPABASE_URL` before
+seeding or cleaning fixtures; a missing or mismatched host stops the run.
 
 Apply the guarded SQL files in
 [`supabase/fixtures/`](./supabase/fixtures/) to that development project
@@ -287,8 +276,7 @@ before enabling the workflows. Both workflows need the run-scoped fixture,
 its account setup, and `e2e-purge-groups.sql`, because legacy cleanup reuses
 the same development and allowlisted-actor boundary. The full suite also
 uses the seeded run-scoped RPCs. Never add these values to workflow YAML,
-tracked files, or an artifact. Fork pull requests skip the secret-backed
-smoke job.
+tracked files, or an artifact. Neither workflow runs on pull requests.
 
 The local reused-binary commands are the same commands used after the CI
 build step:
@@ -297,21 +285,12 @@ build step:
 npm run e2e:build:ios
 npm run e2e:ios:smoke
 npm run e2e:ios
-npm run e2e:ios -- e2e/auth.test.js -t "signs in"
+npm run e2e:ios -- tester-e2e/group-management.e2e.ts
 ```
 
-The local smoke median is about 83 seconds and the final serial suite median
-is about 9 minutes on the measured iPhone 17 Pro setup. CI jobs allow up to 30
-minutes for smoke and 60 minutes for the full suite because simulator startup
-and the native build vary by runner. Build time is recorded separately in
-`build-timing.json`; the runner timing JSON records cleanup, Detox/Jest, each
-test, and total wrapper duration. A failed suite leaves its non-zero status in
-place, while the `always()` artifact step uploads the timing JSON, build and
-test logs, simulator list, Detox `artifacts/`, and Xcode build logs. Download
-the artifact named `detox-smoke-<run>-<attempt>` or
-`detox-full-<run>-<attempt>` from the completed Actions run to identify the
-failed case without rerunning locally. Smoke artifacts are retained for 14
-days and full-suite artifacts for 30 days.
+CI uploads build and test logs, TesterArmy artifacts, and Xcode build logs
+even when a run fails. Smoke artifacts are retained for 14 days and full-suite
+artifacts for 30 days.
 
 This project is configured to use [EAS Workflows](https://docs.expo.dev/eas/workflows/get-started/) to automate some development and release processes. These commands are set up in [`package.json`](./package.json) and can be run using NPM scripts in your terminal.
 
