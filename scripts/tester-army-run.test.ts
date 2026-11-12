@@ -1,4 +1,8 @@
 import { createRequire } from 'node:module';
+import { spawnSync } from 'node:child_process';
+import { mkdtempSync, mkdirSync, copyFileSync, writeFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 
 const require = createRequire(import.meta.url);
@@ -10,6 +14,36 @@ const { runWithCleanup } = require('./run-e2e-with-cleanup.cjs') as {
 };
 
 describe('TesterArmy runner lifecycle', () => {
+  it('runs from a clean CI checkout only when the independent development host matches', () => {
+    const root = mkdtempSync(join(tmpdir(), 'tester-army-ci-'));
+    try {
+      mkdirSync(join(root, 'scripts'), { recursive: true });
+      mkdirSync(join(root, 'node_modules/.bin'), { recursive: true });
+      mkdirSync(join(root, 'ios/build/Build/Products/Release-iphonesimulator/Vasuli.app'), { recursive: true });
+      for (const file of ['tester-army-run.cjs', 'run-e2e-with-cleanup.cjs']) {
+        copyFileSync(join(process.cwd(), 'scripts', file), join(root, 'scripts', file));
+      }
+      writeFileSync(join(root, 'scripts/e2e-cleanup.cjs'), 'process.exit(0);\n');
+      writeFileSync(join(root, 'node_modules/.bin/e2e'), '#!/bin/sh\nexit 0\n', { mode: 0o755 });
+      const env = {
+        ...process.env,
+        EXPO_PUBLIC_SUPABASE_URL: 'https://approved-project.supabase.co',
+        SUPABASE_DEV_HOST: 'approved-project.supabase.co',
+      };
+      const run = (host: string) => spawnSync(process.execPath, [join(root, 'scripts/tester-army-run.cjs'), '--target', 'ios'], {
+        cwd: root,
+        env: { ...env, SUPABASE_DEV_HOST: host },
+        encoding: 'utf8',
+      });
+      expect(run('approved-project.supabase.co').status).toBe(0);
+      expect(run('').status).toBe(1);
+      const mismatch = run('other-project.supabase.co');
+      expect(mismatch.status).toBe(1);
+      expect(mismatch.stderr).toContain('development Supabase host match');
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
   it('cleans before and after a suite even when the runner throws', () => {
     const cleanup = vi.fn(() => ({ status: 0 }));
     const runSuite = vi.fn(() => { throw new Error('suite crashed'); });

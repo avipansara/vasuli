@@ -10,6 +10,17 @@ with code 130 for an interrupted run. Both targets declare `app.bundleId` and
 install their configured build in the test helper, keeping Android package
 discovery explicit.
 
+GitHub Actions must set `E2E_SUPABASE_DEV_HOST` to the development project
+hostname independently of `E2E_SUPABASE_URL`. A missing or mismatched host
+blocks fixture setup and cleanup.
+
+The two platforms report different labels for the same control. iOS exposes a
+React Native text twice, as the text host and its static-text child, so a text
+query can match two nodes and takes the first one. Android renders native
+dialog buttons in uppercase, so a dialog action matches a case-insensitive
+pattern. The Profile screen labels its settings section "Settings" and only
+iOS exposes the "Account" header, so route markers use the settings heading.
+
 Upgrade verification on 2026-10-06 passed strict TypeScript checking, all 906
 Vitest tests, and the focused malformed-email validation test on iPhone 18 Pro.
 No Android device was connected for an upgrade smoke run. Keep only one iOS
@@ -17,28 +28,40 @@ simulator booted for tests using `app.clearState()`: the mobile engine's reset
 operation can select ambiguously with multiple booted simulators even when
 `E2E_IOS_DEVICE` pins the target.
 
+Expo 58 verification on 2026-11-12 passed the whole suite on both platforms:
+18 iOS Simulator tests on the iPhone 18 Pro and 20 Android Emulator tests on
+the Pixel 9a, each with only the saved recurring rule skipped. Both runs cover
+the account routes, the direct and group expense lifecycles, group splits and
+payer selection, the group lifecycle, recurring review and navigation, group
+stats, and the group, friend, and settlement reversal flows. The iOS state-reset
+case stays excluded from simulator runs because the mobile engine's reset can
+pick the wrong booted simulator. A disposable development-only friend profile
+supports the balance tests.
+
 ## Test suite and scenario matrix
 
 | Test scenario | Key assertions | Result |
 | --- | --- | --- |
-| `account-and-static-routes.e2e.ts` — restored/OTP session reaches Friends | `friends-screen` visible, positive verification of signed-in landing | **Passed** (iOS Simulator) |
-| same — Profile opens account editing | `Account Details` heading | **Passed** (iOS Simulator) |
-| same — Profile opens Invitations | `Pending Invitations` heading | **Passed** (iOS Simulator) |
-| same — Profile opens Add people | `Share Invite Link` button | **Passed** (iOS Simulator) |
-| same — Profile opens privacy policy | Privacy Policy heading | **Passed** (iOS Simulator) |
-| same — Profile opens terms and conditions | Financial Disclaimer heading | **Passed** (iOS Simulator) |
-| same — Profile opens Help and Support | FAQ heading | **Passed** (iOS Simulator) |
-| same — sign-in keeps Continue disabled for a malformed email | Valid email enables Continue; appended invalid character disables it | **Passed** (iOS Simulator) |
-| `group-management.e2e.ts` — group create, rename, delete | Run-scoped group appears, rename appears, deletion yields Restore action | **Passed** on iOS Simulator with Expo 58 on 2026-11-12; the test waits for the create and edit transitions before interacting with the list |
-| `group-expense-lifecycle.e2e.ts` — seeded group member adds/edits expense | Expense appears, edited `$24.50` appears, delete hides row | **Passed** (iOS Simulator) |
-| same — group list opens seeded stats | Stats route, Total spent, seeded `$12.00` | Gated: fixture requires clean friend without prior settlement records |
-| `group-expense-splits.e2e.ts` — exact participant split | Submits `$20.00` Unequal split of `$14.50` and `$5.50`, expense row appears | **Passed** (iOS Simulator) |
-| same — payer selection | Friend selected as payer; detail says Paid by friend | **Passed** (iOS Simulator) |
-| `direct-expense.e2e.ts` — friend expense appears on friend and Activity screens | Create, edit to `$20.00`, soft-delete, Deleted state on friend and Activity | **Passed** (iOS Simulator, verified run-scoped purge of direct expense, splits, activities) |
-| `settlements.e2e.ts` — full group payment | Seeded `$12.00` selection, commit success and group return | Gated: fixture requires clean friend without prior settlement records |
-| same — friend settlement | Seeded `$12.00`, confirmation, commit success | Gated: fixture requires clean friend without prior settlement records |
-| `recurring-expenses.e2e.ts` — weekly rule review/cancel | Review sheet and cancel-before-save | **Passed** (iOS Simulator) |
-| same — Activity opens recurring management route | Recurring header and add button | **Passed** (iOS Simulator) |
+| `account-and-static-routes.e2e.ts` — restored/OTP session reaches Friends | `friends-screen` visible, positive verification of signed-in landing | **Passed** (iOS Simulator, Android Emulator) |
+| same — Profile opens account editing | `Edit Profile` heading | **Passed** (iOS Simulator, Android Emulator) |
+| same — Profile opens Invitations | `Pending Invitations` heading | **Passed** (iOS Simulator, Android Emulator) |
+| same — Profile opens Add people | `Share Invite Link` button | **Passed** (iOS Simulator, Android Emulator) |
+| same — Profile opens privacy policy | Privacy Policy heading | **Passed** (iOS Simulator, Android Emulator) |
+| same — Profile opens terms and conditions | Agreement to Terms heading | **Passed** (iOS Simulator, Android Emulator) |
+| same — Profile opens Help and Support | FAQ heading | **Passed** (iOS Simulator, Android Emulator) |
+| same — sign-in keeps Continue disabled for a malformed email | Valid email enables Continue; appended invalid character disables it | **Passed** (Android Emulator; excluded from the iOS simulator run) |
+| `group-management.e2e.ts` — group create, rename, delete | Run-scoped group appears, rename appears, deletion yields Restore action | **Passed** on iOS and Android with Expo 58 on 2026-11-12; the test waits for the create and edit transitions before interacting with the list |
+| `group-expense-lifecycle.e2e.ts` — seeded group member adds/edits expense | Expense appears, edited `$24.50` appears, delete hides row | **Passed** (iOS Simulator, Android Emulator) |
+| same — group list opens seeded stats | Stats route, Total spent, seeded `$12.00` | **Passed** (iOS Simulator and Android Emulator with disposable development friend) |
+| `group-expense-splits.e2e.ts` — exact participant split | Submits `$20.00` Unequal split of `$14.50` and `$5.50`, expense row appears | **Passed** (iOS Simulator, Android Emulator) |
+| same — payer selection | Friend selected as payer; detail says Paid by friend | **Passed** (iOS Simulator, Android Emulator) |
+| `direct-expense.e2e.ts` — friend expense appears on friend and Activity screens | Create, edit to `$20.00`, soft-delete, Deleted state on friend and Activity | **Passed** (iOS Simulator and Android Emulator, verified run-scoped purge of direct expense, splits, activities) |
+| `settlements.e2e.ts` — full group payment | Seeded `$12.00` selection, commit success and group return | **Passed** (iOS Simulator, Android Emulator) |
+| same — friend settlement | Seeded `$12.00`, confirmation, commit success | **Passed** (iOS Simulator, Android Emulator) |
+| same — settlement reversal | Delete a committed settlement, restore the `$12.00` balance, retain deleted history | **Passed** (iOS Simulator, Android Emulator) |
+| `recurring-expenses.e2e.ts` — weekly rule review/cancel | Review sheet and cancel-before-save | **Passed** (iOS Simulator, Android Emulator) |
+| same — Activity opens recurring management route | Recurring header and add button | **Passed** (iOS Simulator, Android Emulator) |
+| same — save and pause a weekly rule | Rule appears in management, then exposes Resume after pausing | **Gated**: development recurring migrations and cleanup are not installed |
 | `native-groups-link.e2e.ts` — stable groups deep link | Android `vasuli://groups` opens Groups | **Passed** (Android Emulator Pixel 9a) |
 
 ## Route coverage accounting
@@ -53,28 +76,28 @@ uncovered by this TesterArmy suite and need a manual or future automated check.
 | `/sign-up-otp` | Uncovered: no safe disposable identity configured |
 | `/auth/callback` | Uncovered: requires real auth callback/deep link |
 | `/` (Friends tab) | **Verified** (iOS Simulator, Android Emulator): signed-in landing; direct friend expense verified |
-| `/friends` | **Verified** (iOS Simulator): direct friend expense route navigated and verified |
-| `/friends/[id]` | **Verified** (iOS Simulator): direct friend expense recorded, edited to $20, deleted; settlement source assertion |
-| `/add-friend` | **Verified** (iOS Simulator): Profile opens Add people; invite delivery not asserted |
-| `/invitations` | **Verified** (iOS Simulator): route heading; accept/decline/resend mutations uncovered |
+| `/friends` | **Verified** (iOS Simulator, Android Emulator): direct friend expense route navigated and verified |
+| `/friends/[id]` | **Verified** (iOS Simulator, Android Emulator): direct friend expense recorded, edited to $20, deleted; settlement source assertion |
+| `/add-friend` | **Verified** (iOS Simulator, Android Emulator): Profile opens Add people; invite delivery not asserted |
+| `/invitations` | **Verified** (iOS Simulator, Android Emulator): route heading; accept/decline/resend mutations uncovered |
 | `/invite/[id]` | Uncovered: invitation acceptance requires controlled invitation/second identity |
 | `/groups` | **Verified** (iOS Simulator, Android Emulator): create/rename/delete; deep link landing |
-| `/groups/[id]` | **Verified** (iOS Simulator): group details and deletion action |
-| `/groups/stats/[id]` | Source only: seeded total assertion; fixture currently blocked by clean-friend availability |
-| `/create-group` | **Verified** (iOS Simulator): exercised inside group lifecycle case |
-| `/edit-group/[id]` | **Verified** (iOS Simulator): exercised inside group lifecycle case |
-| `/add-expense` | **Verified** (iOS Simulator): weekly recurring expense review, cancel sheet, unequal splits, and payer selection |
-| `/edit-expense/[id]` | **Verified** (iOS Simulator): group expense edit amount to `$24.50` |
-| `/expense-detail/[id]` | **Verified** (iOS Simulator): detail view, edit button, delete confirmation, and payer label |
-| `/friend-settle/[id]` | Source only: friend settlement commit; unexecuted (clean friend gated) |
-| `/groups/settle/[id]` | Source only: group settlement commit; unexecuted (clean friend gated) |
-| `/activity` | **Verified** (iOS Simulator): recurring route and direct expense search |
-| `/profile` | **Verified** (iOS Simulator): static route navigation |
-| `/edit-profile` | **Verified** (iOS Simulator): heading assertion |
-| `/help-support` | **Verified** (iOS Simulator): FAQ heading |
-| `/privacy-policy` | **Verified** (iOS Simulator): policy heading |
-| `/terms-conditions` | **Verified** (iOS Simulator): disclaimer heading |
-| `/recurring-expenses` | **Verified** (iOS Simulator): header/add button; persisted schedules unmanaged |
+| `/groups/[id]` | **Verified** (iOS Simulator, Android Emulator): group details, settlement commit, and deletion action |
+| `/groups/stats/[id]` | **Verified** (iOS Simulator, Android Emulator): seeded total assertion |
+| `/create-group` | **Verified** (iOS Simulator, Android Emulator): exercised inside group lifecycle case |
+| `/edit-group/[id]` | **Verified** (iOS Simulator, Android Emulator): exercised inside group lifecycle case |
+| `/add-expense` | **Verified** (iOS Simulator, Android Emulator): weekly recurring expense review, cancel sheet, unequal splits, and payer selection |
+| `/edit-expense/[id]` | **Verified** (iOS Simulator, Android Emulator): group expense edit amount to `$24.50` |
+| `/expense-detail/[id]` | **Verified** (iOS Simulator, Android Emulator): detail view, edit button, delete confirmation, and payer label |
+| `/friend-settle/[id]` | **Verified** (iOS Simulator, Android Emulator): friend settlement commit |
+| `/groups/settle/[id]` | **Verified** (iOS Simulator, Android Emulator): group settlement commit |
+| `/activity` | **Verified** (iOS Simulator, Android Emulator): recurring route and direct expense search |
+| `/profile` | **Verified** (iOS Simulator, Android Emulator): static route navigation |
+| `/edit-profile` | **Verified** (iOS Simulator, Android Emulator): heading assertion |
+| `/help-support` | **Verified** (iOS Simulator, Android Emulator): FAQ heading |
+| `/privacy-policy` | **Verified** (iOS Simulator, Android Emulator): policy heading |
+| `/terms-conditions` | **Verified** (iOS Simulator, Android Emulator): terms heading |
+| `/recurring-expenses` | **Verified** (iOS Simulator, Android Emulator): header/add button; persisted schedules unmanaged |
 | `/recurring-expenses/[id]` | Uncovered: detail, pause/resume/stop |
 | `/recurring-expenses/edit/[id]` | Uncovered: persisted schedule edits |
 | `/scan-qr` | Manual: camera permission, live scan and second-device QR input |
@@ -88,8 +111,10 @@ this switches simulator appearance but does not establish visual QA. Mutating
 group flows require the project wrapper's run ID and cleanup. Never direct
 fixture RPCs at production.
 
-Persistent recurring-rule tests require the updated development-only
-`supabase/fixtures/e2e-run-scoped-fixtures.sql` purge function to be applied to
-the approved development Supabase project first. No SQL editor/admin mechanism
-is configured in this run, so the updated cleanup is source-only and those
-mutations must remain gated.
+The saved recurring-rule test is skipped unless `E2E_RECURRING_PERSISTENCE=1`.
+Before enabling it, apply the recurring migrations and the updated development-only
+`supabase/fixtures/e2e-run-scoped-fixtures.sql` purge function to the approved
+development project. The current development database has neither the recurring
+tables nor the updated cleanup, so the test must remain disabled there. The new
+cleanup passed transactional local tests; the prior development cleanup remains
+installed.

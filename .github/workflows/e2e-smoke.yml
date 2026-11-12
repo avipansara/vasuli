@@ -21,6 +21,7 @@ jobs:
     timeout-minutes: 40
     env:
       EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}
+      SUPABASE_DEV_HOST: ${{ secrets.E2E_SUPABASE_DEV_HOST }}
       EXPO_PUBLIC_SUPABASE_KEY: ${{ secrets.E2E_SUPABASE_ANON_KEY }}
       EXPO_PUBLIC_TEST_ACCOUNT_EMAIL: ${{ secrets.E2E_TEST_ACCOUNT_EMAIL }}
       EXPO_PUBLIC_TEST_ACCOUNT_OTP: ${{ secrets.E2E_TEST_ACCOUNT_OTP }}

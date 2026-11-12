@@ -14,11 +14,13 @@ export function friendCard(screen: Screen, friendName: string) {
 }
 
 export async function dismissNotificationPrompt(screen: Screen) {
-  const notNow = screen.getByRole('button', 'Not now');
+  // Android renders the permission dialog buttons in uppercase, iOS in title case.
+  const notNow = screen.getByRole('button', /not now/i);
   if (await notNow.isVisible()) {
     await notNow.tap();
+    return;
   }
-  const notNowText = screen.getByText('Not now');
+  const notNowText = screen.getByText(/not now/i);
   if (await notNowText.isVisible()) {
     await notNowText.tap();
   }
@@ -49,7 +51,7 @@ export async function openSignedInApp(
   await expect.poll(signInState, { timeout: 20_000 }).not.toBe('');
   const currentState = await signInState();
   if (currentState === 'signed-in') {
-    await dismissNotificationPrompt(screen);
+    await expectFriendsScreen(screen);
     return;
   }
 
@@ -77,9 +79,15 @@ export async function openSignedInApp(
   if (await verifyButton.isVisible() && await verifyButton.isEnabled()) {
     await verifyButton.tap();
   }
-  await dismissNotificationPrompt(screen);
-  await expect(screen.getByTestId('friends-screen')).toBeVisible({ timeout: 20_000 });
-  await dismissNotificationPrompt(screen);
+  await expectFriendsScreen(screen);
+}
+
+/** Waits for the signed-in Friends screen, dismissing the notification prompt that can cover it. */
+async function expectFriendsScreen(screen: Screen) {
+  await expect.poll(async () => {
+    await dismissNotificationPrompt(screen);
+    return screen.getByTestId('friends-screen').isVisible();
+  }, { timeout: 20_000 }).toBe(true);
 }
 
 export async function replaceText(locator: { clear?: () => Promise<unknown>; fill: (text: string) => Promise<unknown> }, _oldLength: number, value: string) {
@@ -100,7 +108,8 @@ export async function openTab(screen: Screen, label: 'Friends' | 'Groups' | 'Act
     Friends: screen.getByTestId('friends-screen'),
     Groups: screen.getByLabel('Create Group'),
     Activity: screen.getByTestId('activity-search-input'),
-    Profile: screen.getByText('Account'),
+    // The Profile screen labels its settings section "Settings" in uppercase.
+    Profile: screen.getByText(/^settings$/i).first(),
   }[label];
   await expect(routeMarker).toBeVisible({ timeout: 15_000 });
 }

@@ -7,6 +7,7 @@
 ## 2026-11-12
 
 - Update the TesterArmy runner and mobile engine used for device E2E tests.
+- Allow the E2E workflows to validate their development database host without a local environment file.
 - Prevent a spurious “Group not found” alert while deleting a group.
 - Make the group and friend “Settle Up” buttons available to screen readers.
 - Make settlement deletion easier to reveal with a swipe.

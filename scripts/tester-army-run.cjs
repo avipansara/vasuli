@@ -105,12 +105,13 @@ if (require.main === module) {
     'EXPO_PUBLIC_TEST_ACCOUNT_EMAIL',
     'EXPO_PUBLIC_TEST_ACCOUNT_OTP',
   ]));
-  try {
-    const trustedUrl = new URL(devEnv.EXPO_PUBLIC_SUPABASE_URL);
-    process.env.SUPABASE_DEV_HOST = trustedUrl.hostname;
-  } catch {
-    console.error('[tester-army] EXPO_PUBLIC_SUPABASE_URL in .env.development.local is missing or invalid.');
-    process.exit(1);
+  if (devEnv.EXPO_PUBLIC_SUPABASE_URL) {
+    try {
+      process.env.SUPABASE_DEV_HOST = new URL(devEnv.EXPO_PUBLIC_SUPABASE_URL).hostname;
+    } catch {
+      console.error('[tester-army] EXPO_PUBLIC_SUPABASE_URL in .env.development.local is invalid.');
+      process.exit(1);
+    }
   }
   process.exit(runTesterArmy());
 }

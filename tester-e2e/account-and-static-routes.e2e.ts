@@ -5,7 +5,7 @@ import { openSignedInApp, openTab } from './helpers';
 async function openProfile(app: Parameters<typeof openSignedInApp>[0], screen: Parameters<typeof openSignedInApp>[1], device: Parameters<typeof openSignedInApp>[2]) {
   await openSignedInApp(app, screen, device);
   await openTab(screen, 'Profile');
-  await expect(screen.getByText('Settings')).toBeVisible();
+  await expect(screen.getByText(/^settings$/i).first()).toBeVisible();
 }
 
 test('a restored or OTP-authenticated session reaches Friends', async ({ app, screen, device }) => {
@@ -21,31 +21,34 @@ test('Profile opens account editing', async ({ app, screen, device }) => {
 
 test('Profile opens Invitations', async ({ app, screen, device }) => {
   await openProfile(app, screen, device);
-  await screen.getByText('Invitations').tap();
+  await screen.getByLabel(/Invitations/).tap();
   await expect(screen.getByText('Invitations')).toBeVisible();
 });
 
 test('Profile opens Add people', async ({ app, screen, device }) => {
   await openProfile(app, screen, device);
-  await screen.getByText('Invite a Friend').tap();
+  await screen.getByLabel(/Invite a Friend/).tap();
   await expect(screen.getByText('Add people')).toBeVisible();
 });
 
 test('Profile opens privacy policy', async ({ app, screen, device }) => {
   await openProfile(app, screen, device);
-  await screen.getByText('Privacy Policy').tap();
+  await screen.getByLabel(/Privacy Policy/).tap();
   await expect(screen.getByText('Information We Collect')).toBeVisible();
 });
 
 test('Profile opens terms and conditions', async ({ app, screen, device }) => {
   await openProfile(app, screen, device);
-  await screen.getByText('Terms & Conditions').tap();
-  await expect(screen.getByText('Financial Disclaimer')).toBeVisible();
+  await screen.scrollUntilVisible(screen.getByLabel(/Help & Support/));
+  await screen.getByLabel(/Terms & Conditions/).tap();
+  await expect(screen.getByText('Agreement to Terms')).toBeVisible();
 });
 
 test('Profile opens Help and Support', async ({ app, screen, device }) => {
   await openProfile(app, screen, device);
-  await screen.getByText('Help & Support').tap();
+  const help = screen.getByLabel(/Help & Support/);
+  await screen.scrollUntilVisible(help);
+  await help.tap();
   await expect(screen.getByText('Frequently Asked Questions')).toBeVisible();
 });
 

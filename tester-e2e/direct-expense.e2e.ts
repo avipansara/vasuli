@@ -10,7 +10,7 @@ test('a friend expense appears on both the friend and Activity screens', async (
     await openSignedInApp(app, screen, device);
     await openTab(screen, 'Friends');
 
-    const friend = friendCard(screen, fixture.friendName!);
+    const friend = friendCard(screen, fixture.friendName!).first();
     if (!(await friend.isVisible())) {
       const settledAccordion = screen.getByText(/^Settled Up \(\d+\)$/);
       if (await settledAccordion.isVisible()) {
@@ -43,14 +43,16 @@ test('a friend expense appears on both the friend and Activity screens', async (
 
     await screen.getByTestId('expense-detail-delete-button').tap();
     await expect(screen.getByText('Delete Expense')).toBeVisible();
-    await screen.getByRole('button', 'Delete').tap();
+    await screen.getByRole('button', /^delete$/i).tap();
     await expect(screen.getByLabel(new RegExp(`^Deleted ${description},`))).toBeVisible({ timeout: 20_000 });
     await screen.getByLabel('Go back').tap();
     await openTab(screen, 'Activity');
     const search = screen.getByTestId('activity-search-input');
     await search.tap();
     await search.pressSequentially(description);
-    await expect(screen.getByText('Deleted')).toBeVisible({ timeout: 15_000 });
+    // iOS exposes a React Native text twice, as the text host and its static-text
+    // child, so the deleted status matches two nodes and needs the first one.
+    await expect(screen.getByText('Deleted').first()).toBeVisible({ timeout: 15_000 });
   } finally {
     await fixtures.purgeFixtureRun({ testKey });
   }

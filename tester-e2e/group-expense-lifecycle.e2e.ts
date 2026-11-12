@@ -29,6 +29,8 @@ test('a seeded group member can add and edit a group expense', async ({ app, scr
 
     const expenseRow = screen.getByLabel(`View details for ${description}`);
     await expect(expenseRow).toBeVisible({ timeout: 20_000 });
+    // The group screen appears before the add-expense transition accepts taps.
+    await new Promise((resolve) => setTimeout(resolve, 3000));
     await expenseRow.tap();
     await expect(screen.getByTestId('expense-detail-edit-button')).toBeVisible();
     await screen.getByTestId('expense-detail-edit-button').tap();
@@ -38,7 +40,7 @@ test('a seeded group member can add and edit a group expense', async ({ app, scr
     await expect(screen.getByText('$24.50')).toBeVisible({ timeout: 20_000 });
     await screen.getByTestId('expense-detail-delete-button').tap();
     await expect(screen.getByText('Delete Expense')).toBeVisible();
-    await screen.getByRole('button', 'Delete').tap();
+    await screen.getByRole('button', /^delete$/i).tap();
     await expect(expenseRow).toBeHidden({ timeout: 20_000 });
   } finally {
     await fixtures.purgeFixtureRun({ testKey });
@@ -65,8 +67,8 @@ test('the group list opens a seeded group stats route', async ({ app, screen, de
     await expect(screen.getByLabel(new RegExp(`${fixture.groupName}, .*members`))).toBeVisible();
     await screen.getByText('Stats').tap();
     await expect(screen.getByText('Group stats')).toBeVisible();
-    await expect(screen.getByText(fixture.groupName!)).toBeVisible();
-    await expect(screen.getByText('Total spent')).toBeVisible();
+    await expect(screen.getByText(fixture.groupName!).first()).toBeVisible();
+    await expect(screen.getByText('Total spent').first()).toBeVisible();
     await expect(screen.getByText('$12.00').first()).toBeVisible();
   } finally {
     await fixtures.purgeFixtureRun({ testKey });

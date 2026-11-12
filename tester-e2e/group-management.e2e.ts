@@ -22,7 +22,7 @@ test('a group can be created, renamed from the list, and deleted from its detail
   const box = await group.boundingBox();
   if (box) {
     await screen.swipe({
-      from: { x: box.x + 20, y: box.y + box.height / 2 },
+      from: { x: box.x + box.width * 0.25, y: box.y + box.height / 2 },
       to: { x: box.x + box.width - 20, y: box.y + box.height / 2 },
     });
   } else {
@@ -41,6 +41,6 @@ test('a group can be created, renamed from the list, and deleted from its detail
 
   await screen.getByTestId('delete-group-button').tap();
   await expect(screen.getByText('Delete Group')).toBeVisible();
-  await screen.getByRole('button', 'Delete').tap();
+  await screen.getByRole('button', /^delete$/i).tap();
   await expect(screen.getByLabel(`Restore ${renamed}`)).toBeVisible({ timeout: 15_000 });
 });

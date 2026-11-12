@@ -60,7 +60,7 @@ test('group expense payer selection is reflected in expense details', async ({ a
     const row = screen.getByLabel(`View details for ${description}`);
     await expect(row).toBeVisible({ timeout: 20_000 });
     await row.tap();
-    await expect(screen.getByLabel(new RegExp(fixture.friendName!))).toBeVisible({ timeout: 20_000 });
+    await expect(screen.getByLabel(new RegExp(fixture.friendName!)).first()).toBeVisible({ timeout: 20_000 });
   } finally {
     await fixtures.purgeFixtureRun({ testKey });
   }
