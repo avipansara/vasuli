@@ -99,6 +99,15 @@ jobs:
       - name: Boot and pin the iOS simulator
         run: node scripts/e2e-prepare-ios-simulator.cjs
 
+      - name: Prepare the iOS runner
+        shell: bash
+        run: |
+          # A fresh runner builds and starts the XCTest runner on first use, and
+          # that startup does not fit the boot request budget. Prepare it here,
+          # then release the daemon so the suite takes the runner lease.
+          node_modules/.bin/agent-device prepare ios-runner --platform ios --udid "$E2E_IOS_DEVICE" --timeout 600000
+          node_modules/.bin/agent-device daemon stop
+
       - name: Run the smoke suite without rebuilding
         shell: bash
         run: |
