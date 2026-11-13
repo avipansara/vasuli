@@ -84,6 +84,19 @@ jobs:
             exit 1
           fi
 
+      - name: Boot and pin the iOS simulator
+        run: node scripts/e2e-prepare-ios-simulator.cjs
+
+      - name: Prepare the iOS runner
+        shell: bash
+        run: |
+          # A fresh runner builds and starts the XCTest runner on first use, and
+          # that startup does not fit the boot request budget. Prepare it here,
+          # then release the daemon so the suite takes the runner lease. It runs
+          # before the app build so a runner failure surfaces in minutes.
+          node_modules/.bin/agent-device prepare ios-runner --platform ios --udid "$E2E_IOS_DEVICE" --timeout 600000
+          node_modules/.bin/agent-device daemon stop
+
       - name: Build the release app once
         shell: bash
         run: |
@@ -95,18 +108,6 @@ jobs:
           build_end=$(node -e 'process.stdout.write(String(Date.now()))')
           node -e 'const [startedAt, finishedAt, status] = process.argv.slice(1); process.stdout.write(JSON.stringify({ startedAt, finishedAt, durationMs: Number(finishedAt) - Number(startedAt), status: Number(status) }, null, 2) + "\n");' "$build_start" "$build_end" "$build_status" > ci-artifacts/build-timing.json
           exit "$build_status"
-
-      - name: Boot and pin the iOS simulator
-        run: node scripts/e2e-prepare-ios-simulator.cjs
-
-      - name: Prepare the iOS runner
-        shell: bash
-        run: |
-          # A fresh runner builds and starts the XCTest runner on first use, and
-          # that startup does not fit the boot request budget. Prepare it here,
-          # then release the daemon so the suite takes the runner lease.
-          node_modules/.bin/agent-device prepare ios-runner --platform ios --udid "$E2E_IOS_DEVICE" --timeout 600000
-          node_modules/.bin/agent-device daemon stop
 
       - name: Run the smoke suite without rebuilding
         shell: bash
@@ -124,6 +125,19 @@ jobs:
           if [[ -d "$timing_dir" ]]; then
             find "$timing_dir" -type f -name '*.json' -exec cp {} ci-artifacts/timing/ \;
           fi
+          # The agent-device session logs carry the runner build and daemon
+          # output, which is the only place a device-layer failure explains
+          # itself.
+          mkdir -p ci-artifacts/agent-device
+          find "$HOME/.agent-device" -type f \( -name 'runner.log' -o -name 'daemon.log' \) \
+            -exec cp {} ci-artifacts/agent-device/ \; 2>/dev/null || true
+          {
+            echo "xcodebuild: $(xcodebuild -version | tr '\n' ' ')"
+            echo "installed Xcodes:"
+            ls -d /Applications/Xcode*.app 2>/dev/null || true
+            echo "disk:"
+            df -h / /Users/runner 2>/dev/null || true
+          } > ci-artifacts/environment.txt
 
       - name: Upload smoke timing, logs, and E2E artifacts
         if: always()
