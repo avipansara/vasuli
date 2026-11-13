@@ -1,3 +1,4 @@
+import { FeedbackForm } from '@/components/feedback-form';
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol, IconSymbolName } from '@/components/ui/icon-symbol';
 import { NavigationHeader } from '@/components/ui/screen-header';
@@ -5,7 +6,7 @@ import { useThemeColors } from '@/hooks/use-theme-colors';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
-import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 interface FAQItem {
   question: string;
@@ -21,7 +22,7 @@ interface UsageItem {
 const FAQ_ITEMS: FAQItem[] = [
   {
     question: 'How do I add an expense?',
-    answer: 'Tap the "+" button on the Expenses tab or use the "Add Expense" button on a friend or group detail screen. Enter the amount, description, and select who to split with.',
+    answer: 'Tap Add Expense, or open a friend or group and add an expense there. Enter a description and amount, then choose how to split it.',
   },
   {
     question: 'How do I settle up with a friend?',
@@ -29,11 +30,11 @@ const FAQ_ITEMS: FAQItem[] = [
   },
   {
     question: 'Can I edit or delete an expense?',
-    answer: 'Yes! On the Expenses screen, swipe left on any expense to edit it, or swipe right to delete it. All changes are recorded in your activity history.',
+    answer: 'On a friend’s detail screen, swipe right on an eligible expense to edit it, or swipe left to delete it. You can edit or delete expenses you created or paid for.',
   },
   {
     question: 'How do groups work?',
-    answer: 'Groups let you track shared expenses with multiple people. Create a group, add members, and any expense added to the group will be split among all members.',
+    answer: 'Groups help you track shared expenses with multiple people. Create a group, add members, and choose how to split group expenses.',
   },
   {
     question: 'How are expenses split?',
@@ -41,15 +42,15 @@ const FAQ_ITEMS: FAQItem[] = [
   },
   {
     question: 'What happens when I delete my account?',
-    answer: 'Deleting your account will remove all your personal data. However, shared expenses and settlements will remain visible to other users involved in those transactions.',
+    answer: 'Settle all outstanding balances before deleting your account. Your friendships and group memberships are removed, while shared financial records may remain with your identity shown as Deleted User. Feedback has a separate retention period.',
   },
   {
     question: 'How do I invite friends?',
-    answer: 'Go to Profile > Invite a Friend. You can send an invitation via email or share a link. Once they join, you can start splitting expenses together.',
+    answer: 'Go to Profile > Invite a Friend. Find an existing user by email, share an invite link, or use a QR code to connect.',
   },
   {
     question: 'Is my data secure?',
-    answer: 'Yes! We use industry-standard encryption to protect your data. Your financial information is never shared with third parties.',
+    answer: 'Vasuli uses Supabase to store app data and protect it in transit. Service providers help operate the app. See the Privacy Policy for details.',
   },
 ];
 
@@ -72,12 +73,12 @@ const APP_USAGE_ITEMS: UsageItem[] = [
   {
     icon: 'arrow.left.arrow.right',
     title: 'Settle Up',
-    description: 'Record payments between friends to clear balances. The app calculates the simplest way to settle.',
+    description: 'Record payments between friends after the payment has been made to update your balances.',
   },
   {
     icon: 'clock.fill',
     title: 'Activity History',
-    description: 'View all your expense history, settlements, and changes in one place.',
+    description: 'See recent expenses, settlements, and other activity in one place.',
   },
   {
     icon: 'bell.fill',
@@ -89,23 +90,50 @@ const APP_USAGE_ITEMS: UsageItem[] = [
 export default function HelpSupportScreen() {
   const { gradients, colors, isDark } = useThemeColors();
   const [expandedFAQ, setExpandedFAQ] = useState<number | null>(null);
+  const [emailError, setEmailError] = useState(false);
 
   const toggleFAQ = (index: number) => {
     setExpandedFAQ(expandedFAQ === index ? null : index);
   };
 
-  const handleContactSupport = () => {
-    Linking.openURL('mailto:support@split-space.com?subject=Help%20Request');
+  const handleContactSupport = async (subject: string, body: string) => {
+    setEmailError(false);
+    try {
+      await Linking.openURL(`mailto:support@split-space.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
+    } catch {
+      setEmailError(true);
+    }
   };
 
   return (
     <LinearGradient colors={gradients.screenBackground} style={styles.container}>
       <NavigationHeader title="Help & Support" onBack={() => router.back()} />
       
-      <ScrollView 
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      <ScrollView
+        keyboardShouldPersistTaps="handled"
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        <View style={[styles.section, styles.contactCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <ThemedText type="subtitle" style={{ color: colors.text }}>Send feedback</ThemedText>
+          <FeedbackForm />
+          <ThemedText style={[styles.contactDescription, { color: colors.textSecondary }]}>
+            You can also contact us by email.
+          </ThemedText>
+          <Pressable accessibilityRole="button" onPress={() => void handleContactSupport('Help request', 'How can we help?\n\n')} style={[styles.contactButton, { borderColor: colors.border }]}>
+            <ThemedText style={[styles.contactButtonText, { color: colors.tint }]}>Email support</ThemedText>
+          </Pressable>
+          {emailError && (
+            <ThemedText accessibilityLiveRegion="polite" style={[styles.contactDescription, { color: colors.text }]}>
+              Couldn’t open an email app. Send your message to the address below instead.
+            </ThemedText>
+          )}
+          <ThemedText selectable style={[styles.contactDescription, { color: colors.textSecondary }]}>
+            support@split-space.com
+          </ThemedText>
+        </View>
+
         {/* App Usage Section */}
         <View style={styles.section}>
           <ThemedText type="subtitle" style={[styles.sectionTitle, !isDark && { color: colors.text }]}>
@@ -186,38 +214,8 @@ export default function HelpSupportScreen() {
           </View>
         </View>
 
-        {/* Contact Support Section */}
-        <View style={styles.section}>
-          <View style={[
-            styles.contactCard,
-            { 
-              backgroundColor: isDark ? 'rgba(45, 212, 191, 0.1)' : 'rgba(34, 197, 94, 0.1)',
-              borderColor: isDark ? 'rgba(45, 212, 191, 0.2)' : 'rgba(34, 197, 94, 0.2)',
-            }
-          ]}>
-            <View style={[
-              styles.contactIcon,
-              { backgroundColor: isDark ? 'rgba(45, 212, 191, 0.15)' : 'rgba(34, 197, 94, 0.15)' }
-            ]}>
-              <IconSymbol name="envelope.fill" size={28} color={isDark ? '#2DD4BF' : colors.tint} />
-            </View>
-            <ThemedText type="subtitle" style={[styles.contactTitle, !isDark && { color: colors.text }]}>
-              Still need help?
-            </ThemedText>
-            <ThemedText style={[styles.contactDescription, !isDark && { color: colors.textSecondary }]}>
-              Our support team is here to help you with any questions or issues.
-            </ThemedText>
-            <Pressable 
-              style={[styles.contactButton, { borderColor: isDark ? '#2DD4BF' : colors.tint }]}
-              onPress={handleContactSupport}
-            >
-              <ThemedText style={[styles.contactButtonText, { color: isDark ? '#2DD4BF' : colors.tint }]}>
-                Contact Support
-              </ThemedText>
-            </Pressable>
-          </View>
-        </View>
       </ScrollView>
+      </KeyboardAvoidingView>
     </LinearGradient>
   );
 }
@@ -302,33 +300,23 @@ const styles = StyleSheet.create({
     padding: 24,
     borderRadius: 16,
     borderWidth: 1,
-    alignItems: 'center',
-  },
-  contactIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  contactTitle: {
-    fontSize: 18,
-    color: '#fff',
-    marginBottom: 8,
+    alignItems: 'stretch',
+    gap: 10,
   },
   contactDescription: {
     fontSize: 14,
     color: 'rgba(255,255,255,0.6)',
-    textAlign: 'center',
-    marginBottom: 20,
+    textAlign: 'left',
+    marginBottom: 0,
     lineHeight: 20,
   },
   contactButton: {
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 24,
-    borderWidth: 1.5,
+    borderWidth: 1,
+    minHeight: 48,
+    justifyContent: 'center',
   },
   contactButtonText: {
     fontSize: 14,

@@ -26,3 +26,10 @@ verify_jwt = false
 # that exact server secret before making any database request.
 [functions.process-recurring-expenses]
 verify_jwt = false
+
+[functions.feedback]
+verify_jwt = true
+
+# Called by a trusted scheduler using the service-role bearer token.
+[functions.feedback-worker]
+verify_jwt = false

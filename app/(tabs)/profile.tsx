@@ -248,7 +248,7 @@ export default function ProfileScreen() {
     { icon: 'moon.fill', title: 'Dark Mode', hasSwitch: true, value: isDark, onToggle: toggleTheme },
     { icon: 'lock.shield.fill', title: 'Privacy Policy', onPress: () => router.push('/privacy-policy') },
     { icon: 'doc.text.fill', title: 'Terms & Conditions', onPress: () => router.push('/terms-conditions') },
-    { icon: 'questionmark.circle.fill', title: 'Help & Support', onPress: () => router.push('/help-support') },
+    { icon: 'questionmark.circle.fill', title: 'Help & Feedback', onPress: () => router.push('/help-support') },
   ];
 
   const cardStyle = {

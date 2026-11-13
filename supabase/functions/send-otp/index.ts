@@ -152,7 +152,7 @@ async function sendEmailOTP(params: {
                       <tr>
                         <td style="background-color: #f9fafb; padding: 30px; text-align: center; border-top: 1px solid #e5e7eb;">
                           <p style="margin: 0 0 10px 0; color: #6b7280; font-size: 14px;">
-                            Need help? Contact us at support@vasuli.app
+                            Need help? Contact us at support@split-space.com
                           </p>
                           <p style="margin: 0; color: #9ca3af; font-size: 12px;">
                             © ${new Date().getFullYear()} Vasuli. All rights reserved.

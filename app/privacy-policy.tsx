@@ -34,6 +34,7 @@ export default function PrivacyPolicyScreen() {
           <BulletPoint text="Profile information (profile picture, display name)" color={colors.textSecondary} />
           <BulletPoint text="Expense and transaction data you enter into the app" color={colors.textSecondary} />
           <BulletPoint text="Group and friend information you create or join" color={colors.textSecondary} />
+          <BulletPoint text="Feedback you submit, including an optional reply email and screenshot, your device platform, and app version" color={colors.textSecondary} />
           <BulletPoint text="Device information and usage data" color={colors.textSecondary} />
         </Section>
 
@@ -55,6 +56,12 @@ export default function PrivacyPolicyScreen() {
           </ThemedText>
           <ThemedText style={[styles.paragraph, { color: colors.textSecondary }]}>
             Session data is stored locally on your device using secure encrypted storage to keep you logged in between app sessions.
+          </ThemedText>
+        </Section>
+
+        <Section title="Feedback">
+          <ThemedText style={[styles.paragraph, { color: colors.textSecondary }]}>
+            Feedback and optional screenshots are stored privately for one year, then removed by a daily cleanup. Your feedback category and message are emailed to the maintainers and may remain in email after the database record is deleted. Screenshots are not included in those emails. Your account ID is not stored with feedback. To limit abuse, your account ID is retained separately for abuse prevention and removed by an hourly cleanup after one hour. Contact support if you need help with feedback you submitted.
           </ThemedText>
         </Section>
 

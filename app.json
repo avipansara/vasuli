@@ -86,6 +86,7 @@
           "cameraPermission": "Vasuli uses your camera to scan QR codes when adding friends. For example, you can scan a friend's QR code to quickly connect and start splitting expenses together."
         }
       ],
+      ["expo-image-picker", { "photosPermission": "Choose a screenshot to include with feedback.", "cameraPermission": "Vasuli uses your camera to scan QR codes when adding friends. For example, you can scan a friend's QR code to quickly connect and start splitting expenses together.", "microphonePermission": false }],
       "expo-web-browser",
       "expo-image",
       "expo-localization",

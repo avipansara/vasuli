@@ -7,6 +7,13 @@
 
 ## 2026-11-13
 
+- Update help guidance for expenses, invitations, account deletion, and data privacy.
+
+- Send feedback in the app with an optional screenshot and reply address; maintainers receive the message by email. Apply the feedback migration, deploy both feedback functions, configure the retry scheduler and rebuild native apps to enable it.
+
+- Make it easier to report a problem, suggest an idea, or ask for help by email, with a visible support address if the email app cannot open.
+- Correct the support email address in sign-in messages. Deploy the send-otp function to update those emails.
+
 - Prevent the animated startup intro from replaying when navigation remounts the app layout.
 - Secure recurring-expense scheduling and track recurring notification delivery. Apply the recurring scheduler migration, deploy the worker, and update its scheduled job.
 - Send queued expense and payment notifications promptly while keeping scheduled retries. Configure the immediate wake-up URL when deploying the push worker.
