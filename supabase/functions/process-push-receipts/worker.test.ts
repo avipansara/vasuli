@@ -12,6 +12,54 @@ describe('push receipt worker', () => {
     expect(fetcher).not.toHaveBeenCalled();
   });
 
+  it('allows a single-use wake-up to send queued pushes without checking receipts', async () => {
+    const wakeupId = 'ad100000-0000-4000-8000-000000000001';
+    let consumed = false;
+    const paths: string[] = [];
+    const fetcher: typeof fetch = async (input) => {
+      const path = new URL(String(input)).pathname.split('/').at(-1) ?? '';
+      paths.push(path);
+      if (path === 'consume_push_wakeup') {
+        if (consumed) return json(null);
+        consumed = true;
+        return json('delivery');
+      }
+      if (path === 'claim_push_notifications') return json([]);
+      throw new Error('Unexpected request');
+    };
+    const wake = () => new Request('https://worker.example', { method: 'POST', body: JSON.stringify({ wakeupId }) });
+    const first = await handleReceiptRequest(wake(), config, fetcher);
+    expect(first.status).toBe(200);
+    expect(await first.json()).toEqual({ ok: true });
+    expect((await handleReceiptRequest(wake(), config, fetcher)).status).toBe(401);
+    expect(paths).toEqual(['consume_push_wakeup', 'claim_push_notifications', 'consume_push_wakeup']);
+  });
+
+  it('checks receipts for a single-use scheduled wake-up', async () => {
+    const paths: string[] = [];
+    const fetcher: typeof fetch = async (input) => {
+      const path = new URL(String(input)).pathname.split('/').at(-1) ?? '';
+      paths.push(path);
+      if (path === 'consume_push_wakeup') return json('scheduled');
+      if (path === 'claim_push_notifications' || path === 'claim_push_receipts') return json([]);
+      throw new Error('Unexpected request');
+    };
+    const result = await handleReceiptRequest(new Request('https://worker.example', {
+      method: 'POST', body: JSON.stringify({ wakeupId: 'ad100000-0000-4000-8000-000000000001' }),
+    }), config, fetcher);
+    expect(result.status).toBe(200);
+    expect(paths).toEqual(['consume_push_wakeup', 'claim_push_notifications', 'claim_push_receipts']);
+  });
+
+  it('rejects malformed wake-ups without contacting the database', async () => {
+    const fetcher = vi.fn<typeof fetch>();
+    const result = await handleReceiptRequest(new Request('https://worker.example', {
+      method: 'POST', body: JSON.stringify({ wakeupId: 'not-a-uuid' }),
+    }), config, fetcher);
+    expect(result.status).toBe(401);
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+
   it('accepts the configured scheduler credential while using the service credential for database access', async () => {
     const fetcher = vi.fn<typeof fetch>().mockImplementation(async () => json([]));
     const result = await handleReceiptRequest(request('scheduler-key'), { ...config, schedulerKey: 'scheduler-key' }, fetcher);

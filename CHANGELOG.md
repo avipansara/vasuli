@@ -5,6 +5,11 @@
 - Remove routine production logs containing user and notification details.
 - Correct setup, security, testing, and release guidance for contributors.
 
+## 2026-11-13
+
+- Secure recurring-expense scheduling and track recurring notification delivery. Apply the recurring scheduler migration, deploy the worker, and update its scheduled job.
+- Send queued expense and payment notifications promptly while keeping scheduled retries. Configure the immediate wake-up URL when deploying the push worker.
+
 ## 2026-11-12
 
 - Notify the other person when a settlement is deleted, and retry expense and payment notifications from the server. Apply the outbox migration and coordinate the updated worker with the app release.

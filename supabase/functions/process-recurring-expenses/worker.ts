@@ -1,3 +1,5 @@
+import { readWakeupId } from '../_shared/read-wakeup.ts';
+
 export const DEFAULT_BATCH_SIZE = 50;
 export const MAX_BATCH_SIZE = 100;
 export const MAX_PUSH_ATTEMPTS = 10;
@@ -45,7 +47,7 @@ interface RuleNoticeDelivery {
 interface PushMessageDelivery {
   delivery_id: string;
   push_token: string | null;
-  finish_function: 'finish_recurring_expense_push_delivery' | 'finish_recurring_expense_rule_notification';
+  kind: 'occurrence' | 'rule';
   title: string;
   body: string;
   data: JsonObject;
@@ -58,16 +60,13 @@ function jsonResponse(body: JsonObject, status: number): Response {
   });
 }
 
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : 'Request failed';
-}
-
 function isObject(value: unknown): value is JsonObject {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
 
 function arrayData<T>(value: unknown): T[] {
-  return Array.isArray(value) ? value as T[] : [];
+  if (!Array.isArray(value)) throw new Error('Database returned an invalid batch');
+  return value as T[];
 }
 
 function parseBatchSize(value: number | undefined): number {
@@ -115,15 +114,18 @@ async function rpc<T>(
 
 async function finishDelivery(
   config: WorkerConfig,
-  deliveryId: string,
-  finishFunction: PushMessageDelivery['finish_function'],
+  delivery: PushMessageDelivery,
   status: 'sent' | 'skipped' | 'failed',
   failure: string | null,
   fetcher: typeof fetch,
+  receiptId: string | null = null,
 ): Promise<void> {
-  await rpc(config, finishFunction, {
-    p_delivery_id: deliveryId,
+  await rpc(config, 'finish_recurring_push_with_receipt', {
+    p_kind: delivery.kind,
+    p_delivery_id: delivery.delivery_id,
     p_status: status,
+    p_token: delivery.push_token,
+    p_receipt_id: receiptId,
     p_error: failure,
   }, fetcher);
 }
@@ -142,7 +144,7 @@ async function deliverPushes(
       ready.push(delivery);
     } else {
       try {
-        await finishDelivery(config, delivery.delivery_id, delivery.finish_function, 'skipped', null, fetcher);
+        await finishDelivery(config, delivery, 'skipped', null, fetcher);
         skipped += 1;
       } catch {
         failed += 1;
@@ -175,11 +177,10 @@ async function deliverPushes(
       tickets = isObject(body) && Array.isArray(body.data) ? body.data : [];
       if (!response.ok) throw new Error(`Expo push service returned ${response.status}`);
       if (tickets.length !== batch.length) throw new Error('Expo returned an incomplete push response');
-    } catch (error: unknown) {
-      const message = errorMessage(error).slice(0, 500);
+    } catch {
       for (const delivery of batch) {
         try {
-          await finishDelivery(config, delivery.delivery_id, delivery.finish_function, 'failed', message, fetcher);
+          await finishDelivery(config, delivery, 'failed', 'ExpoUnavailable', fetcher);
         } catch {
           failed += 1;
           continue;
@@ -192,17 +193,17 @@ async function deliverPushes(
     for (let index = 0; index < batch.length; index += 1) {
       const ticket = tickets[index];
       const ticketObject = isObject(ticket) ? ticket : {};
+      const rawCode = isObject(ticketObject.details) ? ticketObject.details.error : undefined;
       const ticketError = ticketObject.status === 'error'
-        ? (isObject(ticketObject.details) && typeof ticketObject.details.error === 'string'
-          ? ticketObject.details.error
-          : 'Expo rejected the push notification')
-        : ticketObject.status === 'ok'
-          ? null
-          : 'Expo returned an invalid push ticket';
-      const status = ticketError ? 'failed' : 'sent';
+        ? (typeof rawCode === 'string' && /^[A-Za-z0-9_]{1,80}$/.test(rawCode) ? rawCode : 'ExpoRejected')
+        : ticketObject.status === 'ok' && typeof ticketObject.id === 'string' && ticketObject.id
+          ? null : 'InvalidExpoTicket';
+      const status = ticketError === 'DeviceNotRegistered' ? 'skipped' : ticketError ? 'failed' : 'sent';
       try {
-        await finishDelivery(config, batch[index].delivery_id, batch[index].finish_function, status, ticketError, fetcher);
+        await finishDelivery(config, batch[index], status, ticketError, fetcher,
+          status === 'sent' ? ticketObject.id as string : null);
         if (status === 'sent') sent += 1;
+        else if (status === 'skipped') skipped += 1;
         else failed += 1;
       } catch {
         failed += 1;
@@ -217,7 +218,7 @@ function toOccurrencePush(row: OccurrencePushDelivery): PushMessageDelivery {
   return {
     delivery_id: row.delivery_id,
     push_token: row.push_token,
-    finish_function: 'finish_recurring_expense_push_delivery',
+    kind: 'occurrence',
     title: 'Recurring expense added',
     body: `${row.description} · ${row.currency} ${row.amount}`,
     data: {
@@ -243,7 +244,7 @@ function toRuleNoticePush(row: RuleNoticeDelivery): PushMessageDelivery {
   return {
     delivery_id: row.delivery_id,
     push_token: row.push_token,
-    finish_function: 'finish_recurring_expense_rule_notification',
+    kind: 'rule',
     title: row.event_type === 'rule_created' ? 'New recurring expense' : 'Recurring expense updated',
     body: text,
     data: {
@@ -260,14 +261,27 @@ export async function handleRecurringExpenseRequest(
   fetcher: typeof fetch = fetch,
 ): Promise<Response> {
   if (request.method !== 'POST') return jsonResponse({ error: 'Method not allowed' }, 405);
-  if (!config.serviceRoleKey || request.headers.get('Authorization') !== `Bearer ${config.serviceRoleKey}`) {
-    return jsonResponse({ error: 'Authorization required' }, 401);
+  const isTrusted = !!config.serviceRoleKey && request.headers.get('Authorization') === `Bearer ${config.serviceRoleKey}`;
+  let wakeupId: string | null = null;
+  if (!isTrusted) {
+    wakeupId = await readWakeupId(request);
+    if (!wakeupId) return jsonResponse({ error: 'Authorization required' }, 401);
   }
-  if (!config.supabaseUrl) return jsonResponse({ error: 'Worker is not configured' }, 500);
+  if (!config.supabaseUrl || !config.serviceRoleKey) return jsonResponse({ error: 'Worker is not configured' }, 500);
+  if (wakeupId) {
+    try {
+      if (await rpc<unknown>(config, 'consume_recurring_worker_wakeup', { p_wakeup_id: wakeupId }, fetcher) !== true) {
+        return jsonResponse({ error: 'Authorization required' }, 401);
+      }
+    } catch {
+      console.error('Recurring expense wake-up authorization failed.');
+      return jsonResponse({ error: 'Wake-up unavailable' }, 500);
+    }
+  }
 
   const batchSize = parseBatchSize(config.batchSize);
   const summary = {
-    rules: 0, posted: 0, paused: 0, ruleFailures: 0, activities: 0,
+    rules: 0, posted: 0, paused: 0, ruleFailures: 0, activities: 0, activityFailed: 0,
     pushSent: 0, pushSkipped: 0, pushFailed: 0,
     ruleNoticeSent: 0, ruleNoticeSkipped: 0, ruleNoticeFailed: 0,
   };
@@ -308,7 +322,7 @@ export async function handleRecurringExpenseRequest(
       }, fetcher);
       summary.activities = typeof delivered === 'number' ? delivered : 0;
     } catch {
-      // Outbox rows remain pending and will be retried by the next invocation.
+      summary.activityFailed += 1;
     }
 
     try {
@@ -335,7 +349,11 @@ export async function handleRecurringExpenseRequest(
       summary.ruleNoticeFailed += 1;
     }
 
-    return jsonResponse(summary, 200);
+    const failed = summary.ruleFailures > 0 || summary.activityFailed > 0
+      || summary.pushFailed > 0 || summary.ruleNoticeFailed > 0;
+    if (failed) console.error('Recurring expense worker completed with failures:', summary);
+    return jsonResponse(wakeupId ? (failed ? { error: 'Recurring work partially failed' } : { ok: true }) : summary,
+      failed ? 503 : 200);
   } catch {
     // Keep diagnostics useful without putting credentials or raw database
     // responses in Edge Function logs or HTTP responses.
