@@ -7,6 +7,7 @@
 
 ## 2026-11-13
 
+- Prevent the animated startup intro from replaying when navigation remounts the app layout.
 - Secure recurring-expense scheduling and track recurring notification delivery. Apply the recurring scheduler migration, deploy the worker, and update its scheduled job.
 - Send queued expense and payment notifications promptly while keeping scheduled retries. Configure the immediate wake-up URL when deploying the push worker.
 

@@ -75,6 +75,8 @@ const postSplashStartup = createPostSplashStartup({
 });
 
 const appUpdateService = createAppUpdateService({ supabase });
+// Navigation can remount the root layout without restarting the JS runtime.
+let startupAnimationComplete = false;
 
 function useProtectedRoute(animationComplete: boolean) {
   const { isAuthenticated, isLoading } = useAuth();
@@ -120,7 +122,7 @@ function RootLayoutNav() {
   const { isDark } = useTheme();
   const { user } = useAuth();
   useRecurringExpenseRefresh(user?.id, !!user?.id);
-  const [animationComplete, setAnimationComplete] = useState(false);
+  const [animationComplete, setAnimationComplete] = useState(startupAnimationComplete);
   const isLoading = useProtectedRoute(animationComplete);
   const router = useRouter();
   const [nativeSplashHidden, setNativeSplashHidden] = useState(false);
@@ -145,6 +147,7 @@ function RootLayoutNav() {
   }, []);
 
   const handleAnimationComplete = useCallback(() => {
+    startupAnimationComplete = true;
     setAnimationComplete(true);
   }, []);
 
@@ -267,7 +270,7 @@ function RootLayoutNav() {
     return () => subscription.remove();
   }, [router]);
 
-  if (isLoading || !animationComplete) {
+  if (!animationComplete) {
     return (
       <AnimatedSplash
         startAnimation={nativeSplashHidden}
@@ -275,6 +278,8 @@ function RootLayoutNav() {
       />
     );
   }
+
+  if (isLoading) return null;
 
   return (
     <ThemeProvider value={isDark ? AmbientDarkTheme : AmbientLightTheme}>
