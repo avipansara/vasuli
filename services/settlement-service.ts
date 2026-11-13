@@ -12,6 +12,7 @@ import { queryKeys } from './query-keys';
 import { getFriendRelationshipInvalidationKeys } from './friend-relationship-invalidation';
 import { mapSettlementRow } from './database-row-mappers';
 import { normalizeBalance, toCents } from '@/utils/currency';
+import { sendSettlementNotification } from './settlement-notification';
 
 export type CombinedSettlementErrorCode =
   | 'invalid_input'
@@ -211,6 +212,8 @@ export const settlementModule = {
       mode: params.mode,
       groupId: params.groupId,
     });
+
+    await sendSettlementNotification({ receipt, currentUser: params.currentUser, friend: params.friend, groupId: params.groupId });
 
     await applyReceiptEffects({
       receipt,

@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 
 import { supabase } from '@/lib/supabase';
+import { formatCurrency } from '@/utils/currency';
 
 const NOTIFICATION_PREFERENCE_PREFIX = 'notifications-enabled:';
 
@@ -281,12 +282,16 @@ export const createInvitationAcceptedNotification = (
 });
 
 export const createSettlementNotification = (
+  recordedBy: string,
   paidBy: string,
+  paidTo: string,
   amount: number,
-  paidTo: string
+  currency: string,
+  friendId: string,
+  groupId?: string,
 ): PushNotificationData => ({
   type: 'settlement_created',
   title: '💰 Payment Recorded',
-  body: `${paidBy} paid $${amount.toFixed(2)} to ${paidTo}`,
-  data: { paidBy, amount, paidTo },
+  body: `${recordedBy} recorded that ${paidBy} paid ${formatCurrency(amount, currency)} to ${paidTo}`,
+  data: { friendId, groupId },
 });
