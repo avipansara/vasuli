@@ -15,7 +15,14 @@ test('group expense custom split accepts exact participant amounts', async ({ ap
     const amount = screen.getByTestId('expense-amount-input');
     await amount.tap();
     await amount.pressSequentially('20.00');
-    await screen.scrollUntilVisible(screen.getByTestId('expense-description-input'));
+    await new Promise((resolve) => setTimeout(resolve, 600));
+    try {
+      await screen.scrollUntilVisible(screen.getByTestId('expense-description-input'));
+    } catch {
+      await screen.getByText('Description').tap().catch(() => {});
+      await new Promise((resolve) => setTimeout(resolve, 400));
+      await screen.scrollUntilVisible(screen.getByTestId('expense-description-input'));
+    }
     const description = `TesterArmy split ${process.env.E2E_RUN_ID}`;
     const descriptionInput = screen.getByTestId('expense-description-input');
     await descriptionInput.tap();
@@ -51,7 +58,16 @@ test('group expense payer selection is reflected in expense details', async ({ a
     const amount = screen.getByTestId('expense-amount-input');
     await amount.tap();
     await amount.pressSequentially('9.00');
-    await screen.scrollUntilVisible(screen.getByTestId('expense-description-input'));
+    // Keyboard can cover the description field on CI; give it time to settle
+    await new Promise((resolve) => setTimeout(resolve, 800));
+    try {
+      await screen.scrollUntilVisible(screen.getByTestId('expense-description-input'));
+    } catch {
+      // Fallback: tap outside to dismiss keyboard then retry
+      await screen.getByText('Description').tap().catch(() => {});
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      await screen.scrollUntilVisible(screen.getByTestId('expense-description-input'));
+    }
     const description = `TesterArmy payer ${process.env.E2E_RUN_ID}`;
     const descriptionInput = screen.getByTestId('expense-description-input');
     await descriptionInput.tap();
