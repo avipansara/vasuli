@@ -1,3 +1,5 @@
+import { deliverQueuedNotifications } from './deliver.ts';
+
 type Config = { supabaseUrl: string; serviceRoleKey: string; schedulerKey?: string; expoAccessToken?: string };
 type Claim = { receipt_id: string; user_id: string };
 
@@ -27,12 +29,21 @@ export async function handleReceiptRequest(request: Request, config: Config, fet
     return text ? JSON.parse(text) : null;
   };
 
+  let deliveryFailed = false;
+  let delivery: { sent: number; skipped: number; failed: number } | null = null;
+  try {
+    delivery = await deliverQueuedNotifications(rpc, fetcher, config.expoAccessToken);
+  } catch {
+    deliveryFailed = true;
+    console.error('Push notification outbox processing failed');
+  }
+
   try {
     const claimed = await rpc('claim_push_receipts', { p_limit: 100 });
     if (!Array.isArray(claimed)) throw new Error('Invalid claim response');
     const rows: Claim[] = claimed.filter((row): row is Claim => object(row) && typeof row.receipt_id === 'string' && typeof row.user_id === 'string');
     if (rows.length !== claimed.length) throw new Error('Invalid claim response');
-    if (!rows.length) return response({ checked: 0, pending: 0 }, 200);
+    if (!rows.length) return response({ checked: 0, pending: 0, deliveryFailed, delivery }, deliveryFailed ? 500 : 200);
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (config.expoAccessToken) headers.Authorization = `Bearer ${config.expoAccessToken}`;
     const result = await fetcher('https://exp.host/--/api/v2/push/getReceipts', {
@@ -55,7 +66,7 @@ export async function handleReceiptRequest(request: Request, config: Config, fet
       });
       checked += 1;
     }
-    return response({ checked, pending: rows.length - checked }, 200);
+    return response({ checked, pending: rows.length - checked, deliveryFailed, delivery }, deliveryFailed ? 500 : 200);
   } catch {
     console.error('Push receipt worker failed');
     return response({ error: 'Receipt processing failed' }, 500);

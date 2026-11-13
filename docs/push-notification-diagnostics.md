@@ -1,11 +1,18 @@
 # Push notification diagnostics
 
-The normal `send-push-notification` function records accepted Expo tickets in
-`push_receipt_checks`. The private `process-push-receipts` worker checks them
-after 15 minutes, stores the outcome and error code, and clears an unregistered
+The app's expense creation and settlement notifications are queued in
+`push_notification_outbox` as part of the database write. The private
+`process-push-receipts` worker sends them and records accepted Expo tickets in
+`push_receipt_checks`. It checks those tickets and tickets from
+`send-push-notification` after 15 minutes, stores the outcome and error code, and clears an unregistered
 token only if it still matches the token used for the notification. Tokens are
 never written to function logs. Recurring-expense worker notifications use a
-separate delivery path and are not covered by this receipt worker.
+separate delivery path and are not covered by this receipt worker. A failed
+outbox send is retried after five minutes, up to ten attempts; missing tokens
+are skipped. A lost response after Expo accepts a push can lead to a duplicate.
+
+The expense record and initial splits are separate database requests. The
+expense notification is enqueued when the initial split insert succeeds.
 
 ## Setup for each Supabase environment
 
@@ -16,6 +23,12 @@ separate delivery path and are not covered by this receipt worker.
    verification is disabled in `supabase/config.toml`. If
    `RECURRING_EXPENSE_SERVICE_ROLE_KEY` is set, the worker expects that value;
    otherwise it expects `SUPABASE_SERVICE_ROLE_KEY`.
+   For transaction-backed notifications, also apply
+   `20261113050000_transactional_push_outbox.sql` before deploying the updated
+   `process-push-receipts` worker. Coordinate that worker deployment with the
+   app update that removes client-side sends: older app versions will otherwise
+   send duplicate expense or settlement notifications. This rollout assumes
+   all users move to the new app version together.
 2. Ensure `SUPABASE_URL` and a valid service-role key are available to both
    functions. Both prefer `RECURRING_EXPENSE_SERVICE_ROLE_KEY` when configured,
    otherwise they use the platform-provided `SUPABASE_SERVICE_ROLE_KEY`.
@@ -56,7 +69,9 @@ snapshots are removed as soon as they are checked or expire. Restrict database
 access because pending rows contain token snapshots.
 
 If rows remain pending, check the Cron job, the worker's HTTP status and
-function logs. Storage failures are logged by the sending function. Expo
+function logs. Check `push_notification_outbox` for failed rows, attempt counts,
+and error codes. Rows at ten attempts require operator review. Storage failures
+are logged by the sending function. Expo
 ticket-level rejections are logged as safe error codes; `DeviceNotRegistered`
 also clears the matching current token. Do not retry an entire sent batch just
 because tracking failed, since that could produce duplicate notifications.

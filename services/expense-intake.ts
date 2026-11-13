@@ -47,7 +47,6 @@ export type SubmitExpenseInput = {
   save(input: Omit<Expense, 'id' | 'createdAt' | 'updatedAt'>, splits: ExpenseSplitInput[]): Promise<Expense>;
   navigateBack(): void;
   logActivity(input: { expense: Expense; userName: string; groupName?: string }): Promise<void>;
-  sendNotifications(input: { expense: Expense; groupName?: string }): Promise<void>;
   warn(error: unknown): void;
   now?: () => number;
 };
@@ -208,12 +207,11 @@ export async function submitExpense(input: SubmitExpenseInput): Promise<void> {
 
     input.navigateBack();
 
-    await Promise.allSettled([
-      input.logActivity({ expense, userName: input.currentUser.name || 'Someone', groupName: input.group?.name }),
-      input.sendNotifications({ expense, groupName: input.group?.name }),
-    ]).then(results => {
-      results.filter(result => result.status === 'rejected').forEach(result => input.warn(result.reason));
-    });
+    try {
+      await input.logActivity({ expense, userName: input.currentUser.name || 'Someone', groupName: input.group?.name });
+    } catch (error) {
+      input.warn(error);
+    }
 
     await Promise.allSettled([
       input.cache.invalidate(input.keys.home),

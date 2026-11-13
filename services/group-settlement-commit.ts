@@ -4,7 +4,6 @@ import { applyCancellationToGroupReadModel, applySettlementToGroupReadModel, typ
 import { queryKeys } from './query-keys';
 import { settlementService, type CombinedSettlementCommitRequest, type CombinedSettlementReceipt } from './settlement-service';
 import type { User } from '@/types/database';
-import { sendSettlementNotification } from './settlement-notification';
 
 // ADR-0001: Group Settle creates `group`-mode settlement operations so every
 // new group payment receives an operation ID and gains whole-operation Delete.
@@ -100,8 +99,6 @@ export async function commitGroupSettlement(
 ): Promise<CombinedSettlementReceipt> {
   const request = buildGroupSettlementCommitRequest(params);
   const receipt = await settlementService.commit(request);
-
-  await sendSettlementNotification({ receipt, currentUser: params.currentUser, friend: params.friend, groupId: params.groupId });
 
   await invalidateSafely(params.queryClient, [
     ...getFriendRelationshipInvalidationKeys(params.currentUserId, params.friendId),

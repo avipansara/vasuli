@@ -4,7 +4,6 @@ import type { User, Settlement } from '@/types/database';
 import type { FriendGroupBalanceSummary } from '@/services/friend-detail-service';
 import { settlementModule, settlementService, shouldLogSettlementActivity } from '@/services/settlement-service';
 import { queryKeys } from '@/services/query-keys';
-import { sendSettlementNotification } from '@/services/settlement-notification';
 
 const rpc = vi.hoisted(() => vi.fn());
 const logSettlementCreated = vi.hoisted(() => vi.fn());
@@ -19,7 +18,6 @@ vi.mock('@/services/activity-service', () => ({
   },
 }));
 
-vi.mock('@/services/settlement-notification', () => ({ sendSettlementNotification: vi.fn() }));
 
 const currentUser: User = {
   id: 'current-user',
@@ -546,7 +544,6 @@ describe('settlementModule.commit', () => {
       ],
       p_cancellations: [],
     });
-    expect(sendSettlementNotification).toHaveBeenCalledWith(expect.objectContaining({ receipt: expect.objectContaining({ paymentIntentId: 'intent-1' }), currentUser, friend }));
   });
 
   it('does not persist when planning rejects the combined payment', async () => {

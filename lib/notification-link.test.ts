@@ -37,6 +37,8 @@ describe('getNotificationHref', () => {
   it('links group and friend notifications to their detail screens', () => {
     expect(getNotificationHref({ type: 'member_added', groupId: 'group-1' })).toBe('/groups/group-1');
     expect(getNotificationHref({ type: 'invitation_accepted', friendId: 'friend-1' })).toBe('/friends/friend-1');
+    expect(getNotificationHref({ type: 'settlement_reversed', friendId: 'friend-1' })).toBe('/friends/friend-1');
+    expect(getNotificationHref({ type: 'settlement_reversed', groupId: 'group-1' })).toBe('/groups/group-1');
   });
 
   it('returns null when a destination id is missing', () => {

@@ -14,7 +14,6 @@ import { expenseService } from '@/services/expense-service';
 import { createRecurringExpenseSubmission, waitForRecurringOccurrence } from '@/services/recurring-expense-submission';
 import { recurringExpenseService } from '@/services/recurring-expense-service';
 import { groupService } from '@/services/group-service';
-import { createExpenseNotification, notificationService } from '@/services/notification-service';
 import {
   trackExpenseCreated,
   trackExpenseCreationFailed,
@@ -321,7 +320,6 @@ export default function AddExpenseScreen() {
     return [{ id: currentUserId, name: user?.name || 'You' }, ...participants.filter(person => person.id !== currentUserId)];
   }, [currentUserId, friends, groupMemberUsers, selectedFriendIds, splitType, user?.name]);
   const activePayerId = payerOptions.some(person => person.id === selectedPayerId) ? selectedPayerId : currentUserId;
-  const selectedPayerName = payerOptions.find(person => person.id === activePayerId)?.name || 'You';
   const formattedExpenseDate = formatDate(expenseDate);
   const formattedLastDueDate = lastDueDate ? formatDate(lastDueDate) : 'No end date';
   const localDateString = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
@@ -525,25 +523,6 @@ export default function AddExpenseScreen() {
             groupId: expense.groupId,
             groupName,
           });
-        },
-        sendNotifications: async ({ expense, groupName }) => {
-          const usersToNotify = await userService.getByIds(
-            participantIds.filter(participantId => participantId !== currentUserId)
-          );
-          const pushTokens = usersToNotify
-            .filter(item => item.pushToken)
-            .map(item => item.pushToken!);
-          if (pushTokens.length === 0) return;
-
-          const notification = createExpenseNotification(
-            expense.id,
-            expense.description,
-            expense.amount,
-            selectedPayerName,
-            groupName,
-            expense.groupId
-          );
-          await notificationService.sendNotificationToUsers(pushTokens, notification);
         },
         warn: error => console.warn('Expense follow-up failed:', error),
       });

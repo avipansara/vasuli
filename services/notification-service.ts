@@ -4,7 +4,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 
 import { supabase } from '@/lib/supabase';
-import { formatCurrency } from '@/utils/currency';
 
 const NOTIFICATION_PREFERENCE_PREFIX = 'notifications-enabled:';
 
@@ -192,20 +191,6 @@ export const notificationService = {
   },
 };
 
-export const createExpenseNotification = (
-  expenseId: string,
-  expenseName: string,
-  amount: number,
-  paidBy: string,
-  groupName?: string,
-  groupId?: string,
-): PushNotificationData => ({
-  type: 'expense_added',
-  title: '💸 New Expense Added',
-  body: `${paidBy} added "${expenseName}" for $${amount.toFixed(2)}${groupName ? ` in ${groupName}` : ''}`,
-  data: { expenseId, expenseName, amount, paidBy, groupName, groupId },
-});
-
 export const createExpenseUpdatedNotification = (
   expenseId: string,
   expenseName: string,
@@ -279,19 +264,4 @@ export const createInvitationAcceptedNotification = (
     ? `${accepterName} joined "${groupName}"`
     : `${accepterName} accepted your friend request`,
   data: { accepterName, groupName, friendId },
-});
-
-export const createSettlementNotification = (
-  recordedBy: string,
-  paidBy: string,
-  paidTo: string,
-  amount: number,
-  currency: string,
-  friendId: string,
-  groupId?: string,
-): PushNotificationData => ({
-  type: 'settlement_created',
-  title: '💰 Payment Recorded',
-  body: `${recordedBy} recorded that ${paidBy} paid ${formatCurrency(amount, currency)} to ${paidTo}`,
-  data: { friendId, groupId },
 });

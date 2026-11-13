@@ -26,6 +26,7 @@ export function getNotificationHref(data: NotificationLinkData): string | null {
     case 'group_created':
     case 'member_added':
     case 'settlement_created':
+    case 'settlement_reversed':
       return groupId ? `/groups/${groupId}` : friendId ? `/friends/${friendId}` : null;
     case 'invitation_sent':
       return '/invitations';

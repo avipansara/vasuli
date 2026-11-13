@@ -92,7 +92,6 @@ describe('submitExpense', () => {
       save: vi.fn(async () => expense({ paidBy: payerId })),
       navigateBack: vi.fn(),
       logActivity: vi.fn(async () => undefined),
-      sendNotifications: vi.fn(async () => undefined),
       warn: vi.fn(),
       now: () => 100,
     });
@@ -134,7 +133,6 @@ describe('submitExpense', () => {
       save,
       navigateBack,
       logActivity: vi.fn(async () => undefined),
-      sendNotifications: vi.fn(async () => undefined),
       warn: vi.fn(),
       now: () => 100,
     });
@@ -172,7 +170,6 @@ describe('submitExpense', () => {
       save,
       navigateBack,
       logActivity: vi.fn(async () => undefined),
-      sendNotifications: vi.fn(async () => undefined),
       warn: vi.fn(),
       now: () => 100,
     });
@@ -214,7 +211,6 @@ describe('submitExpense', () => {
       save: vi.fn(async () => { throw persistenceError; }),
       navigateBack,
       logActivity: vi.fn(async () => undefined),
-      sendNotifications: vi.fn(async () => undefined),
       warn: vi.fn(),
     })).rejects.toBe(persistenceError);
 
@@ -223,7 +219,7 @@ describe('submitExpense', () => {
     expect(cache.events).toContain('invalidate:group-detail');
   });
 
-  it('warns independently when follow-up effects fail after the expense is created', async () => {
+  it('keeps the expense when activity logging fails after creation', async () => {
     const cache = createCache();
     const warn = vi.fn();
 
@@ -243,11 +239,10 @@ describe('submitExpense', () => {
       save: vi.fn(async () => expense()),
       navigateBack: vi.fn(),
       logActivity: vi.fn(async () => { throw new Error('activity unavailable'); }),
-      sendNotifications: vi.fn(async () => { throw new Error('notifications unavailable'); }),
       warn,
     })).resolves.toBeUndefined();
 
-    expect(warn).toHaveBeenCalledTimes(2);
+    expect(warn).toHaveBeenCalledTimes(1);
   });
 
   it('projects a friend expense into the friend detail and settles its optimistic id', async () => {
@@ -273,7 +268,6 @@ describe('submitExpense', () => {
       save: vi.fn(async () => expense({ id: 'friend-expense-1', groupId: undefined, description: 'Coffee' })),
       navigateBack: vi.fn(),
       logActivity: vi.fn(async () => undefined),
-      sendNotifications: vi.fn(async () => undefined),
       warn: vi.fn(),
     });
 
@@ -306,7 +300,6 @@ describe('submitExpense', () => {
       save: vi.fn(async () => expense({ id: 'friend-expense-2', groupId: undefined, description: 'Lunch' })),
       navigateBack: vi.fn(),
       logActivity: vi.fn(async () => undefined),
-      sendNotifications: vi.fn(async () => undefined),
       warn: vi.fn(),
     });
 
@@ -332,7 +325,6 @@ describe('submitExpense', () => {
       save: vi.fn(async () => expense({ id: 'group-expense-2', groupId: group.id, description: 'Snacks' })),
       navigateBack: vi.fn(),
       logActivity: vi.fn(async () => undefined),
-      sendNotifications: vi.fn(async () => undefined),
       warn: vi.fn(),
     });
 

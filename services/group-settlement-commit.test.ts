@@ -2,14 +2,12 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import type { GroupDetailReadModel } from './group-detail-read-model';
 
 const { commit } = vi.hoisted(() => ({ commit: vi.fn() }));
-vi.mock('./settlement-notification', () => ({ sendSettlementNotification: vi.fn() }));
 vi.mock('./settlement-service', async importOriginal => {
   const actual = await importOriginal<typeof import('./settlement-service')>();
   return { ...actual, settlementService: { ...actual.settlementService, commit } };
 });
 
 import { buildGroupSettlementCommitRequest, commitGroupSettlement } from './group-settlement-commit';
-import { sendSettlementNotification } from './settlement-notification';
 import { buildGroupSettlementOperationActivity, canDeleteGroupOperation } from './group-settlement-operation-view';
 
 describe('buildGroupSettlementCommitRequest (ticket 03 corrective)', () => {
@@ -256,7 +254,6 @@ describe('commitGroupSettlement (ticket 03 corrective)', () => {
     });
 
     expect(receipt.operationId).toBe('op-new');
-    expect(sendSettlementNotification).toHaveBeenCalledWith(expect.objectContaining({ receipt, groupId: 'group-1' }));
     expect(commit).toHaveBeenCalledWith(expect.objectContaining({
       paymentIntentId: 'same-intent',
       mode: 'group',
