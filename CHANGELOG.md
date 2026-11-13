@@ -7,6 +7,7 @@
 
 ## 2026-11-12
 
+- Improve push notification diagnostics and remove invalid device tokens. Apply the receipt migration, deploy both push functions, and schedule the receipt worker to enable the checks.
 - Prevent a spurious “Group not found” alert while deleting a group.
 - Make the group and friend “Settle Up” buttons available to screen readers.
 - Make settlement deletion easier to reveal with a swipe.

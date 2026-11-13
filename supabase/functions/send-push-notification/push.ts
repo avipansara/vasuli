@@ -26,6 +26,28 @@ export type ParsedPushBody =
 
 const EXPO_BATCH_SIZE = 100;
 
+export type PushTicket =
+  | { status: 'ok'; id: string }
+  | { status: 'error'; code: string };
+
+/** Expo may return HTTP 200 even when individual messages were rejected. */
+export function readPushTickets(body: unknown, expected: number): PushTicket[] | null {
+  if (!body || typeof body !== 'object' || !('data' in body) || !Array.isArray(body.data) || body.data.length !== expected) return null;
+  const tickets: PushTicket[] = [];
+  for (const item of body.data) {
+    if (!item || typeof item !== 'object') return null;
+    if (item.status === 'ok' && typeof item.id === 'string' && item.id) {
+      tickets.push({ status: 'ok', id: item.id });
+    } else if (item.status === 'error') {
+      const code = item.details && typeof item.details === 'object' && typeof item.details.error === 'string'
+        ? item.details.error : 'UnknownError';
+      // Do not log Expo's free-form message, which can contain a device token.
+      tickets.push({ status: 'error', code: /^[A-Za-z0-9_]{1,80}$/.test(code) ? code : 'UnknownError' });
+    } else return null;
+  }
+  return tickets;
+}
+
 const ALLOWED_TYPES = new Set<string>([
   'expense_added',
   'expense_updated',

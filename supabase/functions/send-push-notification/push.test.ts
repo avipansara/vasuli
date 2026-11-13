@@ -1,6 +1,20 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildExpoMessages, chunk, parsePushNotificationBody, tokenBatches } from './push';
+import { buildExpoMessages, chunk, parsePushNotificationBody, readPushTickets, tokenBatches } from './push';
+
+describe('Expo push tickets', () => {
+  it('distinguishes accepted and rejected messages without retaining Expo error text', () => {
+    expect(readPushTickets({ data: [
+      { status: 'ok', id: 'receipt-1' },
+      { status: 'error', message: 'contains a token', details: { error: 'DeviceNotRegistered' } },
+    ] }, 2)).toEqual([{ status: 'ok', id: 'receipt-1' }, { status: 'error', code: 'DeviceNotRegistered' }]);
+  });
+
+  it('rejects incomplete or malformed responses', () => {
+    expect(readPushTickets({ data: [{ status: 'ok', id: 'receipt-1' }] }, 2)).toBeNull();
+    expect(readPushTickets({ data: [{ status: 'ok' }] }, 1)).toBeNull();
+  });
+});
 
 describe('parsePushNotificationBody', () => {
   it('accepts tokens + notification', () => {

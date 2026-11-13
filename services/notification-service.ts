@@ -44,6 +44,11 @@ async function invokeSendPushNotification(
     }
     if (data && typeof data === 'object' && 'error' in data && data.error) {
       console.error('send-push-notification:', String((data as { error: string }).error));
+    } else if (data && typeof data === 'object' && 'rejected' in data && typeof data.rejected === 'number' && data.rejected > 0) {
+      console.warn('Push notifications rejected by Expo:', data.rejected);
+    }
+    if (data && typeof data === 'object' && 'trackingFailures' in data && typeof data.trackingFailures === 'number' && data.trackingFailures > 0) {
+      console.warn('Push receipt tracking failed:', data.trackingFailures);
     }
   } catch (err) {
     console.error('Error sending push notification:', err);
