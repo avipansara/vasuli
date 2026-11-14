@@ -28,13 +28,13 @@ expense notification is enqueued when the initial split insert succeeds.
    verification is disabled in `supabase/config.toml`. If
    `RECURRING_EXPENSE_SERVICE_ROLE_KEY` is set, the worker expects that value;
    otherwise it expects `SUPABASE_SERVICE_ROLE_KEY`.
-   For transaction-backed notifications, also apply
-   `20261113050000_transactional_push_outbox.sql` before deploying the updated
-   `process-push-receipts` worker. Apply
-   `20261113060000_immediate_push_wakeup.sql` for immediate wake-ups. Coordinate that worker deployment with the
-   app update that removes client-side sends: older app versions will otherwise
-   send duplicate expense or settlement notifications. This rollout assumes
-   all users move to the new app version together.
+   Deploy the compatible `send-push-notification` function before activating
+   the outbox. Apply `20261113050000_transactional_push_outbox.sql` and
+   `20261113060000_immediate_push_wakeup.sql`, then deploy the updated
+   `process-push-receipts` worker. The outbox starts disabled: old apps continue
+   to send expense notifications until it is enabled. The compatible sender
+   removes only recipients already covered by the queue. The released v1.0.29
+   app does not send payment notifications itself.
 2. Ensure `SUPABASE_URL` and a valid service-role key are available to both
    functions. Both prefer `RECURRING_EXPENSE_SERVICE_ROLE_KEY` when configured,
    otherwise they use the platform-provided `SUPABASE_SERVICE_ROLE_KEY`.
@@ -67,6 +67,25 @@ expense notification is enqueued when the initial split insert succeeds.
    job. If an immediate wake-up fails, the scheduled worker retries. Missing
    URL configuration or a `pg_net` outage also prevents scheduled wake-ups, so
    monitor for pending deliveries and repair the configuration or service.
+
+5. Once both functions, the wake-up URL, and the cron job are deployed and
+   verified, activate server delivery with an administrator connection:
+
+   ```sql
+   update private.push_notification_rollout set enabled = true where singleton;
+   ```
+
+   Test an expense from an old app and a new app, plus a payment, before
+   releasing the new app. The production build workflow checks this switch
+   before submitting builds. Its first run may apply the migration and stop
+   at that check; finish setup and rerun the workflow. Do not turn the switch
+   off after releasing the new app: that app relies on the server for expense
+   and payment notifications. The switch does not replay events created while
+   disabled.
+
+The legacy sender filter is temporary. Before removing it, check app-version
+adoption and decide how to handle remaining older installations: those apps
+can otherwise send a second expense notification alongside the server.
 
 ## Testing and operations
 

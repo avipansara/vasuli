@@ -30,12 +30,36 @@ ALTER TABLE public.push_notification_outbox FORCE ROW LEVEL SECURITY;
 REVOKE ALL ON public.push_notification_events, public.push_notification_outbox FROM PUBLIC, anon, authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.push_notification_events, public.push_notification_outbox TO service_role;
 
+-- Enable only after the compatible sender and queue worker are deployed.
+CREATE TABLE private.push_notification_rollout (singleton boolean PRIMARY KEY DEFAULT true CHECK (singleton), enabled boolean NOT NULL DEFAULT false);
+INSERT INTO private.push_notification_rollout(singleton) VALUES (true);
+
+CREATE OR REPLACE FUNCTION public.queued_expense_push_tokens(p_expense_id text, p_tokens text[])
+RETURNS text[] LANGUAGE sql SECURITY DEFINER SET search_path = public, private, pg_temp SET row_security = off AS $$
+  SELECT COALESCE(array_agg(DISTINCT u.push_token), ARRAY[]::text[])
+  FROM public.push_notification_outbox o JOIN public.users u ON u.id = o.recipient_id
+  WHERE o.event_type = 'expense_added' AND o.subject_id = CASE
+    WHEN p_expense_id ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' THEN p_expense_id::uuid
+    ELSE NULL END
+    AND u.push_token = ANY(p_tokens);
+$$;
+REVOKE ALL ON FUNCTION public.queued_expense_push_tokens(text, text[]) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.queued_expense_push_tokens(text, text[]) TO service_role;
+
 -- A statement-level trigger sees the complete first split insert. Later edits
 -- cannot enqueue a second creation event for the same expense.
 CREATE OR REPLACE FUNCTION private.enqueue_new_expense_notifications()
 RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, private, pg_temp SET row_security = off AS $$
 DECLARE exp record; marker uuid;
 BEGIN
+  IF NOT (SELECT enabled FROM private.push_notification_rollout WHERE singleton FOR SHARE) THEN
+    -- Remember old-app expenses so later split edits do not look like new expenses.
+    INSERT INTO public.push_notification_events(event_type, subject_id)
+      SELECT DISTINCT 'expense_added', e.id FROM new_expense_splits s
+      JOIN public.expenses e ON e.id = s.expense_id
+      WHERE e.recurring_rule_id IS NULL AND e.deleted_at IS NULL ON CONFLICT DO NOTHING;
+    RETURN NULL;
+  END IF;
   FOR exp IN SELECT DISTINCT e.id, e.group_id, e.created_by
     FROM new_expense_splits s JOIN public.expenses e ON e.id = s.expense_id
     WHERE e.recurring_rule_id IS NULL AND e.deleted_at IS NULL
@@ -63,6 +87,7 @@ CREATE OR REPLACE FUNCTION private.enqueue_settlement_notification()
 RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, private, pg_temp SET row_security = off AS $$
 DECLARE operation_row public.settlement_operations%ROWTYPE; event_name text; subject uuid; actor uuid; recipient uuid;
 BEGIN
+  IF NOT (SELECT enabled FROM private.push_notification_rollout WHERE singleton FOR SHARE) THEN RETURN NEW; END IF;
   IF TG_TABLE_NAME = 'settlement_operations' THEN
     operation_row := NEW;
     IF operation_row.requested_payment_amount <= 0 THEN RETURN NEW; END IF;

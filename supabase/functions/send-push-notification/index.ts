@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 
 import { buildExpoMessages, parsePushNotificationBody, readPushTickets, tokenBatches } from './push.ts';
+import { filterQueuedExpenseTokens } from './legacy.ts';
 
 const EXPO_PUSH_URL = 'https://exp.host/--/api/v2/push/send';
 const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
@@ -33,7 +34,8 @@ serve(async (req: Request) => {
       });
     }
 
-    const { tokens, notification } = parsed;
+    const { notification } = parsed;
+    const tokens = await filterQueuedExpenseTokens(parsed.tokens, notification, { supabaseUrl, serviceRoleKey });
     const batches = tokenBatches(tokens);
     let accepted = 0;
     let rejected = 0;

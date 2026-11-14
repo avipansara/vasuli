@@ -5,6 +5,10 @@
 - Remove routine production logs containing user and notification details.
 - Correct setup, security, testing, and release guidance for contributors.
 
+## 2026-11-14
+
+- Allow old and new app versions to receive expense notifications during rollout. Deploy both push functions, configure the worker, and enable server delivery before releasing the new app.
+
 ## 2026-11-13
 
 - Update help guidance for expenses, invitations, account deletion, and data privacy.
@@ -20,7 +24,7 @@
 
 ## 2026-11-12
 
-- Notify the other person when a settlement is deleted, and retry expense and payment notifications from the server. Apply the outbox migration and coordinate the updated worker with the app release.
+- Notify the other person when a settlement is deleted, and retry expense and payment notifications from the server. Apply the outbox migration, deploy the worker, and enable server delivery before the app release.
 - Notify the other person when a friend or group payment is recorded.
 - Improve push notification diagnostics and remove invalid device tokens. Apply the receipt migration, deploy both push functions, and schedule the receipt worker to enable the checks.
 - Prevent a spurious “Group not found” alert while deleting a group.

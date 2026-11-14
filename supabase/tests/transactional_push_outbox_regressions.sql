@@ -1,6 +1,9 @@
 -- Run against a disposable database after all migrations; all fixtures roll back.
 BEGIN;
 SET LOCAL request.jwt.claim.role = 'service_role';
+DO $$ BEGIN
+  IF (SELECT enabled FROM private.push_notification_rollout WHERE singleton) THEN RAISE EXCEPTION 'Rollout must start disabled'; END IF;
+END $$;
 INSERT INTO public.users (id, name, push_token) VALUES
   ('ab100000-0000-0000-0000-000000000001', 'Alex', 'old-token'),
   ('ab100000-0000-0000-0000-000000000002', 'Sam', 'friend-token'),
@@ -10,6 +13,19 @@ INSERT INTO public.group_members(group_id, user_id) VALUES
   ('ab200000-0000-0000-0000-000000000001', 'ab100000-0000-0000-0000-000000000001'),
   ('ab200000-0000-0000-0000-000000000001', 'ab100000-0000-0000-0000-000000000002'),
   ('ab200000-0000-0000-0000-000000000001', 'ab100000-0000-0000-0000-000000000003');
+INSERT INTO public.expenses(id, group_id, created_by, paid_by, description, amount, currency, date)
+VALUES ('ab300000-0000-0000-0000-000000000003', NULL, 'ab100000-0000-0000-0000-000000000001', 'ab100000-0000-0000-0000-000000000001', 'Before rollout', 10, 'USD', now());
+INSERT INTO public.expense_splits(expense_id, user_id, amount, split_type) VALUES
+ ('ab300000-0000-0000-0000-000000000003', 'ab100000-0000-0000-0000-000000000002', 10, 'equal');
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM public.push_notification_outbox WHERE subject_id = 'ab300000-0000-0000-0000-000000000003') THEN RAISE EXCEPTION 'Disabled rollout queued a push'; END IF;
+END $$;
+UPDATE private.push_notification_rollout SET enabled = true WHERE singleton;
+INSERT INTO public.expense_splits(expense_id, user_id, amount, split_type) VALUES
+ ('ab300000-0000-0000-0000-000000000003', 'ab100000-0000-0000-0000-000000000001', 0, 'equal');
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM public.push_notification_outbox WHERE subject_id = 'ab300000-0000-0000-0000-000000000003') THEN RAISE EXCEPTION 'Editing a pre-rollout expense queued a creation push'; END IF;
+END $$;
 INSERT INTO public.expenses(id, group_id, created_by, paid_by, description, amount, currency, date)
 VALUES ('ab300000-0000-0000-0000-000000000001', 'ab200000-0000-0000-0000-000000000001',
   'ab100000-0000-0000-0000-000000000001', 'ab100000-0000-0000-0000-000000000001', 'Dinner', 20, 'GBP', now());
@@ -37,12 +53,15 @@ DO $$
 DECLARE item record; token text;
 BEGIN
   IF has_table_privilege('authenticated', 'public.push_notification_outbox', 'SELECT')
+     OR has_function_privilege('authenticated', 'public.queued_expense_push_tokens(text,text[])', 'EXECUTE')
      OR has_function_privilege('authenticated', 'public.claim_push_notifications(integer)', 'EXECUTE')
      OR has_function_privilege('authenticated', 'public.finish_push_notification(uuid,text,text,text,text)', 'EXECUTE') THEN
     RAISE EXCEPTION 'Untrusted role can access the notification queue';
   END IF;
   IF (SELECT count(*) FROM public.push_notification_outbox WHERE event_type = 'expense_added' AND subject_id = 'ab300000-0000-0000-0000-000000000001') <> 2 THEN RAISE EXCEPTION 'Group expense recipients or deduplication incorrect'; END IF;
   IF (SELECT count(*) FROM public.push_notification_outbox WHERE event_type = 'expense_added' AND subject_id = 'ab300000-0000-0000-0000-000000000002' AND recipient_id = 'ab100000-0000-0000-0000-000000000002') <> 1 THEN RAISE EXCEPTION 'Friend expense recipient incorrect'; END IF;
+  IF public.queued_expense_push_tokens('ab300000-0000-0000-0000-000000000001', ARRAY['friend-token', 'unrelated-token']) <> ARRAY['friend-token'] THEN RAISE EXCEPTION 'Legacy token coverage incorrect'; END IF;
+  IF public.queued_expense_push_tokens('invalid-id', ARRAY['friend-token']) <> ARRAY[]::text[] THEN RAISE EXCEPTION 'Unknown expense must not suppress pushes'; END IF;
   IF NOT EXISTS (SELECT 1 FROM public.push_notification_outbox WHERE event_type = 'settlement_reversed' AND recipient_id = 'ab100000-0000-0000-0000-000000000001') THEN RAISE EXCEPTION 'Reversal recipient incorrect'; END IF;
   BEGIN
     INSERT INTO public.settlement_operations(id, actor_user_id, friend_user_id, group_id, mode, requested_payment_amount, expected_balance, currency, payment_intent_id)
