@@ -135,6 +135,11 @@ function RootLayoutNav() {
   useEffect(() => {
     let isMounted = true;
 
+    SplashScreen.setOptions({
+      duration: 0,
+      fade: false,
+    });
+
     SplashScreen.hideAsync().then(() => {
       if (isMounted) {
         setNativeSplashHidden(true);

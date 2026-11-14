@@ -7,6 +7,8 @@
 
 ## 2026-11-14
 
+- Remove the leftover segmented indicator behind the friend activity filter pills and configure the Android splash screen icon and handoff to match iOS.
+- Link existing friend profiles reliably when signing in with Apple using a shared email address.
 - Allow old and new app versions to receive expense notifications during rollout. Deploy both push functions, configure the worker, and enable server delivery before releasing the new app.
 
 ## 2026-11-13

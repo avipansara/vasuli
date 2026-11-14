@@ -36,12 +36,6 @@ import { useRouter, useLocalSearchParams, usePreventRemove, type Href } from 'ex
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Animated, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
 import type { SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable';
-import Reanimated, {
-  Easing as ReanimatedEasing,
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming,
-} from 'react-native-reanimated';
 
 interface UserWithBalance extends User {
   balance: number;
@@ -49,7 +43,6 @@ interface UserWithBalance extends User {
 }
 
 const SEGMENTED_CONTROL_PADDING = 2;
-const SEGMENTED_CONTROL_GAP = 3;
 type ActivityFilter = FriendActivityFilter;
 
 const ACTIVITY_FILTERS: { id: ActivityFilter; label: string; icon: IconSymbolName }[] = [
@@ -83,7 +76,6 @@ export default function FriendDetailScreen() {
 
   const { gradients, colors, settle, friendDetail: friendDetailTheme, isDark } = useThemeColors();
   const [activityFilter, setActivityFilter] = useState<ActivityFilter>('all');
-  const [segmentedWidth, setSegmentedWidth] = useState(0);
   const [isRemovingFriend, setIsRemovingFriend] = useState(false);
   const [deletingExpenseId, setDeletingExpenseId] = useState<string | null>(null);
   const { user } = useAuth();
@@ -106,13 +98,6 @@ export default function FriendDetailScreen() {
     extrapolate: 'clamp',
   });
 
-  const tabIndicatorX = useSharedValue(0);
-  const segmentWidth = segmentedWidth > 0
-    ? (segmentedWidth - (SEGMENTED_CONTROL_PADDING * 2) - (SEGMENTED_CONTROL_GAP * (ACTIVITY_FILTERS.length - 1))) / ACTIVITY_FILTERS.length
-    : 0;
-  const tabIndicatorStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: tabIndicatorX.value }],
-  }));
   const {
     data: friendDetail,
     error,
@@ -189,17 +174,6 @@ export default function FriendDetailScreen() {
     if (nextFilter === activityFilter) return;
     setActivityFilter(nextFilter);
   }, [activityFilter]);
-
-  useEffect(() => {
-    if (segmentWidth <= 0) return;
-
-    const selectedIndex = ACTIVITY_FILTERS.findIndex(filter => filter.id === activityFilter);
-    // eslint-disable-next-line react-hooks/immutability -- Reanimated shared values are mutable animation refs.
-    tabIndicatorX.value = withTiming(selectedIndex * (segmentWidth + SEGMENTED_CONTROL_GAP), {
-      duration: 210,
-      easing: ReanimatedEasing.out(ReanimatedEasing.cubic),
-    });
-  }, [activityFilter, segmentWidth, tabIndicatorX]);
 
   function handleEditExpense(expenseId: string) {
     swipeableRefs.current.get(expenseId)?.close();
@@ -675,21 +649,8 @@ export default function FriendDetailScreen() {
         <View
           accessibilityRole="toolbar"
           accessibilityLabel="Activity filter"
-          onLayout={({ nativeEvent }) => setSegmentedWidth(nativeEvent.layout.width)}
-          style={[styles.segmentedControl]}
+          style={styles.segmentedControl}
         >
-          {segmentWidth > 0 && (
-            <Reanimated.View
-              pointerEvents="none"
-              style={[
-                styles.segmentedIndicator,
-                {
-                  width: segmentWidth,
-                },
-                tabIndicatorStyle,
-              ]}
-            />
-          )}
           {ACTIVITY_FILTERS.map(filter => {
             const isSelected = activityFilter === filter.id;
 
@@ -931,20 +892,7 @@ const styles = StyleSheet.create({
     marginBottom: 14,
     padding: SEGMENTED_CONTROL_PADDING,
     gap: 12,
-    overflow: 'hidden',
     position: 'relative',
-  },
-  segmentedIndicator: {
-    position: 'absolute',
-    top: SEGMENTED_CONTROL_PADDING,
-    bottom: SEGMENTED_CONTROL_PADDING,
-    left: SEGMENTED_CONTROL_PADDING,
-    borderRadius: 9,
-    elevation: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.15,
-    shadowRadius: 3,
   },
   segmentedOption: {
     minHeight: 36,
@@ -953,9 +901,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 5,
-    backgroundColor: '#FFFFFF',
     paddingHorizontal: 16,
-    zIndex: 1,
+    shadowColor: '#000000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.09,
     shadowRadius: 0,

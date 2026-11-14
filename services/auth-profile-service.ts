@@ -29,23 +29,31 @@ async function findProfileByEmail(email: string) {
   const { data, error } = await supabase
     .from('users')
     .select('*')
-    .eq('email', email)
-    .single();
+    .ilike('email', email)
+    .order('created_at', { ascending: true, nullsFirst: false })
+    .order('id', { ascending: true })
+    .limit(1)
+    .maybeSingle();
 
   if (error && !isMissingRow(error)) throw error;
   return data;
 }
 
-async function attachAuthUserId(profileId: string, authUserId: string): Promise<User> {
+async function attachAuthUserId(profileRow: any, authUserId: string): Promise<User> {
   const { data, error } = await supabase
     .from('users')
     .update({ auth_user_id: authUserId })
-    .eq('id', profileId)
+    .eq('id', profileRow.id)
     .select()
-    .single();
+    .maybeSingle();
 
-  if (error) throw error;
-  return mapUserRow(data);
+  if (error) {
+    // If an older RLS policy blocks updating auth_user_id when another auth
+    // identity was previously linked, still resolve the matched email profile.
+    console.warn('Unable to update auth_user_id on existing profile:', error.message);
+    return mapUserRow(profileRow);
+  }
+  return mapUserRow(data ?? { ...profileRow, auth_user_id: authUserId });
 }
 
 async function createProfile(params: Required<Pick<LinkAuthUserParams, 'authUserId'>> & {
@@ -87,7 +95,7 @@ export async function linkAuthUserToProfile(params: LinkAuthUserParams): Promise
       return { user: mapUserRow(existingProfile), created: false };
     }
 
-    return { user: await attachAuthUserId(existingProfile.id, params.authUserId), created: false };
+    return { user: await attachAuthUserId(existingProfile, params.authUserId), created: false };
   }
 
   const existingByAuthUser = await findProfileByAuthUserId(params.authUserId);

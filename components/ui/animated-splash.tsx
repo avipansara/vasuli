@@ -601,6 +601,7 @@ const styles = StyleSheet.create({
     height: 120,
   },
   avatarContainer: {
+    borderRadius: 18,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.3,
@@ -631,6 +632,7 @@ const styles = StyleSheet.create({
   },
   moneyContainer: {
     marginHorizontal: 20,
+    borderRadius: 40,
     shadowColor: '#F59E0B',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.5,

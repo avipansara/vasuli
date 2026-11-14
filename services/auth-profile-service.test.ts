@@ -62,11 +62,24 @@ describe('linkAuthUserToProfile', () => {
                   ? mocks.singleByAuthUserId
                   : vi.fn(),
           }),
+          ilike: (column: string) => ({
+            order: () => ({
+              order: () => ({
+                limit: () => ({
+                  maybeSingle:
+                    column === 'email'
+                      ? mocks.singleByEmail
+                      : vi.fn(),
+                }),
+              }),
+            }),
+          }),
         }),
         update: () => ({
           eq: () => ({
             select: () => ({
               single: mocks.updateSingle,
+              maybeSingle: mocks.updateSingle,
             }),
           }),
         }),
