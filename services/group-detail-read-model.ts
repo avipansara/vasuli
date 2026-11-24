@@ -269,15 +269,11 @@ export function removeExpenseFromHomeFriends<T extends GroupHomeFriendView>(
   if (!current) return current;
 
   const currentUserSplit = splits.find(split => split.userId === currentUserId);
-  if (!currentUserSplit) return current;
-
   return current.map(friend => {
     const friendSplit = splits.find(split => split.userId === friend.id);
-    if (!friendSplit) return friend;
-
     const balanceDelta = expense.paidBy === currentUserId
-      ? -friendSplit.amount
-      : expense.paidBy === friend.id ? currentUserSplit.amount : 0;
+      ? -(friendSplit?.amount ?? 0)
+      : expense.paidBy === friend.id ? (currentUserSplit?.amount ?? 0) : 0;
     if (balanceDelta === 0) return friend;
 
     const nextBalance = friend.balance + balanceDelta;

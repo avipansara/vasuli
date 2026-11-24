@@ -13,8 +13,6 @@ test('a seeded group member can add and edit a group expense', async ({ app, scr
     await expect(screen.getByLabel(new RegExp(fixture.friendName!))).toBeVisible();
 
     await screen.getByLabel('Add expense').tap();
-    await screen.getByLabel(`Select group ${fixture.groupName}`).tap();
-    await screen.getByTestId('add-expense-next-button').tap();
     const amount = screen.getByTestId('expense-amount-input');
     await expect(amount).toBeVisible();
     await amount.tap();
@@ -25,6 +23,14 @@ test('a seeded group member can add and edit a group expense', async ({ app, scr
     await screen.scrollUntilVisible(descriptionInput);
     await descriptionInput.tap();
     await descriptionInput.pressSequentially(description);
+    await device.dismissKeyboard();
+    await screen.getByTestId('expense-split-button').tap();
+    await screen.getByTestId('expense-split-members-button').tap();
+    await screen.getByTestId('expense-split-member-search').fill('You');
+    await screen.getByRole('checkbox', 'You').tap();
+    await screen.getByRole('button', 'Done').tap();
+    await screen.getByText('Apply split').tap();
+    await expect(screen.getByText('1 person · $12.00 each')).toBeVisible();
     await screen.getByTestId('add-expense-submit-button').tap();
 
     const expenseRow = screen.getByLabel(`View details for ${description}`);
@@ -36,6 +42,9 @@ test('a seeded group member can add and edit a group expense', async ({ app, scr
     await screen.getByTestId('expense-detail-edit-button').tap();
     await expect(screen.getByTestId('edit-expense-amount-input')).toBeVisible();
     await replaceText(screen.getByTestId('edit-expense-amount-input'), 5, '24.50');
+    await device.dismissKeyboard();
+    await expect(screen.getByText('1 person · $24.50 each')).toBeVisible();
+    await expect(screen.getByText(/Previously: .* owes you \$12\.00/)).toBeVisible();
     await screen.getByTestId('edit-expense-save-button').tap();
     await expect(screen.getByText('$24.50')).toBeVisible({ timeout: 20_000 });
     await screen.getByTestId('expense-detail-delete-button').tap();

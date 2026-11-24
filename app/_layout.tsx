@@ -1,3 +1,4 @@
+import { ExpenseSplitSheetHost } from '@/components/expenses/expense-split-sheet-host';
 import { AnimatedSplash } from '@/components/ui/animated-splash';
 import { AppUpdatePrompt } from '@/components/ui/app-update-prompt';
 import { RouteErrorBoundary } from '@/components/ui/route-error-boundary';
@@ -289,25 +290,35 @@ function RootLayoutNav() {
   return (
     <ThemeProvider value={isDark ? AmbientDarkTheme : AmbientLightTheme}>
       <RouteErrorBoundary homeHref="/(tabs)">
-        <Stack>
-          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="scan-qr" options={{ headerShown: false }} />
-          <Stack.Screen name="add-expense" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
-          <Stack.Screen name="create-group" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
-          <Stack.Screen name="add-friend" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
-          <Stack.Screen name="edit-group/[id]" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
-          <Stack.Screen name="edit-expense/[id]" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
-          <Stack.Screen name="edit-profile" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
-          <Stack.Screen name="privacy-policy" options={{ headerShown: false }} />
-          <Stack.Screen name="terms-conditions" options={{ headerShown: false }} />
-          <Stack.Screen name="help-support" options={{ headerShown: false }} />
-          <Stack.Screen name="invite/[id]" options={{ headerShown: false }} />
-          <Stack.Screen name="invitations" options={{ headerShown: false }} />
-          <Stack.Screen name="recurring-expenses/index" options={{ headerShown: false }} />
-          <Stack.Screen name="recurring-expenses/[id]" options={{ headerShown: false }} />
-          <Stack.Screen name="recurring-expenses/edit/[id]" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
-        </Stack>
+        <ExpenseSplitSheetHost>
+          <Stack>
+            <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="scan-qr" options={{ headerShown: false }} />
+            <Stack.Screen name="add-expense" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
+            <Stack.Screen name="expense-split" options={({ route }) => ({
+              headerShown: false,
+              presentation: 'formSheet',
+              sheetAllowedDetents: (route.params as { expanded?: string } | undefined)?.expanded === '1'
+                ? [0.94]
+                : [0.56],
+              sheetGrabberVisible: true,
+            })} />
+            <Stack.Screen name="create-group" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
+            <Stack.Screen name="add-friend" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
+            <Stack.Screen name="edit-group/[id]" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
+            <Stack.Screen name="edit-expense/[id]" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
+            <Stack.Screen name="edit-profile" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
+            <Stack.Screen name="privacy-policy" options={{ headerShown: false }} />
+            <Stack.Screen name="terms-conditions" options={{ headerShown: false }} />
+            <Stack.Screen name="help-support" options={{ headerShown: false }} />
+            <Stack.Screen name="invite/[id]" options={{ headerShown: false }} />
+            <Stack.Screen name="invitations" options={{ headerShown: false }} />
+            <Stack.Screen name="recurring-expenses/index" options={{ headerShown: false }} />
+            <Stack.Screen name="recurring-expenses/[id]" options={{ headerShown: false }} />
+            <Stack.Screen name="recurring-expenses/edit/[id]" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
+          </Stack>
+        </ExpenseSplitSheetHost>
       </RouteErrorBoundary>
       <AppUpdatePrompt
         decision={appUpdateDecision}

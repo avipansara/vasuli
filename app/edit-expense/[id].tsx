@@ -22,15 +22,11 @@ import { getCurrencySymbol, normalizeBalance } from '@/utils/currency';
 import { formatDate } from '@/utils/date';
 import { dateOnlyToLocalDate, getExpenseDateUpdate } from '@/utils/expense-date';
 import { getGroupExpenseParticipant } from '@/utils/group-expense-participants';
-import { getEvenSplitValues, getSplitProgress, resolveExpenseSplits } from '@/utils/split-validation';
+import { resolveExpenseSplits } from '@/utils/split-validation';
+import { getSavedExpenseSplit, hasSameAllocation } from '@/utils/saved-expense-split';
 import { trackExpenseUpdated } from '@/lib/analytics/track';
-import {
-  CustomSplitBreakdown,
-  ExpenseParticipant,
-  SplitMethod,
-  SplitMethodSelector,
-  SplitType,
-} from '@/components/expenses';
+import { ExpenseSplitField } from '@/components/expenses/expense-split-field';
+import type { ExpenseSplitDraft } from '@/components/expenses/expense-split-types';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -67,14 +63,9 @@ export default function EditExpenseScreen() {
   const [amount, setAmount] = useState('');
   const [expenseDate, setExpenseDate] = useState(() => new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [splitType, setSplitType] = useState<SplitType>(SplitType.GROUP);
-  const [selectedGroupId, setSelectedGroupId] = useState<string>('');
-  const [selectedFriendIds, setSelectedFriendIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
-  const [splitMethod, setSplitMethod] = useState<SplitMethod>(SplitMethod.EQUAL);
-  const [customAmounts, setCustomAmounts] = useState<Record<string, string>>({});
-  const [customPercentages, setCustomPercentages] = useState<Record<string, string>>({});
-  const [customShares, setCustomShares] = useState<Record<string, string>>({});
+  const loadedExpenseId = useRef<string | null>(null);
+  const [editedSplit, setEditedSplit] = useState<ExpenseSplitDraft | null>(null);
   const [originalExpense, setOriginalExpense] = useState<Expense | null>(null);
   const [originalSplits, setOriginalSplits] = useState<ExpenseSplit[]>([]);
 
@@ -97,9 +88,11 @@ export default function EditExpenseScreen() {
         userService.getUserFriends(currentUserId),
         expenseService.getSplits(id),
       ]);
-      return { expense, groups, friends, splits };
+      const savedPeople = await userService.getByIds([...new Set([expense.paidBy, ...splits.map(split => split.userId)])]);
+      return { expense, groups, friends, splits, savedPeople };
     },
   });
+  const selectedGroupId = originalExpense?.groupId ?? '';
   const groupMembersQuery = useQuery({
     queryKey: queryKeys.expenses.formMembers(selectedGroupId),
     enabled: !!selectedGroupId,
@@ -122,7 +115,8 @@ export default function EditExpenseScreen() {
 
   useEffect(() => {
     const formData = editFormQuery.data;
-    if (!formData) return;
+    if (!formData || formData.expense.id === loadedExpenseId.current) return;
+    loadedExpenseId.current = formData.expense.id;
 
     if (formData.expense.deletedAt) {
       Alert.alert('Expense deleted', 'Deleted expenses cannot be edited or restored.');
@@ -137,9 +131,7 @@ export default function EditExpenseScreen() {
       ? dateOnlyToLocalDate(formData.expense.effectiveDate)
       : new Date(formData.expense.date));
     setOriginalExpense(formData.expense);
-    setSplitType(formData.expense.groupId ? SplitType.GROUP : SplitType.FRIENDS);
-    setSelectedGroupId(formData.expense.groupId || '');
-    setSelectedFriendIds(formData.splits.map(split => split.userId).filter(userId => userId !== currentUserId));
+    setEditedSplit(null);
     setOriginalSplits(formData.splits);
 
     Animated.parallel([
@@ -160,64 +152,37 @@ export default function EditExpenseScreen() {
     await editFormQuery.refetch();
   }, [editFormQuery]);
 
-  const loadGroupMembersForSelection = useCallback(async () => {
-    await groupMembersQuery.refetch();
-  }, [groupMembersQuery]);
-
-  const participants = useMemo<ExpenseParticipant[]>(() => {
-    const list: ExpenseParticipant[] = [{ id: currentUserId, name: 'You', isCurrentUser: true }];
-    if (splitType === SplitType.FRIENDS) {
-      selectedFriendIds.forEach(id => {
-        const friend = friends.find(f => f.id === id);
-        if (friend) list.push({ id, name: friend.name });
-      });
-    } else {
-      groupMembers.filter(id => id !== currentUserId).forEach(id => {
-        const member = getGroupExpenseParticipant(id, groupMemberUsers, friends);
-        list.push({ id, name: member?.name || 'Member' });
-      });
-    }
-    return list;
-  }, [currentUserId, friends, groupMemberUsers, groupMembers, selectedFriendIds, splitType]);
-
-  const activeUserIds = useMemo(
-    () => (splitType === SplitType.GROUP ? groupMembers : [currentUserId, ...selectedFriendIds]),
-    [currentUserId, groupMembers, selectedFriendIds, splitType]
-  );
-  const activeValues =
-    splitMethod === SplitMethod.UNEQUAL
-      ? customAmounts
-      : splitMethod === SplitMethod.PERCENTAGE
-        ? customPercentages
-        : customShares;
-  const splitProgress = useMemo(
-    () => getSplitProgress(activeUserIds, parseFloat(amount) || 0, splitMethod, activeValues),
-    [activeUserIds, amount, splitMethod, activeValues]
-  );
-
-  const setEvenSplit = () => {
-    const values = getEvenSplitValues(activeUserIds, splitMethod, parseFloat(amount) || 0);
-    if (splitMethod === SplitMethod.PERCENTAGE) setCustomPercentages(values);
-    else if (splitMethod === SplitMethod.SHARES) setCustomShares(values);
-    else setCustomAmounts(values);
+  const initialSplit = originalExpense && {
+    payerId: originalExpense.paidBy,
+    ...getSavedExpenseSplit(originalSplits),
   };
-
-  const isValid =
-    description.trim().length > 0 &&
-    amount.trim().length > 0 &&
-    !isNaN(parseFloat(amount)) &&
-    parseFloat(amount) > 0 &&
-    (splitType === SplitType.GROUP ? selectedGroupId !== '' : selectedFriendIds.length > 0);
-
-  const canSubmit = !!isValid && (splitMethod === SplitMethod.EQUAL || splitProgress.isBalanced);
+  const splitDraft = editedSplit ?? initialSplit;
+  const total = parseFloat(amount) || 0;
+  const unchangedSplit = total === originalExpense?.amount &&
+    (!editedSplit || (!!initialSplit && hasSameAllocation(initialSplit, editedSplit)));
+  const splits = unchangedSplit ? originalSplits : splitDraft && resolveExpenseSplits(
+    splitDraft.participantIds, total, splitDraft.method,
+    { amounts: splitDraft.values, percentages: splitDraft.values, shares: splitDraft.values },
+  ).splits;
+  const canSubmit = !!description.trim() && total > 0 && !!splits?.length;
+  const selectedGroup = groups.find(group => group.id === selectedGroupId);
+  const people = [...new Set([
+    ...originalSplits.map(split => split.userId),
+    ...(originalExpense ? [originalExpense.paidBy] : []),
+    ...groupMembers,
+  ])].map(personId => ({
+    id: personId,
+    name: personId === currentUserId ? 'You'
+      : getGroupExpenseParticipant(personId, groupMemberUsers, friends)?.name
+        ?? editFormQuery.data?.savedPeople.find(person => person.id === personId)?.name ?? 'Member',
+  }));
 
   const getHomeBalanceDelta = useCallback((expense: Expense, splits: EditableSplit[], friendId: string) => {
     const currentUserSplit = splits.find(split => split.userId === currentUserId);
     const friendSplit = splits.find(split => split.userId === friendId);
 
-    if (!currentUserSplit || !friendSplit) return 0;
-    if (expense.paidBy === currentUserId) return friendSplit.amount;
-    if (expense.paidBy === friendId) return -currentUserSplit.amount;
+    if (expense.paidBy === currentUserId) return friendSplit?.amount ?? 0;
+    if (expense.paidBy === friendId) return -(currentUserSplit?.amount ?? 0);
     return 0;
   }, [currentUserId]);
 
@@ -250,27 +215,8 @@ export default function EditExpenseScreen() {
     );
   }, [friendsHomeQueryKey, getHomeBalanceDelta, queryClient]);
 
-  function calculateSplits(userIds: string[], totalAmount: number) {
-    const result = resolveExpenseSplits(userIds, totalAmount, splitMethod, {
-      amounts: customAmounts,
-      percentages: customPercentages,
-      shares: customShares,
-    });
-
-    if (!result.splits) {
-      Alert.alert('Invalid Split', result.error || 'Please check the split values');
-      return null;
-    }
-
-    return result.splits;
-  }
-
   const handleSubmit = async () => {
-    if (!canSubmit) return;
-    if (!originalExpense) {
-      Alert.alert('Error', 'Expense not loaded yet');
-      return;
-    }
+    if (!canSubmit || !originalExpense || !splitDraft || !splits || loading) return;
 
     setLoading(true);
     let previousHomeFriends: HomeFriend[] | undefined;
@@ -284,29 +230,9 @@ export default function EditExpenseScreen() {
         description: trimmedDescription,
         amount: newAmount,
         ...dateChange,
-        groupId: splitType === SplitType.GROUP ? selectedGroupId : undefined,
+        paidBy: splitDraft.payerId,
         updatedAt: Date.now(),
       };
-
-      // Calculate splits based on split type and method
-      let splits: { userId: string; amount: number; splitType: 'equal' | 'exact' | 'percentage' }[] | null = null;
-
-      if (splitType === SplitType.FRIENDS) {
-        const allParticipants = [currentUserId, ...selectedFriendIds];
-        splits = calculateSplits(allParticipants, newAmount);
-      } else {
-        let memberIds = groupMembers;
-        if (memberIds.length === 0) {
-          const members = await groupService.getMembers(selectedGroupId);
-          memberIds = members.map((m: { userId: string }) => m.userId);
-        }
-        splits = calculateSplits(memberIds, newAmount);
-      }
-
-      if (!splits) {
-        setLoading(false);
-        return;
-      }
 
       await queryClient.cancelQueries({ queryKey: friendsHomeQueryKey });
       previousHomeFriends = queryClient.getQueryData<HomeFriend[]>(friendsHomeQueryKey);
@@ -318,14 +244,16 @@ export default function EditExpenseScreen() {
         description: trimmedDescription,
         amount: newAmount,
         ...dateChange,
-        groupId: splitType === SplitType.GROUP ? selectedGroupId : undefined,
-      }, splits);
+        ...(splitDraft.payerId !== originalExpense.paidBy ? { paidBy: splitDraft.payerId } : {}),
+      }, unchangedSplit ? undefined : splits);
       trackExpenseUpdated(analytics, {
         groupId: updatedExpense.groupId,
         currency: updatedExpense.currency,
       });
 
       const affectedFriendIds = Array.from(new Set([
+        originalExpense.paidBy,
+        updatedExpense.paidBy,
         ...originalSplits.map(split => split.userId),
         ...splits.map(split => split.userId),
       ].filter(userId => userId !== currentUserId)));
@@ -360,7 +288,7 @@ export default function EditExpenseScreen() {
       ]);
 
       try {
-        const group = splitType === SplitType.GROUP ? groups.find(g => g.id === selectedGroupId) : undefined;
+        const group = selectedGroup;
         const participantIds = Array.from(new Set([
           ...originalSplits.map(split => split.userId),
           ...splits.map(split => split.userId),
@@ -479,31 +407,34 @@ export default function EditExpenseScreen() {
       <NavigationHeader
         title="Edit Expense"
         onBack={() => router.back()}
-        rightAction={
-          <TouchableOpacity
-            onPress={handleSubmit}
-            disabled={!canSubmit || loading}
-            testID="edit-expense-save-button"
-            style={[
-              styles.headerButton,
-              {
-                backgroundColor: (canSubmit && !loading)
-                  ? settle.buttonBackground
-                  : (colors.border),
-              },
-            ]}>
-            {loading ? (
-              <ActivityIndicator size="small" color={isDark ? '#003824' : '#ffffff'} />
-            ) : (
-              <ThemedText style={[styles.headerButtonText, { color: canSubmit ? (isDark ? '#003824' : '#ffffff') : (isDark ? '#bbcabf' : '#6B7280') }]}>
-                Save
-              </ThemedText>
-            )}
-          </TouchableOpacity>
-        }
       />
 
-      <KeyboardAwareScroll contentContainerStyle={styles.scrollContent}>
+      <KeyboardAwareScroll
+        contentContainerStyle={styles.scrollContent}
+        footer={(
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityState={{ disabled: !canSubmit || loading, busy: loading }}
+              onPress={handleSubmit}
+              disabled={!canSubmit || loading}
+              testID="edit-expense-save-button"
+              style={[
+                styles.headerButton, styles.footerButton,
+                {
+                  backgroundColor: (canSubmit && !loading)
+                    ? settle.buttonBackground
+                    : (colors.border),
+                },
+              ]}>
+              {loading ? (
+                <ActivityIndicator size="small" color={settle.buttonText} />
+              ) : (
+                <ThemedText style={[styles.headerButtonText, { color: canSubmit ? settle.buttonText : (isDark ? '#bbcabf' : '#6B7280') }]}>
+                  Save changes
+                </ThemedText>
+              )}
+            </TouchableOpacity>
+        )}>
         <Animated.View style={[styles.content, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
           {editFormQuery.data?.expense?.recurringRuleId && (
             <View
@@ -548,6 +479,13 @@ export default function EditExpenseScreen() {
             </View>
           )}
 
+          {!!selectedGroup && (
+            <View style={[styles.context, { borderColor: colors.border, backgroundColor: colors.card }]}>
+              <IconSymbol name="person.3.fill" size={16} color={colors.tint} />
+              <ThemedText>{selectedGroup.name}</ThemedText>
+            </View>
+          )}
+
           {/* Amount Input */}
           <View style={styles.amountSection}>
             <ThemedText style={[styles.amountLabel, !isDark && { color: colors.textSecondary }]}>
@@ -574,7 +512,7 @@ export default function EditExpenseScreen() {
           {/* Description Input */}
           <View style={styles.inputSection}>
             <ThemedText style={[styles.inputLabel, !isDark && { color: colors.textSecondary }]}>
-              Description *
+              What was it for?
             </ThemedText>
             <View style={[styles.inputContainer, {
               backgroundColor: colors.card,
@@ -594,6 +532,27 @@ export default function EditExpenseScreen() {
               />
             </View>
           </View>
+
+          {selectedGroupId && groupMembersLoadError ? (
+            <AsyncErrorState variant="compact" title="Couldn't load members"
+              message={getFetchErrorMessage(groupMembersLoadError)} onRetry={() => void groupMembersQuery.refetch()} />
+          ) : selectedGroupId && groupMembersQuery.isPending ? (
+            <Skeleton height={64} borderRadius={12} />
+          ) : splitDraft && originalExpense && (
+            <ExpenseSplitField
+              value={splitDraft}
+              onApply={setEditedSplit}
+              canEditPayer={originalExpense.createdBy === currentUserId}
+              savedSplits={unchangedSplit ? originalSplits : undefined}
+              group={!!selectedGroupId}
+              people={people}
+              currentUserId={currentUserId}
+              amount={total}
+              currency={originalExpense.currency ?? preferredCurrency}
+              description={description}
+              previous={{ payerId: originalExpense.paidBy, splits: originalSplits }}
+            />
+          )}
 
           <View style={styles.inputSection}>
             <ThemedText style={[styles.inputLabel, !isDark && { color: colors.textSecondary }]}>Date</ThemedText>
@@ -624,147 +583,9 @@ export default function EditExpenseScreen() {
             )}
           </View>
 
-          {/* Split Method Selection */}
-          <SplitMethodSelector
-            splitMethod={splitMethod}
-            onSelectSplitMethod={setSplitMethod}
-            splitType={splitType}
-            label="How to split?"
-          />
-
-          {/* Group/Friend Selection - locked to original type */}
-          {splitType === SplitType.GROUP ? (
-            <View style={styles.selectionSection}>
-              <ThemedText style={[styles.inputLabel, !isDark && { color: colors.textSecondary }]}>
-                Select Group *
-              </ThemedText>
-              {selectedGroupId && groupMembersLoadError && (
-                <AsyncErrorState
-                  variant="compact"
-                  title="Couldn't load members"
-                  message={getFetchErrorMessage(groupMembersLoadError)}
-                  onRetry={() => void loadGroupMembersForSelection()}
-                />
-              )}
-              {groups.length === 0 ? (
-                <View style={[styles.emptyState, !isDark && { backgroundColor: colors.card }]}>
-                  <IconSymbol name="person.3.fill" size={32} color={isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)'} />
-                  <ThemedText style={[styles.emptyStateText, !isDark && { color: colors.textSecondary }]}>
-                    No groups yet
-                  </ThemedText>
-                </View>
-              ) : (
-                groups.map(group => {
-                  const isSelected = selectedGroupId === group.id;
-                  return (
-                    <TouchableOpacity
-                      key={group.id}
-                      onPress={() => setSelectedGroupId(group.id)}
-                      style={styles.selectionCard}>
-                      <View style={[styles.selectionIcon, {
-                        backgroundColor: isSelected
-                          ? (settle.buttonBackground)
-                          : (settle.avatarUnselectedBackground),
-                      }]}>
-                        <IconSymbol
-                          name="person.3.fill"
-                          size={20}
-                          color={isSelected ? (isDark ? '#003824' : '#ffffff') : (colors.text)}
-                        />
-                      </View>
-                      <View style={styles.selectionTextContainer}>
-                        <ThemedText
-                          style={[
-                            styles.selectionCardText,
-                            { color: isSelected ? (settle.buttonBackground) : (colors.text) }
-                          ]}>
-                          {group.name}
-                        </ThemedText>
-                      </View>
-                      {isSelected && (
-                        <IconSymbol name="checkmark.circle.fill" size={22} color={settle.buttonBackground} />
-                      )}
-                    </TouchableOpacity>
-                  );
-                })
-              )}
-            </View>
-          ) : (
-            <View style={styles.selectionSection}>
-              <ThemedText style={[styles.inputLabel, !isDark && { color: colors.textSecondary }]}>
-                Select Friends *
-              </ThemedText>
-              {friends.length === 0 ? (
-                <View style={[styles.emptyState, !isDark && { backgroundColor: colors.card }]}>
-                  <IconSymbol name="person.2.fill" size={32} color={isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)'} />
-                  <ThemedText style={[styles.emptyStateText, !isDark && { color: colors.textSecondary }]}>
-                    No friends yet
-                  </ThemedText>
-                </View>
-              ) : (
-                friends.map(friend => {
-                  const isSelected = selectedFriendIds.includes(friend.id);
-                  return (
-                    <TouchableOpacity
-                      key={friend.id}
-                      onPress={() => {
-                        setSelectedFriendIds(prev =>
-                          prev.includes(friend.id)
-                            ? prev.filter(id => id !== friend.id)
-                            : [...prev, friend.id]
-                        );
-                      }}
-                      style={styles.selectionCard}>
-                      <View style={[styles.selectionIcon, {
-                        backgroundColor: isSelected
-                          ? (settle.buttonBackground)
-                          : (settle.avatarUnselectedBackground),
-                      }]}>
-                        <IconSymbol
-                          name="person.fill"
-                          size={20}
-                          color={isSelected ? (isDark ? '#003824' : '#ffffff') : (colors.text)}
-                        />
-                      </View>
-                      <View style={styles.selectionTextContainer}>
-                        <ThemedText
-                          style={[
-                            styles.selectionCardText,
-                            { color: isSelected ? (settle.buttonBackground) : (colors.text) }
-                          ]}>
-                          {friend.name}
-                        </ThemedText>
-                      </View>
-                      {isSelected && (
-                        <IconSymbol name="checkmark.circle.fill" size={22} color={settle.buttonBackground} />
-                      )}
-                    </TouchableOpacity>
-                  );
-                })
-              )}
-            </View>
-          )}
-
-          {/* Custom Split Inputs - Show when non-equal split is selected */}
-          {splitMethod !== SplitMethod.EQUAL && (splitType === SplitType.FRIENDS ? selectedFriendIds.length > 0 : !!selectedGroupId) && !!amount && parseFloat(amount) > 0 && (
-            <CustomSplitBreakdown
-              splitMethod={splitMethod}
-              totalAmount={parseFloat(amount) || 0}
-              currency={editFormQuery.data?.expense?.currency ?? preferredCurrency}
-              participants={participants}
-              customAmounts={customAmounts}
-              customPercentages={customPercentages}
-              customShares={customShares}
-              onChangeCustomAmount={(id, text) => setCustomAmounts(prev => ({ ...prev, [id]: text }))}
-              onChangeCustomPercentage={(id, text) => setCustomPercentages(prev => ({ ...prev, [id]: text }))}
-              onChangeCustomShare={(id, text) => setCustomShares(prev => ({ ...prev, [id]: text }))}
-              splitProgress={splitProgress}
-              onSetEvenSplit={setEvenSplit}
-              readyLabel="Ready to save"
-            />
-          )}
         </Animated.View>
       </KeyboardAwareScroll>
+
     </View>
   );
 }
@@ -773,6 +594,8 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  footerButton: { minHeight: 48, justifyContent: 'center' },
+  context: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderRadius: 16, padding: 10 },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -812,7 +635,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 20,
-    paddingBottom: 120,
+    paddingBottom: 115,
   },
   content: {
     gap: 24,
@@ -886,43 +709,6 @@ const styles = StyleSheet.create({
   toggleButtonText: {
     fontSize: 15,
     fontWeight: '600',
-  },
-  selectionSection: {
-    gap: 0,
-  },
-  selectionCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 18,
-    marginHorizontal: -18,
-    gap: 14,
-  },
-  selectionIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  selectionTextContainer: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  selectionCardText: {
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  emptyState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 32,
-    borderRadius: 12,
-    gap: 8,
-  },
-  emptyStateText: {
-    fontSize: 14,
-    opacity: 0.6,
   },
   recurringNoticeBanner: {
     borderWidth: 1,

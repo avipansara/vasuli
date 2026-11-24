@@ -1,3 +1,4 @@
+const { dismissExpenseKeyboard, fillExpenseDescription, openGroupExpenseForm } = require('./splits');
 const { tapAlertButton } = require('./common');
 
 function groupCardFor(groupName) {
@@ -33,16 +34,9 @@ async function openGroupDetails(groupName) {
 async function recordExpense(groupName) {
   const expenseDescription = `Detox Expense ${Date.now()}`;
 
-  await element(by.label('Add expense')).tap();
-  await element(by.label(`Select group ${groupName}`)).tap();
-  await element(by.id('add-expense-next-button')).tap();
+  await openGroupExpenseForm();
   await element(by.id('expense-amount-input')).replaceText('12.00');
-  // The amount field autofocuses and the keyboard can clip the description
-  // field. Scroll the named form before tapping so this remains deterministic
-  // on the release simulator rather than waiting for a visibility timeout.
-  await element(by.id('expense-form-scroll')).scroll(300, 'down');
-  await element(by.id('expense-description-input')).tap();
-  await element(by.id('expense-description-input')).typeText(expenseDescription);
+  await fillExpenseDescription(expenseDescription);
   await element(by.id('add-expense-submit-button')).tap();
   await waitFor(groupCardFor(groupName))
     .toBeVisible()
@@ -105,6 +99,7 @@ async function editExpenseAmount(amount) {
     .toBeVisible()
     .withTimeout(10000);
   await element(by.id('edit-expense-amount-input')).replaceText(amount);
+  await dismissExpenseKeyboard();
   await element(by.id('edit-expense-save-button')).tap();
 }
 

@@ -31,3 +31,10 @@ export interface ExpenseParticipant {
   name: string;
   isCurrentUser?: boolean;
 }
+
+export interface ExpenseSplitDraft {
+  payerId: string;
+  participantIds: string[];
+  method: SplitMethod;
+  values: Record<string, string>;
+}

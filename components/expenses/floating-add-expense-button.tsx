@@ -20,6 +20,7 @@ export function FloatingAddExpenseButton({
   const { isDark } = useThemeColors();
   const insets = usePlatformSafeAreaInsets();
   const pathname = usePathname();
+  const groupId = /^\/groups\/([^/]+)$/.exec(pathname)?.[1];
   const bottom = Math.max(insets.bottom, 12) + bottomOffset;
   const right = Math.max(insets.right, 0) + rightOffset;
 
@@ -36,7 +37,7 @@ export function FloatingAddExpenseButton({
       <Pressable
         accessibilityLabel="Add expense"
         accessibilityRole="button"
-        onPress={() => router.push('/add-expense')}
+        onPress={() => router.push(groupId ? { pathname: '/add-expense', params: { groupId } } : '/add-expense')}
         style={({ pressed }) => [
           styles.button,
           isDark ? styles.darkShadow : styles.lightShadow,

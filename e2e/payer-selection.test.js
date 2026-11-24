@@ -1,7 +1,7 @@
 const { goBack, loginToFriends, openFriends, openGroups } = require('./helpers/auth');
 const { openFriendDetail, openGroupDetails } = require('./helpers/groups');
 const { purgeFixtureRun, seedGroupMembership } = require('./helpers/fixtures');
-const { fillExpenseDescription } = require('./helpers/splits');
+const { applySplit, fillExpenseDescription, openGroupExpenseForm, openSplitEditor } = require('./helpers/splits');
 
 afterEach(async () => {
   await purgeFixtureRun({ testKey: 'payer-selection' });
@@ -16,15 +16,12 @@ describe('Payer selection', () => {
     const { groupName, friendName } = fixture;
     await openGroupDetails(groupName);
 
-    await element(by.label('Add expense')).tap();
-    await element(by.label(`Select group ${groupName}`)).tap();
-    await element(by.id('add-expense-next-button')).tap();
-    await waitFor(element(by.id('expense-amount-input')))
-      .toBeVisible()
-      .withTimeout(10000);
+    await openGroupExpenseForm();
     await element(by.id('expense-amount-input')).replaceText('9.00');
     await fillExpenseDescription(`Detox Payer ${Date.now()}`);
+    await openSplitEditor();
     await element(by.label(`Paid by ${friendName}`)).tap();
+    await applySplit();
     await element(by.id('add-expense-submit-button')).tap();
     await waitFor(element(by.text(groupName)))
       .toBeVisible()

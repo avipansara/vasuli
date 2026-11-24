@@ -1,7 +1,7 @@
 const { loginToFriends, openGroups } = require('./helpers/auth');
 const { openGroupDetails } = require('./helpers/groups');
 const { purgeFixtureRun, seedGroupMembership } = require('./helpers/fixtures');
-const { openGroupExpenseForm } = require('./helpers/splits');
+const { applySplit, openGroupExpenseForm, openSplitEditor } = require('./helpers/splits');
 const { expect: jestExpect } = require('@jest/globals');
 
 afterEach(async () => {
@@ -16,7 +16,7 @@ describe('Recurring expense creation review', () => {
     await openGroups();
     await openGroupDetails(fixture.groupName);
 
-    await openGroupExpenseForm(fixture.groupName);
+    await openGroupExpenseForm();
     await element(by.id('expense-amount-input')).replaceText('120.00');
     // Dismiss the numeric keyboard before scrolling: on iOS 27 a default-start
     // swipe can begin on the hardware keyboard's accessory toolbar.
@@ -28,23 +28,28 @@ describe('Recurring expense creation review', () => {
     await waitFor(element(by.id('keyboard-dismiss-button'))).toBeVisible().withTimeout(5000);
     await element(by.id('keyboard-dismiss-button')).tap();
     await element(by.id('expense-form-scroll')).scrollTo('bottom');
+    await element(by.id('expense-more-options')).tap();
     await expect(element(by.id('expense-repeat-none'))).toBeVisible();
     await expect(element(by.label('Add expense'))).toBeVisible();
     const formScreenshot = await device.takeScreenshot(`recurring-expense-form-${process.env.E2E_APPEARANCE || 'light'}`);
     console.log(`[ticket07] form screenshot: ${formScreenshot}`);
     await element(by.id('expense-repeat-monthly')).tap();
     await element(by.id('expense-form-scroll')).scrollTo('top');
+    await openSplitEditor();
     await element(by.label(`Paid by ${fixture.friendName}`)).tap();
+    await applySplit();
     const recurringReviewAction = element(by.id('add-expense-submit-button'));
     await expect(recurringReviewAction).toBeVisible();
     jestExpect((await recurringReviewAction.getAttributes()).enabled).toBe(false);
     await expect(element(by.id('recurring-expense-review-sheet'))).toBeNotVisible();
 
+    await openSplitEditor();
     await element(by.label('Paid by you')).tap();
+    await applySplit();
     await element(by.id('expense-form-scroll')).scrollTo('bottom');
-    await element(by.label('Last due date, No end date')).tap();
+    await element(by.label('End date optional, no end date selected')).tap();
     await expect(element(by.id('expense-last-due-picker'))).toBeVisible();
-    await element(by.label('Last due date, No end date')).tap();
+    await element(by.label('End date optional, no end date selected')).tap();
     await element(by.label('Review recurring expense')).tap();
 
     await waitFor(element(by.id('recurring-expense-review-sheet'))).toBeVisible().withTimeout(5000);

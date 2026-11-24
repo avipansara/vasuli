@@ -74,11 +74,9 @@ function updateHomeFriends(
   return current.map(friend => {
     const currentUserSplit = splits.find(split => split.userId === currentUserId);
     const friendSplit = splits.find(split => split.userId === friend.id);
-    if (!currentUserSplit || !friendSplit) return friend;
-
     const balanceDelta = expense.paidBy === currentUserId
-      ? friendSplit.amount
-      : expense.paidBy === friend.id ? -currentUserSplit.amount : 0;
+      ? (friendSplit?.amount ?? 0)
+      : expense.paidBy === friend.id ? -(currentUserSplit?.amount ?? 0) : 0;
     if (balanceDelta === 0) return friend;
 
     return {

@@ -27,7 +27,7 @@ describe('Split methods', () => {
     const groupName = await setupGroupWithFriend('split-custom');
     const description = `Detox Split ${Date.now()}`;
 
-    await openGroupExpenseForm(groupName);
+    await openGroupExpenseForm();
     await element(by.id('expense-amount-input')).replaceText('20.00');
     await fillExpenseDescription(description);
     await selectSplitMethod('Unequal');

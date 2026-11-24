@@ -140,11 +140,13 @@ describe('group detail read model', () => {
     expect(next.balances.get(blair.id)).toBe(0);
   });
 
-  it('projects deleting an expense out of the home friend summary', () => {
+  it.each([true, false])('projects deleting an expense out of the home friend summary when the payer shares the cost: %s', payerSharesCost => {
     const next = removeExpenseFromHomeFriends(
       [{ ...blair, balance: 15, recentExpenses: [expense()] }],
       expense(),
-      [split('split-a', 'expense-1', alex.id, 15), split('split-b', 'expense-1', blair.id, 15)],
+      payerSharesCost
+        ? [split('split-a', 'expense-1', alex.id, 15), split('split-b', 'expense-1', blair.id, 15)]
+        : [split('split-b', 'expense-1', blair.id, 15)],
       alex.id,
     );
 

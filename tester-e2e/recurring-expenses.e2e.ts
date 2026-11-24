@@ -10,8 +10,6 @@ test('a weekly recurring expense can be reviewed and cancelled before saving', a
     await openTab(screen, 'Groups');
     await groupCard(screen, fixture.groupName!).tap();
     await screen.getByLabel('Add expense').tap();
-    await screen.getByLabel(`Select group ${fixture.groupName}`).tap();
-    await screen.getByTestId('add-expense-next-button').tap();
     await screen.getByTestId('expense-amount-input').tap();
     await screen.getByTestId('expense-amount-input').pressSequentially('120.00');
 
@@ -20,8 +18,11 @@ test('a weekly recurring expense can be reviewed and cancelled before saving', a
     await screen.scrollUntilVisible(descriptionInput);
     await descriptionInput.tap();
     await descriptionInput.pressSequentially(description);
+    await screen.scrollUntilVisible(screen.getByTestId('expense-more-options'));
+    await screen.getByTestId('expense-more-options').tap();
     await screen.scrollUntilVisible(screen.getByTestId('expense-repeat-weekly'));
     await screen.getByTestId('expense-repeat-weekly').tap();
+    await device.dismissKeyboard();
     await expect(screen.getByLabel('Review recurring expense')).toBeVisible();
     await screen.getByLabel('Review recurring expense').tap();
 
@@ -54,8 +55,6 @@ test('a saved weekly recurring expense can be paused', async ({ app, screen, dev
     await openTab(screen, 'Groups');
     await groupCard(screen, fixture.groupName!).tap();
     await screen.getByLabel('Add expense').tap();
-    await screen.getByLabel(`Select group ${fixture.groupName}`).tap();
-    await screen.getByTestId('add-expense-next-button').tap();
     await screen.getByTestId('expense-amount-input').tap();
     await screen.getByTestId('expense-amount-input').pressSequentially('24.00');
     const description = `TesterArmy recurring ${process.env.E2E_RUN_ID}`;
@@ -63,8 +62,11 @@ test('a saved weekly recurring expense can be paused', async ({ app, screen, dev
     await screen.scrollUntilVisible(descriptionInput);
     await descriptionInput.tap();
     await descriptionInput.pressSequentially(description);
+    await screen.scrollUntilVisible(screen.getByTestId('expense-more-options'));
+    await screen.getByTestId('expense-more-options').tap();
     await screen.scrollUntilVisible(screen.getByTestId('expense-repeat-weekly'));
     await screen.getByTestId('expense-repeat-weekly').tap();
+    await device.dismissKeyboard();
     await screen.getByLabel('Review recurring expense').tap();
     await expect(screen.getByTestId('recurring-expense-review-sheet')).toBeVisible();
     await screen.getByTestId('save-recurring-expense-button').tap();

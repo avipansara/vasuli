@@ -37,6 +37,7 @@ interface SharedModalProps {
   submitLoading?: boolean;
   headerStyle?: 'default' | 'centered';
   submitBadge?: string | number;
+  scrollTestID?: string;
 }
 
 export function SharedModal({
@@ -57,6 +58,7 @@ export function SharedModal({
   onSubmit,
   headerStyle = 'default',
   submitBadge,
+  scrollTestID,
 }: SharedModalProps) {
   const { colors, gradients, isDark } = useThemeColors();
 
@@ -137,6 +139,7 @@ export function SharedModal({
             </View>
           ) : (
             <ScrollView
+              testID={scrollTestID}
               style={styles.scrollView}
               showsVerticalScrollIndicator={false}
               contentContainerStyle={styles.scrollContent}

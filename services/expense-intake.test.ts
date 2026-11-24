@@ -55,10 +55,12 @@ function expense(overrides: Partial<Expense> = {}): Expense {
 
 describe('submitExpense', () => {
   it.each([
-    { payerId: 'user-1', expectedBalance: 15, caseName: 'the current User paid' },
-    { payerId: 'user-2', expectedBalance: -15, caseName: 'another GroupMember paid' },
-  ])('replaces the optimistic Group expense without changing the projected balance when $caseName', async ({ payerId, expectedBalance }) => {
+    { payerId: 'user-1', expectedBalance: 15, payerSharesCost: true, caseName: 'the current User paid' },
+    { payerId: 'user-2', expectedBalance: -15, payerSharesCost: true, caseName: 'another GroupMember paid' },
+    { payerId: 'user-1', expectedBalance: 30, payerSharesCost: false, caseName: 'the payer is excluded from the split' },
+  ])('replaces the optimistic Group expense without changing the projected balance when $caseName', async ({ payerId, expectedBalance, payerSharesCost }) => {
     const cache = createCache();
+    cache.seed('home', [{ id: 'user-2', balance: 0 }]);
     cache.seed('group-detail', {
       group,
       expenses: [],
@@ -82,10 +84,10 @@ describe('submitExpense', () => {
       payerId,
       currentUser: user,
       currentUserId: user.id,
-      splits: [
+      splits: payerSharesCost ? [
         { userId: 'user-1', amount: 15, splitType: 'equal' },
         { userId: 'user-2', amount: 15, splitType: 'equal' },
-      ],
+      ] : [{ userId: 'user-2', amount: 30, splitType: 'equal' }],
       group,
       cache,
       keys: { home: 'home', groupDetail: 'group-detail', groups: 'groups', expenses: 'expenses', activity: 'activity' },
@@ -99,6 +101,7 @@ describe('submitExpense', () => {
     const detail = cache.get<{ expenses: Expense[]; balances: Map<string, number> }>('group-detail');
     expect(detail?.expenses.map(item => item.id)).toEqual(['expense-1']);
     expect(detail?.balances.get('user-1')).toBe(expectedBalance);
+    expect(cache.get<{ balance: number }[]>('home')?.[0].balance).toBe(expectedBalance);
     expect(cache.snapshots
       .filter(snapshot => snapshot.key === 'group-detail')
       .map(snapshot => (snapshot.value as { balances: Map<string, number> }).balances.get('user-1'))

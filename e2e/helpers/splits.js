@@ -9,46 +9,45 @@ const SPLIT_METHOD_PILL_TEXT = {
 
 const { dismissSuccessAlert } = require('./common');
 
-async function openGroupExpenseForm(groupName) {
+async function openGroupExpenseForm() {
   await element(by.label('Add expense')).tap();
-  await element(by.label(`Select group ${groupName}`)).tap();
-  await element(by.id('add-expense-next-button')).tap();
   await waitFor(element(by.id('expense-amount-input')))
     .toBeVisible()
     .withTimeout(10000);
 }
 
 async function fillExpenseDescription(description) {
-  // The amount field autofocuses and the keyboard can clip the description.
-  // Scroll the named form before tapping so focused runs stay deterministic on
-  // the release simulator.
-  await element(by.id('expense-form-scroll')).scroll(300, 'down');
   await element(by.id('expense-description-input')).tap();
   await element(by.id('expense-description-input')).typeText(description);
+  await dismissExpenseKeyboard();
+}
+
+async function dismissExpenseKeyboard() {
+  const dismiss = element(by.id('keyboard-dismiss-button'));
+  await waitFor(dismiss).toBeVisible().withTimeout(5000);
+  await dismiss.tap();
+}
+
+async function openSplitEditor() {
+  await element(by.id('expense-split-button')).tap();
+}
+
+async function applySplit() {
+  await element(by.text('Apply split')).tap();
 }
 
 async function selectSplitMethod(label) {
-  // The method pills sit below the fold. The keyboard-dismiss-button is
-  // unreliable after typing into the description field, so scroll instead —
-  // KeyboardAvoidingView padding keeps scrolled content above the keyboard.
-  await element(by.id('expense-form-scroll')).scrollTo('bottom');
-  const pillText = SPLIT_METHOD_PILL_TEXT[label] || label;
-  const pill = element(by.text(pillText));
+  await openSplitEditor();
+  const pill = element(by.text(SPLIT_METHOD_PILL_TEXT[label]));
   await waitFor(pill).toBeVisible().withTimeout(5000);
   await pill.tap();
 }
 
 async function fillCustomSplit(youValue, participantValue) {
-  // The custom split cards mount below the method pills; scroll to bring them into view.
-  await element(by.id('expense-form-scroll')).scrollTo('bottom');
-  await waitFor(element(by.id('custom-split-you-input')))
-    .toBeVisible()
-    .withTimeout(5000);
+  await element(by.id('expense-split-scroll')).scrollTo('bottom');
   await element(by.id('custom-split-you-input')).replaceText(youValue);
-
-  const participantInput = element(by.id('custom-split-participant-input')).atIndex(0);
-  await waitFor(participantInput).toBeVisible().withTimeout(5000);
-  await participantInput.replaceText(participantValue);
+  await element(by.id('custom-split-participant-input')).atIndex(0).replaceText(participantValue);
+  await applySplit();
 }
 
 async function submitExpense(groupName) {
@@ -60,6 +59,9 @@ async function submitExpense(groupName) {
 }
 
 module.exports = {
+  applySplit,
+  dismissExpenseKeyboard,
+  openSplitEditor,
   fillCustomSplit,
   fillExpenseDescription,
   openGroupExpenseForm,

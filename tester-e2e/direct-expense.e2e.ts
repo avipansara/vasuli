@@ -28,6 +28,7 @@ test('a friend expense appears on both the friend and Activity screens', async (
     await screen.scrollUntilVisible(screen.getByTestId('expense-description-input'));
     await screen.getByTestId('expense-description-input').tap();
     await screen.getByTestId('expense-description-input').pressSequentially(description);
+    await device.dismissKeyboard();
     await screen.getByTestId('add-expense-submit-button').tap();
 
     const activityRow = screen.getByLabel(new RegExp(`^${description}, .*you are owed`));
@@ -38,6 +39,7 @@ test('a friend expense appears on both the friend and Activity screens', async (
     const editAmount = screen.getByTestId('edit-expense-amount-input');
     await expect(editAmount).toBeVisible();
     await replaceText(editAmount, 5, '20.00');
+    await device.dismissKeyboard();
     await screen.getByTestId('edit-expense-save-button').tap();
     await expect(screen.getByText('$20.00')).toBeVisible({ timeout: 20_000 });
 

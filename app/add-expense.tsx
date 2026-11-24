@@ -29,18 +29,17 @@ import type { RecurringExpenseCadence, RecurringExpenseRuleInput } from '@/types
 import { formatDate } from '@/utils/date';
 import { filterFriendsForExpenseSearch } from '@/utils/friend-search';
 import { getGroupExpenseParticipant } from '@/utils/group-expense-participants';
-import { getEvenSplitValues, getSplitProgress, resolveExpenseSplits } from '@/utils/split-validation';
+import { resolveExpenseSplits } from '@/utils/split-validation';
 import { getVisibleEmail, normalizeCurrencyInput } from '@/utils/validation';
 import { getInitialPostingState } from '@/utils/recurring-schedule';
-import { getRecurringSplitFormValues } from '@/utils/recurring-edit-form';
+import { getRecurringSplitFormValues, isRecurringParticipantSetValid } from '@/utils/recurring-edit-form';
 import { getCurrencySymbol } from '@/utils/currency';
 import {
-  CustomSplitBreakdown,
   ExpenseParticipant,
   SplitMethod,
-  SplitMethodSelector,
   SplitType,
 } from '@/components/expenses';
+import { ExpenseSplitField } from '@/components/expenses/expense-split-field';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import NetInfo from '@react-native-community/netinfo';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -113,6 +112,7 @@ export default function AddExpenseScreen() {
   const [expenseDate, setExpenseDate] = useState(() => new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [repeatCadence, setRepeatCadence] = useState<'none' | RecurringExpenseCadence>('none');
+  const [showMoreOptions, setShowMoreOptions] = useState(false);
   const [lastDueDate, setLastDueDate] = useState<Date | null>(null);
   const [showLastDuePicker, setShowLastDuePicker] = useState(false);
   const [showRecurringReview, setShowRecurringReview] = useState(false);
@@ -124,7 +124,7 @@ export default function AddExpenseScreen() {
   const [expenseStep, setExpenseStep] = useState<1 | 2>(preselectedGroupId || preselectedFriendId ? 2 : 1);
   const [splitType, setSplitType] = useState<SplitType>(preselectedFriendId ? SplitType.FRIENDS : (preselectedGroupId ? SplitType.GROUP : SplitType.GROUP));
   const [selectedGroupId, setSelectedGroupId] = useState(preselectedGroupId || '');
-  const [prefilledGroupParticipants, setPrefilledGroupParticipants] = useState<{ groupId: string; participantIds: string[] } | null>(null);
+  const [groupSplitSelection, setGroupSplitSelection] = useState<{ groupId: string; participantIds: string[] } | null>(null);
   const groupsQuery = useQuery({
     queryKey: queryKeys.expenses.formGroups(currentUserId),
     enabled: !!currentUserId,
@@ -167,6 +167,7 @@ export default function AddExpenseScreen() {
     if (rule && !prefillAppliedRef.current) {
       prefillAppliedRef.current = true;
       setDescription(rule.description);
+      setShowMoreOptions(true);
       setAmount(rule.amount.toString());
       setFormCurrency(rule.currency);
       setRepeatCadence(rule.cadence);
@@ -174,7 +175,7 @@ export default function AddExpenseScreen() {
       if (rule.scopeType === 'group' && rule.groupId) {
         setSplitType(SplitType.GROUP);
         setSelectedGroupId(rule.groupId);
-        setPrefilledGroupParticipants({ groupId: rule.groupId, participantIds: rule.participants.map(p => p.userId) });
+        setGroupSplitSelection({ groupId: rule.groupId, participantIds: rule.participants.map(p => p.userId) });
       } else {
         setSplitType(SplitType.FRIENDS);
         const friendIds = rule.participants
@@ -197,45 +198,24 @@ export default function AddExpenseScreen() {
 
   const activeUserIds = useMemo(
     () => splitType === SplitType.GROUP
-      ? (prefilledGroupParticipants?.groupId === selectedGroupId ? prefilledGroupParticipants.participantIds : groupMembers)
+      ? (groupSplitSelection?.groupId === selectedGroupId ? groupSplitSelection.participantIds : groupMembers)
       : [currentUserId, ...selectedFriendIds],
-    [currentUserId, groupMembers, prefilledGroupParticipants, selectedFriendIds, selectedGroupId, splitType]
+    [currentUserId, groupMembers, groupSplitSelection, selectedFriendIds, selectedGroupId, splitType]
   );
 
-  const participants = useMemo<ExpenseParticipant[]>(() => {
-    const list: ExpenseParticipant[] = [];
-    if (splitType === SplitType.FRIENDS) {
-      activeUserIds.forEach(id => {
-        if (id === currentUserId) { list.push({ id, name: 'You', isCurrentUser: true }); return; }
-        const friend = friends.find(f => f.id === id);
-        if (friend) list.push({ id, name: friend.name });
-        else list.push({ id, name: 'Friend' });
-      });
-    } else {
-      activeUserIds.forEach(id => {
-        if (id === currentUserId) { list.push({ id, name: 'You', isCurrentUser: true }); return; }
-        const member = getGroupExpenseParticipant(id, groupMemberUsers, friends);
-        list.push({ id, name: member?.name || 'Member' });
-      });
-    }
-    return list;
-  }, [currentUserId, friends, groupMemberUsers, activeUserIds, splitType]);
-  const activeValues = splitMethod === SplitMethod.UNEQUAL
-    ? customAmounts
-    : splitMethod === SplitMethod.PERCENTAGE
-      ? customPercentages
-      : customShares;
-  const splitProgress = useMemo(
-    () => getSplitProgress(activeUserIds, parseFloat(amount) || 0, splitMethod, activeValues),
-    [activeUserIds, amount, splitMethod, activeValues]
-  );
-
-  const setEvenSplit = () => {
-    const values = getEvenSplitValues(activeUserIds, splitMethod, parseFloat(amount) || 0);
-    if (splitMethod === SplitMethod.PERCENTAGE) setCustomPercentages(values);
-    else if (splitMethod === SplitMethod.SHARES) setCustomShares(values);
-    else setCustomAmounts(values);
-  };
+  const splitPeople = useMemo<ExpenseParticipant[]>(() => {
+    const ids = splitType === SplitType.GROUP ? groupMembers : [currentUserId, ...selectedFriendIds];
+    return ids.map(id => {
+      if (id === currentUserId) return { id, name: 'You', isCurrentUser: true };
+      const person = getGroupExpenseParticipant(id, groupMemberUsers, friends);
+      return { id, name: person?.name || 'Member' };
+    });
+  }, [currentUserId, friends, groupMemberUsers, groupMembers, selectedFriendIds, splitType]);
+  const participants = activeUserIds
+    .map(id => splitPeople.find(person => person.id === id))
+    .filter((person): person is ExpenseParticipant => !!person);
+  const activeValues = splitMethod === SplitMethod.UNEQUAL ? customAmounts
+    : splitMethod === SplitMethod.PERCENTAGE ? customPercentages : customShares;
 
   // Animations
   const [fadeAnim] = useState(() => new Animated.Value(0));
@@ -307,37 +287,33 @@ export default function AddExpenseScreen() {
   const isValid = description.trim() && amount.trim() && parseFloat(amount) > 0 &&
     (splitType === SplitType.GROUP ? selectedGroupId : selectedFriendIds.length > 0);
   const canContinue = splitType === SplitType.GROUP ? !!selectedGroupId : selectedFriendIds.length > 0;
-  const canSubmit = !!isValid && (splitMethod === SplitMethod.EQUAL || splitProgress.isBalanced);
   const isRecurring = repeatCadence !== 'none';
   const selectedGroup = groups.find(group => group.id === selectedGroupId);
   const selectedFriendNames = selectedFriendIds
     .map(friendId => friends.find(friend => friend.id === friendId)?.name)
     .filter((name): name is string => !!name);
-  const payerOptions = useMemo(() => {
-    const participants = splitType === SplitType.GROUP
-      ? groupMemberUsers
-      : friends.filter(friend => selectedFriendIds.includes(friend.id));
-    return [{ id: currentUserId, name: user?.name || 'You' }, ...participants.filter(person => person.id !== currentUserId)];
-  }, [currentUserId, friends, groupMemberUsers, selectedFriendIds, splitType, user?.name]);
-  const activePayerId = payerOptions.some(person => person.id === selectedPayerId) ? selectedPayerId : currentUserId;
+  const activePayerId = splitPeople.some(person => person.id === selectedPayerId) ? selectedPayerId : currentUserId;
+  const resolvedSplits = resolveExpenseSplits(activeUserIds, parseFloat(amount) || 0, splitMethod, {
+    amounts: customAmounts,
+    percentages: customPercentages,
+    shares: customShares,
+  }).splits;
+  const canSubmit = !!isValid && !!resolvedSplits &&
+    (splitType !== SplitType.GROUP || groupMembersQuery.isSuccess);
   const formattedExpenseDate = formatDate(expenseDate);
   const formattedLastDueDate = lastDueDate ? formatDate(lastDueDate) : 'No end date';
   const localDateString = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
   const formatRecurringLocalDate = (date: string) => formatDate(new Date(`${date}T12:00:00`));
   const firstDueOn = localDateString(expenseDate);
   const recurringDatesValid = firstDueOn >= localDateString(new Date()) && (!lastDueDate || localDateString(lastDueDate) >= firstDueOn);
-  const canSaveRecurring = !!canSubmit && activePayerId === currentUserId && recurringDatesValid && !recurringSuccess && !loading && !recurringSaving && !recurringMutations.create.isPending;
+  const recurringParticipantsValid = isRecurringParticipantSetValid(activeUserIds, splitPeople.map(person => person.id), currentUserId, splitType);
+  const canSaveRecurring = !!canSubmit && recurringParticipantsValid && activePayerId === currentUserId && recurringDatesValid && !recurringSuccess && !loading && !recurringSaving && !recurringMutations.create.isPending;
   const resolvedTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
   const recurrencePostingState = isRecurring
     ? getInitialPostingState({ dueDate: firstDueOn, timeZone: resolvedTimeZone, createdAt: new Date() })
     : 'future';
-  const resolvedRecurringSplits = resolveExpenseSplits(activeUserIds, parseFloat(amount) || 0, splitMethod, {
-    amounts: customAmounts,
-    percentages: customPercentages,
-    shares: customShares,
-  }).splits ?? [];
   const resolvedRecurringShares = activeUserIds.map(userId => {
-    const split = resolvedRecurringSplits.find(item => item.userId === userId);
+    const split = resolvedSplits?.find(item => item.userId === userId);
     return {
       userId,
       shareAmount: split?.amount ?? 0,
@@ -462,26 +438,13 @@ export default function AddExpenseScreen() {
   }, [recurringSuccess?.ruleId, recurringSuccess?.scheduledFor, recurringSuccess?.state]);
 
   const handleSubmit = async () => {
-    if (!isValid) return;
+    if (!canSubmit || !resolvedSplits || loading) return;
 
     setLoading(true);
     try {
       const amountNum = parseFloat(amount);
       const trimmedDescription = description.trim();
-      let participantIds: string[];
-
-      if (splitType === SplitType.GROUP) {
-        participantIds = groupMembers;
-        if (participantIds.length === 0) {
-          const members = await groupService.getMembers(selectedGroupId);
-          participantIds = members.map(member => member.userId);
-        }
-      } else {
-        participantIds = [currentUserId, ...selectedFriendIds];
-      }
-
-      const splits = calculateSplits(participantIds, amountNum);
-      if (!splits) return;
+      const participantIds = resolvedSplits.map(split => split.userId);
 
       const isGroup = splitType === SplitType.GROUP;
       const group = groups.find(item => item.id === selectedGroupId);
@@ -507,7 +470,7 @@ export default function AddExpenseScreen() {
         payerId: activePayerId,
         currentUserId,
         currentUser: user!,
-        splits,
+        splits: resolvedSplits,
         group,
         cache: createReactQueryCacheAdapter(queryClient),
         keys,
@@ -543,21 +506,6 @@ export default function AddExpenseScreen() {
       setLoading(false);
     }
   }
-  const calculateSplits = (userIds: string[], totalAmount: number) => {
-    const result = resolveExpenseSplits(userIds, totalAmount, splitMethod, {
-      amounts: customAmounts,
-      percentages: customPercentages,
-      shares: customShares,
-    });
-
-    if (!result.splits) {
-      Alert.alert('Invalid Split', result.error || 'Please check the split values');
-      return null;
-    }
-
-    return result.splits;
-  };
-
   if (dataLoadError && !dataLoading) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -574,65 +522,47 @@ export default function AddExpenseScreen() {
     );
   }
 
+  const actionDisabled = expenseStep === 1 ? !canContinue : isRecurring ? !canSaveRecurring : !canSubmit || loading;
+  const action = (
+    <TouchableOpacity
+      testID={expenseStep === 1 ? 'add-expense-next-button' : 'add-expense-submit-button'}
+      accessibilityRole="button"
+      accessibilityLabel={recurringSuccess ? 'Recurring expense saved' : expenseStep === 1 ? 'Continue to expense details' : isRecurring ? 'Review recurring expense' : 'Add expense'}
+      accessibilityState={{ disabled: actionDisabled, busy: loading || recurringSaving || recurringMutations.create.isPending }}
+      onPress={handleHeaderAction}
+      disabled={actionDisabled}
+      style={[
+        styles.headerButton,
+        expenseStep === 2 && styles.footerButton,
+        {
+          backgroundColor: !actionDisabled
+            ? settle.buttonBackground
+            : (colors.border),
+        },
+      ]}>
+      {loading || recurringSaving || recurringMutations.create.isPending ? (
+        <ActivityIndicator size="small" color={settle.buttonText} />
+      ) : (
+        <ThemedText style={[styles.headerButtonText, { color: !actionDisabled ? settle.buttonText : (isDark ? '#bbcabf' : '#6B7280') }]}>
+          {recurringSuccess ? 'Saved' : expenseStep === 1 ? 'Next' : isRecurring ? 'Review schedule' : 'Add expense'}
+        </ThemedText>
+      )}
+    </TouchableOpacity>
+  );
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <NavigationHeader
         title={expenseStep === 1 ? 'Choose people' : 'Add Expense'}
         onBack={handleHeaderBack}
-        rightAction={
-          <TouchableOpacity
-            testID={expenseStep === 1 ? 'add-expense-next-button' : 'add-expense-submit-button'}
-            accessibilityRole="button"
-            accessibilityLabel={recurringSuccess ? 'Recurring expense saved' : expenseStep === 1 ? 'Continue to expense details' : isRecurring ? 'Review recurring expense' : 'Add expense'}
-            accessibilityState={{ disabled: !!recurringSuccess || (expenseStep === 1 ? !canContinue : isRecurring ? !canSaveRecurring : !canSubmit || loading), busy: loading || recurringSaving || recurringMutations.create.isPending }}
-            onPress={handleHeaderAction}
-            disabled={!!recurringSuccess || (expenseStep === 1 ? !canContinue : isRecurring ? !canSaveRecurring : !canSubmit || loading)}
-            style={[
-              styles.headerButton,
-              {
-                backgroundColor: (!recurringSuccess && (expenseStep === 1 ? canContinue : isRecurring ? canSaveRecurring : canSubmit && !loading))
-                  ? settle.buttonBackground
-                  : (colors.border),
-              },
-            ]}>
-            {loading || recurringSaving || recurringMutations.create.isPending ? (
-              <ActivityIndicator size="small" color={settle.buttonText} />
-            ) : (
-              <ThemedText style={[styles.headerButtonText, { color: (!recurringSuccess && (expenseStep === 1 ? canContinue : isRecurring ? canSaveRecurring : canSubmit)) ? settle.buttonText : (isDark ? '#bbcabf' : '#6B7280') }]}>
-                {recurringSuccess ? 'Saved' : expenseStep === 1 ? 'Next' : isRecurring ? 'Review' : 'Add'}
-              </ThemedText>
-            )}
-          </TouchableOpacity>
-        }
+        rightAction={expenseStep === 1 ? action : undefined}
       />
-
-      {!preselectedGroupId && !preselectedFriendId && (
-        <View style={styles.stepIndicator} accessibilityLabel={`Step ${expenseStep} of 2`}>
-          <View style={styles.stepperRow}>
-            <View style={styles.stepItem}>
-              <View style={[styles.stepBadge, { backgroundColor: settle.buttonBackground }]}>
-                {expenseStep === 2 ? (
-                  <IconSymbol name="checkmark" size={14} color={settle.buttonText} />
-                ) : (
-                  <ThemedText style={[styles.stepBadgeText, { color: settle.buttonText }]}>1</ThemedText>
-                )}
-              </View>
-              <ThemedText style={[styles.stepName, { color: settle.buttonBackground }]}>People</ThemedText>
-            </View>
-            <View style={[styles.stepLine, { backgroundColor: expenseStep === 2 ? (settle.buttonBackground) : (isDark ? 'rgba(60, 74, 66, 0.4)' : colors.border) }]} />
-            <View style={styles.stepItem}>
-              <View style={[styles.stepBadge, { backgroundColor: expenseStep === 2 ? (settle.buttonBackground) : (colors.border) }]}>
-                <ThemedText style={[styles.stepBadgeText, { color: expenseStep === 2 ? settle.buttonText : (colors.textSecondary) }]}>2</ThemedText>
-              </View>
-              <ThemedText style={[styles.stepName, { color: expenseStep === 2 ? (colors.text) : (colors.textSecondary) }]}>Split</ThemedText>
-            </View>
-          </View>
-        </View>
-      )}
 
       <KeyboardAwareScroll
         testID="expense-form-scroll"
         contentContainerStyle={styles.scrollContent}
+        footerBackgroundColor={colors.background}
+        footer={expenseStep === 2 && !recurringSuccess ? action : undefined}
       >
         <Animated.View style={[styles.content, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
           {recurringSuccess ? (
@@ -678,30 +608,6 @@ export default function AddExpenseScreen() {
                   </ThemedText>
                 </View>
               </View>
-              <View style={styles.inputSection}>
-                <ThemedText style={[styles.inputLabel, { color: colors.textSecondary }]}>Paid by</ThemedText>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.payerOptionsContainer}>
-                  {payerOptions.map(payer => {
-                    const isSelected = payer.id === activePayerId;
-                    return (
-                      <TouchableOpacity
-                        key={payer.id}
-                        accessibilityRole="button"
-                        accessibilityState={{ selected: isSelected }}
-                        accessibilityLabel={`Paid by ${payer.id === currentUserId ? 'you' : payer.name}`}
-                        style={[styles.payerButton, isSelected && styles.payerButtonActive, {
-                          backgroundColor: isSelected ? (settle.buttonBackground) : settle.pillBackground,
-                          borderColor: isSelected ? (settle.buttonBackground) : settle.pillBackground,
-                        }]}
-                        onPress={() => setSelectedPayerId(payer.id)}>
-                        <ThemedText style={[styles.payerButtonText, { color: isSelected ? settle.buttonText : (colors.text) }]}>
-                          {payer.id === currentUserId ? 'You' : payer.name}
-                        </ThemedText>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </ScrollView>
-              </View>
               {/* Amount Input - Hero Style */}
               <View style={styles.amountSection}>
                 <View
@@ -731,7 +637,6 @@ export default function AddExpenseScreen() {
                       maxFontSizeMultiplier={1.4}
                       onSubmitEditing={() => descriptionInputRef.current?.focus()}
                       blurOnSubmit={false}
-                      autoFocus={expenseStep === 2}
                       testID="expense-amount-input"
                     />
                   </View>
@@ -762,6 +667,34 @@ export default function AddExpenseScreen() {
                 </View>
               </View>
 
+              {splitType === SplitType.GROUP && groupMembersLoadError ? (
+                <AsyncErrorState variant="compact" title="Couldn't load members"
+                  message={getFetchErrorMessage(groupMembersLoadError)}
+                  onRetry={() => void groupMembersQuery.refetch()} />
+              ) : splitType === SplitType.GROUP && groupMembersQuery.isPending ? (
+                <Skeleton height={64} borderRadius={12} />
+              ) : (
+                <ExpenseSplitField
+                  value={{ payerId: activePayerId, participantIds: activeUserIds, method: splitMethod, values: activeValues }}
+                  people={splitPeople}
+                  group={splitType === SplitType.GROUP}
+                  currentUserId={currentUserId}
+                  amount={parseFloat(amount) || 0}
+                  currency={formCurrency}
+                  description={description}
+                  onApply={split => {
+                    setSelectedPayerId(split.payerId);
+                    setSplitMethod(split.method);
+                    if (splitType === SplitType.GROUP) {
+                      setGroupSplitSelection({ groupId: selectedGroupId, participantIds: split.participantIds });
+                    }
+                    if (split.method === SplitMethod.UNEQUAL) setCustomAmounts(split.values);
+                    if (split.method === SplitMethod.PERCENTAGE) setCustomPercentages(split.values);
+                    if (split.method === SplitMethod.SHARES) setCustomShares(split.values);
+                  }}
+                />
+              )}
+
               <View style={styles.inputSection}>
                 <ThemedText style={[styles.inputLabel, { color: colors.textSecondary }]}>{isRecurring ? 'First expense date' : 'Date'}</ThemedText>
                 <TouchableOpacity
@@ -773,7 +706,7 @@ export default function AddExpenseScreen() {
                     borderColor: colors.border,
                   }]}>
                   <IconSymbol name="calendar" size={20} color={colors.textSecondary} />
-                  <ThemedText style={[styles.textInput, { color: colors.text }]}>{formattedExpenseDate}</ThemedText>
+                  <ThemedText style={[styles.textInput, { color: colors.text }]}>{!isRecurring && firstDueOn === localDateString(new Date()) ? 'Today' : formattedExpenseDate}</ThemedText>
                 </TouchableOpacity>
                 {showDatePicker && (
                   <DateTimePicker
@@ -790,6 +723,16 @@ export default function AddExpenseScreen() {
                 )}
               </View>
 
+              <TouchableOpacity testID="expense-more-options" accessibilityRole="button"
+                accessibilityState={{ expanded: showMoreOptions }}
+                onPress={() => setShowMoreOptions(current => !current)}
+                style={[styles.inputContainer, { borderColor: colors.border, backgroundColor: colors.card }]}>
+                <ThemedText style={styles.textInput}>
+                  {isRecurring && !showMoreOptions ? (repeatCadence === 'weekly' ? 'Repeats weekly' : 'Repeats monthly') : 'More options'}
+                </ThemedText>
+                <IconSymbol name={showMoreOptions ? 'chevron.down' : 'chevron.right'} size={14} color={colors.textSecondary} />
+              </TouchableOpacity>
+              {showMoreOptions && (
               <View style={styles.inputSection}>
                 <ThemedText style={[styles.inputLabel, { color: colors.textSecondary }]}>Repeat</ThemedText>
                 <View style={[styles.repeatOptions, { backgroundColor: colors.card, borderColor: colors.border }]} accessibilityRole="radiogroup" accessibilityLabel="Repeat schedule">
@@ -888,6 +831,11 @@ export default function AddExpenseScreen() {
                       />
                     )}
 
+                    {!recurringParticipantsValid && (
+                      <ThemedText accessibilityRole="alert" style={{ color: colors.error }}>
+                        Include yourself and at least one other person in the recurring split.
+                      </ThemedText>
+                    )}
                     {/* Alerts / Validation */}
                     {activePayerId !== currentUserId && (
                       <View style={[styles.recurringAlertBanner, { backgroundColor: recurring.pausedBannerBackground, borderColor: recurring.pausedBannerBorder }]}>
@@ -925,6 +873,7 @@ export default function AddExpenseScreen() {
                 )}
               </View>
 
+              )}
             </>
           )}
 
@@ -995,19 +944,6 @@ export default function AddExpenseScreen() {
                 </TouchableOpacity>
               </View>
             </View>
-          )}
-
-          {expenseStep === 2 && (
-            <>
-
-              {/* Split Method Selection */}
-              <SplitMethodSelector
-                splitMethod={splitMethod}
-                onSelectSplitMethod={setSplitMethod}
-                splitType={splitType}
-              />
-
-            </>
           )}
 
           {/* Selection List */}
@@ -1181,24 +1117,6 @@ export default function AddExpenseScreen() {
             </View>
           )}
 
-          {/* Custom Split Inputs - Show when non-equal split is selected */}
-          {expenseStep === 2 && splitMethod !== SplitMethod.EQUAL && (splitType === SplitType.FRIENDS ? selectedFriendIds.length > 0 : !!selectedGroupId) && !!amount && parseFloat(amount) > 0 && (
-            <CustomSplitBreakdown
-              splitMethod={splitMethod}
-              totalAmount={parseFloat(amount) || 0}
-              currency={formCurrency}
-              participants={participants}
-              customAmounts={customAmounts}
-              customPercentages={customPercentages}
-              customShares={customShares}
-              onChangeCustomAmount={(id, text) => setCustomAmounts(prev => ({ ...prev, [id]: text }))}
-              onChangeCustomPercentage={(id, text) => setCustomPercentages(prev => ({ ...prev, [id]: text }))}
-              onChangeCustomShare={(id, text) => setCustomShares(prev => ({ ...prev, [id]: text }))}
-              splitProgress={splitProgress}
-              onSetEvenSplit={setEvenSplit}
-              readyLabel="Ready to add"
-            />
-          )}
             </>
           )}
         </Animated.View>
@@ -1267,6 +1185,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  footerButton: { minHeight: 48, justifyContent: 'center' },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1301,42 +1220,6 @@ const styles = StyleSheet.create({
   headerButtonText: {
     fontSize: 15,
     fontWeight: '600',
-  },
-  stepIndicator: {
-    marginHorizontal: 18,
-    marginBottom: 8,
-    paddingHorizontal: 18,
-  },
-  stepperRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  stepItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  stepBadge: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  stepLine: {
-    flex: 1,
-    height: 2,
-    borderRadius: 1,
-  },
-  stepBadgeText: {
-    color: '#0A0A0F',
-    fontSize: 13,
-    fontWeight: '800',
-  },
-  stepName: {
-    fontSize: 16,
-    fontWeight: '700',
   },
   participantSummary: {
     flexDirection: 'row',
@@ -1376,7 +1259,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 18,
-    paddingBottom: 120,
+    paddingBottom: 115,
   },
   content: {
     flex: 1,
@@ -1707,29 +1590,6 @@ const styles = StyleSheet.create({
   toggleTextActive: {
     color: '#2DD4BF',
   },
-  payerOptionsContainer: {
-    gap: 8,
-    paddingRight: 18,
-  },
-  payerButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 5,
-    minHeight: 44,
-    minWidth: 80,
-    paddingHorizontal: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-  },
-  payerButtonActive: {
-    borderWidth: 1.5,
-  },
-  payerButtonText: {
-    fontSize: 13,
-    lineHeight: 18,
-    fontWeight: '700',
-  },
   selectionSection: {
     marginBottom: 24,
   },
@@ -1810,14 +1670,6 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 14,
-  },
-  footer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    padding: 20,
-    paddingBottom: Platform.OS === 'ios' ? 34 : 20,
   },
   submitButton: {
     borderRadius: 16,

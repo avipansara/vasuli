@@ -5,6 +5,13 @@
 - Remove routine production logs containing user and notification details.
 - Correct setup, security, testing, and release guidance for contributors.
 
+## 2026-11-23
+
+- Preview who owes what before adding an expense. Open the split to choose a payer, select who shares a group expense, or enter a custom allocation.
+- Edit an expense with its saved participants and split. Description and date corrections preserve the original allocation.
+- Choose a split in a compact iPhone sheet that expands for custom allocations.
+- See how many people share a group expense and search for members when changing the split.
+
 ## 2026-11-14
 
 - Remove the leftover segmented indicator behind the friend activity filter pills and configure the Android splash screen icon and handoff to match iOS.
